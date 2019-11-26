@@ -1,23 +1,15 @@
 # Drivers for LibXC
 
 import numpy as np
-from .field import DirectField
-from .functional_output import Functional
-from .constants import MATHLIB
-from .math_utils import TimeData
+from dftpy.field import DirectField
+from dftpy.functional_output import Functional
+from dftpy.constants import MATHLIB
+from dftpy.math_utils import TimeData
 ### Import LibXC
 try:
     from pylibxc.functional import LibXCFunctional
 except:
     print('!WARN : Now you can only use LDA functional')
-
-### Import Exchange-Correlation Functional
-if MATHLIB == 'math_f2py' :
-    try:
-        from .src_f import lda_xc as f2pylda
-        print('You can using F2PY for LDA calculation')
-    except :
-        pass
 
 def Get_LibXC_Input(density,do_sigma=True):
     if not isinstance(density,(DirectField)):
@@ -92,11 +84,11 @@ def Get_LibXC_Output(out,density, calcType = 'Both'):
         rho_3[:,:,:,2] = density[:,:,:,0]
         prodotto=vsigma*grho 
         a = np.zeros(np.shape(prodotto))
-        print('a0', grho.shape, rho_3.shape)
-        print('aa', a.shape, prodotto.shape)
+        # print('a0', grho.shape, rho_3.shape)
+        # print('aa', a.shape, prodotto.shape)
         mask1 = np.where( grho > 1.0e-10 )
         mask2 = np.where( rho_3 > 1.0e-6 )
-        print('aa', a.shape, prodotto.shape)
+        # print('aa', a.shape, prodotto.shape)
         a[mask1] = prodotto[mask1]
         a[mask2] = prodotto[mask2]
         vsigma_last = prodotto.divergence()
@@ -117,7 +109,7 @@ def Get_LibXC_Output(out,density, calcType = 'Both'):
 def XC(density,x_str,c_str,polarization, do_sigma = True, calcType = 'Both'):
     '''
      Output: 
-        - Functional_XC: a PBCpy XC functional evaluated with LibXC
+        - Functional_XC: a XC functional evaluated with LibXC
      Input:
         - density: a DirectField (rank=1)
         - x_str,c_str: strings like "gga_x_pbe" and "gga_c_pbe"
@@ -150,16 +142,16 @@ def XC(density,x_str,c_str,polarization, do_sigma = True, calcType = 'Both'):
     return Functional_XC
 
 # def PBE_XC(density,polarization, calcType = 'Both'):
-def PBE(density,polarization, calcType = 'Both'):
+def PBE(density,polarization, calcType = 'Both', **kwargs):
     return XC(density=density,x_str='gga_x_pbe',c_str='gga_c_pbe',polarization=polarization, do_sigma=True, calcType=calcType)
 
-def LDA_XC(density,polarization, calcType = 'Both'):
+def LDA_XC(density,polarization, calcType = 'Both',  **kwargs):
     return XC(density=density,x_str='lda_x',c_str='lda_c_pz',polarization=polarization, do_sigma=False, calcType=calcType)
 
 def KEDF(density,polarization,k_str='gga_k_lc94', calcType = 'Both'):
     '''
      Output: 
-        - Functional_KEDF: a PBCpy KEDF functional evaluated with LibXC
+        - Functional_KEDF: a KEDF functional evaluated with LibXC
      Input:
         - density: a DirectField (rank=1)
         - k_str: strings like "gga_k_lc94"
@@ -179,23 +171,7 @@ def KEDF(density,polarization,k_str='gga_k_lc94', calcType = 'Both'):
     Functional_KEDF.name = name.upper()
     return Functional_KEDF
 
-def LDA_F(rho, polarization, calcType = 'Both'):
-    if calcType == 'Both' :
-        calcType = ['Energy', 'Potential']
-    # rhoF = rho[..., 0].T
-    rhoF = rho[..., 0]
-    ene = pot = 0
-    if 'Energy'in calcType :
-        ene = f2pylda.lda_xc_f_energy(rhoF)
-    if 'Potential'in calcType :
-        pot = f2pylda.lda_xc_f_potential(rhoF)
-        pot = DirectField(rho.grid,rank=1,griddata_F=pot)
-    OutFunctional = Functional(name='XC')
-    OutFunctional.energy = ene * rho.grid.dV
-    OutFunctional.potential = pot
-    return OutFunctional
-
-def LDA(rho, polarization, calcType = 'Both'):
+def LDA(rho, polarization, calcType = 'Both',  **kwargs):
     TimeData.Begin('LDA')
     # return LDA_XC(rho,polarization, calcType)
     if MATHLIB == 'math_f2py' :
@@ -213,15 +189,15 @@ def LDA(rho, polarization, calcType = 'Both'):
     rs1 = Rs < 1
     rs2 = Rs >= 1
     Rs2sqrt = np.sqrt(Rs[rs2])
-    ene = pot = 0
-    if calcType == 'Both' :
-        calcType = ['Energy', 'Potential']
-    if 'Energy'in calcType :
+    ene = 0
+    if calcType == 'Energy' or calcType == 'Both' :
         ExRho = -3.0/4.0 * np.cbrt(3.0/np.pi) * rho_cbrt
         ExRho[rs1] += a[0] * np.log(Rs[rs1]) + b[0] + c[0] * Rs[rs1] * np.log(Rs[rs1]) + d[0] * Rs[rs1]
         ExRho[rs2] += gamma[0] / (1.0+beta1[0] * Rs2sqrt + beta2[0] * Rs[rs2])
         ene = np.einsum('ijkl, ijkl->',ExRho, rho) * rho.grid.dV
-    if 'Potential'in calcType :
+        if calcType == 'Energy' :
+            pot = np.empty_like(rho)
+    if calcType == 'Potential' or calcType == 'Both' :
         pot = np.cbrt(-3.0/np.pi) * rho_cbrt
         pot[rs1] += np.log(Rs[rs1]) * (a[0]+2.0/3 * c[0] * Rs[rs1]) + b[0]-1.0/3 * a[0]+1.0/3 * (2 * d[0]-c[0]) * Rs[rs1]
         pot[rs2] += ( gamma[0]+(7.0/6.0 * gamma[0] * beta1[0]) * Rs2sqrt + (4.0/3.0 * gamma[0] * beta2[0] * Rs[rs2]))\
@@ -271,22 +247,18 @@ def LDA(rho, polarization, calcType = 'Both'):
     TimeData.End('LDA')
     return OutFunctional
 
-def LDAStress(rho, polarization='unpolarized', EnergyPotential=None):
+def LDAStress(rho, polarization='unpolarized', energy=None):
     TimeData.Begin('LDA_Stress')
-    if EnergyPotential is None :
+    if energy is None :
         EnergyPotential = LDA(rho, polarization, calcType = 'Both')
+        energy = EnergyPotential.energy
+        potential = EnergyPotential.potential
+    else :
+        potential = LDA(rho, polarization, calcType = 'Potential').potential
     stress = np.zeros((3, 3))
-    Etmp = EnergyPotential.energy - np.einsum('ijkl, ijkl -> ', EnergyPotential.potential, rho) * rho.grid.dV
+    Etmp = energy - np.einsum('ijkl, ijkl -> ', potential, rho) * rho.grid.dV
     for i in range(3):
         stress[i, i]= Etmp / rho.grid.volume
     TimeData.End('LDA_Stress')
     return stress
 
-# def LDA_thran(rho, polarization, calcType = 'Both'):
-    # pot, ene = LDA_fast(rho, polarization, calcType)
-    # ene = ene * rho.grid.dV
-    # OutFunctional = Functional(name='XC')
-    # OutFunctional.energy = ene
-    # pot = DirectField(rho.grid,rank=1,griddata_C=pot)
-    # OutFunctional.potential = pot
-    # return OutFunctional

@@ -1,11 +1,12 @@
 import numpy as np
-from .atom import Atom
-from .field import DirectField
+from dftpy.atom import Atom
+from dftpy.field import DirectField
 
 def NuclearElectron(ions,density,PPs, calcType='Both'):
     '''Computes the local part of the PP
     Input: ions (coord), density (rank-0 PBCpy field), PPs (array of str)'''
-    if len(PPs) != len(ions.Zval):
+    # if len(PPs) != len(ions.Zval):
+    if len(PPs) != len(set(ions.Z)):
         raise ValueError("Incorrect number of pseudopotential files")
     if not isinstance(ions,(Atom)):
         raise AttributeError("Ions must be an array of PBCpy Atom")
@@ -15,9 +16,9 @@ def NuclearElectron(ions,density,PPs, calcType='Both'):
     NuclearElectron.name = 'Local Pseudopotential'
     return NuclearElectron
 
-def NuclearElectronStress(ions,rho,EnergyPotential=None, PP_file=None):
-    if EnergyPotential is None :
-        EnergyPotential = NuclearElectron(ions, rho, PP_file, calcType='Energy')
+def NuclearElectronStress(ions,rho,energy=None, PP_file=None):
+    if energy is None :
+        energy = NuclearElectron(ions, rho, PP_file, calcType='Energy').energy
     reciprocal_grid=rho.grid.get_reciprocal()
     g= reciprocal_grid.g
     gg= reciprocal_grid.gg
@@ -34,9 +35,9 @@ def NuclearElectronStress(ions,rho,EnergyPotential=None, PP_file=None):
             # den = (g[..., i]*g[..., j])[..., np.newaxis] * rhoGV_q
             # stress[i, j] = (np.einsum('ijkl->', den)).real / rho.grid.volume
             den = (g[..., i][mask]*g[..., j][mask]) * rhoGV_q[mask2]
-            stress[i, j] = -(np.einsum('i->', den)).real / rho.grid.volume*2.0
+            stress[i, j] = stress[j, i] = -(np.einsum('i->', den)).real / rho.grid.volume*2.0
             if i == j :
-                stress[i, j] -= EnergyPotential.energy
+                stress[i, j] -= energy
     stress /= rho.grid.volume
     return stress
 
@@ -96,9 +97,9 @@ def NuclearElectronForcePME(ions,rho,PP_file=None):
                 Forces[i] = -np.sum(np.matmul(Q_derivativeA.T, cell_inv) * rhoPB[l123A[0], l123A[1], l123A[2]][:, np.newaxis], axis=0)
     return Forces
 
-def NuclearElectronStressPME(ions,rho,EnergyPotential=None, PP_file=None):
-    if EnergyPotential is None :
-        EnergyPotential = NuclearElectron(ions, rho, PP_file, calcType='Energy')
+def NuclearElectronStressPME(ions,rho,energy=None, PP_file=None):
+    if energy is None :
+        energy = NuclearElectron(ions, rho, PP_file, calcType='Energy').energy
     rhoG = rho.fft()
     reciprocal_grid = rho.grid.get_reciprocal()
     g = reciprocal_grid.g
@@ -131,6 +132,8 @@ def NuclearElectronStressPME(ions,rho,EnergyPotential=None, PP_file=None):
                 stress[i, j] -= (np.einsum('i->', den)).real / rho.grid.volume**2
     stress *= 2.0 * rho.grid.nnr
     for i in range(3):
-        stress[i, i] -= EnergyPotential.energy
+        for j in range(i, 3):
+            stress[j, i] = stress[i, j]
+        stress[i, i] -= energy
     stress /= rho.grid.volume
     return stress

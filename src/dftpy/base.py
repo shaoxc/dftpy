@@ -1,6 +1,6 @@
 import warnings
 import numpy as np
-from .constants import LEN_CONV, units_warning
+from dftpy.constants import LEN_CONV, units_warning
 
 
 class BaseCell(object):

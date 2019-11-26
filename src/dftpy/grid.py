@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import ndimage
-from .base import BaseCell, DirectCell, ReciprocalCell, Coord, s2r
-from .constants import LEN_CONV, FFTLIB
+from dftpy.base import BaseCell, DirectCell, ReciprocalCell, Coord, s2r
+from dftpy.constants import LEN_CONV, FFTLIB
 
 class BaseGrid(BaseCell):
 

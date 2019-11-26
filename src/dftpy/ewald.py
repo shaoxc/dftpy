@@ -2,12 +2,10 @@ import numpy as np
 from scipy import special as sp
 import sys
 from scipy.spatial.distance import cdist
-
-from .field import DirectField, ReciprocalField
-#from .functional_output import Functional
-# from .hartree import HartreeFunctional, HartreePotentialReciprocalSpace
 from itertools import product
-from .math_utils import TimeData
+
+from dftpy.field import DirectField, ReciprocalField
+from dftpy.math_utils import TimeData
 
 class CBspline(object):
     '''
@@ -566,7 +564,7 @@ class ewald(object):
             print("precision used = ", self.precision)
             print("Ewald Energy = ", Ewald_Energy)
         T = TimeData.End('Ewald_Energy')
-        print('Ewald_Energy time (s)', T)
+        # print('Ewald_Energy time (s)', T)
         return Ewald_Energy
 
     @property

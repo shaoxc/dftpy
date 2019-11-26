@@ -1,33 +1,13 @@
-
 ### Import fft library
 try:
     import pyfftw
     FFTLIB = 'pyfftw'
 except :
     FFTLIB = 'numpy'
-# FFTLIB = 'numpy'
 
-### Import math library
-# try:
-    # from .src_f.math_f import math_f as mathf
-    # MATHLIB = 'math_f2py'
-# except Exception as e:
-    # try:
-        # from . import math_thran as mathf
-        # MATHLIB = 'math_thran'
-    # except Exception as e:
-        # import numpy as mathf
-        # MATHLIB = 'numpy'
-# from .src_f.math_f import math_f as mathf
-# MATHLIB = 'math_f2py'
-# from . import math_thran as mathf
-# MATHLIB = 'math_thran'
-import numpy as mathf
 MATHLIB = 'numpy'
 
 print('Use "%s" for Fourier Transform' %(FFTLIB))
-print('Use "%s" for some mathematical calculations' %(MATHLIB))
-
 LEN_UNITS = ['Bohr', 'Angstrom', 'nm', 'm']
 
 LEN_CONV = {}
@@ -56,4 +36,12 @@ ENERGY_CONV['Hartree'] = {
         'eV' : 27.2113834279111, 'Hartree': 1.0
 }
 
-units_warning = "Please only feed pbcpy quantities in atomic units (Bohr). An automatic units system might be implemented in the future"
+FORCE_CONV = {}
+FORCE_CONV['Ha/Bohr'] = {
+        'Ha/Bohr': 1.0, 'eV/A' : ENERGY_CONV['Hartree']['eV']/LEN_CONV['Bohr']['Angstrom']}
+
+STRESS_CONV = {}
+STRESS_CONV['Ha/Bohr3'] = {
+        'Ha/Bohr3' :1.0, 'GPa' : 29421.02648438959, 'eV/A3' : ENERGY_CONV['Hartree']['eV']/LEN_CONV['Bohr']['Angstrom'] ** 3}
+
+units_warning = 'All the quantities in atomic units'

@@ -2,13 +2,12 @@
 # functional class (output handler) in output
 
 # local imports
-from .field import DirectField
-from .functional_output import Functional
-from .semilocal_xc import PBE, LDA, XC, KEDF
-from .local_functionals_utils import TF,vW, x_TF_y_vW
-from .local_pseudopotential import NuclearElectron
-from .hartree import HartreeFunctional
-from .nonlocal_functionals_utils import WT, LWT
+from dftpy.field import DirectField
+from dftpy.functional_output import Functional
+from dftpy.semilocal_xc import PBE, LDA, XC, KEDF
+from dftpy.local_pseudopotential import NuclearElectron
+from dftpy.hartree import HartreeFunctional
+from dftpy.kedf import TF,vW, x_TF_y_vW, WT, LWT, FP, SM, MGP
 
 # general python imports
 from abc import ABC, abstractmethod
@@ -102,13 +101,14 @@ class FunctionalClass(AbstractFunctional):
         '''
         return self.ComputeEnergyPotential(rho, calcType)
     
-    def __init__(self,type=None,name=None,is_nonlocal=None,optional_kwargs=None):
+    def __init__(self,type=None,name=None,is_nonlocal=None,optional_kwargs=None,  **kwargs):
         #init the class
         
         if optional_kwargs is None:
             self.optional_kwargs = { }
         else:
             self.optional_kwargs = optional_kwargs
+        self.optional_kwargs.update(kwargs)
         
         self.FunctionalNameList = []
         self.FunctionalTypeList = []
@@ -116,7 +116,8 @@ class FunctionalClass(AbstractFunctional):
         self.FunctionalTypeList = ['XC','KEDF','IONS','HARTREE']
         XCNameList = ['LDA','PBE','LIBXC_XC','CUSTOM_XC']
         KEDFNameList = ['TF','vW','x_TF_y_vW','LC94','revAPBEK','TFvW','LIBXC_KEDF','CUSTOM_KEDF']
-        KEDFNLNameList = ['WT','MGP','MGP0','WGC2','WGC1','WGC0','LMGP','LMGP0','LWT']
+        KEDFNLNameList = ['WT','MGP','MGP0','WGC2','WGC1','WGC0','LMGP','LMGP0','LWT', 'FP', 'SM', \
+                'MGPA', 'MGPG', 'LMGP0', 'LMGPA', 'LMGPG']
         IONSNameList = ['IONS']
         HNameList = ['HARTREE']
         
@@ -135,13 +136,13 @@ class FunctionalClass(AbstractFunctional):
         else:
             self.name = name
 
-        if is_nonlocal is None:
-            if type not in ['HARTREE','IONS']:
-                raise AttributeError('Must assign is_nonlocal to FunctionalClass')
-            else:
-                self.is_nonlocal=False
-        else:
-            self.is_nonlocal = is_nonlocal
+        # if is_nonlocal is None:
+            # if type not in ['HARTREE','IONS']:
+                # raise AttributeError('Must assign is_nonlocal to FunctionalClass')
+            # else:
+                # self.is_nonlocal=False
+        # else:
+            # self.is_nonlocal = is_nonlocal
             
         if not isinstance(self.optional_kwargs,dict):
             raise AttributeError('optional_kwargs must be dict')
@@ -149,18 +150,15 @@ class FunctionalClass(AbstractFunctional):
         if not self.CheckFunctional():
             raise Exception ('Functional check failed') 
     
-    def ComputeEnergyPotential(self,rho, calcType = 'Both'):
+    def ComputeEnergyPotential(self,rho, calcType = 'Both',  **kwargs):
+        self.optional_kwargs.update(kwargs)
         if self.type == 'KEDF':
             if self.name == 'TF':
-                return TF(rho)
+                return TF(rho, calcType=calcType, **self.optional_kwargs)
             elif self.name == 'vW':
-                Sigma = self.optional_kwargs.get('Sigma',0.025)
-                return vW(rho=rho,Sigma=Sigma, calcType=calcType)
+                return vW(rho=rho, calcType=calcType, **self.optional_kwargs)
             elif self.name == 'x_TF_y_vW':
-                Sigma = self.optional_kwargs.get('Sigma',0.025)
-                x = self.optional_kwargs.get('x',1.0)
-                y = self.optional_kwargs.get('y',1.0)
-                return x_TF_y_vW(rho,x=x,y=y,Sigma=Sigma, calcType=calcType)
+                return x_TF_y_vW(rho,calcType=calcType, **self.optional_kwargs)
             elif self.name == 'LC94':
                 polarization = self.optional_kwargs.get('polarization','unpolarized')
                 return KEDF(rho,polarization=polarization,k_str='gga_k_lc94', calcType=calcType)
@@ -168,21 +166,32 @@ class FunctionalClass(AbstractFunctional):
                 polarization = self.optional_kwargs.get('polarization','unpolarized')
                 k_str = optional_kwargs.get('k_str','gga_k_lc94')
                 return KEDF(rho,polarization=polarization,k_str=k_str, calcType=calcType)
-            elif self.name == 'WT' or self.name == 'LWT' :
-                Sigma = self.optional_kwargs.get('Sigma',0.025)
-                x = self.optional_kwargs.get('x',1.0)
-                y = self.optional_kwargs.get('y',1.0)
-                alpha = self.optional_kwargs.get('alpha',5.0/6.0)
-                beta = self.optional_kwargs.get('beta',5.0/6.0)
-                if self.name == 'WT' :
-                    return WT(rho=rho,x=x,y=y,Sigma=Sigma, alpha=alpha, beta=beta, calcType=calcType)
-                elif self.name == 'LWT' :
-                    nsp = self.optional_kwargs.get('nsp',40)
-                    rhoMin = self.optional_kwargs.get('rhoMin',1E-10)
-                    etaMax = self.optional_kwargs.get('etaMax',10.0)
-                    Neta = self.optional_kwargs.get('Neta',4000)
-                    return LWT(rho=rho,nsp=nsp, rhoMin=rhoMin, x=x,y=y,\
-                            Sigma=Sigma, alpha=alpha, beta=beta, calcType=calcType)
+            elif self.name == 'WT' :
+                return WT(rho=rho,calcType=calcType, **self.optional_kwargs)
+            elif self.name == 'SM' :
+                return SM(rho=rho,calcType=calcType, **self.optional_kwargs)
+            elif self.name == 'FP' :
+                return FP(rho=rho,calcType=calcType, **self.optional_kwargs)
+            elif self.name == 'MGP' :
+                return MGP(rho=rho,calcType=calcType, **self.optional_kwargs)
+            elif self.name == 'MGPA' :
+                self.optional_kwargs['symmetrization'] = 'Arithmetic'
+                return MGP(rho=rho,calcType=calcType, **self.optional_kwargs)
+            elif self.name == 'MGPG' :
+                self.optional_kwargs['symmetrization'] = 'Geometric'
+                return MGP(rho=rho,calcType=calcType, **self.optional_kwargs)
+            elif self.name == 'LWT' :
+                self.optional_kwargs['kerneltype'] = 'WT'
+                return LWT(rho=rho, calcType=calcType, **self.optional_kwargs)
+            elif self.name == 'LMGP' :
+                self.optional_kwargs['kerneltype'] = 'MGP'
+                return LWT(rho=rho, calcType=calcType, **self.optional_kwargs)
+            elif self.name == 'LMGPA' :
+                self.optional_kwargs['kerneltype'] = 'MGPA'
+                return LWT(rho=rho, calcType=calcType, **self.optional_kwargs)
+            elif self.name == 'LMGPG' :
+                self.optional_kwargs['kerneltype'] = 'MGPG'
+                return LWT(rho=rho, calcType=calcType, **self.optional_kwargs)
             else :
                 raise Exception(self.name + ' KEDF to be implemented')
             # if self.is_nonlocal == True:
@@ -190,23 +199,21 @@ class FunctionalClass(AbstractFunctional):
         if self.type == 'XC':
             if self.name == 'LDA':
                 polarization = self.optional_kwargs.get('polarization','unpolarized')
-                return LDA(rho,polarization=polarization, calcType=calcType)
+                return LDA(rho,polarization=polarization, calcType=calcType, **self.optional_kwargs)
             if self.name == 'PBE':
                 polarization = self.optional_kwargs.get('polarization','unpolarized')
-                return PBE(density=rho,polarization=polarization, calcType=calcType)
+                return PBE(density=rho,polarization=polarization, calcType=calcType, **self.optional_kwargs)
             if self.name == 'LIBXC_XC':
                 polarization = self.optional_kwargs.get('polarization','unpolarized')
                 x_str = self.optional_kwargs.get('x_str','gga_x_pbe')
                 c_str = self.optional_kwargs.get('c_str','gga_c_pbe')
-                return XC(density=rho,x_str=x_str,c_str=c_str,polarization=polarization, calcType=calcType)
+                return XC(density=rho,x_str=x_str,c_str=c_str,polarization=polarization, calcType=calcType, **self.optional_kwargs)
         if self.type == 'HARTREE':
             return HartreeFunctional(density=rho, calcType=calcType)
         if self.type == 'IONS':
             PP_list = self.optional_kwargs.get('PP_list')
             ions = self.optional_kwargs.get('ions')
             return NuclearElectron(density=rho,ions=ions,PPs=PP_list, calcType=calcType)
-
-
 
 class TotalEnergyAndPotential(object):
     '''
@@ -299,11 +306,6 @@ class TotalEnergyAndPotential(object):
         Obj = self.KineticEnergyFunctional(rho,calcType)\
                 + self.XCFunctional(rho,calcType) + \
                 self.IONS(rho,calcType) + self.HARTREE(rho,calcType)
-        # if calcType == 'Energy' :
-            # print(self.KineticEnergyFunctional(rho,calcType).energy, 
-                # self.XCFunctional(rho,calcType).energy, 
-                # self.IONS(rho,calcType).energy, 
-                # self.HARTREE(rho,calcType).energy)
         return Obj
 
  
@@ -311,14 +313,8 @@ class TotalEnergyAndPotential(object):
         from .ewald import ewald
         ewald_ = ewald(rho=rho,ions=ions, PME = usePME)
         total_e = self.ComputeEnergyPotential(rho, calcType = 'Energy')
-        # total_e=  self.KineticEnergyFunctional.ComputeEnergyPotential(rho,calcType) + \
+        # total_e= self.KineticEnergyFunctional.ComputeEnergyPotential(rho,calcType) + \
                 # self.XCFunctional.ComputeEnergyPotential(rho,calcType) + \
                 # self.HARTREE.ComputeEnergyPotential(rho,calcType) + \
                 # self.IONS.ComputeEnergyPotential(rho,calcType)
         return ewald_.energy + total_e.energy
-
-
-
-
-
-

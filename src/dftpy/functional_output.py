@@ -1,5 +1,5 @@
 # Class handling output of functional evaluations
-from .field import DirectField, ReciprocalField
+from dftpy.field import DirectField, ReciprocalField
 
 # general python imports
 import numpy as np
@@ -26,7 +26,7 @@ class Functional(object):
     '''
 
 
-    def __init__(self, name=None, energy=None, potential=None, kernel=None):
+    def __init__(self, name=None, energy=None, potential=None, energydensity = None, kernel=None):
         
         if name is not None:
             self.name = name
@@ -38,6 +38,8 @@ class Functional(object):
         if potential is not None:
             # if isinstance(potential, DirectField):
             self.potential = potential
+        # if energydensity is not None :
+            # self.energydensity = energydensity
         if kernel is not None:
             if isinstance(kernel, (np.ndarray)):
                 self.kernel = kernel
@@ -48,9 +50,18 @@ class Functional(object):
         potential = self.potential+other.potential
         name = self.name + other.name
         return Functional(name=name,energy=energy,potential=potential)
+
+    def mul(self,x):
+        energy = x * self.energy
+        potential = x * self.potential
+        name = self.name
+        return Functional(name=name,energy=energy,potential=potential)
     
     def __add__(self,other):
         return self.sum(other)
+
+    def __mul__(self,x):
+        return self.mul(x)
 
 
 

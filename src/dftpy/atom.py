@@ -1,12 +1,12 @@
-from .base import Coord
-from .field import ReciprocalField, DirectField
-from .functional_output import Functional
-from scipy.interpolate import interp1d, splrep, splev
-import numpy as np
-from .constants import LEN_CONV, ENERGY_CONV
-from .ewald import CBspline
 import os
-from .math_utils import TimeData
+import numpy as np
+from scipy.interpolate import interp1d, splrep, splev
+from dftpy.base import Coord
+from dftpy.field import ReciprocalField, DirectField
+from dftpy.functional_output import Functional
+from dftpy.constants import LEN_CONV, ENERGY_CONV
+from dftpy.ewald import CBspline
+from dftpy.math_utils import TimeData
 
 class Atom(object):
 
@@ -17,39 +17,71 @@ class Atom(object):
         Atom class handles atomic position, atom type and local pseudo potentials.
         '''
 
-        self.Z = Z
-        self.labels = label
-        self.Zval = Zval
+        if Zval is None :
+            self.Zval = {}
+        else :
+            self.Zval = Zval
         # self.pos = Coord(pos, cell, basis='Cartesian')
         self.pos = Coord(pos, cell, basis=basis).to_cart()
 
         # private vars
-        self._gp = {}       # 1D PP grid g-space 
-        self._vp = {}       # PP on 1D PP grid
-        self._alpha_mu = {} # G=0 of PP
+        self._gp = {}          # 1D PP grid g-space
+        self._vp = {}          # PP on 1D PP grid
+        self._alpha_mu = {}    # G=0 of PP
+        self._vloc_interp = {} # Interpolates recpot PP
         self._vlines = {}
-        self._v = None        # PP for atom on 3D PW grid 
-        self._vreal = None        # PP for atom on 3D real space
+        self._v = None         # PP for atom on 3D PW grid
+        self._vreal = None     # PP for atom on 3D real space
+        #
         self.nat = len(pos)
         self.usePME = PME
         self.BsplineOrder = BsplineOrder
+        self.PP_file = PP_file
+        self.labels = label
+        self.Z = Z
+        # check label 
+        if self.labels :
+            for i in range(len(self.labels)):
+                if self.labels[i].isdigit():
+                    self.labels[i] = z2lab[self.labels[i]]
 
-        # if self.PP_file is not None:
-            # for f in self.PP_file :
-                # gp, vp = self.set_PP(self.PP_file)
-                # self._gp.append(gp)
-                # self._vp.append(gp)
-                # self._alpha_mu.append(self._vp[0][0])
-
-        if Z is None:
+        if self.Z is None:
             self.Z = []
-            for item in label :
+            for item in self.labels :
                 self.Z.append(z2lab.index(item))
 
-        if label is None:
+        if self.labels is None:
             self.labels = []
-            for item in Z :
+            for item in self.Z :
                 self.labels.append(z2lab[item])
+
+    def restart(self):
+        '''
+        clean all saved data
+        '''
+        self._gp = {}          # 1D PP grid g-space
+        self._vp = {}          # PP on 1D PP grid
+        self._alpha_mu = {}    # G=0 of PP
+        self._vloc_interp = {} # Interpolates recpot PP
+        self._vlines = {}
+        self._v = None         # PP for atom on 3D PW grid
+        self._vreal = None     # PP for atom on 3D real space
+
+    def init_PP(self,PP_file = None):   
+        if PP_file is None:
+            PP_file = self.PP_file
+        for key in PP_file :
+            if not os.path.isfile(PP_file[key]):
+                print("PP file not found")
+                return Exception
+            else :
+                gp, vp = self.set_PP(PP_file[key])
+                self._gp[key] = gp
+                self._vp[key] = vp
+                self._alpha_mu[key] = vp[0]
+                vloc_interp = self.interpolate_PP(gp, vp)
+                self._vloc_interp[key] = vloc_interp
+        return 
 
     def set_PP(self,PP_file):
         '''Reads CASTEP-like recpot PP file
@@ -65,7 +97,8 @@ class Atom(object):
             line = lines[i]
             if 'END COMMENT' in line:
                 ibegin = i+3
-            if '  1000' in line:
+            elif line.strip() == '1000' :
+            # if '  1000' in line:
                 iend = i
         line = " ".join([line.strip() for line in lines[ibegin:iend]])
 
@@ -116,18 +149,14 @@ class Atom(object):
                 self.Get_PP_Reciprocal(grid,PP_file)
         if self._vreal is None:
             self._vreal = DirectField(grid=grid,griddata_3d=self._v.ifft(force_real=True))
-        ene = pot = 0
-        if calcType == 'Energy' :
+        pot = self._vreal
+        if calcType == 'Energy' or calcType == 'Both' :
             ene = np.einsum('ijkl, ijkl->', self._vreal , rho) * rho.grid.dV
-        elif calcType == 'Potential' :
-            pot = self._vreal
         else :
-            ene = np.einsum('ijkl, ijkl->', self._vreal , rho) * rho.grid.dV
-            pot = self._vreal
+            ene = 0
         return Functional(name='eN',energy=ene, potential=pot)
 
-
-    def Get_PP_Reciprocal(self,grid,PP_file):   
+    def Get_PP_Reciprocal(self,grid,PP_file = None):   
         TimeData.Begin('Vion')
 
         reciprocal_grid = grid.get_reciprocal()
@@ -136,24 +165,19 @@ class Atom(object):
         # v = 1j * np.zeros_like(q)
         v = np.zeros_like(q, dtype = np.complex128)
         vloc = np.empty_like(q)
-        for key in PP_file :
-            if not os.path.isfile(PP_file[key]):
-                print("PP file not found")
-                return Exception
-            else :
-                gp, vp = self.set_PP(PP_file[key])
-                self._gp[key] = gp
-                self._vp[key] = vp
-                self._alpha_mu[key] = vp[0]
-                vloc_interp = self.interpolate_PP(gp, vp)
-                vloc[:] = 0.0
-                # vloc[q<np.max(gp)] = vloc_interp(q[q<np.max(gp)])
-                vloc[q<np.max(gp)] = splev(q[q<np.max(gp)], vloc_interp, der = 0)
-                self._vlines[key] = vloc
-                for i in range(len(self.pos)):
-                    if self.labels[i] == key :
-                        strf = self.strf(reciprocal_grid, i)
-                        v += vloc * strf
+        if not self._vloc_interp :
+            self.init_PP(PP_file)
+        labels = self._vloc_interp.keys()
+        for key in labels:
+            vloc_interp = self._vloc_interp[key]
+            vloc[:] = 0.0
+            # vloc[q<np.max(gp)] = vloc_interp(q[q<np.max(gp)])
+            vloc[q<np.max(self._gp[key])] = splev(q[q<np.max(self._gp[key])], vloc_interp, der = 0)
+            self._vlines[key] = vloc
+            for i in range(len(self.pos)):
+                if self.labels[i] == key :
+                    strf = self.strf(reciprocal_grid, i)
+                    v += vloc * strf
         self._v = ReciprocalField(reciprocal_grid,griddata_3d=v)
         TimeData.End('Vion')
         return "PP successfully interpolated"
@@ -168,27 +192,21 @@ class Atom(object):
         v = np.zeros_like(q, dtype = np.complex128)
         # Qarray = DirectField(grid=grid,griddata_3d=np.zeros_like(q), rank=1)
         QA = np.empty(grid.nr)
-        for key in PP_file :
-            if not os.path.isfile(PP_file[key]):
-                print("PP file not found")
-                return Exception
-            else :
-                gp, vp = self.set_PP(PP_file[key])
-                self._gp[key] = gp
-                self._vp[key] = vp
-                self._alpha_mu[key] = vp[0]
-                vloc_interp = self.interpolate_PP(gp, vp)
-                vloc = np.zeros(np.shape(q))
-                # vloc[q<np.max(gp)] = vloc_interp(q[q<np.max(gp)])
-                vloc[q<np.max(gp)] = splev(q[q<np.max(gp)], vloc_interp, der = 0)
-                self._vlines[key] = vloc
-                QA[:] = 0.0
-                for i in range(len(self.pos)):
-                    if self.labels[i] == key :
-                        # Qarray += self.Bspline.get_PME_Qarray(i)
-                        QA = self.Bspline.get_PME_Qarray(i, QA)
-                Qarray = DirectField(grid=grid,griddata_3d=QA, rank=1)
-                v = v + vloc * Qarray.fft()
+        if not self._vloc_interp :
+            self.init_PP(PP_file)
+        labels = self._vloc_interp.keys()
+        for key in labels:
+            vloc_interp = self._vloc_interp[key]
+            vloc = np.zeros(np.shape(q))
+            vloc[q<np.max(self._gp[key])] = splev(q[q<np.max(self._gp[key])], vloc_interp, der = 0)
+            self._vlines[key] = vloc
+            QA[:] = 0.0
+            for i in range(len(self.pos)):
+                if self.labels[i] == key :
+                    # Qarray += self.Bspline.get_PME_Qarray(i)
+                    QA = self.Bspline.get_PME_Qarray(i, QA)
+            Qarray = DirectField(grid=grid,griddata_3d=QA, rank=1)
+            v = v + vloc * Qarray.fft()
         v = v * self.Bspline.Barray
         v *= grid.nnr / grid.volume
         self._v = ReciprocalField(reciprocal_grid,griddata_3d=v)
@@ -198,11 +216,12 @@ class Atom(object):
     def Get_PP_Derivative_One(self, grid, key = None):
         reciprocal_grid = grid.get_reciprocal()
         q = np.sqrt(reciprocal_grid.gg)
-        gp = self._gp[key]
-        vp = self._vp[key]
-        vloc_interp = self.interpolate_PP(gp, vp)
+        # gp = self._gp[key]
+        # vp = self._vp[key]
+        # vloc_interp = self.interpolate_PP(gp, vp)
+        vloc_interp = self._vloc_interp[key]
         vloc_deriv = np.zeros(np.shape(q))
-        vloc_deriv[q<np.max(gp)] = splev(q[q<np.max(gp)], vloc_interp, der = 1)
+        vloc_deriv[q<np.max(self._gp[key])] = splev(q[q<np.max(self._gp[key])], vloc_interp, der = 1)
         return ReciprocalField(reciprocal_grid,griddata_3d=vloc_deriv)
 
     def Get_PP_Derivative(self, grid, labels = None):
@@ -214,11 +233,13 @@ class Atom(object):
         if labels is None :
             labels = self._gp.keys()
         for key in labels :
-            gp = self._gp[key]
-            vp = self._vp[key]
-            vloc_interp = self.interpolate_PP(gp, vp)
+            # gp = self._gp[key]
+            # vp = self._vp[key]
+            # vloc_interp = self.interpolate_PP(gp, vp)
+            vloc_interp = self._vloc_interp[key]
             vloc_deriv[:] = 0.0
-            vloc_deriv[q<np.max(gp)] = splev(q[q<np.max(gp)], vloc_interp, der = 1)
+            # vloc_deriv[q<np.max(gp)] = splev(q[q<np.max(gp)], vloc_interp, der = 1)
+            vloc_deriv[q<np.max(self._gp[key])] = splev(q[q<np.max(self._gp[key])], vloc_interp, der = 1)
             for i in range(len(self.pos)):
                 if self.labels[i] == key :
                     strf = self.strf(reciprocal_grid, i)
@@ -246,12 +267,16 @@ class Atom(object):
         if self._alpha_mu is not None:
             return self._alpha_mu
         else:
-            # if self._vp is not None:
-                # return self._vp[0]
-            # elif self.PP_file is not None:
-                # self._gp, self._vp = self.set_PP(PP_file)
-                # return self._vp[0]
             return Exception("Must define PP before requesting alpha_mu")
+
+    def set_Zval(self, labels = None):
+        if labels is None :
+            labels = self._gp.keys()
+        for key in labels :
+            gp = self._gp[key]
+            vp = self._vp[key]
+            val = (vp[0]-vp[1]) * (gp[-1]/(gp.size - 1)) ** 2 / (4.0 * np.pi)
+            self.Zval[key] = round(val)
          
 z2lab = ['NA', 'H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne',
          'Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar', 'K', 'Ca',
