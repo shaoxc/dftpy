@@ -1,8 +1,8 @@
 import numpy as np
-from ..grid import DirectGrid
-from ..field import DirectField
-from ..system import System
-from ..atom import Atom
+from dftpy.grid import DirectGrid
+from dftpy.field import DirectField
+from dftpy.system import System
+from dftpy.atom import Atom
 
 
 class PP(object):
@@ -88,12 +88,21 @@ class PP(object):
             # plot
             igrid = 0
             nnr = nrx[0] * nrx[1] * nrx[2]
-            ppgrid = np.zeros(nnr, dtype=float)
-            for line in filepp:
-                line = line.split()
-                npts = len(line)
-                ppgrid[igrid:igrid + npts] = np.asarray(line, dtype=float)
-                igrid += npts
+            blocksize = 1024 * 8
+            strings = ''
+            while True :
+                line = filepp.read(blocksize)
+                if not line :
+                    break
+                strings += line
+            ppgrid = np.fromstring(strings,  dtype = float,  sep = ' ')
+
+            # ppgrid = np.zeros(nnr, dtype=float)
+            # for line in filepp:
+                # line = line.split()
+                # npts = len(line)
+                # ppgrid[igrid:igrid + npts] = np.asarray(line, dtype=float)
+                # igrid += npts
 
             plot = DirectField(grid=grid, griddata_F=ppgrid, rank=1)
 
