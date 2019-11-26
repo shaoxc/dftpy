@@ -1,13 +1,8 @@
 __pycache__/
-.ipynb_checkpoints/
 .cache/
 .coverage
 *.egg-info/
-tests/test.xsf
 dist/
 build/
 .pytest_cache/
-.gitignore
-tests/*.slurm
-tests/*.out
-tmp
+dftpy.egg-info

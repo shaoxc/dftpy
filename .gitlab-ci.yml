@@ -5,16 +5,14 @@ BuildAndTest:
     - git clone https://gitlab.com/libxc/libxc.git
     - home=$( pwd )
     - cd libxc
-    - autoreconf -i
-    - ./configure --prefix=${home}/libxc
-    - make
-    - make install
     - python setup.py install
     - cd ..
-    - pip install setuptools m2r
+    - pip install setuptools
+    - pip install ase pymatgen
     - pip install pytest pytest-cov
   script:
-    - python setup.py sdist
+    - python setup.py install
     - pip install -r requirements.txt
-    - pytest --cov-report term-missing --cov=./src/ ./tests/
+    - cd examples
+    - DFTPY_DATA_PATH='./DATA/' pytest --cov-report term-missing --cov=./ ./test/
   coverage: '/TOTAL\s+\d+\s+\d+\s+(\d+\%)/'
