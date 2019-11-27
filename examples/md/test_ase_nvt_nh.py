@@ -17,7 +17,7 @@ conf = DefaultOption()
 conf['PATH']['pppath'] = os.environ.get('DFTPY_DATA_PATH') 
 conf['PATH']['pppath'] = os.environ.get('DFTPY_DATA_PATH') 
 conf['PP']['Al'] = '/Al_lda.oe01.recpot'
-#conf['OPT']['method'] = 'TN'
+conf['OPT']['method'] = 'TN'
 #conf['OPT']['method'] = 'CG-HS'
 conf['KEDF']['kedf'] = 'WT'
 #conf['KEDF']['kedf'] = 'x_TF_y_vW'
@@ -46,7 +46,12 @@ atoms.set_calculator(calc)
 
 MaxwellBoltzmannDistribution(atoms, T, force_temp = True)
 
-dyn = Langevin(atoms, 2 * units.fs, T, 0.1)
+externalstress = 0.0
+ttime = 10 * units.fs
+# pfactor = 75 **2 * B
+pfactor = 0.6
+
+dyn = NPT(atoms, 2 * units.fs, T, externalstress, ttime, pfactor, mask = (0, 0, 0))
 
 step = 0
 interval = 1
@@ -60,6 +65,6 @@ def printenergy(a=atoms):
 dyn.attach(printenergy, interval=1)
 
 traj = Trajectory('md.traj', 'w', atoms)
-dyn.attach(traj.write, interval=5)
+dyn.attach(traj.write, interval=1)
 
 dyn.run(50000)

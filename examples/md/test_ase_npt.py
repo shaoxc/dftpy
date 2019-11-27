@@ -6,6 +6,7 @@ from ase.md.langevin import Langevin
 from ase.md.npt import NPT
 from ase.io.trajectory import Trajectory
 from ase import units
+from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 
 from dftpy.config import DefaultOption, OptionFormat
 from dftpy.interface import OptimizeDensityConf
@@ -32,8 +33,11 @@ Ref :
 '''
 
 size = 3
-T = 900  # Kelvin
+a = 4.24068463425528
+T = 1023  # Kelvin
+T *= units.kB
 atoms = FaceCenteredCubic(directions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                          latticeconstant = a,
                           symbol="Al",
                           size=(size, size, size),
                           pbc=True)
@@ -46,7 +50,7 @@ ttime = 10 * units.fs
 # pfactor = 75 **2 * B
 pfactor = 0.6
 
-dyn = NPT(atoms, 2 * units.fs, T * units.kB, externalstress, ttime, pfactor)
+dyn = NPT(atoms, 2 * units.fs, T, externalstress, ttime, pfactor)
 
 step = 0
 interval = 1

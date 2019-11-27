@@ -263,7 +263,7 @@ def LWTKernelKf(q, kf, KernelTable, etamax = 1000.0, out = None):
     '''
     Create the LWT kernel for given kf and Kernel Table
     '''
-    TimeData.Begin('LWTKernel')
+    TimeData.Begin('LWTKernelKf')
     eta = q/kf
     if out is not None :
         Kernel = out
@@ -271,11 +271,20 @@ def LWTKernelKf(q, kf, KernelTable, etamax = 1000.0, out = None):
         Kernel = np.empty_like(q)
     cond0 = eta < etamax
     cond1 = np.invert(cond0)
-    limit = splev(etamax, KernelTable)
-    Kernel[cond0] = splev(eta[cond0], KernelTable)
+    if isinstance(KernelTable, tuple):
+        limit = splev(etamax, KernelTable)
+        Kernel[cond0] = splev(eta[cond0], KernelTable)
+    elif isinstance(KernelTable, np.ndarray):
+        limit = KernelTable[-1]
+        deta = etamax/(np.size(KernelTable) - 1)
+        index = np.around(eta[cond0]/deta)
+        index = index.astype(np.int)
+        Kernel[cond0] = KernelTable[index]
+    else :
+        raise AttributeError("Wrong type of KernelTable")
     Kernel[cond1] = limit
     Kernel[0, 0, 0, 0] = 0.0
-    TimeData.End('LWTKernel')
+    TimeData.End('LWTKernelKf')
     return Kernel
 
 def MGPOmegaE(q, Ne = 1,lumpfactor = 0.2):

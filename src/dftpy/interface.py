@@ -39,7 +39,8 @@ def OptimizeDensityConf(config, ions = None, rhoini = None):
             nr[i] = bestFFTsize(nr[i])
     print('The final grid size is ', nr)
     if config['MATH']['twostep'] :
-        nr = nr/2
+        nr2 = nr.copy()
+        nr = nr2//2
         print('TWOSTEP: Perform first optimization step')
         print('The first grid size is ', nr)
     ############################## IONS  ##############################
@@ -123,7 +124,7 @@ def OptimizeDensityConf(config, ions = None, rhoini = None):
         if config['MATH']['twostep'] :
             print('#'*80)
             print('TWOSTEP: Perform second optimization step')
-            nr2 = nr * 2
+            # nr2 = nr * 2
             grid2 = DirectGrid(lattice=lattice, nr=nr2, units=None, full=config['GRID']['gfull'])
             rho_ini = interpolation_3d(rho[..., 0], nr2)
             rho_ini[rho_ini < 1E-12] = 1E-12
@@ -135,9 +136,9 @@ def OptimizeDensityConf(config, ions = None, rhoini = None):
             opt = Optimization(EnergyEvaluator=E_v_Evaluator, optimization_options = optimization_options, 
                     optimization_method = config['OPT']['method'])
             rho = opt.optimize_rho(guess_rho=rho_ini)
+        optimization_options["econv"] /= ions.nat # reset the value
     else :
         rho = rho_ini
-    optimization_options["econv"] /= ions.nat # reset the value
     ############################## calctype  ##############################
     linearii = config['MATH']['linearii'] 
     linearie = config['MATH']['linearie'] 

@@ -298,13 +298,20 @@ def LWTPotentialEnergy(rho, etamax = 100.0, ratio = 1.1, nsp = None, delta = Non
     if MGPKernelE is not None :
         pot1 += (MGPKernelE * rhoBetaG).ifft(force_real = True)
 
-    if abs(alpha - beta) < 1E-8 :
-        pot3 *= (kf/(3.0 * alpha))
-        pot1 += pot2 + pot3
-        pot1 *= ( alpha * rhoAlpha1)
-        pot = pot1
-    else :
-        raise AttributeError("For alpha != beta will implement as soon as possible")
+    pot1 *= alpha * rhoAlpha1
+    pot2 *= beta * rhoBeta1
+    pot3 *= (kf/3.0) * rhoAlpha1
+    pot1 += pot2 + pot3
+    pot = pot1
+    # if abs(alpha - beta) < 1E-8 :
+        # # pot3 *= (kf/(3.0 * alpha))
+        # # pot1 += pot2 + pot3
+        # # pot1 *= ( alpha * rhoAlpha1)
+        # pot1 *= alpha * rhoAlpha1
+        # pot2 *= beta * rhoBeta1
+        # pot = pot1
+    # else :
+        # raise AttributeError("For alpha != beta will implement as soon as possible")
 
     return pot, ene
 
@@ -436,15 +443,24 @@ def LWT(rho, x=1.0,y=1.0, Sigma=0.025, interp = 'linear', kerneltype = 'WT', sym
             KernelTable = MGPKernelTable(eta, q, maxpoints = maxpoints, symmetrization = 'Arithmetic')
         elif kerneltype == 'MGPG' :
             KernelTable = MGPKernelTable(eta, q, maxpoints = maxpoints, symmetrization = 'Geometric')
+        # Add MGP kinetic electron
         if lumpfactor is not None :
             print('Calculate MGP kinetic electron(%f)' %lumpfactor)
             Ne = rho0 * np.size(rho) * rho.grid.dV
             MGPKernelE = MGPOmegaE(q, Ne, lumpfactor)
             KE_kernel_saved['MGPKernelE'] = MGPKernelE
-        KE_kernel_saved['KernelTable'] = splrep(eta, KernelTable, k=order)
-        KernelDerivTable = WTKernelDerivTable(eta, x, y, alpha, beta)
-        # KernelDerivTable = splev(eta, KE_kernel_saved['KernelTable'], der = 1) * (-1.0 * eta)
-        KE_kernel_saved['KernelDeriv'] = splrep(eta, KernelDerivTable, k=order)
+        # Different method to interpolate the kernel
+        if order > 1 :
+            KE_kernel_saved['KernelTable'] = splrep(eta, KernelTable, k=order)
+            KernelDerivTable = splev(eta, KE_kernel_saved['KernelTable'], der = 1) * (-1.0 * eta)
+            # KernelDerivTable = WTKernelDerivTable(eta, x, y, alpha, beta)
+            KE_kernel_saved['KernelDeriv'] = splrep(eta, KernelDerivTable, k=order)
+        else :
+            tck = splrep(eta, KernelTable, k=3)
+            KernelDerivTable = splev(eta, tck, der = 1) * (-1.0 * eta)
+            # KernelDerivTable = WTKernelDerivTable(eta, x, y, alpha, beta)
+            KE_kernel_saved['KernelTable'] = KernelTable
+            KE_kernel_saved['KernelDeriv'] = KernelDerivTable
         KE_kernel_saved['etamax'] = etamax
         KE_kernel_saved['shape'] = np.shape(rho)
         KE_kernel_saved['rho0'] = rho0
@@ -454,6 +470,7 @@ def LWT(rho, x=1.0,y=1.0, Sigma=0.025, interp = 'linear', kerneltype = 'WT', sym
     else :
         edens, pot1 = LWTEnergyDensity(rho, etamax = etamax, ratio = ratio, nsp = nsp, delta = delta, interp = interp, calcType = calcType)
         tol = 1E-9
+        ene = 0.0
         if calcType == 'Energy' or calcType == 'Both' :
             ene = np.einsum('ijkl ->', edens) * rho.grid.dV
             pot = pot1

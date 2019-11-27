@@ -150,6 +150,7 @@ def OptionFormat(config):
         conf['KEDF']['lumpfactor'] = lump
         # conf['KEDF']['lumpfactor'] = float(eval(conf['KEDF']['lumpfactor']))
 
+    conf['GRID']['gfull'] = bools(conf['GRID']['gfull'])
     conf['GRID']['spacing'] = float(eval(conf['GRID']['spacing']))
     if conf['GRID']['nr'] :
         conf['GRID']['nr'] = list(map(int,conf['GRID']['nr'].split()))
