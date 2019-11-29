@@ -66,8 +66,8 @@ def LineSearchDcsrch2(func,alpha0 = None, func0=None, \
     g1 = func0[1]
     alists = [alpha1]
     func1 = func0
-    tol = 1E-5
-    # tol = 0.0
+    # tol = 1E-5
+    tol = 0.0
 
     for i in range(maxiter):
         alpha1, x1, g1, task = minpack2.dcsrch(alpha1, x1, g1, c1, c2, xtol, task,

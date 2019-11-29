@@ -80,6 +80,10 @@ def OptimizeDensityConf(config, ions = None, rhoini = None):
         for i in range(ions.nat) :
             charge_total += ions.Zval[ions.labels[i]]
         rho_ini[:] = charge_total/ions.pos.cell.volume
+        #-----------------------------------------------------------------------
+        # rho_ini[:] = charge_total/ions.pos.cell.volume + np.random.random(np.shape(rho_ini)) * 1E-2
+        # rho_ini *= (charge_total / (np.sum(rho_ini) * rho_ini.grid.dV ))
+        #-----------------------------------------------------------------------
     elif config['DENSITY']['densityini'] == 'Read' :
         with open(config['DENSITY']['densityfile'], 'r') as fr :
             line = fr.readline()

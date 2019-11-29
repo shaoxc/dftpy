@@ -66,6 +66,7 @@ def DefaultOption(dicts = None):
             'maxpoints'      : 1000,
             'delta'          : None, # The gap of spline
             'fd'             : 0, 
+            'kdd'             : 3, # kernel density denpendent 
             }
 
     OUTPUT = {
@@ -137,6 +138,7 @@ def OptionFormat(config):
     conf['KEDF']['maxpoints'] = int(conf['KEDF']['maxpoints'])
     conf['KEDF']['ratio'] = float(eval(conf['KEDF']['ratio']))
     conf['KEDF']['fd'] = int(conf['KEDF']['fd'])
+    conf['KEDF']['kdd'] = int(conf['KEDF']['kdd'])
     if conf['KEDF']['nsp'] :
         conf['KEDF']['nsp'] = int(conf['KEDF']['nsp']) 
     if conf['KEDF']['delta'] :
