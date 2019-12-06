@@ -102,7 +102,7 @@ def FP_origin(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 1.0, beta = 1.0, calcType='Bo
     TimeData.End('FP')
     return OutFunctional
 
-def FP(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 1.0, beta = 1.0, calcType='Both', split = False, **kwargs):
+def FP0(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 1.0, beta = 1.0, calcType='Both', split = False, **kwargs):
     TimeData.Begin('FP')
     global KE_kernel_saved
     #Only performed once for each grid
@@ -110,8 +110,8 @@ def FP(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 1.0, beta = 1.0, calcType='Both', sp
     rho0 = np.einsum('ijkl -> ', rho) / np.size(rho)
     if abs(KE_kernel_saved['rho0']-rho0) > 1E-6 or np.shape(rho) != KE_kernel_saved['shape'] :
         print('Re-calculate KE_kernel')
-        KE_kernel = SMKernel(q,rho0, alpha = 1.0, beta = 1.0) * 1.6
-        # KE_kernel = WTKernel(q,rho0, alpha = alpha, beta = beta)
+        # KE_kernel = SMKernel(q,rho0, alpha = 1.0, beta = 1.0) * 1.6
+        KE_kernel = WTKernel(q,rho0, alpha = alpha, beta = beta)
         KE_kernel_saved['Kernel'] = KE_kernel
         KE_kernel_saved['rho0'] = rho0
         KE_kernel_saved['shape'] = np.shape(rho)
@@ -126,6 +126,52 @@ def FP(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 1.0, beta = 1.0, calcType='Both', sp
     Mr = (1 + (nuMinus1 * drho)/(rho0 + drho))
     # Mr = (1 + (nuMinus1 * drho)/(rho))
     Prho = Mr * (rhoFiveSixth - rho0 ** (5.0/6.0))
+    pot = (Prho.fft() * KE_kernel).ifft(force_real = True)
+    #-----------------------------------------------------------------------
+    ene = 0
+    if calcType == 'Energy' or calcType == 'Both' :
+        ene = np.einsum('ijkl, ijkl->', pot, Prho) * rho.grid.dV
+    if calcType == 'Potential' or calcType == 'Both' :
+        # dPrho = 5.0/6.0 * Mr * rhoFiveSixth/rho;# pot *= 2.0 * dPrho
+        pot *= (5.0/3.0) * Mr * rhoFiveSixth/rho
+
+    NL = Functional(name='NL', potential = pot, energy= ene)
+    xTF = TF(rho, x = x,  calcType = calcType)
+    yvW = vW(rho, y = y, Sigma = Sigma, calcType = calcType)
+    OutFunctional = NL + xTF + yvW
+    OutFunctional.name = 'FP'
+    TimeData.End('FP')
+    if split :
+        return {'TF': xTF, 'vW': yvW, 'NL' : NL}
+    else :
+        return OutFunctional
+
+def FP(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 1.0, beta = 1.0, rho0 = None, calcType='Both', split = False, **kwargs):
+    TimeData.Begin('FP')
+    global KE_kernel_saved
+    #Only performed once for each grid
+    q = rho.grid.get_reciprocal().q
+    if rho0 is None :
+        rho0 = np.einsum('ijkl -> ', rho) / np.size(rho)
+    if abs(KE_kernel_saved['rho0']-rho0) > 1E-6 or np.shape(rho) != KE_kernel_saved['shape'] :
+        print('Re-calculate KE_kernel')
+        # KE_kernel = SMKernel(q,rho0, alpha = 1.0, beta = 1.0) * 1.6
+        KE_kernel = WTKernel(q,rho0, alpha = alpha, beta = beta)
+        KE_kernel_saved['Kernel'] = KE_kernel
+        KE_kernel_saved['rho0'] = rho0
+        KE_kernel_saved['shape'] = np.shape(rho)
+    else :
+        KE_kernel = KE_kernel_saved['Kernel']
+
+    #-----------------------------------------------------------------------
+    nu = 5.0/np.sqrt(32.0)
+    rhoFiveSixth = PowerInt(rho, 5, 6)
+    nuMinus1 = nu - 1.0
+    drho = np.abs(rho - rho0)
+    # drho = rho - rho0
+    Mr = (rho0 + nu * drho)/(rho0 + drho)
+    # Prho = Mr * (rhoFiveSixth - rho0 ** (5.0/6.0))
+    Prho = Mr * rhoFiveSixth
     pot = (Prho.fft() * KE_kernel).ifft(force_real = True)
     #-----------------------------------------------------------------------
     ene = 0

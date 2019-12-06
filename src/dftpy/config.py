@@ -3,48 +3,49 @@ import copy
 from dftpy.constants import ENERGY_CONV, LEN_CONV
 def DefaultOption(dicts = None):
     JOB = {
-          'task' : 'Optdensity', 
-          'calctype' : 'Energy'
+          'task'             : 'Optdensity',
+          'calctype'         : 'Energy'
           }
 
     PATH = {
-            'pppath' : '', 
-            'cellpath' : '' , 
+            'pppath'         : '',
+            'cellpath'       : '' ,
             }
 
     MATH = {
-            'linearii' : True, 
-            'linearie' : True,
-            'twostep' : False, 
-            'reuse' : True,
+            'linearii'       : True,
+            'linearie'       : True,
+            'twostep'        : False,
+            'multistep'      : 1,
+            'reuse'          : True,
             }
 
     PP = {}
 
     CELL = {
-            'cellfile' : 'POSCAR', 
-            'elename' : 'Al', 
-            'zval' : None, 
-            'format' : None, 
+            'cellfile'       : 'POSCAR',
+            'elename'        : 'Al',
+            'zval'           : None,
+            'format'         : None,
             }
 
     GRID = {
-            'ecut': None, 
-            'spacing': 0.25,
-            'gfull':   False,
-            'nr':      None,
+            'ecut'           : None,
+            'spacing'        : 0.25,
+            'gfull'          : False,
+            'nr'             : None,
             }
 
     DENSITY = {
-            'densityini' : 'HEG', 
-            'densityfile' : None,
-            'densityoutput' : None, 
+            'densityini'     : 'HEG',
+            'densityfile'    : None,
+            'densityoutput'  : None,
             }
 
     EXC = {
-            'xc' : 'LDA', 
-            'x_str' : 'lda_x',
-            'c_str' : 'lda_c_pz', 
+            'xc'             : 'LDA',
+            'x_str'          : 'lda_x',
+            'c_str'          : 'lda_c_pz',
             }
 
     KEDF = {
@@ -65,43 +66,45 @@ def DefaultOption(dicts = None):
             'ratio'          : 1.2,
             'maxpoints'      : 1000,
             'delta'          : None, # The gap of spline
-            'fd'             : 0, 
-            'kdd'             : 3, # kernel density denpendent 
+            'fd'             : 0,
+            'kdd'            : 3, # kernel density denpendent
+            'rho0'           : None,
             }
 
     OUTPUT = {
-            'time' : True, 
-            'stress' : True,
+            'time'           : True,
+            'stress'         : True,
             }
 
     OPT = {
-            'method'  : 'CG-HS',
-            'algorithm' : 'EMM', # Residual minimization method or Energy minimization method
-            'vector' : 'Orthogonalization', # or Scaling
-            'c1'      : 1e-4,
-            'c2'      : 2e-1,
-            'maxls'   : 10,
-            'econv'   : 1e-6, # Energy Convergence (a.u./atom)
-            'maxfun'  : 50,  # For TN method, it's the max steps for searching direction
-            'maxiter' : 100,# The max steps for optimization
-            'xtol'    : 1e-12, 
-            'h0'     : 1.0,  # for LBFGS
+            'method'         : 'CG-HS',
+            'algorithm'      : 'EMM', # Residual minimization method or Energy minimization method
+            'vector'         : 'Orthogonalization', # or Scaling
+            'c1'             : 1e-4,
+            'c2'             : 2e-1,
+            'maxls'          : 10,
+            'econv'          : 1e-6, # Energy Convergence (a.u./atom)
+            'maxfun'         : 50,  # For TN method, it's the max steps for searching direction
+            'maxiter'        : 100,# The max steps for optimization
+            'xtol'           : 1e-12,
+            'h0'             : 1.0,  # for LBFGS
             }
 
     conf = {
-            'JOB' : JOB, 
-            'PATH' : PATH, 
-            'MATH' : MATH, 
-            'PP' : PP, 
-            'KEDF' :KEDF , 
-            'CELL' : CELL, 
-            'GRID' : GRID, 
-            'EXC' : EXC, 
-            'KEDF' : KEDF, 
-            'OPT' : OPT, 
-            'DENSITY' : DENSITY, 
-            'OUTPUT' : OUTPUT
+            'JOB'     : JOB,
+            'PATH'    : PATH,
+            'MATH'    : MATH,
+            'PP'      : PP,
+            'KEDF'    : KEDF ,
+            'CELL'    : CELL,
+            'GRID'    : GRID,
+            'EXC'     : EXC,
+            'KEDF'    : KEDF,
+            'OPT'     : OPT,
+            'DENSITY' : DENSITY,
+            'OUTPUT'  : OUTPUT
             }
+
     for section in conf :
         for key in conf[section] :
             conf[section][key] = str(conf[section][key])
@@ -121,58 +124,64 @@ def OptionFormat(config):
         else :
             return True
 
-    conf['JOB']['task'] = conf['JOB']['task'].capitalize()
-    conf['JOB']['calctype'] = [s.capitalize() for s in conf['JOB']['calctype'].split()]
-    conf['MATH']['linearii'] = bools(conf['MATH']['linearii'])
-    conf['MATH']['linearie'] = bools(conf['MATH']['linearie'])
-    conf['MATH']['twostep'] = bools(conf['MATH']['twostep'])
-    conf['MATH']['reuse'] = bools(conf['MATH']['reuse'])
-    conf['KEDF']['x'] = float(eval(conf['KEDF']['x']))
-    conf['KEDF']['y'] = float(eval(conf['KEDF']['y']))
-    conf['KEDF']['alpha'] = float(eval(conf['KEDF']['alpha']))
-    conf['KEDF']['beta'] = float(eval(conf['KEDF']['beta']))
-    conf['KEDF']['Sigma'] = float(eval(conf['KEDF']['sigma']))
-    conf['KEDF']['etamax'] = float(eval(conf['KEDF']['etamax']))
-    conf['KEDF']['neta'] = int(conf['KEDF']['neta'])
-    conf['KEDF']['order'] = int(conf['KEDF']['order'])
-    conf['KEDF']['maxpoints'] = int(conf['KEDF']['maxpoints'])
-    conf['KEDF']['ratio'] = float(eval(conf['KEDF']['ratio']))
-    conf['KEDF']['fd'] = int(conf['KEDF']['fd'])
-    conf['KEDF']['kdd'] = int(conf['KEDF']['kdd'])
-    if conf['KEDF']['nsp'] :
-        conf['KEDF']['nsp'] = int(conf['KEDF']['nsp']) 
-    if conf['KEDF']['delta'] :
-        conf['KEDF']['delta'] = float(eval(conf['KEDF']['delta']))
-    if conf['KEDF']['lumpfactor'] :
-        l = conf['KEDF']['lumpfactor'].split()
-        if len(l) > 1 :
-            lump = [float(eval(item)) for item in l]
-        else :
-            lump = float(eval(l[0]))
-        conf['KEDF']['lumpfactor'] = lump
-        # conf['KEDF']['lumpfactor'] = float(eval(conf['KEDF']['lumpfactor']))
+    conf['JOB']['task']            = conf['JOB']['task'].capitalize()
+    conf['JOB']['calctype']        = [s.capitalize() for s in conf['JOB']['calctype'].split()]
 
-    conf['GRID']['gfull'] = bools(conf['GRID']['gfull'])
-    conf['GRID']['spacing'] = float(eval(conf['GRID']['spacing']))
+    conf['MATH']['linearii']       = bools(conf['MATH']['linearii'])
+    conf['MATH']['linearie']       = bools(conf['MATH']['linearie'])
+    conf['MATH']['twostep']        = bools(conf['MATH']['twostep'])
+    conf['MATH']['multistep']      = int(conf['MATH']['multistep'])
+    if conf['MATH']['twostep'] :
+        conf['MATH']['multistep']  = 2
+    conf['MATH']['reuse']          = bools(conf['MATH']['reuse'])
+
+    conf['KEDF']['x']              = float(eval(conf['KEDF']['x']))
+    conf['KEDF']['y']              = float(eval(conf['KEDF']['y']))
+    conf['KEDF']['alpha']          = float(eval(conf['KEDF']['alpha']))
+    conf['KEDF']['beta']           = float(eval(conf['KEDF']['beta']))
+    conf['KEDF']['Sigma']          = float(eval(conf['KEDF']['sigma']))
+    conf['KEDF']['etamax']         = float(eval(conf['KEDF']['etamax']))
+    conf['KEDF']['neta']           = int(conf['KEDF']['neta'])
+    conf['KEDF']['order']          = int(conf['KEDF']['order'])
+    conf['KEDF']['maxpoints']      = int(conf['KEDF']['maxpoints'])
+    conf['KEDF']['ratio']          = float(eval(conf['KEDF']['ratio']))
+    conf['KEDF']['fd']             = int(conf['KEDF']['fd'])
+    conf['KEDF']['kdd']            = int(conf['KEDF']['kdd'])
+    if conf['KEDF']['rho0'] :
+        conf['KEDF']['rho0']       = float(eval(conf['KEDF']['rho0']))
+    if conf['KEDF']['nsp'] :
+        conf['KEDF']['nsp']        = int(conf['KEDF']['nsp'])
+    if conf['KEDF']['delta'] :
+        conf['KEDF']['delta']      = float(eval(conf['KEDF']['delta']))
+    if conf['KEDF']['lumpfactor'] :
+        l= conf['KEDF']['lumpfactor'].split()
+        if len(l) > 1 :
+            lump= [float(eval(item)) for item in l]
+        else :
+            lump= float(eval(l[0]))
+        conf['KEDF']['lumpfactor'] = lump
+
+    conf['GRID']['gfull']          = bools(conf['GRID']['gfull'])
+    conf['GRID']['spacing']        = float(eval(conf['GRID']['spacing']))
     if conf['GRID']['nr'] :
-        conf['GRID']['nr'] = list(map(int,conf['GRID']['nr'].split()))
+        conf['GRID']['nr']         = list(map(int,conf['GRID']['nr'].split()))
 
     if conf['CELL']['elename'] :
-        conf['CELL']['elename'] = [s.capitalize() for s in conf['CELL']['elename'].split()]
+        conf['CELL']['elename']    = [s.capitalize() for s in conf['CELL']['elename'].split()]
     if conf['CELL']['zval'] :
-        conf['CELL']['zval'] = list(map(float,conf['CELL']['zval'].split()))
+        conf['CELL']['zval']       = list(map(float,conf['CELL']['zval'].split()))
 
-    conf['OPT']['c1'] = float(conf['OPT']['c1'])
-    conf['OPT']['c2'] = float(conf['OPT']['c2'])
-    conf['OPT']['econv'] = float(eval(conf['OPT']['econv']))
-    conf['OPT']['maxls'] = int(conf['OPT']['maxls'])
-    conf['OPT']['maxfun'] = int(conf['OPT']['maxfun'])
-    conf['OPT']['maxiter'] = int(conf['OPT']['maxiter'])
-    conf['OPT']['xtol'] = float(eval(conf['OPT']['xtol']))
-    conf['OPT']['h0'] = float(eval(conf['OPT']['h0']))
+    conf['OPT']['c1']              = float(conf['OPT']['c1'])
+    conf['OPT']['c2']              = float(conf['OPT']['c2'])
+    conf['OPT']['econv']           = float(eval(conf['OPT']['econv']))
+    conf['OPT']['maxls']           = int(conf['OPT']['maxls'])
+    conf['OPT']['maxfun']          = int(conf['OPT']['maxfun'])
+    conf['OPT']['maxiter']         = int(conf['OPT']['maxiter'])
+    conf['OPT']['xtol']            = float(eval(conf['OPT']['xtol']))
+    conf['OPT']['h0']              = float(eval(conf['OPT']['h0']))
 
-    conf['OUTPUT']['time'] = bools(conf['OUTPUT']['time'])
-    conf['OUTPUT']['stress'] = bools(conf['OUTPUT']['stress'])
+    conf['OUTPUT']['time']         = bools(conf['OUTPUT']['time'])
+    conf['OUTPUT']['stress']       = bools(conf['OUTPUT']['stress'])
     ############################## Conversion of units  ##############################
     '''
     Ecut = pi^2/(2 * h^2)
@@ -183,7 +192,8 @@ def OptionFormat(config):
         conf['GRID']['spacing'] = np.sqrt(np.pi ** 2/ conf['GRID']['ecut'] * 0.5)
     else :
         conf['GRID']['spacing'] *= LEN_CONV['Angstrom']['Bohr']
-    # for key in conf['PP'] :
-        # conf['PP'][key.capitalize()] = conf['PP'][key]
+
+    for key in conf['PP'] :
+        conf['PP'][key.capitalize()] = conf['PP'][key]
 
     return conf

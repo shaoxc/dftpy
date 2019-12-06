@@ -48,14 +48,18 @@ def LWTPotentialEnergy(rho, etamax = 100.0, ratio = 1.1, nsp = None, delta = Non
 
     if nsp is None :
         nsp = int(np.ceil(np.log(kfMax/kfMin)/np.log(ratio))) + 1
-        kflists = kfMin * ratio ** np.arange(nsp)
+        # kflists = kfMin * ratio ** np.arange(nsp)
+        kflists = np.geomspace(kfMin, kfMax, nsp)
     elif delta is not None :
         # delta = 0.10
         nsp = int(np.ceil((kfMax - kfMin)/delta)) + 1
         kflists = np.linspace(kfMin,kfMax,nsp)
     else :
         # kflists = kfMin + (kfMax - kfMin)/(nsp - 1) * np.arange(nsp)
-        kflists = kfMin + (kfMax - kfMin)/(nsp - 1) * np.arange(nsp)
+        if kfMax - kfMin < 1E-3 :
+            kflists = [kfMin, kfMax]
+        else :
+            kflists = kfMin + (kfMax - kfMin)/(nsp - 1) * np.arange(nsp)
     kflists[0] -= 1E-10 # for numerical safe
     kflists[-1] += 1E-10 # for numerical safe
     # print('nsp', nsp, kfMax, kfMin, kf0, np.max(kflists))
@@ -87,26 +91,34 @@ def LWTPotentialEnergy(rho, etamax = 100.0, ratio = 1.1, nsp = None, delta = Non
     KernelTable = KE_kernel_saved['KernelTable']
     KernelDeriv = KE_kernel_saved['KernelDeriv']
     MGPKernelE = KE_kernel_saved['MGPKernelE']
-    # print('interp', interp)
+    if kdd > 1 or interp == 'hermite' :
+        mcalc= True
+    else :
+        mcalc= False
+    # print('interp', interp, mcalc)
+    # print('interp', interp, np.sum(rhoBeta), alpha, beta)
     #-----------------------------------------------------------------------
     for i in range(nsp - 1):
         if i == 0 :
             kernel0 = LWTKernelKf(q, kflists[i], KernelTable, etamax = etamax, out = kernel0)
             p0 = (kernel0 * rhoBetaG).ifft(force_real = True)
-            kernelDeriv0 = LWTKernelKf(q, kflists[i], KernelDeriv, etamax = etamax, out = kernelDeriv0) / kflists[i]
-            m0 = (kernelDeriv0 * rhoBetaG).ifft(force_real = True)
+            if mcalc :
+                kernelDeriv0 = LWTKernelKf(q, kflists[i], KernelDeriv, etamax = etamax, out = kernelDeriv0) / kflists[i]
+                m0 = (kernelDeriv0 * rhoBetaG).ifft(force_real = True)
         else :
             p0, p1 = p1, p0
-            m0, m1 = m1, m0
             kernel0, kernel1 = kernel1, kernel0
-            kernelDeriv0, kernelDeriv1 = kernelDeriv1, kernelDeriv0
+            if mcalc :
+                m0, m1 = m1, m0
+                kernelDeriv0, kernelDeriv1 = kernelDeriv1, kernelDeriv0
 
         kernel1 = LWTKernelKf(q, kflists[i + 1], KernelTable, etamax = etamax, out = kernel1)
         p1 = (kernel1 * rhoBetaG).ifft(force_real = True)
-        kernelDeriv1 = LWTKernelKf(q, kflists[i + 1], KernelDeriv, etamax = etamax, out = kernelDeriv1) / kflists[i + 1]
-        m1 = (kernelDeriv1 * rhoBetaG).ifft(force_real = True)
+        if mcalc :
+            kernelDeriv1 = LWTKernelKf(q, kflists[i + 1], KernelDeriv, etamax = etamax, out = kernelDeriv1) / kflists[i + 1]
+            m1 = (kernelDeriv1 * rhoBetaG).ifft(force_real = True)
 
-        mask = np.logical_and(kf > kflists[i], kf < kflists[i + 1]+1E-18) #  1E-18 for numerical errors
+        mask = np.logical_and(kf > kflists[i], kf < kflists[i + 1]+1E-18) #  1E-18 for numerical errors, must be very small
         Rmask[:] = 0.0
         Rmask[mask] = 1.0
         rhoU = rhoAlpha * Rmask
@@ -233,8 +245,8 @@ def LWT(rho, x=1.0,y=1.0, Sigma=0.025, interp = 'linear', kerneltype = 'WT', sym
         KE_kernel_saved['shape'] = np.shape(rho)
         KE_kernel_saved['rho0'] = rho0
     KE_kernel_func = KE_kernel_saved
-    pot, ene = LWTPotentialEnergy(rho, etamax = etamax, ratio = ratio, nsp = nsp, kdd = kdd, \
-            delta = delta, interp = interp, calcType = calcType)
+    pot, ene = LWTPotentialEnergyLocal(rho, alpha = alpha, beta = beta, etamax = etamax, ratio = ratio, \
+        nsp = nsp, kdd = kdd, delta = delta, interp = interp, calcType = calcType)
     #-----------------------------------------------------------------------
     NL = Functional(name='NL', potential = pot, energy= ene)
     xTF = TF(rho, x = x,  calcType = calcType)
@@ -246,3 +258,4 @@ def LWT(rho, x=1.0,y=1.0, Sigma=0.025, interp = 'linear', kerneltype = 'WT', sym
         return {'TF': xTF, 'vW': yvW, 'NL' : NL}
     else :
         return OutFunctional
+

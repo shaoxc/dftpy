@@ -55,14 +55,15 @@ class Atom(object):
             for item in self.Z :
                 self.labels.append(z2lab[item])
 
-    def restart(self):
+    def restart(self, full=False):
         '''
         clean all saved data
         '''
-        self._gp = {}          # 1D PP grid g-space
-        self._vp = {}          # PP on 1D PP grid
-        self._alpha_mu = {}    # G=0 of PP
-        self._vloc_interp = {} # Interpolates recpot PP
+        if full :
+            self._gp = {}          # 1D PP grid g-space
+            self._vp = {}          # PP on 1D PP grid
+            self._alpha_mu = {}    # G=0 of PP
+            self._vloc_interp = {} # Interpolates recpot PP
         self._vlines = {}
         self._v = None         # PP for atom on 3D PW grid
         self._vreal = None     # PP for atom on 3D real space

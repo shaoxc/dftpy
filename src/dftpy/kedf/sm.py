@@ -81,18 +81,16 @@ def SMEnergy(rho, rho0, Kernel, alpha = 0.5, beta = 0.5):
 def SMStress(rho, energy=None):
     pass
 
-def SM(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 0.5, beta = 0.5, calcType='Both', split = False, **kwargs):
+def SM(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 0.5, beta = 0.5, rho0 = None, calcType='Both', split = False, **kwargs):
     TimeData.Begin('SM')
     # alpha = beta = 5.0/6.0
     global KE_kernel_saved
     #Only performed once for each grid
     q = rho.grid.get_reciprocal().q
-    rho0 = np.einsum('ijkl -> ', rho) / np.size(rho)
+    if rho0 is None :
+        rho0 = np.einsum('ijkl -> ', rho) / np.size(rho)
     rho1 = 0.5 * (np.max(rho) + np.min(rho))
     # print(rho0, rho1, rho1 / rho0)
-    # rho0 *= 1.3
-    # rho0 *= 1.27
-    # rho0 *= 0.62
     # rho0 = rho1
     if abs(KE_kernel_saved['rho0']-rho0) > 1E-6 or np.shape(rho) != KE_kernel_saved['shape'] :
         print('Re-calculate KE_kernel')

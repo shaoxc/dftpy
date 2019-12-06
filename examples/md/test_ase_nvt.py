@@ -15,9 +15,8 @@ from dftpy.api.api4ase import DFTpyCalculator
 ############################## initial config ##############################
 conf = DefaultOption()
 conf['PATH']['pppath'] = os.environ.get('DFTPY_DATA_PATH') 
-conf['PATH']['pppath'] = os.environ.get('DFTPY_DATA_PATH') 
 conf['PP']['Al'] = '/Al_lda.oe01.recpot'
-#conf['OPT']['method'] = 'TN'
+conf['OPT']['method'] = 'TN'
 #conf['OPT']['method'] = 'CG-HS'
 conf['KEDF']['kedf'] = 'WT'
 #conf['KEDF']['kedf'] = 'x_TF_y_vW'

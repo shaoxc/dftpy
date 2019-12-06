@@ -2,6 +2,7 @@ import numpy as np
 import scipy.special as sp
 from scipy import ndimage
 from scipy.optimize import minpack2
+from scipy import optimize as sopt
 import time
 from dftpy.constants import FFTLIB
 
@@ -16,6 +17,14 @@ FFT_SAVE = {
         'IFFT_Grid' : [np.zeros(3), np.zeros(3)],
         'FFT_OBJ' : [None, None], 
         'IFFT_OBJ' : [None, None]}
+
+def partial_return(func, n=0, *args, **kwargs):
+    def newfunc(*args, **keywords):
+        return func(*args, **kwargs)[0]
+    newfunc.func = func
+    newfunc.args = args
+    newfunc.kwargs= kwargs
+    return newfunc
 
 def LineSearchDcsrch(func, derfunc, alpha0 = None, func0=None, derfunc0=None,
         c1=1e-4, c2=0.9, amax=1.0, amin=0.0, xtol=1e-14, maxiter = 100):
@@ -92,9 +101,13 @@ def LineSearchDcsrch2(func,alpha0 = None, func0=None, \
 
     if task[:5] == b'ERROR' or task[:4] == b'WARN':
         alpha1 = None  # failed
-
     # return alpha1, x1, g1, task, i, func1[2], func1[3]
     return alpha1, x1, g1, task, i, func1
+
+def Brent(func, alpha0 = None, brack=(0.0, 1.0), tol=1E-8, full_output=1):
+    f = partial_return(func, 0)
+    alpha1, x1, _, i= sopt.brent(f, alpha0, brack=brack, tol=tol, full_output=full_output)
+    return alpha1, x1, None, 'CONV', i, func(alpha1)
 
 class TimeObj(object):
     '''
@@ -305,3 +318,4 @@ class FDcoef(object):
     def __init__(self, deriv = 2, order = 4, **kwargs):
         self.deriv = deriv
         self.order = order
+

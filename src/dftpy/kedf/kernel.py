@@ -183,6 +183,7 @@ def MGPKernelTable(eta, q, maxpoints = 1000, symmetrization = None, KernelTable 
     cTF = 0.3*(3.0 * np.pi**2)**(2.0/3.0)
     # factor = 5.0 / (9.0 * alpha * beta * rho0 ** (alpha + beta - 5.0/3.0))*2*alpha
     coe = 4.0/5.0 * cTF * 5.0/6.0 * dt
+    cWT = 4.0/5.0 * 0.3*(3.0 * np.pi**2)**(2.0/3.0)
     for i in range(1, maxpoints + 1):
         t = i * dt
         eta2 = eta / np.cbrt(t)
@@ -305,3 +306,16 @@ def MGPOmegaE(q, Ne = 1,lumpfactor = 0.2):
     corr /= 1.2
     return corr
 #-----------------------------------------------------------------------
+def NEWKernel(q,rho0, x = 1.0, y = 1.0, alpha = 5.0/6.0, beta = 5.0/6.0):
+    ''' 
+    The WT Kernel
+    '''
+    tkf = 2.0 * (3.0 * rho0 * np.pi**2)**(1.0/3.0)
+    cTF = 0.3*(3.0 * np.pi**2)**(2.0/3.0)
+    factor = 5.0 / (9.0 * alpha * beta * rho0 ** (alpha + beta - 5.0/3.0))
+    factor *= cTF
+    #-----------------------------------------------------------------------
+    coef = 4.0
+    factor = factor * np.exp(-q ** 2/(coef ** 2 * (tkf/2.0) ** 2))
+    #-----------------------------------------------------------------------
+    return LindhardFunction(q/tkf,x,y)*factor

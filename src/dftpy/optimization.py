@@ -3,7 +3,7 @@ from scipy.optimize import minimize, line_search
 from scipy import optimize as sopt
 from functools import partial
 from dftpy.field import DirectField
-from dftpy.math_utils import LineSearchDcsrch,LineSearchDcsrch2, TimeData
+from dftpy.math_utils import LineSearchDcsrch,LineSearchDcsrch2, Brent, TimeData
 
 class LBFGS(object):
 
@@ -126,6 +126,7 @@ class Optimization(object):
                 beta = np.einsum('ijkl->',resA[-1] ** 2) / np.einsum('ijkl->',resA[-2] ** 2) 
             elif method == 'CG-PR' :
                 beta = np.einsum('ijkl->',resA[-1] *(resA[-1]-resA[-2]) ) / np.einsum('ijkl->',resA[-2] ** 2) 
+                beta = max(beta, 0.0)
             elif method == 'CG-DY' and len(dirA) > 0 :
                 beta = np.einsum('ijkl->',resA[-1] **2 ) / np.einsum('ijkl->',dirA[-1]*(resA[-1]-resA[-2]))
             elif method == 'CG-CD' and len(dirA) > 0 :
@@ -181,7 +182,7 @@ class Optimization(object):
                 if r1Norm < rConv :
                     stat = 'CONV'
                     break
-                elif r1Norm > 10 * min(rLists[:-1]):
+                elif r1Norm > 1000 * min(rLists[:-1]):
                     stat = 'WARN : Not reduce'
                     direction = Best
                     break
@@ -256,7 +257,8 @@ class Optimization(object):
             value = f.energy
         else : #RMM
             if func is None :
-                f = self.EnergyEvaluator.ComputeEnergyPotential(newrho, calcType = 'Potential')
+                f = self.EnergyEvaluator.ComputeEnergyPotential(newrho, calcType = 'Both')
+                # f = self.EnergyEvaluator.ComputeEnergyPotential(newrho, calcType = 'Potential')
             mu = (f.potential * newrho).integral() / self.EnergyEvaluator.N
             residual = (f.potential - mu) * newphi
             resN = np.einsum('ijkl, ijkl->', residual, residual)*phi.grid.dV
@@ -335,7 +337,7 @@ class Optimization(object):
                 theta,_, _, task, NumLineSearch, valuederiv =  LineSearchDcsrch2(fun_value_deriv, alpha0 = theta,
                        func0 = func0, c1=c1, c2=c2, amax=np.pi, amin=0.0, xtol=xtol, maxiter = maxls)
             elif lsfun == 'brent' :
-                theta, ene, _, NumLineSearch = sopt.brent(thetaEnergy, theta, brack=(0.0, theta), tol=1E-8, full_output=1)
+                theta, _, _, task, NumLineSearch, valuederiv = Brent(fun_value_deriv, theta, brack=(0.0, theta), tol=1E-8, full_output=1)
             else : 
                 # p = -residual
                 theta = 0.1
@@ -361,9 +363,9 @@ class Optimization(object):
 
             rho = phi * phi
             func = newfunc
-            if self.optimization_options["algorithm"] == 'RMM' :
-                f = self.EnergyEvaluator.ComputeEnergyPotential(rho, calcType = 'Energy')
-                func.energy = f.energy
+            # if self.optimization_options["algorithm"] == 'RMM' :
+                # f = self.EnergyEvaluator.ComputeEnergyPotential(rho, calcType = 'Energy')
+                # func.energy = f.energy
                 # func = self.EnergyEvaluator.ComputeEnergyPotential(rho, calcType = 'Both')
             mu = (func.potential * rho).integral() / self.EnergyEvaluator.N
             residual = (func.potential - mu)* phi

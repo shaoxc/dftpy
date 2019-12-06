@@ -87,14 +87,15 @@ def WTStress(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 5.0/6.0, beta = 5.0/6.0, energ
 
     return stress
 
-def WT(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 5.0/6.0, beta = 5.0/6.0, calcType='Both', split = False, **kwargs):
+def WT(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 5.0/6.0, beta = 5.0/6.0, rho0 = None, calcType='Both', split = False, **kwargs):
     TimeData.Begin('WT')
     global KE_kernel_saved
     #Only performed once for each grid
     q = rho.grid.get_reciprocal().q
-    rho0 = np.einsum('ijkl -> ', rho) / np.size(rho)
-    # print('rho0', rho0, np.mean(rho))
-    # rho0 *= 1.3
+    if rho0 is None :
+        rho0 = np.einsum('ijkl -> ', rho) / np.size(rho)
+    rho1 = 0.5 * (np.max(rho) + np.min(rho))
+    # print(rho0, rho1, rho1 / rho0)
     if abs(KE_kernel_saved['rho0']-rho0) > 1E-2 or np.shape(rho) != KE_kernel_saved['shape'] :
         print('Re-calculate KE_kernel')
         KE_kernel = WTKernel(q,rho0, alpha = alpha, beta = beta)

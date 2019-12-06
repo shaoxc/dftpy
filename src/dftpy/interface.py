@@ -38,11 +38,11 @@ def OptimizeDensityConf(config, ions = None, rhoini = None):
         for i in range(3):
             nr[i] = bestFFTsize(nr[i])
     print('The final grid size is ', nr)
-    if config['MATH']['twostep'] :
+    if config['MATH']['multistep'] > 1 :
         nr2 = nr.copy()
-        nr = nr2//2
-        print('TWOSTEP: Perform first optimization step')
-        print('The first grid size is ', nr)
+        nr = nr2//config['MATH']['multistep']
+        print('MULTI-STEP: Perform first optimization step')
+        print('Grid size of 1  step is ',  nr)
     ############################## IONS  ##############################
     ions.usePME = config['MATH']['linearie']
     PPlist = {}
@@ -125,18 +125,20 @@ def OptimizeDensityConf(config, ions = None, rhoini = None):
         rho = opt.optimize_rho(guess_rho=rho_ini)
         # perform second step, dense grid
         #-----------------------------------------------------------------------
-        if config['MATH']['twostep'] :
+        for istep in range(2, config['MATH']['multistep'] + 1):
+            if istep == config['MATH']['multistep'] :
+                nr = nr2
+            else :
+                nr = nr * 2
             print('#'*80)
-            print('TWOSTEP: Perform second optimization step')
-            # nr2 = nr * 2
-            grid2 = DirectGrid(lattice=lattice, nr=nr2, units=None, full=config['GRID']['gfull'])
-            rho_ini = interpolation_3d(rho[..., 0], nr2)
+            print('MULTI-STEP: Perform %d optimization step' %istep)
+            print('Grid size of %d'%istep, ' step is ',  nr)
+            grid2 = DirectGrid(lattice=lattice, nr=nr, units=None, full=config['GRID']['gfull'])
+            rho_ini = interpolation_3d(rho[..., 0], nr)
             rho_ini[rho_ini < 1E-12] = 1E-12
             rho_ini = DirectField(grid=grid2, griddata_3d=rho_ini, rank=1)
             rho_ini *= (charge_total / (np.sum(rho_ini) * rho_ini.grid.dV ))
-            print('The second grid size is ', nr2)
             ions.restart()
-            # optimization_options["econv"] /= 10
             opt = Optimization(EnergyEvaluator=E_v_Evaluator, optimization_options = optimization_options, 
                     optimization_method = config['OPT']['method'])
             rho = opt.optimize_rho(guess_rho=rho_ini)
