@@ -183,8 +183,6 @@ def LWTPotentialEnergy(rho, etamax = 100.0, ratio = 1.1, nsp = None, delta = Non
         pot2 = pot1.copy()
     #-----------------------------------------------------------------------
     ene = np.einsum('ijkl, ijkl ->', rhoAlpha, pot1) * rho.grid.dV
-    # ene2 = np.einsum('ijkl, ijkl ->', rhoAlpha, (pot1 + pot2) * 0.5) * rho.grid.dV
-    # print('ene-->', ene, ene2, np.sum(pot1 ** 2), np.sum(pot2 ** 2))
     # ene = ene2
     #-----------------------------------------------------------------------
     # save = True
@@ -245,7 +243,7 @@ def LWT(rho, x=1.0,y=1.0, Sigma=0.025, interp = 'linear', kerneltype = 'WT', sym
         KE_kernel_saved['shape'] = np.shape(rho)
         KE_kernel_saved['rho0'] = rho0
     KE_kernel_func = KE_kernel_saved
-    pot, ene = LWTPotentialEnergyLocal(rho, alpha = alpha, beta = beta, etamax = etamax, ratio = ratio, \
+    pot, ene = LWTPotentialEnergy(rho, alpha = alpha, beta = beta, etamax = etamax, ratio = ratio, \
         nsp = nsp, kdd = kdd, delta = delta, interp = interp, calcType = calcType)
     #-----------------------------------------------------------------------
     NL = Functional(name='NL', potential = pot, energy= ene)
