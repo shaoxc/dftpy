@@ -23,7 +23,7 @@ def read_xsf(infile, kind = 'All', full=False, pbc=True, **kwargs):
             for i in range(3):
                 l = list(map(float, fr.readline().split()))
                 lattice.append(l)
-            lattice = np.asarray(lattice)
+            lattice = np.asarray(lattice)/LEN_CONV["Bohr"]['Angstrom']
             lattice = lattice.T # cell = [a, b, c]
             line = readline()
 
@@ -36,7 +36,7 @@ def read_xsf(infile, kind = 'All', full=False, pbc=True, **kwargs):
                 label.append(line[0])
                 p = list(map(float, line[1:4]))
                 pos.append(p)
-            pos = np.asarray(pos)
+            pos = np.asarray(pos)/LEN_CONV["Bohr"]['Angstrom']
             line = readline()
 
         if lattice != []:
@@ -80,6 +80,8 @@ def read_xsf(infile, kind = 'All', full=False, pbc=True, **kwargs):
         if not data :
             raise AttributeError("!!!ERROR : XSF file have some problem")
         data = np.asarray(data)
+        if np.size(data) > np.prod(nrx): # double xsf grid data
+            data = data[:np.prod(nrx)]
         data = np.reshape(data, nrx, order='F')
         if pbc :
             bound = nrx.copy()

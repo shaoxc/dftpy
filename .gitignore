@@ -6,4 +6,4 @@ dist/
 build/
 .pytest_cache/
 dftpy.egg-info
-src/dftpy/kedf/llwt.py
+src/dftpy/dev/

@@ -61,6 +61,7 @@ def LindhardFunction(eta,lbda,mu):
                 + invEta2[indx3] * (-3.38745061493813488E-3  \
                 + invEta2[indx3] * (-3.00624946457977689E-3) \
                                    ))))))))))))))
+
     TimeData.End('Lindhard')
     return LindG
 
