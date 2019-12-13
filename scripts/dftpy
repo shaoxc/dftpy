@@ -31,7 +31,7 @@ def RunJob():
 
     config = OptionFormat(conf)
     print('config...')
-    print(conf)
+    print(config)
     # if config['JOB']['task'] == 'Optdensity' :
     results = OptimizeDensityConf(config)
 

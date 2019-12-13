@@ -30,7 +30,8 @@ def OptimizeDensityConf(config, ions = None, rhoini = None):
     if config['GRID']['nr'] is not None :
         nr = np.asarray(config['GRID']['nr'])
     else :
-        spacing = config['GRID']['spacing']
+        # spacing = config['GRID']['spacing']
+        spacing = config['GRID']['spacing'] * LEN_CONV['Angstrom']['Bohr']
         nr = np.zeros(3, dtype = 'int32')
         for i in range(3):
             nr[i] = int(np.sqrt(metric[i, i])/spacing)

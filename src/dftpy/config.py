@@ -189,10 +189,13 @@ def OptionFormat(config):
     '''
     if conf['GRID']['spacing'] :
         conf['GRID']['spacing'] = float(eval(conf['GRID']['spacing']))
-        conf['GRID']['spacing'] *= LEN_CONV['Angstrom']['Bohr']
+        # conf['GRID']['spacing'] *= LEN_CONV['Angstrom']['Bohr']
+        # conf['GRID']['ecut'] = np.pi ** 2/ (2*conf['GRID']['spacing']**2)
+        conf['GRID']['ecut'] = np.pi ** 2/ (2*conf['GRID']['spacing']**2) * ENERGY_CONV['Hartree']['eV'] / LEN_CONV['Angstrom']['Bohr'] ** 2
     else :
         conf['GRID']['ecut'] = float(eval(conf['GRID']['ecut'])) * ENERGY_CONV['eV']['Hartree']
         conf['GRID']['spacing'] = np.sqrt(np.pi ** 2/ conf['GRID']['ecut'] * 0.5)
+    # print('ecut and spacing', conf['GRID']['ecut'] / ENERGY_CONV['eV']['Hartree'], conf['GRID']['spacing'] /LEN_CONV['Angstrom']['Bohr'] )
 
     for key in conf['PP'] :
         conf['PP'][key.capitalize()] = conf['PP'][key]
