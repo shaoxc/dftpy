@@ -9,14 +9,12 @@ release = '0.0.1'
 source_suffix = '.rst'
 master_doc = 'index'
 
-# extensions = ['ext',
-              # 'images',
-              # 'sphinx.ext.autodoc',
-              # 'sphinx.ext.doctest',
-              # 'sphinx.ext.mathjax',
-              # 'sphinx.ext.viewcode',
-              # 'sphinx.ext.napoleon',
-              # 'sphinx.ext.intersphinx']
+extensions = ['sphinx.ext.autodoc',
+              'sphinx.ext.doctest',
+              'sphinx.ext.mathjax',
+              'sphinx.ext.viewcode',
+              'sphinx.ext.napoleon',
+              'sphinx.ext.intersphinx']
 
 templates_path = ['templates']
 exclude_patterns = ['build']
@@ -26,6 +24,7 @@ exclude_patterns = ['build']
 html_theme = 'sphinx_rtd_theme'
 html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 # html_favicon = 'static/dftpy.ico'
+html_style = 'custom.css'
 html_static_path = ['static']
 html_last_updated_fmt = '%A, %d %b %Y %H:%M:%S'
 

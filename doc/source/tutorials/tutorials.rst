@@ -3,13 +3,20 @@
 Tutorials
 =========
 
+Config of DFTpy script
+----------------------
+
+.. toctree::
+   :maxdepth: 1
+
+   config
+
 OFDFT
 -----
 
 .. toctree::
    :maxdepth: 1
 
-   ofdft/config
    ofdft/optimize
    ofdft/relax
    ofdft/md
