@@ -10,14 +10,14 @@ Config of dftpy script
        - `PATH`_
        - `MATH`_
        - `PP`_
-     * - `KEDF`_
-       - `CELL`_
+     * - `CELL`_
        - `GRID`_
+       - `DENSITY`_
        - `EXC`_
      * - `KEDF`_
-       - `OPT`_
-       - `DENSITY`_
        - `OUTPUT`_
+       - `OPT`_
+       - 
 
 JOB
 ----------
