@@ -15,12 +15,14 @@ Optional:
 
 * pylibxc_ (for different exchange-correlation)
 * pyFFTW_  (for Fast Fourier Transform)
+* ASE_  (for dealing with structures)
 
 .. _Python: https://www.python.org/
 .. _NumPy: https://docs.scipy.org/doc/numpy/reference/
 .. _SciPy: https://docs.scipy.org/doc/scipy/reference/
 .. _pylibxc: https://tddft.org/programs/libxc/
 .. _pyFFTW: https://pyfftw.readthedocs.io/en/latest/
+.. _ASE: https://gitlab.com/ase/ase
 
 
 Installation from source

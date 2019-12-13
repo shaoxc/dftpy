@@ -483,4 +483,7 @@ OPT
         *Default* : 1.0 
 
 
+.. note::
+    The defaults are work well for most arguments, only `PP`_ and `CELL`_ must be given.
+
 .. _pylibxc: https://tddft.org/programs/libxc/
