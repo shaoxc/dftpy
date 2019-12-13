@@ -7,3 +7,4 @@ build/
 .pytest_cache/
 dftpy.egg-info
 src/dftpy/dev/
+doc/build/

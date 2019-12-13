@@ -293,14 +293,14 @@ KEDF
 
 .. option:: delta
 
-    The gap of :math:`{k_{f}}` for spline in `LWT` KEDF.
+    The gap of :math:`{k_{f}}` for spline in `LWT` KEDF. There are three options to do same thing, the priority is :option:`nsp` -> :option:`delta` -> :option:`ratio`. Default is using :option:`ratio`.
         *Options* : 
 
         *Default* : None 
 
 .. option:: ratio
 
-    The ratio of :math:`{k_{f}}` for spline in `LWT` KEDF.
+    The ratio of :math:`{k_{f}}` for spline in `LWT` KEDF. There are three options to do same thing, the priority is :option:`nsp` -> :option:`delta` -> :option:`ratio`. Default is using :option:`ratio`.
         *Options* : 
 
         *Default* : 1.2
@@ -364,8 +364,8 @@ KEDF
 .. option:: kdd
 
     The kernel density denpendent for `LWT` KEDF:
-        + 1 : The origin `LWT` KEDF
-        + 2 : Conside the :math:`\rho^{\beta}(r')\omega(\rho(r),r-r')`
+        + 1 : The origin `LWT` KEDF.
+        + 2 : Conside the :math:`\rho^{\beta}(r')\omega(\rho(r),r-r')`.
         + 3 : Also considering the derivative of kernel.
 
         *Options* : 1,2,3
@@ -414,7 +414,7 @@ OPT
 
 .. option:: algorithm
 
-    The direct minimization method : Energy(EMM) or Residual(RMM).
+    The direct minimization method : Energy (EMM) or Residual (RMM).
         *Options* : EMM, RMM
 
         *Default* : EMM 
@@ -485,5 +485,7 @@ OPT
 
 .. note::
     The defaults are work well for most arguments, only `PP`_ and `CELL`_ must be given.
+
+    The *Options* not given means, it can accept any `float` or `integer`.
 
 .. _pylibxc: https://tddft.org/programs/libxc/

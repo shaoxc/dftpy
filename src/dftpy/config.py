@@ -30,8 +30,8 @@ def DefaultOption(dicts = None):
             }
 
     GRID = {
-            'ecut'           : None,
-            'spacing'        : 0.25,
+            'ecut'           : 600,
+            'spacing'        : None, 
             'gfull'          : False,
             'nr'             : None,
             }
@@ -162,7 +162,7 @@ def OptionFormat(config):
         conf['KEDF']['lumpfactor'] = lump
 
     conf['GRID']['gfull']          = bools(conf['GRID']['gfull'])
-    conf['GRID']['spacing']        = float(eval(conf['GRID']['spacing']))
+    # conf['GRID']['spacing']        = float(eval(conf['GRID']['spacing']))
     if conf['GRID']['nr'] :
         conf['GRID']['nr']         = list(map(int,conf['GRID']['nr'].split()))
 
@@ -187,11 +187,12 @@ def OptionFormat(config):
     Ecut = pi^2/(2 * h^2)
     Ref : Briggs, E. L., D. J. Sullivan, and J. Bernholc. "Real-space multigrid-based approach to large-scale electronic structure calculations." Physical Review B 54.20 (1996): 14362.
     '''
-    if conf['GRID']['ecut'] :
+    if conf['GRID']['spacing'] :
+        conf['GRID']['spacing'] = float(eval(conf['GRID']['spacing']))
+        conf['GRID']['spacing'] *= LEN_CONV['Angstrom']['Bohr']
+    else :
         conf['GRID']['ecut'] = float(eval(conf['GRID']['ecut'])) * ENERGY_CONV['eV']['Hartree']
         conf['GRID']['spacing'] = np.sqrt(np.pi ** 2/ conf['GRID']['ecut'] * 0.5)
-    else :
-        conf['GRID']['spacing'] *= LEN_CONV['Angstrom']['Bohr']
 
     for key in conf['PP'] :
         conf['PP'][key.capitalize()] = conf['PP'][key]
