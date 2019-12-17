@@ -120,7 +120,9 @@ def WT(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 5.0/6.0, beta = 5.0/6.0, rho0 = None
             ene = WTEnergy(rho, rho0, KE_kernel, alpha, beta)
 
     NL = Functional(name='NL', potential = pot, energy= ene)
-    xTF = TF(rho, x = x,  calcType = calcType)
+    # xTF = TF(rho, x = x,  calcType = calcType)
+    s = 1.0 + (x - 1) * 20/(25 - ((beta - alpha)*3) ** 2) # only works when \alpha+\beta=5/3
+    xTF = TF(rho, x = s,  calcType = calcType)
     yvW = vW(rho, y = y, Sigma = Sigma, calcType = calcType)
     OutFunctional = NL + xTF + yvW
     OutFunctional.name = 'WT'

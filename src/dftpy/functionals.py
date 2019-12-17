@@ -7,7 +7,7 @@ from dftpy.functional_output import Functional
 from dftpy.semilocal_xc import PBE, LDA, XC, KEDF
 from dftpy.local_pseudopotential import NuclearElectron
 from dftpy.hartree import HartreeFunctional
-from dftpy.kedf import TF,vW, x_TF_y_vW, WT, LWT, FP, SM, MGP
+from dftpy.kedf import TF,vW, x_TF_y_vW, WT, LWT, FP, SM, MGP, GGA
 
 # general python imports
 from abc import ABC, abstractmethod
@@ -117,7 +117,7 @@ class FunctionalClass(AbstractFunctional):
         XCNameList = ['LDA','PBE','LIBXC_XC','CUSTOM_XC']
         KEDFNameList = ['TF','vW','x_TF_y_vW','LC94','revAPBEK','TFvW','LIBXC_KEDF','CUSTOM_KEDF']
         KEDFNLNameList = ['WT','MGP','MGP0','WGC2','WGC1','WGC0','LMGP','LMGP0','LWT', 'FP', 'SM', \
-                'MGPA', 'MGPG', 'LMGP0', 'LMGPA', 'LMGPG']
+                'MGPA', 'MGPG', 'LMGP0', 'LMGPA', 'LMGPG', 'GGA']
         IONSNameList = ['IONS']
         HNameList = ['HARTREE']
         
@@ -192,6 +192,8 @@ class FunctionalClass(AbstractFunctional):
             elif self.name == 'LMGPG' :
                 self.optional_kwargs['kerneltype'] = 'MGPG'
                 return LWT(rho=rho, calcType=calcType, **self.optional_kwargs)
+            elif self.name[:3] == 'GGA' :
+                return GGA(rho=rho, calcType=calcType, **self.optional_kwargs)
             else :
                 raise Exception(self.name + ' KEDF to be implemented')
             # if self.is_nonlocal == True:

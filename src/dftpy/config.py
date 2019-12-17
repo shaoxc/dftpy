@@ -187,15 +187,12 @@ def OptionFormat(config):
     Ecut = pi^2/(2 * h^2)
     Ref : Briggs, E. L., D. J. Sullivan, and J. Bernholc. "Real-space multigrid-based approach to large-scale electronic structure calculations." Physical Review B 54.20 (1996): 14362.
     '''
-    if conf['GRID']['spacing'] :
+    if conf['GRID']['spacing'] : # Here units are : spacing (Angstrom),  ecut (eV), same as input.
         conf['GRID']['spacing'] = float(eval(conf['GRID']['spacing']))
-        # conf['GRID']['spacing'] *= LEN_CONV['Angstrom']['Bohr']
-        # conf['GRID']['ecut'] = np.pi ** 2/ (2*conf['GRID']['spacing']**2)
         conf['GRID']['ecut'] = np.pi ** 2/ (2*conf['GRID']['spacing']**2) * ENERGY_CONV['Hartree']['eV'] / LEN_CONV['Angstrom']['Bohr'] ** 2
     else :
-        conf['GRID']['ecut'] = float(eval(conf['GRID']['ecut'])) * ENERGY_CONV['eV']['Hartree']
-        conf['GRID']['spacing'] = np.sqrt(np.pi ** 2/ conf['GRID']['ecut'] * 0.5)
-    # print('ecut and spacing', conf['GRID']['ecut'] / ENERGY_CONV['eV']['Hartree'], conf['GRID']['spacing'] /LEN_CONV['Angstrom']['Bohr'] )
+        conf['GRID']['ecut'] = float(eval(conf['GRID']['ecut']))
+        conf['GRID']['spacing'] = np.sqrt(np.pi ** 2/ conf['GRID']['ecut'] * 0.5 /ENERGY_CONV['eV']['Hartree']) * LEN_CONV['Bohr']['Angstrom']
 
     for key in conf['PP'] :
         conf['PP'][key.capitalize()] = conf['PP'][key]

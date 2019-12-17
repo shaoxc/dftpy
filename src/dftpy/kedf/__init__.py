@@ -7,3 +7,4 @@ from dftpy.kedf.lwt import *
 from dftpy.kedf.fp import *
 from dftpy.kedf.sm import *
 from dftpy.kedf.mgp import *
+from dftpy.kedf.gga import *
