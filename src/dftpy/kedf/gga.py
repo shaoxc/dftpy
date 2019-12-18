@@ -251,7 +251,7 @@ def GGAFs(s, functional = 'LKT', calcType = 'Both', parms = None, **kwargs):
         s4 = s2 * s2
         Fb = 1.0 + parms[0] * s2
         Fb2 = Fb * Fb
-        F = 1.0 + parms[1] * s2 / Fb + parms[2] ** 2 * s4 / Fb2
+        F = 1.0 + parms[1] * s2 / Fb + parms[2] * s4 / Fb2
         if calcType != 'Energy' :
             dFds2 = 2.0 * parms[1] / Fb2 + 4 * parms[2] * s2 / (Fb2 * Fb)
             dFds2 /= (tkf0 * tkf0)
@@ -265,66 +265,107 @@ def GGAFs(s, functional = 'LKT', calcType = 'Both', parms = None, **kwargs):
         Fb = 1.0 + parms[0] * s2
         Fb2 = Fb * Fb
         Fb3 = Fb * Fb * Fb
-        F = 1.0 + parms[1] * s2 / Fb + parms[2] ** 2 * s4 / Fb2 + parms[3] ** 3 * s6 / Fb3
+        F = 1.0 + parms[1] * s2 / Fb + parms[2] * s4 / Fb2 + parms[3] * s6 / Fb3
         if calcType != 'Energy' :
             dFds2 = 2.0 * parms[1] / Fb2 + 4 * parms[2] * s2 / (Fb3) + 4 * parms[3] * s4 / (Fb3 * Fb)
             dFds2 /= (tkf0 * tkf0)
 
+    elif functional == 'P82' : # \cite{hfofke} (9)
+        if not parms : parms = [5.0/27.0]
+        ss = s/tkf0
+        s2 = ss * ss
+        s6 = s2 * s2 * s2
+        Fb = 1 + s6
+        F = 1.0 + parms[0] * s2/Fb
+        if calcType != 'Energy' :
+            dFds2 = parms[0] * (2.0/Fb - 6.0 * s6/(Fb * Fb))
+            dFds2 /= (tkf0 * tkf0)
+    
+    elif functional == 'TW02' : # \cite{hfofke} (20)
+        if not parms : parms = [0.8438, 0.27482816]
+        ss = s/tkf0
+        s2 = ss * ss
+        Fa = parms[1] * s2 
+        Fb = 1.0 + parms[1] * s2
+        F = 1.0 + parms[0]-parms[0]/Fb
+        if calcType != 'Energy' :
+            dFds2 = 2.0 * parms[0]* parms[1] / (Fb * Fb)
+            dFds2 /= (tkf0 * tkf0)
+    
+    elif functional == 'APBEK' : # \cite{hfofke} (32)
+        if not parms : parms = [0.23889, 0.804]
+        ss = s/tkf0
+        s2 = ss * ss
+        Fa = parms[0] * s2 
+        Fb = 1.0 + parms[0]/parms[1] * s2
+        F = 1.0 + Fa/Fb
+        if calcType != 'Energy' :
+            dFds2 = 2.0 * parms[0] / (Fb * Fb)
+            dFds2 /= (tkf0 * tkf0)
+    
+    elif functional == 'revAPBEK' : # \cite{hfofke} (33)
+        if not parms : parms = [0.23889, 1.245]
+        ss = s/tkf0
+        s2 = ss * ss
+        Fa = parms[0] * s2 
+        Fb = 1.0 + parms[0]/parms[1] * s2
+        F = 1.0 + Fa/Fb
+        if calcType != 'Energy' :
+            dFds2 = 2.0 * parms[0] / (Fb * Fb)
+            dFds2 /= (tkf0 * tkf0)
+    
+    elif functional == 'VJKS00' : # \cite{hfofke} (18) !something wrong
+        if not parms : parms = [0.8944,0.6511,0.0431]
+        ss = s/tkf0
+        s2 = ss * ss
+        s4 = s2 * s2
+        s6 = s4 * s2
+        # Fa = 1.0 + parms[0] * s2 - parms[2] * s6
+        Fa = 1.0 + parms[0] * s2 
+        Fb = 1.0 + parms[1] * s2 + parms[2] * s4
+        F = Fa/Fb
+        if calcType != 'Energy' :
+            # dFds2 = (2.0 * parms[0] - 6.0 * parms[2] * s4)/ Fb - (2.0 * parms[1] + 4.0 * parms[2] * s2)*Fa/(Fb*Fb)
+            dFds2 = (2.0 * parms[0])/ Fb - (2.0 * parms[1] + 4.0 * parms[2] * s2)*Fa/(Fb*Fb)
+            dFds2 /= (tkf0 * tkf0)
+    
+    elif functional == 'LC94' : # \cite{hfofke} (16) # same as PW91
+        if not parms : parms = [0.093907,0.26608, 0.0809615, 100.0, 76.32, 0.000057767]
+        ss = s/tkf0
+        s2 = ss * ss
+        s4 = s2 * s2
+        Fa = 1.0 + parms[0] * ss * np.arcsinh(parms[4] * ss) + (parms[1]-parms[2] * np.exp(-parms[3] * s2)) * s2
+        Fb = 1.0 + parms[0] * ss * np.arcsinh(parms[4] * ss) + parms[5] * s4
+        F = Fa/Fb
+        if calcType != 'Energy' :
+            Fa_s = parms[0] * parms[4] * ss/np.sqrt(parms[4] ** 2 * s2 + 1)  + parms[0] * np.arcsinh(parms[4] * ss) + 2.0 * ss * (parms[1] + 2.0 * parms[2] * parms[3] * s2 * np.exp(-parms[3] * s2) -2.0 * parms[2] * np.exp(-parms[3] * s2))
+
+            dFds2 = Fa_s/Fb - Fa/(Fb * Fb) * ( parms[0] * parms[4] * ss/np.sqrt(parms[4] ** 2 * s2 + 1) + \
+		    (parms[0] * np.arcsinh(parms[4] * ss) + 4.0*parms[5]*s2*ss))
+
+            mask = s > tol2
+            dFds2[mask] /= ss[mask]
+            dFds2 /= (tkf0 * tkf0)
+    
+    elif functional == 'VT84F' : # \cite{hfofke} (33)
+        if not parms : parms = [2.777028126, 2.777028126-40.0/27.0]
+        ss = s/tkf0
+        s2 = ss * ss
+        s2[s2 < tol2] = tol2
+        s4 = s2 * s2
+        F = 1.0 + 5.0/3.0 * s2 + parms[0] * s2 * np.exp(-parms[1] * s2)/(1 + parms[0] * s2)+\
+                (1 - np.exp(-parms[1] * s4)) * (1.0/s2 - 1.0)
+        if calcType != 'Energy' :
+            dFds2 = 10.0/3.0 + 2.0*parms[0] * np.exp(-parms[1] * s2)*(1.0-parms[1] * s2)/(1 + parms[0] * s2)-\
+                    2.0*parms[0] *s2 * np.exp(-parms[1] * s2) / (1 + parms[0] * s2)**2 + \
+                    4.0*parms[1]*s2*(1.0/s2 - 1.0)*np.exp(-parms[1] * s4)-\
+                    2.0*(1 - np.exp(-parms[1] * s4))/(s4)
+
+            dFds2 /= (tkf0 * tkf0)
+
     return F, dFds2
 
-def GGA(rho, functional = 'PBE4', calcType = 'Both', split = False, **kwargs):
-# def GGA(rho, functional = 'LKT', calcType = 'Both', split = False, **kwargs):
-    
-    rhom = rho.copy()
-    tol = 1E-16
-    rhom[rhom < tol] = tol
-
-    rho23 = rhom ** (2.0/3.0)
-    rho53 = rho23 * rhom
-    cTF = (3.0/10.0)*(3.0*np.pi**2)**(2.0/3.0)
-    tf = cTF * rho53
-    rho43 = rho23 * rho23
-    rho83 = rho43 * rho43
-    g=rho.grid.get_reciprocal().g
-
-    rhoG = rho.fft()
-    rhoGrad = []
-    for i in range(3):
-        item = (1j * g[..., i][..., np.newaxis] * rhoG).ifft(force_real = True)
-        rhoGrad.append(item)
-    s = np.sqrt(rhoGrad[0] ** 2 + rhoGrad[1] ** 2 + rhoGrad[2] ** 2) / rho43
-    ene = 0.0
-    F, dFds2 = GGAFs(s, functional = functional, calcType = calcType,  **kwargs)
-    if calcType == 'Energy' :
-        ene = np.einsum('ijkl, ijkl -> ', tf, F) * rhom.grid.dV
-        pot = np.empty_like(rho)
-    else :
-        pot = 5.0/3.0 * cTF * rho23 * F
-        pot += (-4.0/3.0 * tf * dFds2 * s * s / rhom)
-
-        p3 = []
-        for i in range(3):
-            item = tf * dFds2 * rhoGrad[i] / rho83 
-            p3.append(item.fft())
-        pot3G = g[..., 0][..., None] * p3[0] +  g[..., 1][..., None] * p3[1] + g[..., 2][..., None] * p3[2]
-        pot -= (1j * pot3G).ifft(force_real = True)
-
-        if calcType == 'Both' :
-            ene = np.einsum('ijkl, ijkl -> ', tf, F) * rhom.grid.dV
-
-    OutFunctional = Functional(name='GGA-'+str(functional))
-    OutFunctional.potential = pot
-    OutFunctional.energy= ene
-
-    if split :
-        return {'GGA': OutFunctional}
-    else :
-        return OutFunctional
-    return F, dFds2
-
-def GGA(rho, functional = 'P92', calcType = 'Both', split = False, **kwargs):
-# def GGA(rho, functional = 'LKT', calcType = 'Both', split = False, **kwargs):
-    
+def GGA(rho, functional = 'LKT', calcType = 'Both', split = False, **kwargs):
     rhom = rho.copy()
     tol = 1E-16
     rhom[rhom < tol] = tol
