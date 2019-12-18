@@ -17,6 +17,7 @@ from dftpy.kedf.tf import ThomasFermiStress
 from dftpy.kedf.vw import vonWeizsackerStress
 from dftpy.kedf.wt import WTStress
 from dftpy.hartree import HartreeFunctionalStress
+from dftpy.tdrunner import tdrunner
 
 def OptimizeDensityConf(config, ions = None, rhoini = None):
     print('Begin on :', time.strftime("%Y-%m-%d %H:%M:%S",  time.localtime()))
@@ -52,7 +53,7 @@ def OptimizeDensityConf(config, ions = None, rhoini = None):
         PPlist[ele] = config['PATH']['pppath'] + '/' + config['PP'][key]
     optional_kwargs = {}
     optional_kwargs["PP_list"] = PPlist
-    optional_kwargs["ions"]    = ions 
+    optional_kwargs["ions"]    = ions
     IONS = FunctionalClass(type='IONS', optional_kwargs=optional_kwargs)
     if not ions.Zval  :
         if config['CELL']['zval'] :
@@ -98,7 +99,7 @@ def OptimizeDensityConf(config, ions = None, rhoini = None):
                 strings += line
         density = np.fromstring(strings,  dtype = float,  sep = ' ')
         density = density.reshape(nr0, order='F')
-    # normalization 
+    # normalization
     if density is not None :
         if not np.all(rho_ini.shape[:3] == density.shape[:3]):
             density = interpolation_3d(density, rho_ini.shape[:3])
@@ -121,7 +122,7 @@ def OptimizeDensityConf(config, ions = None, rhoini = None):
         optimization_options["econv"] *= ions.nat
         # if config['MATH']['twostep'] :
             # optimization_options["econv"] *= 10
-        opt = Optimization(EnergyEvaluator=E_v_Evaluator, optimization_options = optimization_options, 
+        opt = Optimization(EnergyEvaluator=E_v_Evaluator, optimization_options = optimization_options,
                 optimization_method = config['OPT']['method'])
         rho = opt.optimize_rho(guess_rho=rho_ini)
         # perform second step, dense grid
@@ -140,15 +141,18 @@ def OptimizeDensityConf(config, ions = None, rhoini = None):
             rho_ini = DirectField(grid=grid2, griddata_3d=rho_ini, rank=1)
             rho_ini *= (charge_total / (np.sum(rho_ini) * rho_ini.grid.dV ))
             ions.restart()
-            opt = Optimization(EnergyEvaluator=E_v_Evaluator, optimization_options = optimization_options, 
+            opt = Optimization(EnergyEvaluator=E_v_Evaluator, optimization_options = optimization_options,
                     optimization_method = config['OPT']['method'])
             rho = opt.optimize_rho(guess_rho=rho_ini)
         optimization_options["econv"] /= ions.nat # reset the value
+    elif 'Propagate' in config['JOB']['task']:
+        tdrunner(rho_ini, E_v_Evaluator, config)
+        return 0
     else :
         rho = rho_ini
     ############################## calctype  ##############################
-    linearii = config['MATH']['linearii'] 
-    linearie = config['MATH']['linearie'] 
+    linearii = config['MATH']['linearii']
+    linearie = config['MATH']['linearie']
     energypotential = {}
     forces = {}
     stress = {}
@@ -158,11 +162,11 @@ def OptimizeDensityConf(config, ions = None, rhoini = None):
         energypotential = GetEnergyPotential(ions, rho, E_v_Evaluator, calcType = 'Both', linearii = linearii, linearie = linearie)
     elif 'Potential' in config['JOB']['calctype'] :
         print('Calculate Potential...')
-        energypotential = GetEnergyPotential(ions, rho, E_v_Evaluator, calcType = 'Potential', linearii = linearii, linearie = linearie) 
+        energypotential = GetEnergyPotential(ions, rho, E_v_Evaluator, calcType = 'Potential', linearii = linearii, linearie = linearie)
     # elif 'Energy' in config['JOB']['calctype'] :
     else :
         print('Calculate Energy...')
-        energypotential = GetEnergyPotential(ions, rho, E_v_Evaluator, calcType = 'Energy', linearii = linearii, linearie = linearie) 
+        energypotential = GetEnergyPotential(ions, rho, E_v_Evaluator, calcType = 'Energy', linearii = linearii, linearie = linearie)
     print(format('Energy information',"-^80"))
     for key in sorted(energypotential.keys()) :
         if key == 'TOTAL' : continue
@@ -258,7 +262,7 @@ def OptimizeDensityConf(config, ions = None, rhoini = None):
     results['density'] = rho
     results['energypotential'] = energypotential
     results['forces'] = forces
-    results['stress'] = stress 
+    results['stress'] = stress
     # print('-' * 31, 'Time information', '-' * 31)
     TimeData.End('TOTAL')
     print(format('Time information',"-^80"))
@@ -278,12 +282,12 @@ def OptimizeDensityConf(config, ions = None, rhoini = None):
 def GetEnergyPotential(ions, rho, EnergyEvaluator, calcType = 'Both', linearii = True, linearie = True):
     energypotential = {}
     energypotential['KE'] = EnergyEvaluator.KineticEnergyFunctional.ComputeEnergyPotential(rho,calcType, split = True)
-    energypotential['XC'] =  EnergyEvaluator.XCFunctional.ComputeEnergyPotential(rho,calcType) 
-    energypotential['HARTREE'] = EnergyEvaluator.HARTREE.ComputeEnergyPotential(rho,calcType) 
+    energypotential['XC'] =  EnergyEvaluator.XCFunctional.ComputeEnergyPotential(rho,calcType)
+    energypotential['HARTREE'] = EnergyEvaluator.HARTREE.ComputeEnergyPotential(rho,calcType)
     energypotential['IE'] = EnergyEvaluator.IONS.ComputeEnergyPotential(rho,calcType)
     ewaldobj = ewald(rho=rho, ions=ions, PME = linearii)
     energypotential['II'] = Functional(name='Ewald', potential = np.zeros_like(rho), energy= ewaldobj.energy)
-    energypotential['TOTAL'] = energypotential['XC']  + energypotential['HARTREE'] + energypotential['IE'] + energypotential['II'] 
+    energypotential['TOTAL'] = energypotential['XC']  + energypotential['HARTREE'] + energypotential['IE'] + energypotential['II']
     for key in energypotential['KE'] :
         energypotential['TOTAL'] += energypotential['KE'][key]
     return energypotential
@@ -311,7 +315,7 @@ def GetStress(ions, rho, energypotential=None, energy=None, xc = 'LDA', ke = 'WT
         for key in energypotential['KE'] :
             energy['KE'][key] = energypotential['KE'][key].energy
     elif energy is None :
-        energy = { 'XC' : None, 'HARTREE': None, 'II': None, 'IE': None, 
+        energy = { 'XC' : None, 'HARTREE': None, 'II': None, 'IE': None,
                 'KE': {'TF' :None, 'vW' :None, 'NL' :None} }
     ewaldobj = ewald(rho = rho, ions = ions, verbose = False, PME = linearii)
     stress = {}
@@ -327,7 +331,7 @@ def GetStress(ions, rho, energypotential=None, energy=None, xc = 'LDA', ke = 'WT
         stress['IE'] = NuclearElectronStress(ions, rho, energy=energy['IE'], PP_file=PPlist)
     ############################## KE ##############################
     stress['KE'] = {}
-    KEDFNameList = ['TF','vW','x_TF_y_vW','TFvW', 'WT'] # KEDFNLNameList = ['WT','MGP','FP', 'SM'] # is_nonlocal = True 
+    KEDFNameList = ['TF','vW','x_TF_y_vW','TFvW', 'WT'] # KEDFNLNameList = ['WT','MGP','FP', 'SM'] # is_nonlocal = True
     if ke not in KEDFNameList :
         raise AttributeError("%s KEDF have not implemented for stress" %ke)
     if ke == 'TF' :
