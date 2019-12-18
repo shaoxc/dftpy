@@ -217,7 +217,7 @@ class FunctionalClass(AbstractFunctional):
             ions = self.optional_kwargs.get('ions')
             return NuclearElectron(density=rho,ions=ions,PPs=PP_list, calcType=calcType)
 
-class TotalEnergyAndPotential(object):
+class TotalEnergyAndPotential(AbstractFunctional):
     '''
      Object handling energy evaluation for the 
      purposes of optimizing the electron density
@@ -249,8 +249,9 @@ class TotalEnergyAndPotential(object):
      in_for_scipy_minimize = EnergyEvaluator(phi)
     '''
     
-    def __init__(self,KineticEnergyFunctional=None, XCFunctional=None, IONS=None, HARTREE=None, rho=None):
+    def __init__(self,KineticEnergyFunctional=None, XCFunctional=None, IONS=None, HARTREE=None):
         
+        self.name = ''
 
         if KineticEnergyFunctional is None:
             raise AttributeError('Must define KineticEnergyFunctional')
@@ -258,6 +259,8 @@ class TotalEnergyAndPotential(object):
             raise AttributeError('KineticEnergyFunctional must be FunctionalClass')
         else:
             self.KineticEnergyFunctional = KineticEnergyFunctional
+            self.name += self.KineticEnergyFunctional.name + ' '
+            self.type += self.KineticEnergyFunctional.type + ' '
                                  
         if XCFunctional is None:
             raise AttributeError('Must define XCFunctional')
@@ -265,6 +268,8 @@ class TotalEnergyAndPotential(object):
             raise AttributeError('XCFunctional must be FunctionalClass')
         else:
             self.XCFunctional = XCFunctional
+            self.name += self.XCFunctional.name + ' '
+            self.type += self.XCFunctional.type + ' '
                                  
         if IONS is None:
             raise AttributeError('Must define IONS')
@@ -272,37 +277,20 @@ class TotalEnergyAndPotential(object):
             raise AttributeError('IONS must be FunctionalClass')
         else:
             self.IONS = IONS
+            self.name += self.IONS.name + ' '
+            self.type += self.IONS.type + ' '
                                  
         if HARTREE is None:
             print('WARNING: using FFT Hartree')
             self.HARTREE = HARTREE
         else:
             self.HARTREE = HARTREE
+            self.name += self.HARTREE.name + ' '
+            self.type += self.HARTREE.type + ' '
                                  
-        if rho is None:
-            raise AttributeError('Must define rho')
-        elif not isinstance(rho, DirectField):
-            raise AttributeError('rho must be DirectField')
-        else:
-            self.rho = rho
-            self.N = self.rho.integral()
-            
-    def __call__ (self,phi):
-        # call the XC and such... depending on kwargs
-        rho_shape = np.shape(self.rho)
-        if not isinstance(phi, DirectField):
-            phi_ = DirectField(self.rho.grid,griddata_3d=np.reshape(phi,rho_shape),rank=1)
-        else:
-            phi_ = phi
-        rho_ = phi_*phi_
-        N_=rho_.integral()
-        rho_ *= self.N/N_
-        func = self.ComputeEnergyPotential(rho_)
-        E=func.energy
-        int_tem_ = phi_*phi_*func.potential
-        other_term_ = - int_tem_.integral() / N_
-        final_v_ = ( func.potential + other_term_ ) * 2.0 * phi_  * self.N/N_ * rho_.grid.dV
-        return  E , final_v_.ravel()
+
+    def __call__ (self, rho, calcType='Both'):
+        return self.ComputeEnergyPotential(rho, calcType)
     
     def ComputeEnergyPotential(self,rho, calcType = 'Both'):
         Obj = self.KineticEnergyFunctional(rho,calcType)\

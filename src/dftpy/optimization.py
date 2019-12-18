@@ -146,8 +146,8 @@ class Optimization(object):
             epsi = 1.0E-9
             rho = phi * phi
             if mu is None :
-                func = self.EnergyEvaluator.ComputeEnergyPotential(rho, calcType = 'Potential')
-                mu = (func.potential * rho).integral() / self.EnergyEvaluator.N
+                func = self.EnergyEvaluator(rho, calcType = 'Potential')
+                mu = (func.potential * rho).integral() / rho.N
             res = -resA[-1]
             p = res.copy()
             r0Norm = np.einsum('ijkl, ijkl->', res, res)
@@ -159,8 +159,8 @@ class Optimization(object):
             for it in range(self.optimization_options["maxfun"]):
                 phi1 = phi + epsi * p
                 rho1 = phi1 * phi1
-                func = self.EnergyEvaluator.ComputeEnergyPotential(rho1, calcType = 'Potential')
-                # munew = (func.potential * rho1).integral() / self.EnergyEvaluator.N
+                func = self.EnergyEvaluator(rho1, calcType = 'Potential')
+                # munew = (func.potential * rho1).integral() / rho.N
                 Ap = ((func.potential - mu) * phi1 - resA[-1]) / epsi
                 pAp = np.einsum('ijkl, ijkl->', p, Ap)
                 if pAp < 0.0 :
@@ -199,8 +199,8 @@ class Optimization(object):
             direction = np.zeros_like(resA[-1])
             rho = phi * phi
             if mu is None :
-                func = self.EnergyEvaluator.ComputeEnergyPotential(rho, calcType = 'Potential')
-                mu = (func.potential * rho).integral() / self.EnergyEvaluator.N
+                func = self.EnergyEvaluator(rho, calcType = 'Potential')
+                mu = (func.potential * rho).integral() / rho.N
             q = -resA[-1]
             alphaList = np.zeros(len(lbfgs.s))
             for i in range(len(lbfgs.s)-1, 0, -1):
@@ -229,12 +229,12 @@ class Optimization(object):
 
     def OrthogonalNormalization(self, p, phi, vector = 'Orthogonalization'):
         if vector == 'Orthogonalization' :
-            N = self.EnergyEvaluator.N
+            N = rho.N
             # ptest = p + phi ; # N = (ptest * ptest).integral()
-            p -= ((p * phi).integral() / self.EnergyEvaluator.N * phi)
+            p -= ((p * phi).integral() / rho.N * phi)
             pNorm = (p * p).integral()
             theta = np.sqrt( pNorm / N)
-            p *= np.sqrt(self.EnergyEvaluator.N / pNorm)
+            p *= np.sqrt(rho.N / pNorm)
         else :
             theta = 0.01
         return p, theta
@@ -246,20 +246,20 @@ class Optimization(object):
         else : # Scaling
             newphi = phi + p * theta
             newrho = newphi * newphi
-            norm = self.EnergyEvaluator.N / newrho.integral() 
+            norm = rho.N / newrho.integral() 
             newrho *= norm
             newphi *= np.sqrt(norm)
         if func is not None :
             f = func
         if algorithm == 'EMM' : 
             if func is None :
-                f = self.EnergyEvaluator.ComputeEnergyPotential(newrho, calcType = 'Both')
+                f = self.EnergyEvaluator(newrho, calcType = 'Both')
             value = f.energy
         else : #RMM
             if func is None :
-                f = self.EnergyEvaluator.ComputeEnergyPotential(newrho, calcType = 'Both')
-                # f = self.EnergyEvaluator.ComputeEnergyPotential(newrho, calcType = 'Potential')
-            mu = (f.potential * newrho).integral() / self.EnergyEvaluator.N
+                f = self.EnergyEvaluator(newrho, calcType = 'Both')
+                # f = self.EnergyEvaluator(newrho, calcType = 'Potential')
+            mu = (f.potential * newrho).integral() / rho.N
             residual = (f.potential - mu) * newphi
             resN = np.einsum('ijkl, ijkl->', residual, residual)*phi.grid.dV
             value = resN
@@ -287,8 +287,8 @@ class Optimization(object):
         #-----------------------------------------------------------------------
         EnergyHistory = []
         phi = np.sqrt(rho)
-        func = self.EnergyEvaluator.ComputeEnergyPotential(rho)
-        mu = (func.potential * rho).integral() / self.EnergyEvaluator.N
+        func = self.EnergyEvaluator(rho)
+        mu = (func.potential * rho).integral() / rho.N
         residual = (func.potential - mu)* phi
         residualA = []
         residualA.append(residual)
@@ -343,10 +343,10 @@ class Optimization(object):
                 theta = 0.1
                 newphi = phi + p * theta
                 newrho = newphi * newphi
-                norm = self.EnergyEvaluator.N / newrho.integral() 
+                norm = rho.N / newrho.integral() 
                 newrho *= norm
                 newphi *= np.sqrt(norm)
-                newfunc = self.EnergyEvaluator.ComputeEnergyPotential(newrho, calcType = 'Potential')
+                newfunc = self.EnergyEvaluator(newrho, calcType = 'Potential')
                 NumLineSearch = 1
 
             if theta is None :
@@ -364,21 +364,21 @@ class Optimization(object):
             rho = phi * phi
             func = newfunc
             # if self.optimization_options["algorithm"] == 'RMM' :
-                # f = self.EnergyEvaluator.ComputeEnergyPotential(rho, calcType = 'Energy')
+                # f = self.EnergyEvaluator(rho, calcType = 'Energy')
                 # func.energy = f.energy
-                # func = self.EnergyEvaluator.ComputeEnergyPotential(rho, calcType = 'Both')
-            mu = (func.potential * rho).integral() / self.EnergyEvaluator.N
+                # func = self.EnergyEvaluator(rho, calcType = 'Both')
+            mu = (func.potential * rho).integral() / rho.N
             residual = (func.potential - mu)* phi
             #-----------------------------------------------------------------------
             if self.optimization_method=='DIIS' :
                 p = -residual
                 phi = phi + p * theta
                 rho = phi * phi
-                norm = self.EnergyEvaluator.N / rho.integral() 
+                norm = rho.N / rho.integral() 
                 rho *= norm
                 phi *= np.sqrt(norm)
-                func = self.EnergyEvaluator.ComputeEnergyPotential(rho, calcType = 'Both')
-                mu = (func.potential * rho).integral() / self.EnergyEvaluator.N
+                func = self.EnergyEvaluator(rho, calcType = 'Both')
+                mu = (func.potential * rho).integral() / rho.N
                 residual = (func.potential - mu)* phi
 
             residualA.append(residual)

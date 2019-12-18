@@ -115,8 +115,9 @@ class DirectField(BaseField):
         if not isinstance(grid, DirectGrid):
             raise TypeError("the grid argument is not an instance of DirectGrid")
         obj = super().__new__(cls, grid, memo="", rank=rank, griddata_F=griddata_F, griddata_C=griddata_C, griddata_3d=griddata_3d)
+        obj._N         = None
         obj.spl_coeffs = None
-        cls.cplx = cplx
+        cls.cplx       = cplx
         cls.fft_object = None
         return obj
 
@@ -128,6 +129,7 @@ class DirectField(BaseField):
         if obj is None: return
         super().__array_finalize__(obj)
         self.spl_coeffs = None
+        self._N = None
 
     def _calc_spline(self):
         padded_values = np.pad(self[:,:,:,0], ((self.spl_order,)), mode='wrap')
@@ -458,6 +460,12 @@ class DirectField(BaseField):
             values = values.reshape((a, b, c))
 
         return DirectField(grid=cut_grid, memo=self.memo, griddata_3d=values)
+
+    @property
+    def N(self):
+        if self._N is None:
+            self._N = self.integral()
+        return self._N
 
 class ReciprocalField(BaseField):
 
