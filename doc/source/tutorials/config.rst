@@ -17,12 +17,14 @@ Config of dftpy script
      * - `KEDF`_
        - `OUTPUT`_
        - `OPT`_
-       - 
+       - `PROPAGATOR`_
+       - `TD`_
+       -
 
 JOB
 ----------
 
-    Control the job running. 
+    Control the job running.
 
 .. option:: task
 
@@ -46,14 +48,14 @@ PATH
 .. option:: pppath
 
     The path of pseudopotential.
-        *Options* : 
+        *Options* :
 
         *Default* : None
 
 .. option:: cellpath
 
     The path of input structure.
-        *Options* : 
+        *Options* :
 
         *Default* : None
 
@@ -96,7 +98,7 @@ MATH
     Except first step, the initial density is given by optimization density of previous step.
         *Options* : True, False
 
-        *Default* : True 
+        *Default* : True
 
 
 PP
@@ -119,21 +121,21 @@ CELL
 .. option:: cellfile
 
     The file of input structure.
-        *Options* :  
+        *Options* :
 
         *Default* : POSCAR
 
 .. option:: elename
 
     The name of atom.
-        *Options* : 
+        *Options* :
 
         *Default* : Al
 
 .. option:: zval
 
     The charge of atomic species.
-        *Options* : 
+        *Options* :
 
         *Default* : None
 
@@ -153,14 +155,14 @@ GRID
 .. option:: ecut
 
     The kinetic energy cutoff (eV).
-        *Options* : 
+        *Options* :
 
         *Default* : 600
 
 .. option:: spacing
 
     The spacing of real space grid. If set this, :option:`ecut` will no longer working.
-        *Options* : 
+        *Options* :
 
         *Default* : None
 
@@ -174,7 +176,7 @@ GRID
 .. option:: nr
 
     Given the number of grid points in three directions.
-        *Options* : 
+        *Options* :
 
         *Default* : None
 
@@ -198,14 +200,14 @@ DENSITY
 .. option:: densityfile
 
     The charge density for initial density, only works when if :option:`densityini` set `Read`.
-        *Options* : 
+        *Options* :
 
         *Default* : None
 
 .. option:: densityoutput
 
     The output file of final density. The default is not output the density.
-        *Options* : 
+        *Options* :
 
         *Default* : None
 
@@ -225,14 +227,14 @@ EXC
 .. option:: x_str
 
     The formular of exchange functionals.
-        *Options* : 
+        *Options* :
 
         *Default* : lda_x
 
 .. option:: c_str
 
     The format of correlation functionals.
-        *Options* : 
+        *Options* :
 
         *Default* : lda_c_pz
 
@@ -252,56 +254,56 @@ KEDF
 .. option:: x
 
     The ratio of TF KEDF.
-        *Options* : 
+        *Options* :
 
         *Default* : 1.0
 
 .. option:: y
 
     The ratio of vW KEDF.
-        *Options* : 
+        *Options* :
 
         *Default* : 1.0
 
 .. option:: alpha
 
     The parameter of Non-local KEDF :math:`\rho^{\alpha}`.
-        *Options* : 
+        *Options* :
 
         *Default* : 5.0/6.0
 
 .. option:: beta
 
     The parameter of Non-local KEDF :math:`\rho^{\beta}`.
-        *Options* : 
+        *Options* :
 
         *Default* : 5.0/6.0
 
 .. option:: sigma
 
     The parameter for `FFT`.
-        *Options* : 
+        *Options* :
 
         *Default* : 0.025
 
 .. option:: nsp
 
     The number of :math:`{k_{f}}` for spline in `LWT` KEDF. There are three options to do same thing, the priority is :option:`nsp` -> :option:`delta` -> :option:`ratio`. Default is using :option:`ratio`.
-        *Options* : 
+        *Options* :
 
-        *Default* : None 
+        *Default* : None
 
 .. option:: delta
 
     The gap of :math:`{k_{f}}` for spline in `LWT` KEDF. There are three options to do same thing, the priority is :option:`nsp` -> :option:`delta` -> :option:`ratio`. Default is using :option:`ratio`.
-        *Options* : 
+        *Options* :
 
-        *Default* : None 
+        *Default* : None
 
 .. option:: ratio
 
     The ratio of :math:`{k_{f}}` for spline in `LWT` KEDF. There are three options to do same thing, the priority is :option:`nsp` -> :option:`delta` -> :option:`ratio`. Default is using :option:`ratio`.
-        *Options* : 
+        *Options* :
 
         *Default* : 1.2
 
@@ -329,35 +331,35 @@ KEDF
 .. option:: lumpfactor
 
     The kinetic electron for `LWT` KEDF.
-        *Options* : 
+        *Options* :
 
         *Default* : None
 
 .. option:: neta
 
     The max number of discrete :math:`\eta` for `LWT` KEDF.
-        *Options* : 
+        *Options* :
 
-        *Default* : 50000 
+        *Default* : 50000
 
 .. option:: etamax
 
     The max value of \eta for kernel in `LWT` KEDF.
-        *Options* : 
+        *Options* :
 
         *Default* : 50.0
 
 .. option:: order
 
     The order for interpolate the kernel in `LWT` KEDF. '0' means using the value of nearest-neighbor point.
-        *Options* : 
+        *Options* :
 
         *Default* : 3
 
 .. option:: maxpoints
 
     The max number for evaluation of `MGP` kernel.
-        *Options* : 
+        *Options* :
 
         *Default* : 1000
 
@@ -370,17 +372,17 @@ KEDF
 
         *Options* : 1,2,3
 
-        *Default* : 3 
+        *Default* : 3
 
 .. option:: rho0
 
     The 'average' density for the Fermi momentum. Default is None, which means it calculated based on the total charge and system volume.
-        *Options* : 
+        *Options* :
 
         *Default* : None
 
 
-OUTPUT 
+OUTPUT
 ----------
 
     Control the output.
@@ -395,7 +397,7 @@ OUTPUT
 .. option:: stress
 
     Output the stress information of all terms.
-        *Options* : 
+        *Options* :
 
         *Default* : True
 
@@ -417,7 +419,7 @@ OPT
     The direct minimization method : Energy (EMM) or Residual (RMM).
         *Options* : EMM, RMM
 
-        *Default* : EMM 
+        *Default* : EMM
 
 .. option:: vector
 
@@ -429,58 +431,138 @@ OPT
 .. option:: c1
 
     The wolfe parameters `c1`
-        *Options* : 
+        *Options* :
 
         *Default* : 1e-4
 
 .. option:: c2
 
     The wolfe parameters `c2`
-        *Options* : 
+        *Options* :
 
         *Default* : 2e-1
 
 .. option:: maxls
 
     The max steps for line search.
-        *Options* : 
+        *Options* :
 
         *Default* : 10
 
 .. option:: econv
 
     The energy convergence for last three steps (a.u./atom).
-        *Options* : 
+        *Options* :
 
-        *Default* : 1e-6 
+        *Default* : 1e-6
 
 .. option:: maxfun
 
     The max steps for function calls. For `TN` density optimization method its the max steps for searching direction.
-        *Options* : 
+        *Options* :
 
-        *Default* : 50  
+        *Default* : 50
 
 .. option:: maxiter
 
     The max steps for optimization
-        *Options* : 
+        *Options* :
 
         *Default* : 100
 
 .. option:: xtol
 
     Relative tolerance for an acceptable step.
-        *Options* : 
+        *Options* :
 
         *Default* : 1e-12
 
 .. option:: h0
 
     The initial approximate of the inverse Hessian for `LBFGS`.
-        *Options* : 
+        *Options* :
 
-        *Default* : 1.0 
+        *Default* : 1.0
+
+  PROPAGATOR
+  ----------
+
+      Control the propagator.
+
+  .. option:: order
+
+      The order used for the Taylor expansion propagator.
+          *Options* :
+
+          *Default* : 20
+
+  .. option:: linearsolver
+
+      The linear solver used for the Crank-Nicolson expansion propagator.
+          *Options* : bicg, bicgstab, cg, cgs, gmres, lgmres, minres, qmr
+
+          *Default* : bicgstab
+
+  .. option:: tol
+
+      The tolerance for the linear solver used for the Crank-Nicolson expansion propagator.
+          *Options* :
+
+          *Default* : 1e-10
+
+  .. option:: maxiter
+
+      The max amount of iteration steps for the linear solver used for the Crank-Nicolson expansion propagator.
+          *Options* :
+
+          *Default* : 100
+
+  .. option:: sigma
+
+      The parameter for `FFT`.
+          *Options* :
+
+          *Default* : 0.025
+
+  TD
+  ----------
+
+      Control the non-propagator related time-depend parameters.
+
+  .. option:: outfile
+
+      The prefix of the output files.
+          *Options* :
+
+          *Default* : td_out
+
+  .. option:: int_t
+
+      The time step in atomic units.
+          *Options* :
+
+          *Default* : 1e-3
+
+  .. option:: tmax
+
+      The total amount of time in atomic units.
+          *Options* :
+
+          *Default* : 1.0
+
+  .. option:: order
+
+      The max amount of order of the prediction correction steps.
+          *Options* :
+
+          *Default* : 1
+
+  .. option:: direc
+
+      The direction of the initial kick.
+          *Options* : x, y, z
+
+          *Default* : x
 
 
 .. note::
