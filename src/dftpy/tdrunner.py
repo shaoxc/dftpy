@@ -1,3 +1,11 @@
+import numpy as np
+from dftpy.functionals import FunctionalClass, TotalEnergyAndPotential
+from dftpy.propagator import Propagator, hamiltonian
+from dftpy.field import DirectField, ReciprocalField
+from dftpy.grid import DirectGrid, ReciprocalGrid
+from dftpy.system import System
+import time
+
 def cal_rho_j(psi):
     rho = np.real(psi*np.conj(psi))
     s = DirectField(psi.grid, rank=1, griddata_3d=np.angle(psi))
@@ -8,9 +16,10 @@ def tdrunner(rho0, E_v_Evaluator, config):
 
     outfile = config['TD']['outfile']
     int_t = config['TD']['int_t']
-    tmax = config['TD']['tmax']
+    t_max = config['TD']['tmax']
     order = config['TD']['order']
     direc = config['TD']['direc']
+    num_t = int(t_max/int_t)
     
     prop = Propagator(interval = int_t, type='crank-nicolson', optional_kwargs=config['PROPAGATOR'])
 

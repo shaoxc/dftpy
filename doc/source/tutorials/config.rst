@@ -484,85 +484,85 @@ OPT
 
         *Default* : 1.0
 
-  PROPAGATOR
-  ----------
+PROPAGATOR
+----------
 
-      Control the propagator.
+    Control the propagator.
 
-  .. option:: order
+.. option:: order
 
-      The order used for the Taylor expansion propagator.
-          *Options* :
+    The order used for the Taylor expansion propagator.
+        *Options* :
 
-          *Default* : 20
+        *Default* : 20
 
-  .. option:: linearsolver
+.. option:: linearsolver
 
-      The linear solver used for the Crank-Nicolson expansion propagator.
-          *Options* : bicg, bicgstab, cg, cgs, gmres, lgmres, minres, qmr
+    The linear solver used for the Crank-Nicolson expansion propagator.
+        *Options* : bicg, bicgstab, cg, cgs, gmres, lgmres, minres, qmr
 
-          *Default* : bicgstab
+        *Default* : bicgstab
 
-  .. option:: tol
+.. option:: tol
 
-      The tolerance for the linear solver used for the Crank-Nicolson expansion propagator.
-          *Options* :
+    The tolerance for the linear solver used for the Crank-Nicolson expansion propagator.
+        *Options* :
 
-          *Default* : 1e-10
+        *Default* : 1e-10
 
-  .. option:: maxiter
+.. option:: maxiter
 
-      The max amount of iteration steps for the linear solver used for the Crank-Nicolson expansion propagator.
-          *Options* :
+    The max amount of iteration steps for the linear solver used for the Crank-Nicolson expansion propagator.
+        *Options* :
 
-          *Default* : 100
+        *Default* : 100
 
-  .. option:: sigma
+.. option:: sigma
 
-      The parameter for `FFT`.
-          *Options* :
+    The parameter for `FFT`.
+        *Options* :
 
-          *Default* : 0.025
+        *Default* : 0.025
 
-  TD
-  ----------
+TD
+----------
 
-      Control the non-propagator related time-depend parameters.
+    Control the non-propagator related time-depend parameters.
 
-  .. option:: outfile
+.. option:: outfile
 
-      The prefix of the output files.
-          *Options* :
+    The prefix of the output files.
+        *Options* :
 
-          *Default* : td_out
+        *Default* : td_out
 
-  .. option:: int_t
+.. option:: int_t
 
-      The time step in atomic units.
-          *Options* :
+    The time step in atomic units.
+        *Options* :
 
-          *Default* : 1e-3
+        *Default* : 1e-3
 
-  .. option:: tmax
+.. option:: tmax
 
-      The total amount of time in atomic units.
-          *Options* :
+    The total amount of time in atomic units.
+        *Options* :
 
-          *Default* : 1.0
+        *Default* : 1.0
 
-  .. option:: order
+.. option:: order
 
-      The max amount of order of the prediction correction steps.
-          *Options* :
+    The max amount of order of the prediction correction steps.
+        *Options* :
 
-          *Default* : 1
+        *Default* : 1
 
-  .. option:: direc
+.. option:: direc
 
-      The direction of the initial kick.
-          *Options* : x, y, z
+    The direction of the initial kick.
+        *Options* : x, y, z
 
-          *Default* : x
+        *Default* : x
 
 
 .. note::

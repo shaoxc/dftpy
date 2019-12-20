@@ -84,7 +84,7 @@ def taylor(psi0, v, interval, sigma=0.025, order=1):
 
 def cnMatvecUtil(v, dt, sigma):
     def cnMatvec(psi_):
-        psi = DirectField(grid = v.grid, rank=1, griddata_3d=np.reshape(psi_, np.shape(v)))
+        psi = DirectField(grid = v.grid, rank=1, griddata_3d=np.reshape(psi_, np.shape(v)), cplx = True)
         prod = psi - 1j * hamiltonian(psi,v,sigma) * dt/2.0
         return prod.ravel()
     return cnMatvec
@@ -92,7 +92,7 @@ def cnMatvecUtil(v, dt, sigma):
 def cnMatvecUtil_fft(v, dt):
     def cnMatvec_fft(psi_fft_):
         reci_grid = v.grid.get_reciprocal()
-        psi_fft = ReciprocalField(reci_grid, rank=1, griddata_3d=np.reshape(psi_fft_, np.shape(reci_grid.gg)))
+        psi_fft = ReciprocalField(reci_grid, rank=1, griddata_3d=np.reshape(psi_fft_, np.shape(reci_grid.gg)), cplx = True)
         prod = psi_fft - 1j * hamiltonian_fft(psi_fft,v) * dt/2.0
         return prod.ravel()
     return cnMatvec_fft
@@ -125,7 +125,7 @@ def CrankNicolson(psi0, v, interval,sigma=0.025, linearsolver='bicgstab', tol=1e
 
     if info:
         print(info)
-    psi1 = DirectField(grid=psi0.grid, rank=1, griddata_3d=np.reshape(psi1_, np.shape(psi0)))
+    psi1 = DirectField(grid=psi0.grid, rank=1, griddata_3d=np.reshape(psi1_, np.shape(psi0)), cplx = True)
     #psi1 = ReciprocalField(grid=psi0.grid, rank=1, griddata_3d=np.reshape(psi1_, np.shape(psi0)))
     #N1 = (np.real(psi1 * np.conj(psi1))).integral()
     #psi1 = psi1 * np.sqrt(N0/N1)
