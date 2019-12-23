@@ -5,9 +5,9 @@
 from dftpy.field import DirectField
 from dftpy.functional_output import Functional
 from dftpy.semilocal_xc import PBE, LDA, XC, KEDF
-from dftpy.local_pseudopotential import NuclearElectron
 from dftpy.hartree import HartreeFunctional
 from dftpy.kedf import TF,vW, x_TF_y_vW, WT, LWT, FP, SM, MGP, GGA
+from dftpy.pseudo import LocalPseudo
 
 # general python imports
 from abc import ABC, abstractmethod
@@ -29,6 +29,11 @@ class AbstractFunctional(ABC):
     @abstractmethod
     def ComputeEnergyPotential(self,rho,**kwargs):
         # returns edens and pot
+        pass
+
+    @property
+    @abstractmethod
+    def GetFunctional(self):
         pass
 
     def GetName(self):
@@ -99,7 +104,14 @@ class FunctionalClass(AbstractFunctional):
           Functional: functional output handler
              The output is a Functional class
         '''
-        return self.ComputeEnergyPotential(rho, calcType)
+        self._outfunctional = self.ComputeEnergyPotential(rho, calcType)
+        return self._outfunctional
+
+    @property
+    def GetFunctional(self):
+        if self._outfunctional is None:
+            self._outfunctional = self.ComputeEnergyPotential(rho, calcType)    
+        return self._outfunctional  
     
     def __init__(self,type=None,name=None,is_nonlocal=None,optional_kwargs=None,  **kwargs):
         #init the class
@@ -118,10 +130,9 @@ class FunctionalClass(AbstractFunctional):
         KEDFNameList = ['TF','vW','x_TF_y_vW','LC94','revAPBEK','TFvW','LIBXC_KEDF','CUSTOM_KEDF']
         KEDFNLNameList = ['WT','MGP','MGP0','WGC2','WGC1','WGC0','LMGP','LMGP0','LWT', 'FP', 'SM', \
                 'MGPA', 'MGPG', 'LMGP0', 'LMGPA', 'LMGPG', 'GGA']
-        IONSNameList = ['IONS']
         HNameList = ['HARTREE']
         
-        self.FunctionalNameList = XCNameList + KEDFNameList + KEDFNLNameList + IONSNameList +HNameList
+        self.FunctionalNameList = XCNameList + KEDFNameList + KEDFNLNameList + HNameList
         
         if type is None:
             raise AttributeError('Must assign type to FunctionalClass')
@@ -129,27 +140,19 @@ class FunctionalClass(AbstractFunctional):
             self.type = type
 
         if name is None:
-            if type not in ['HARTREE','IONS']:
+            if type not in ['HARTREE']:
                 raise AttributeError('Must assign name to FunctionalClass')
             else:
                 self.name=self.type
         else:
             self.name = name
-
-        # if is_nonlocal is None:
-            # if type not in ['HARTREE','IONS']:
-                # raise AttributeError('Must assign is_nonlocal to FunctionalClass')
-            # else:
-                # self.is_nonlocal=False
-        # else:
-            # self.is_nonlocal = is_nonlocal
             
         if not isinstance(self.optional_kwargs,dict):
             raise AttributeError('optional_kwargs must be dict')
             
         if not self.CheckFunctional():
             raise Exception ('Functional check failed') 
-    
+
     def ComputeEnergyPotential(self,rho, calcType = 'Both',  **kwargs):
         self.optional_kwargs.update(kwargs)
         if self.type == 'KEDF':
@@ -212,10 +215,6 @@ class FunctionalClass(AbstractFunctional):
                 return XC(density=rho,x_str=x_str,c_str=c_str,polarization=polarization, calcType=calcType, **self.optional_kwargs)
         if self.type == 'HARTREE':
             return HartreeFunctional(density=rho, calcType=calcType)
-        if self.type == 'IONS':
-            PP_list = self.optional_kwargs.get('PP_list')
-            ions = self.optional_kwargs.get('ions')
-            return NuclearElectron(density=rho,ions=ions,PPs=PP_list, calcType=calcType)
 
 class TotalEnergyAndPotential(AbstractFunctional):
     '''

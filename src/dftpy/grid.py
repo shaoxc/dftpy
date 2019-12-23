@@ -108,6 +108,13 @@ class DirectGrid(BaseGrid,DirectCell):
         return self._r
 
     @property
+    def rr(self):
+        if self._rr is None:
+            rr = np.einsum('ijkl,ijkl->ijk',self.r,self.r)
+            self._rr = np.reshape(rr,[self.nr[0],self.nr[1],self.nr[2],1])
+        return self._rr
+
+    @property
     def s(self):
         if self._s is None:
             self._calc_grid_crys_points()

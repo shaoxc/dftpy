@@ -11,8 +11,7 @@ from dftpy.field import DirectField, ReciprocalField
 from dftpy.math_utils import TimeData, bestFFTsize, interpolation_3d, prolongation
 from dftpy.functional_output import Functional
 from dftpy.semilocal_xc import LDAStress
-from dftpy.local_pseudopotential import NuclearElectronForce, NuclearElectronStress, \
-        NuclearElectronForcePME, NuclearElectronStressPME
+from dftpy.pseudo import LocalPseudo
 from dftpy.kedf.tf import ThomasFermiStress
 from dftpy.kedf.vw import vonWeizsackerStress
 from dftpy.kedf.wt import WTStress
@@ -44,8 +43,7 @@ def OptimizeDensityConf(config, ions = None, rhoini = None):
         nr = nr2//config['MATH']['multistep']
         print('MULTI-STEP: Perform first optimization step')
         print('Grid size of 1  step is ',  nr)
-    ############################## IONS  ##############################
-    ions.usePME = config['MATH']['linearie']
+    ############################## PSEUDO  ##############################
     PPlist = {}
     for key in config['PP'] :
         ele = key.capitalize()
@@ -53,16 +51,15 @@ def OptimizeDensityConf(config, ions = None, rhoini = None):
     optional_kwargs = {}
     optional_kwargs["PP_list"] = PPlist
     optional_kwargs["ions"]    = ions 
-    IONS = FunctionalClass(type='IONS', optional_kwargs=optional_kwargs)
+    optional_kwargs["PME"]    = config['MATH']['linearie'] 
     if not ions.Zval  :
         if config['CELL']['zval'] :
             elename = config['CELL']['elename']
             zval = config['CELL']['zval']
             for ele, z in zip(elename, zval):
                 ions.Zval[ele] = z
-        else :
-            ions.init_PP(PPlist)
-            ions.set_Zval()
+
+    PSEUDO = LocalPseudo(ions=ions,PP_list=PP_list,PME=PME)
 
     # print(config['KEDF'])
     KE = FunctionalClass(type='KEDF', name = config['KEDF']['kedf'], **config['KEDF'])
@@ -115,7 +112,7 @@ def OptimizeDensityConf(config, ions = None, rhoini = None):
                                     KineticEnergyFunctional=KE,
                                     XCFunctional=XC,
                                     HARTREE=HARTREE,
-                                    IONS=IONS)
+                                    PSEUDO=PSEUDO)
     if 'Optdensity' in config['JOB']['task'] :
         optimization_options = config['OPT']
         optimization_options["econv"] *= ions.nat
@@ -188,7 +185,7 @@ def OptimizeDensityConf(config, ions = None, rhoini = None):
     ############################## Force ##############################
     if 'Force' in config['JOB']['calctype'] :
         print('Calculate Force...')
-        forces = GetForces(ions, rho, linearii = linearii, linearie = linearie, PPlist = None)
+        forces = GetForces(ions, rho, E_v_Evaluator, linearii = linearii, linearie = linearie, PPlist = None)
         ############################## Output Force ##############################
         f = np.abs(forces['TOTAL'])
         fmax, fmin, fave = np.max(f), np.min(f), np.mean(f)
@@ -204,7 +201,7 @@ def OptimizeDensityConf(config, ions = None, rhoini = None):
     ############################## Stress ##############################
     if 'Stress' in config['JOB']['calctype'] :
         print('Calculate Stress...')
-        stress = GetStress(ions, rho, energypotential=energypotential, xc = config['EXC']['xc'], ke = config['KEDF']['kedf'], \
+        stress = GetStress(ions, rho, E_v_Evaluator, energypotential=energypotential, xc = config['EXC']['xc'], ke = config['KEDF']['kedf'], \
                 ke_options = config['KEDF'], linearii = linearii, linearie = linearie, PPlist = None)
         ############################## Output stress ##############################
         fstr_s =' ' * 16 + '{0[0]:12.5f} {0[1]:12.5f} {0[2]:12.5f}'
@@ -280,7 +277,7 @@ def GetEnergyPotential(ions, rho, EnergyEvaluator, calcType = 'Both', linearii =
     energypotential['KE'] = EnergyEvaluator.KineticEnergyFunctional.ComputeEnergyPotential(rho,calcType, split = True)
     energypotential['XC'] =  EnergyEvaluator.XCFunctional.ComputeEnergyPotential(rho,calcType) 
     energypotential['HARTREE'] = EnergyEvaluator.HARTREE.ComputeEnergyPotential(rho,calcType) 
-    energypotential['IE'] = EnergyEvaluator.IONS.ComputeEnergyPotential(rho,calcType)
+    energypotential['IE'] = EnergyEvaluator.PSEUDO(rho,calcType)
     ewaldobj = ewald(rho=rho, ions=ions, PME = linearii)
     energypotential['II'] = Functional(name='Ewald', potential = np.zeros_like(rho), energy= ewaldobj.energy)
     energypotential['TOTAL'] = energypotential['XC']  + energypotential['HARTREE'] + energypotential['IE'] + energypotential['II'] 
@@ -288,18 +285,15 @@ def GetEnergyPotential(ions, rho, EnergyEvaluator, calcType = 'Both', linearii =
         energypotential['TOTAL'] += energypotential['KE'][key]
     return energypotential
 
-def GetForces(ions, rho, linearii = True, linearie = True, PPlist = None):
+def GetForces(ions, rho, EnergyEvaluator, linearii = True, linearie = True, PPlist = None):
     forces = {}
-    if linearie :
-        forces['IE'] = NuclearElectronForcePME(ions, rho, PP_file=PPlist)
-    else :
-        forces['IE'] = NuclearElectronForce(ions, rho, PP_file=PPlist)
+    forces['IE'] = EnergyEvaluator.PSEUDO.force(rho)
     ewaldobj = ewald(rho = rho, ions = ions, verbose = False, PME = linearii)
     forces['II'] = ewaldobj.forces
     forces['TOTAL'] = forces['IE'] + forces['II']
     return forces
 
-def GetStress(ions, rho, energypotential=None, energy=None, xc = 'LDA', ke = 'WT', \
+def GetStress(ions, rho, EnergyEvaluator, energypotential=None, energy=None, xc = 'LDA', ke = 'WT', \
         ke_options  = {'x' :1.0, 'y' :1.0}, linearii = True, linearie = True, PPlist = None):
 
     if energypotential is not None :
@@ -321,10 +315,7 @@ def GetStress(ions, rho, energypotential=None, energy=None, xc = 'LDA', ke = 'WT
         raise AttributeError("%s exchange-correlation have not implemented for stress" %xc)
     stress['HARTREE'] = HartreeFunctionalStress(rho, energy=energy['HARTREE'])
     stress['II'] = ewaldobj.stress
-    if linearie :
-        stress['IE'] = NuclearElectronStressPME(ions, rho, energy=energy['IE'], PP_file=PPlist)
-    else :
-        stress['IE'] = NuclearElectronStress(ions, rho, energy=energy['IE'], PP_file=PPlist)
+    stress['IE'] = EnergyEvaluator.PSEUDO.stress(rho, energy=energy['IE'])
     ############################## KE ##############################
     stress['KE'] = {}
     KEDFNameList = ['TF','vW','x_TF_y_vW','TFvW', 'WT'] # KEDFNLNameList = ['WT','MGP','FP', 'SM'] # is_nonlocal = True 
