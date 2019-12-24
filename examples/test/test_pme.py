@@ -7,8 +7,7 @@ from dftpy.functionals import FunctionalClass
 from dftpy.constants import LEN_CONV
 from dftpy.formats.qepp import PP
 from dftpy.ewald import ewald
-from dftpy.local_pseudopotential import NuclearElectronForce, NuclearElectronForcePME
-from dftpy.local_pseudopotential import NuclearElectronStress, NuclearElectronStressPME
+from dftpy.pseudo import LocalPseudo
 
 class Test(unittest.TestCase):
     def test_ie(self):
@@ -17,29 +16,23 @@ class Test(unittest.TestCase):
         print("*"*50)
         print("Testing loading pseudopotentials")
         mol = PP(filepp=dftpy_data_path+"/Al_fde_rho.pp").read()
-        optional_kwargs = {}
-        optional_kwargs["PP_list"] = {'Al': dftpy_data_path+"/Al_lda.oe01.recpot"}
-        optional_kwargs["ions"]    = mol.ions 
-        IONS = FunctionalClass(type='IONS', optional_kwargs=optional_kwargs)
-        func  = IONS.ComputeEnergyPotential(rho=mol.field)
-        a = func.potential
-        optional_kwargs = {}
-        optional_kwargs["PP_list"] = {'Al': dftpy_data_path+"/Al_lda.oe01.recpot"}
-
+        PP_list = {'Al': dftpy_data_path+"/Al_lda.oe01.recpot"}
+        ions  = mol.ions 
+        grid  = mol.cell 
         rho = mol.field
-        IE_Energy = func.energy
-        IE_Force = NuclearElectronForce(mol.ions, rho, PP_file=optional_kwargs["PP_list"])
-        IE_Stress = NuclearElectronStress(mol.ions, rho, PP_file=optional_kwargs["PP_list"])
 
-        optional_kwargs = {}
-        optional_kwargs["PP_list"] = {'Al': dftpy_data_path+"/Al_lda.oe01.recpot"}
-        optional_kwargs["ions"]    = mol.ions 
-        mol.ions.usePME = True
-        IONS = FunctionalClass(type='IONS', optional_kwargs=optional_kwargs)
-        func  = IONS.ComputeEnergyPotential(rho=mol.field)
+        PSEUDO = LocalPseudo(grid=grid, ions=ions,PP_list=PP_list,PME=False)
+        func  = PSEUDO(rho=mol.field)
+        a = func.potential
+        IE_Energy = func.energy
+        IE_Force  = PSEUDO.force(rho)
+        IE_Stress = PSEUDO.stress(rho,energy=IE_Energy)
+
+        PSEUDO = LocalPseudo(grid=grid, ions=ions,PP_list=PP_list,PME=True)
+        func  = IONS(rho=mol.field)
         IE_Energy_PME = func.energy
-        IE_Force_PME = NuclearElectronForcePME(mol.ions, rho, PP_file=optional_kwargs["PP_list"])
-        IE_Stress_PME = NuclearElectronStressPME(mol.ions, rho, PP_file=optional_kwargs["PP_list"])
+        IE_Force_PME  = PSEUDO.force(rho)
+        IE_Stress_PME = PSEUDO.stress(rho,energy=IE_Energy_PME)
 
         print('IE energy', IE_Energy, IE_Energy_PME)
         self.assertTrue(np.isclose(IE_Energy, IE_Energy_PME, atol = 1.E-4))
