@@ -43,6 +43,9 @@ def OptimizeDensityConf(config, ions = None, rhoini = None):
         nr = nr2//config['MATH']['multistep']
         print('MULTI-STEP: Perform first optimization step')
         print('Grid size of 1  step is ',  nr)
+
+    ############################## Grid  ##############################
+    grid = DirectGrid(lattice=lattice, nr=nr, units=None, full=config['GRID']['gfull'])
     ############################## PSEUDO  ##############################
     PPlist = {}
     for key in config['PP'] :
@@ -59,14 +62,13 @@ def OptimizeDensityConf(config, ions = None, rhoini = None):
             for ele, z in zip(elename, zval):
                 ions.Zval[ele] = z
 
-
-    # print(config['KEDF'])
+    linearie = config['MATH']['linearie'] 
+    PSEUDO = LocalPseudo(grid = grid, ions=ions,PP_list=PPlist,PME=linearie)
     KE = FunctionalClass(type='KEDF', name = config['KEDF']['kedf'], **config['KEDF'])
     ############################## XC and Hartree ##############################
     HARTREE = FunctionalClass(type='HARTREE')
     XC = FunctionalClass(type='XC',name = config['EXC']['xc'], **config['EXC'])
     ############################## Initial density ##############################
-    grid = DirectGrid(lattice=lattice, nr=nr, units=None, full=config['GRID']['gfull'])
     zerosA = np.empty(grid.nnr, dtype=float)
     rho_ini = DirectField(grid=grid, griddata_F=zerosA, rank=1)
     density = None
@@ -107,8 +109,6 @@ def OptimizeDensityConf(config, ions = None, rhoini = None):
         rho_ini *= (charge_total / (np.sum(rho_ini) * rho_ini.grid.dV ))
     # rho_ini[:] = density.reshape(rho_ini.shape, order='F')
     ############################## optimization  ##############################
-    linearie = config['MATH']['linearie'] 
-    PSEUDO = LocalPseudo(grid = grid, ions=ions,PP_list=PPlist,PME=linearie)
     E_v_Evaluator = TotalEnergyAndPotential(KineticEnergyFunctional=KE,
                                     XCFunctional=XC,
                                     HARTREE=HARTREE,

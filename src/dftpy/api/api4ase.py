@@ -30,7 +30,7 @@ class DFTpyCalculator(object):
             lattice = np.asarray(lattice).T/ LEN_CONV['Bohr']['Angstrom']
             cell = DirectCell(lattice)
             ions = Atom(Z = Z, pos=pos, cell=cell, basis = 'Crystal')
-            ions.restart()
+            # ions.restart()
             if self.results is not None and self.config['MATH']['reuse'] :
                 results = OptimizeDensityConf(self.config, ions = ions, rhoini = self.results['density'])
             else :
