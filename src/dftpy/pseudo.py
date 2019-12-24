@@ -437,7 +437,6 @@ class ReadPseudo(object):
                 gp, vp = set_PP(self.PP_list[key])
                 self._gp[key] = gp
                 self._vp[key] = vp
-                # self._upf[key] = upf
                 vloc_interp = splrep(gp, vp)
                 self._vloc_interp[key] = vloc_interp
         reciprocal_grid = self.grid.get_reciprocal()
@@ -461,19 +460,19 @@ class ReadPseudo(object):
                 upf = upf_to_json(upf_str=outfil.read(),fname=Single_PP_file)
             r = np.array(upf['pseudo_potential']['radial_grid'],dtype=np.float64)
             v = np.array(upf['pseudo_potential']['local_potential'],dtype=np.float64)/Ry2Ha            
-            return r, v
+            return r, v, upf
         for key in self.PP_list :
             print('setting key: '+key)
             if not os.path.isfile(self.PP_list[key]):
                 raise Exception("PP file for atom type "+str(key)+" not found")
             else :
-                rp, vp = set_PP(self.PP_list[key])
+                r , vr, self._upf[key] = set_PP(self.PP_list[key])
         
                 gp = np.linspace(start=0,stop=Gmax,num=MaxPoints)
                 vp = np.zeros_like(gp)
                 vp[0] = 0.0
                 for k in np.arange(start=1,stop=len(gp)):
-                    vp[k] = (4.0*np.pi / gp[k]) * np.sum(r * v * np.sin( gp[k] * r ))
+                    vp[k] = (4.0*np.pi / gp[k]) * np.sum(r * vr* np.sin( gp[k] * r ))
                 self._gp[key] = gp
                 self._vp[key] = vp
                 vloc_interp = splrep(gp, vp)
