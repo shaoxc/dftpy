@@ -9,7 +9,7 @@ from dftpy.kedf.wt import WTPotential, WTEnergy
 from dftpy.kedf.kernel import MGPKernel, MGPOmegaE, LindhardDerivative
 from dftpy.math_utils import TimeData
 
-__all__  =  ['MGP', 'MGPStress']
+__all__  =  ['MGP', 'MGPStress', 'MGPA', 'MGPG']
 
 KE_kernel_saved ={'Kernel':None, 'rho0':0.0, 'shape':None, \
         'KernelTable':None, 'etaMax':None, 'KernelDeriv':None, \
@@ -61,12 +61,12 @@ def MGP(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 5.0/6.0, beta = 5.0/6.0, lumpfactor
             ene = WTEnergy(rho, rho0, KE_kernel, alpha, beta)
 
     NL = Functional(name='NL', potential = pot, energy= ene)
-    xTF = TF(rho, x = x,  calcType = calcType)
-    yvW = vW(rho, y = y, Sigma = Sigma, calcType = calcType)
-    OutFunctional = NL + xTF + yvW
-    OutFunctional.name = 'MGP'
-    TimeData.End('MGP')
-    if split :
-        return {'TF': xTF, 'vW': yvW, 'NL' : NL}
-    else :
-        return OutFunctional
+    return NL
+
+def MGPA(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 5.0/6.0, beta = 5.0/6.0, lumpfactor = 0.2, \
+        maxpoint = 1000, symmetrization = 'Arithmetic', calcType='Both', split = False, **kwargs):
+    return MGP(rho,x,y,Sigma, alpha, beta, lumpfactor, maxpoint, 'Arithmetic', calcType, split, **kwargs)
+
+def MGPG(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 5.0/6.0, beta = 5.0/6.0, lumpfactor = 0.2, \
+        maxpoint = 1000, symmetrization = 'Geometric', calcType='Both', split = False, **kwargs):
+    return MGP(rho,x,y,Sigma, alpha, beta, lumpfactor, maxpoint, 'Geometric', calcType, split, **kwargs)

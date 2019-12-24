@@ -91,11 +91,6 @@ def FP_origin(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 1.0, beta = 1.0, calcType='Bo
         # print('dd2', dPrho[:3, 0, 0, 0])
         pot *= 2.0 * dPrho
 
-    xTF = TF(rho, calcType)
-    yvW = vW(rho, Sigma, calcType)
-    pot += x * xTF.potential + y * yvW.potential
-    ene += x * xTF.energy + y * yvW.energy
-
     OutFunctional = Functional(name='FP')
     OutFunctional.potential = pot
     OutFunctional.energy= ene
@@ -136,15 +131,7 @@ def FP0(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 1.0, beta = 1.0, calcType='Both', s
         pot *= (5.0/3.0) * Mr * rhoFiveSixth/rho
 
     NL = Functional(name='NL', potential = pot, energy= ene)
-    xTF = TF(rho, x = x,  calcType = calcType)
-    yvW = vW(rho, y = y, Sigma = Sigma, calcType = calcType)
-    OutFunctional = NL + xTF + yvW
-    OutFunctional.name = 'FP'
-    TimeData.End('FP')
-    if split :
-        return {'TF': xTF, 'vW': yvW, 'NL' : NL}
-    else :
-        return OutFunctional
+    return NL
 
 def FP(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 1.0, beta = 1.0, rho0 = None, calcType='Both', split = False, **kwargs):
     TimeData.Begin('FP')
@@ -182,12 +169,4 @@ def FP(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 1.0, beta = 1.0, rho0 = None, calcTy
         pot *= (5.0/3.0) * Mr * rhoFiveSixth/rho
 
     NL = Functional(name='NL', potential = pot, energy= ene)
-    xTF = TF(rho, x = x,  calcType = calcType)
-    yvW = vW(rho, y = y, Sigma = Sigma, calcType = calcType)
-    OutFunctional = NL + xTF + yvW
-    OutFunctional.name = 'FP'
-    TimeData.End('FP')
-    if split :
-        return {'TF': xTF, 'vW': yvW, 'NL' : NL}
-    else :
-        return OutFunctional
+    return NL

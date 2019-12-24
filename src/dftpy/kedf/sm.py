@@ -113,12 +113,4 @@ def SM(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 0.5, beta = 0.5, rho0 = None, calcTy
         # ene = np.einsum('ijkl, ijkl->', pot, rho) * rho.grid.dV / (2 * alpha)
 
     NL = Functional(name='NL', potential = pot, energy= ene)
-    xTF = TF(rho, x = x,  calcType = calcType)
-    yvW = vW(rho, y = y, Sigma = Sigma, calcType = calcType)
-    OutFunctional = NL + xTF + yvW
-    OutFunctional.name = 'SM'
-    TimeData.End('SM')
-    if split :
-        return {'TF': xTF, 'vW': yvW, 'NL' : NL}
-    else :
-        return OutFunctional
+    return NL

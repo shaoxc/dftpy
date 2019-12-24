@@ -4,10 +4,11 @@
 # local imports
 from dftpy.field import DirectField
 from dftpy.functional_output import Functional
-from dftpy.semilocal_xc import PBE, LDA, XC, KEDF
+from dftpy.semilocal_xc import PBE, LDA, XC
 from dftpy.hartree import HartreeFunctional
-from dftpy.kedf import TF,vW, x_TF_y_vW, WT, LWT, FP, SM, MGP, GGA
+from dftpy.kedf import KEDFunctional
 from dftpy.pseudo import LocalPseudo
+
 
 # general python imports
 from abc import ABC, abstractmethod
@@ -28,13 +29,13 @@ class AbstractFunctional(ABC):
     
     @abstractmethod
     def ComputeEnergyPotential(self,rho,**kwargs):
-        # returns edens and pot
+        # returns energy and potential
         pass
 
-    @property
-    @abstractmethod
-    def GetFunctional(self):
-        pass
+    # @property
+    # @abstractmethod
+    # def GetFunctional(self):
+        # pass
 
     def GetName(self):
         return self.name
@@ -72,7 +73,7 @@ class FunctionalClass(AbstractFunctional):
         The name of the functional
 
     type: string
-        The functional type (XC, KEDF, HARTREE, IONS) 
+        The functional type (XC, KEDF, HARTREE, PSEUDO) 
 
     is_nonlocal: logical
         Is the functional a nonlocal functional? 
@@ -125,7 +126,7 @@ class FunctionalClass(AbstractFunctional):
         self.FunctionalNameList = []
         self.FunctionalTypeList = []
         
-        self.FunctionalTypeList = ['XC','KEDF','IONS','HARTREE']
+        self.FunctionalTypeList = ['XC','KEDF','PSEUDO','HARTREE']
         XCNameList = ['LDA','PBE','LIBXC_XC','CUSTOM_XC']
         KEDFNameList = ['TF','vW','x_TF_y_vW','LC94','revAPBEK','TFvW','LIBXC_KEDF','CUSTOM_KEDF']
         KEDFNLNameList = ['WT','MGP','MGP0','WGC2','WGC1','WGC0','LMGP','LMGP0','LWT', 'FP', 'SM', \
@@ -156,51 +157,7 @@ class FunctionalClass(AbstractFunctional):
     def ComputeEnergyPotential(self,rho, calcType = 'Both',  **kwargs):
         self.optional_kwargs.update(kwargs)
         if self.type == 'KEDF':
-            if self.name == 'TF':
-                return TF(rho, calcType=calcType, **self.optional_kwargs)
-            elif self.name == 'vW':
-                return vW(rho=rho, calcType=calcType, **self.optional_kwargs)
-            elif self.name == 'x_TF_y_vW':
-                return x_TF_y_vW(rho,calcType=calcType, **self.optional_kwargs)
-            elif self.name == 'LC94':
-                polarization = self.optional_kwargs.get('polarization','unpolarized')
-                return KEDF(rho,polarization=polarization,k_str='gga_k_lc94', calcType=calcType)
-            elif self.name == 'LIBXC_KEDF':
-                polarization = self.optional_kwargs.get('polarization','unpolarized')
-                k_str = optional_kwargs.get('k_str','gga_k_lc94')
-                return KEDF(rho,polarization=polarization,k_str=k_str, calcType=calcType)
-            elif self.name == 'WT' :
-                return WT(rho=rho,calcType=calcType, **self.optional_kwargs)
-            elif self.name == 'SM' :
-                return SM(rho=rho,calcType=calcType, **self.optional_kwargs)
-            elif self.name == 'FP' :
-                return FP(rho=rho,calcType=calcType, **self.optional_kwargs)
-            elif self.name == 'MGP' :
-                return MGP(rho=rho,calcType=calcType, **self.optional_kwargs)
-            elif self.name == 'MGPA' :
-                self.optional_kwargs['symmetrization'] = 'Arithmetic'
-                return MGP(rho=rho,calcType=calcType, **self.optional_kwargs)
-            elif self.name == 'MGPG' :
-                self.optional_kwargs['symmetrization'] = 'Geometric'
-                return MGP(rho=rho,calcType=calcType, **self.optional_kwargs)
-            elif self.name == 'LWT' :
-                self.optional_kwargs['kerneltype'] = 'WT'
-                return LWT(rho=rho, calcType=calcType, **self.optional_kwargs)
-            elif self.name == 'LMGP' :
-                self.optional_kwargs['kerneltype'] = 'MGP'
-                return LWT(rho=rho, calcType=calcType, **self.optional_kwargs)
-            elif self.name == 'LMGPA' :
-                self.optional_kwargs['kerneltype'] = 'MGPA'
-                return LWT(rho=rho, calcType=calcType, **self.optional_kwargs)
-            elif self.name == 'LMGPG' :
-                self.optional_kwargs['kerneltype'] = 'MGPG'
-                return LWT(rho=rho, calcType=calcType, **self.optional_kwargs)
-            elif self.name[:3] == 'GGA' :
-                return GGA(rho=rho, calcType=calcType, **self.optional_kwargs)
-            else :
-                raise Exception(self.name + ' KEDF to be implemented')
-            # if self.is_nonlocal == True:
-                # raise Exception('Nonlocal KEDF to be implemented')
+            return KEDFunctional(rho, self.name, calcType=calcType, **self.optional_kwargs)
         if self.type == 'XC':
             if self.name == 'LDA':
                 polarization = self.optional_kwargs.get('polarization','unpolarized')
@@ -224,7 +181,7 @@ class TotalEnergyAndPotential(AbstractFunctional):
      Attributes
      ----------
 
-     KineticEnergyFunctional, XCFunctional, IONS, HARTREE: FunctionalClass
+     KineticEnergyFunctional, XCFunctional, PSEUDO, HARTREE: FunctionalClass
          Instances of functional class needed for the computation
          of the chemical potential, total potential and total energy.
 
@@ -234,9 +191,9 @@ class TotalEnergyAndPotential(AbstractFunctional):
      XC = FunctionalClass(type='XC',name='LDA')
      KE = FunctionalClass(type='KEDF',name='TF')
      HARTREE = FunctionalClass(type='HARTREE')
-     IONS = FunctionalClass(type='IONS', kwargs)
+     PSEUDO = FunctionalClass(type='PSEUDO', kwargs)
 
-     EnergyEvaluator = TotalEnergyAndPotential(KEDF,XC,IONS,HARTREE,rho_guess)
+     EnergyEvaluator = TotalEnergyAndPotential(KEDF,XC,PSEUDO,HARTREE,rho_guess)
 
      [the energy:]
      E = EnergyEvaluator.Energy(rho,ions)
@@ -248,9 +205,10 @@ class TotalEnergyAndPotential(AbstractFunctional):
      in_for_scipy_minimize = EnergyEvaluator(phi)
     '''
     
-    def __init__(self,KineticEnergyFunctional=None, XCFunctional=None, IONS=None, HARTREE=None):
+    def __init__(self,KineticEnergyFunctional=None, XCFunctional=None, PSEUDO=None, HARTREE=None):
         
         self.name = ''
+        self.type = ''
 
         if KineticEnergyFunctional is None:
             raise AttributeError('Must define KineticEnergyFunctional')
@@ -270,14 +228,14 @@ class TotalEnergyAndPotential(AbstractFunctional):
             self.name += self.XCFunctional.name + ' '
             self.type += self.XCFunctional.type + ' '
                                  
-        if IONS is None:
-            raise AttributeError('Must define IONS')
-        elif not isinstance(IONS, FunctionalClass):
-            raise AttributeError('IONS must be FunctionalClass')
+        if PSEUDO is None:
+            raise AttributeError('Must define PSEUDO')
+        # elif not isinstance(PSEUDO, FunctionalClass):
+            # raise AttributeError('PSEUDO must be FunctionalClass')
         else:
-            self.IONS = IONS
-            self.name += self.IONS.name + ' '
-            self.type += self.IONS.type + ' '
+            self.PSEUDO = PSEUDO
+            # self.name += self.PSEUDO.name + ' '
+            # self.type += self.PSEUDO.type + ' '
                                  
         if HARTREE is None:
             print('WARNING: using FFT Hartree')
@@ -294,7 +252,7 @@ class TotalEnergyAndPotential(AbstractFunctional):
     def ComputeEnergyPotential(self,rho, calcType = 'Both'):
         Obj = self.KineticEnergyFunctional(rho,calcType)\
                 + self.XCFunctional(rho,calcType) + \
-                self.IONS(rho,calcType) + self.HARTREE(rho,calcType)
+                self.PSEUDO(rho,calcType) + self.HARTREE(rho,calcType)
         return Obj
 
  
@@ -302,8 +260,4 @@ class TotalEnergyAndPotential(AbstractFunctional):
         from .ewald import ewald
         ewald_ = ewald(rho=rho,ions=ions, PME = usePME)
         total_e = self.ComputeEnergyPotential(rho, calcType = 'Energy')
-        # total_e= self.KineticEnergyFunctional.ComputeEnergyPotential(rho,calcType) + \
-                # self.XCFunctional.ComputeEnergyPotential(rho,calcType) + \
-                # self.HARTREE.ComputeEnergyPotential(rho,calcType) + \
-                # self.IONS.ComputeEnergyPotential(rho,calcType)
         return ewald_.energy + total_e.energy

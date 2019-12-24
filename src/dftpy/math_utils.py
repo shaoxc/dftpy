@@ -319,3 +319,20 @@ class FDcoef(object):
         self.deriv = deriv
         self.order = order
 
+class LBFGS(object):
+    def __init__(self, H0 = 1.0, Bound = 5):
+        self.Bound = Bound
+        self.H0 = H0
+        self.s = []
+        self.y = []
+        self.rho = []
+
+    def update(self, dx, dg):
+        if len(self.s) > self.Bound :
+            self.s.pop(0)
+            self.y.pop(0)
+            self.rho.pop(0)
+        self.s.append(dx)
+        self.y.append(dg)
+        rho = 1.0/np.einsum('ijkl->', dg * dx)
+        self.rho.append(rho)

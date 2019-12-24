@@ -216,13 +216,13 @@ class DirectField(BaseField):
         #self_fft = -self_fft.grid.gg*self_fft
         return self_fft.ifft(check_real = check_real, force_real = force_real)
 
-    def sigma(self):
+    def sigma(self, flag = 'smooth'):
         """
         \sigma(r) = |\grad rho(r)|^2
         """
         if self.rank > 1:
             raise Exception("sigma is only implemented for scalar fields")
-        gradrho = self.gradient()
+        gradrho = self.gradient(flag = flag)
         griddata_3d = np.einsum("ijkl,ijkl->ijk", gradrho, gradrho)
         return DirectField(self.grid, rank=1, griddata_3d=np.abs(np.real(griddata_3d)))
 

@@ -307,7 +307,7 @@ def MGPOmegaE(q, Ne = 1,lumpfactor = 0.2):
     corr /= 1.2
     return corr
 #-----------------------------------------------------------------------
-def NEWKernel(q,rho0, x = 1.0, y = 1.0, alpha = 5.0/6.0, beta = 5.0/6.0):
+def SmoothKernel(q,rho0, x = 1.0, y = 1.0, alpha = 5.0/6.0, beta = 5.0/6.0):
     ''' 
     The WT Kernel
     '''

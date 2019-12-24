@@ -1,7 +1,7 @@
 import os
 import numpy as np
 from upf_to_json             import upf_to_json
-from scipy.interpolate       import splev
+from scipy.interpolate import interp1d, splrep, splev
 from dftpy.base              import Coord
 from dftpy.field             import ReciprocalField, DirectField
 from dftpy.functional_output import Functional
@@ -9,7 +9,8 @@ from dftpy.constants         import LEN_CONV, ENERGY_CONV
 from dftpy.ewald             import CBspline
 from dftpy.math_utils        import TimeData
 from dftpy.atom              import Atom
-from abc                     import ABC
+from abc import ABC, abstractmethod
+from dftpy.grid import DirectGrid, ReciprocalGrid
 import warnings
 
 
@@ -19,9 +20,11 @@ class AbstractLocalPseudo(ABC):
     '''
     This is a pseudo potential template class and should never be touched.
     '''
+
     @abstractmethod
-    def __init__(self)
+    def __init__(self):
         pass
+
     @abstractmethod
     def __call__(self):   
         pass
@@ -49,7 +52,6 @@ class AbstractLocalPseudo(ABC):
     @abstractmethod
     def vlines(self):   
         pass
-
 
 # Only touch this class if you know what you are doing
 class LocalPseudo(AbstractLocalPseudo):
@@ -164,13 +166,13 @@ class LocalPseudo(AbstractLocalPseudo):
 
     def force(self,rho):
        if rho is None:
-            raise AttributeError("Must specify rho")
-        if not isinstance(rho,(DirectField)):
-            raise TypeError("rho must be DirectField")
-        if self.usePME:
-            return self._ForcePME(rho)
-        else:
-            return self._Force(rho)
+           raise AttributeError("Must specify rho")
+       if not isinstance(rho,(DirectField)):
+           raise TypeError("rho must be DirectField")
+       if self.usePME:
+           return self._ForcePME(rho)
+       else:
+           return self._Force(rho)
 
     @property
     def vreal(self):
@@ -212,7 +214,7 @@ class LocalPseudo(AbstractLocalPseudo):
                 if self.ions.labels[i] == key :
                     strf = self.ions.strf(reciprocal_grid, i)
                     v += self._vlines[key] * strf
-        self._v = v
+        self._v = ReciprocalField(reciprocal_grid,griddata_3d=v)
         TimeData.End('Vion')
         return "PP successfully interpolated"
 
@@ -294,13 +296,13 @@ class LocalPseudo(AbstractLocalPseudo):
         mask2 = mask[..., np.newaxis]
         for i in range(self.ions.nat):
             strf = self.ions.istrf(reciprocal_grid, i)
-            den = self.ions.vlines[self.ions.labels[i]][mask2]* (rhoG[mask2] * strf[mask2]).imag
+            den = self.vlines[self.ions.labels[i]][mask2]* (rhoG[mask2] * strf[mask2]).imag
             for j in range(3):
                 Forces[i, j] = np.einsum('i, i->', g[..., j][mask], den)
         Forces *= 2.0/self.grid.volume
         return Forces
     
-    def _ForcePME(rho):
+    def _ForcePME(self, rho):
         rhoG = rho.fft()
         reciprocal_grid = self.grid.get_reciprocal()
         g = reciprocal_grid.g
@@ -309,17 +311,17 @@ class LocalPseudo(AbstractLocalPseudo):
         Barray = np.conjugate(Barray)
         denG = rhoG * Barray
         nr = self.grid.nr
-        #cell_inv = np.linalg.inv(ions.pos[0].cell.lattice)
+        #cell_inv = np.linalg.inv(self.ions.pos[0].cell.lattice)
         cell_inv = reciprocal_grid.lattice/2/np.pi
         Forces= np.zeros((self.ions.nat, 3))
-        ixyzA = np.mgrid[:self.ions.BsplineOrder, :self.ions.BsplineOrder, :self.ions.BsplineOrder].reshape((3, -1))
+        ixyzA = np.mgrid[:self.BsplineOrder, :self.BsplineOrder, :self.BsplineOrder].reshape((3, -1))
         Q_derivativeA = np.zeros((3, self.BsplineOrder * self.BsplineOrder * self.BsplineOrder))
-        for key in ions.Zval.keys():
+        for key in self.ions.Zval.keys():
             denGV = denG * self.vlines[key]
             denGV[0, 0, 0, 0] = 0.0+0.0j
             rhoPB = denGV.ifft(force_real = True)[..., 0]
-            for i in range(ions.nat):
-                if ions.labels[i] == key :
+            for i in range(self.ions.nat):
+                if self.ions.labels[i] == key :
                     Up = np.array(self.ions.pos[i].to_crys()) * nr
                     Mn = []
                     Mn_2 = []
@@ -334,7 +336,7 @@ class LocalPseudo(AbstractLocalPseudo):
         return Forces
 
 
-    def _StressPME(rho,energy=None):
+    def _StressPME(self, rho,energy=None):
         if energy is None :
             energy = self(density=rho, calcType='Energy').energy
         rhoG = rho.fft()
@@ -351,7 +353,7 @@ class LocalPseudo(AbstractLocalPseudo):
         stress = np.zeros((3, 3))
         QA = np.empty(nr)
         for key in self.ions.Zval.keys():
-            rhoGBV = rhoGB * self._PP_Derivative_One(self.grid, key = key)
+            rhoGBV = rhoGB * self._PP_Derivative_One(key = key)
             QA[:] = 0.0
             for i in range(self.ions.nat):
                 if self.ions.labels[i] == key :
@@ -370,37 +372,36 @@ class LocalPseudo(AbstractLocalPseudo):
         stress /= self.grid.volume
         return stress
 
-
 class ReadPseudo(object):
     '''
     Support class for LocalPseudo.
     '''
-    self._gp = {}          # 1D PP grid g-space
-    self._vp = {}          # PP on 1D PP grid
-    self._vloc_interp = {} # Interpolates recpot PP
-    self._vlines = {}
-    self._upf = {}
-
     def __init__(self, grid=None, PP_list=None):
+        self._gp = {}          # 1D PP grid g-space
+        self._vp = {}          # PP on 1D PP grid
+        self._vloc_interp = {} # Interpolates recpot PP
+        self._vlines = {}
+        self._upf = {}
+
         self.PP_list = PP_list
         self.grid = grid
-        key = self.PP_list.keys()[0]
+        key = list(self.PP_list.keys())[0]
         if PP_list[key][-6:].lower() == 'recpot':
-            PP_type = 'recpot'
-        else if PP_list[key][-3:].lower() == 'upf':
-            PP_type = 'upf'
+            self.PP_type = 'recpot'
+        elif PP_list[key][-3:].lower() == 'upf':
+            self.PP_type = 'upf'
         else:
             raise Exception("Pseudopotential not supported")
-        if PP_type is 'recpot':
+        if self.PP_type is 'recpot':
             self._init_PP_recpot()
-        else if PP_type is 'upf':
+        elif self.PP_type is 'upf':
             self._init_PP_upf()
 
 
     def _init_PP_recpot(self):
-    '''
-    This is a private method used only in this specific class. 
-    '''
+        '''
+        This is a private method used only in this specific class. 
+        '''
         def set_PP(Single_PP_file):
             '''Reads CASTEP-like recpot PP file
             Returns tuple (g, v)'''
@@ -427,17 +428,17 @@ class ReadPseudo(object):
             gmax = np.float(lines[ibegin-1].strip())*BOHR2ANG
             v = np.array(line.split()).astype(np.float)/HARTREE2EV/BOHR2ANG**3
             g = np.linspace(0,gmax,num=len(v))
-            return g, v, upf
+            return g, v
         for key in self.PP_list :
             print('setting key: '+key)
             if not os.path.isfile(self.PP_list[key]):
                 raise Exception("PP file for atom type "+str(key)+" not found")
             else :
-                gp, vp, upf = set_PP(self.PP_list[key])
+                gp, vp = set_PP(self.PP_list[key])
                 self._gp[key] = gp
                 self._vp[key] = vp
-                self._upf[key] = upf
-                vloc_interp = interpolate(gp, vp)
+                # self._upf[key] = upf
+                vloc_interp = splrep(gp, vp)
                 self._vloc_interp[key] = vloc_interp
         reciprocal_grid = self.grid.get_reciprocal()
         q = reciprocal_grid.q
@@ -450,9 +451,9 @@ class ReadPseudo(object):
 
 
     def _init_PP_upf(self):
-    '''
-    This is a private method used only in this specific class. 
-    '''
+        '''
+        This is a private method used only in this specific class. 
+        '''
         def set_PP(Single_PP_file,MaxPoints=1000,Gmax=60):
             '''Reads QE UPF type PP'''
             Ry2Ha = ENERGY_CONV['Rydberg']['Hartree']
@@ -475,7 +476,7 @@ class ReadPseudo(object):
                     vp[k] = (4.0*np.pi / gp[k]) * np.sum(r * v * np.sin( gp[k] * r ))
                 self._gp[key] = gp
                 self._vp[key] = vp
-                vloc_interp = interpolate(gp, vp)
+                vloc_interp = splrep(gp, vp)
                 self._vloc_interp[key] = vloc_interp
         reciprocal_grid = self.grid.get_reciprocal()
         q = reciprocal_grid.q
@@ -490,11 +491,12 @@ class ReadPseudo(object):
         if self.PP_type is 'upf':
             for key in self._gp.keys():
                 ions.Zval[key] = self._upf[key]['pseudo_potential']['header']['z_valence'] 
-        else if self.PP_type is 'recpot':
-            gp = self._gp[key]
-            vp = self._vp[key]
-            val = (vp[0]-vp[1]) * (gp[-1]/(gp.size - 1)) ** 2 / (4.0 * np.pi)
-            ions.Zval[key] = round(val)
+        elif self.PP_type is 'recpot':
+            for key in self._gp.keys():
+                gp = self._gp[key]
+                vp = self._vp[key]
+                val = (vp[0]-vp[1]) * (gp[-1]/(gp.size - 1)) ** 2 / (4.0 * np.pi)
+                ions.Zval[key] = round(val)
 
 
     @property

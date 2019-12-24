@@ -5,6 +5,7 @@ try:
 except :
     FFTLIB = 'numpy'
 
+# FFTLIB = 'numpy'
 MATHLIB = 'numpy'
 
 print('Use "%s" for Fourier Transform' %(FFTLIB))

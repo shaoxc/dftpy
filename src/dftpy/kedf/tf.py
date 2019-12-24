@@ -57,7 +57,4 @@ def TF(rho, x = 1.0, calcType = 'Both', split = False, **kwargs):
     OutFunctional.potential = pot * x
     OutFunctional.energy= ene * x
     TimeData.End('TF')
-    if split :
-        return {'TF': OutFunctional}
-    else :
-        return OutFunctional
+    return OutFunctional

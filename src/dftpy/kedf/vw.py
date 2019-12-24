@@ -56,8 +56,6 @@ def vonWeizsackerStress(rho, y=1.0, energy=None):
     rhoG = rho.fft()
     dRho_ij = []
     stress = np.zeros((3, 3))
-    mask=rho.grid.get_reciprocal().mask
-    mask2 = mask[..., np.newaxis]
     for i in range(3):
         dRho_ij.append((1j * g[..., i][..., np.newaxis] * rhoG).ifft(force_real = True))
     for i in range(3):

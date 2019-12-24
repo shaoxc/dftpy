@@ -59,7 +59,6 @@ def OptimizeDensityConf(config, ions = None, rhoini = None):
             for ele, z in zip(elename, zval):
                 ions.Zval[ele] = z
 
-    PSEUDO = LocalPseudo(ions=ions,PP_list=PP_list,PME=PME)
 
     # print(config['KEDF'])
     KE = FunctionalClass(type='KEDF', name = config['KEDF']['kedf'], **config['KEDF'])
@@ -108,8 +107,9 @@ def OptimizeDensityConf(config, ions = None, rhoini = None):
         rho_ini *= (charge_total / (np.sum(rho_ini) * rho_ini.grid.dV ))
     # rho_ini[:] = density.reshape(rho_ini.shape, order='F')
     ############################## optimization  ##############################
-    E_v_Evaluator = TotalEnergyAndPotential(rho=rho_ini,
-                                    KineticEnergyFunctional=KE,
+    linearie = config['MATH']['linearie'] 
+    PSEUDO = LocalPseudo(grid = grid, ions=ions,PP_list=PPlist,PME=linearie)
+    E_v_Evaluator = TotalEnergyAndPotential(KineticEnergyFunctional=KE,
                                     XCFunctional=XC,
                                     HARTREE=HARTREE,
                                     PSEUDO=PSEUDO)
