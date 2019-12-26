@@ -18,16 +18,13 @@ If we want to optimize the stress, just add the `StrainFilter` :
 We also can optimize the force and stress at same time, just add the `UnitCellFilter` :
 
 .. literalinclude:: relax.py
-    :lines: 33
+    :lines: 34
 
 The output `opt.traj` can convert to other format via `ASE`_:
 
 .. literalinclude:: relax.py
     :lines: 40-41
-    
+
 For more functions and detailed introduction, can refer to `ASE`_.
 
 .. _ASE: https://gitlab.com/ase/ase
-
-
-
