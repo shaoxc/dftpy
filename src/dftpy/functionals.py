@@ -32,11 +32,6 @@ class AbstractFunctional(ABC):
         # returns energy and potential
         pass
 
-    # @property
-    # @abstractmethod
-    # def GetFunctional(self):
-        # pass
-
     def GetName(self):
         return self.name
 

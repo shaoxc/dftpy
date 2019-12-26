@@ -1,6 +1,5 @@
 import os
 import numpy as np
-from upf_to_json             import upf_to_json
 from scipy.interpolate import interp1d, splrep, splev
 from dftpy.base              import Coord
 from dftpy.field             import ReciprocalField, DirectField
@@ -455,6 +454,13 @@ class ReadPseudo(object):
         '''
         def set_PP(Single_PP_file,MaxPoints=1000,Gmax=60):
             '''Reads QE UPF type PP'''
+            import importlib
+            upf2json = importlib.util.find_spec("upf_to_json")
+            found = upf2json is not None
+            if found:
+                from upf_to_json import upf_to_json
+            else: 
+                raise ModuleNotFoundError("Must pip install upf_to_json") 
             Ry2Ha = ENERGY_CONV['Rydberg']['Hartree']
             with open(Single_PP_file,'r') as outfil:
                 upf = upf_to_json(upf_str=outfil.read(),fname=Single_PP_file)

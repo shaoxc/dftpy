@@ -22,14 +22,14 @@ class Test(unittest.TestCase):
         rho = mol.field
 
         PSEUDO = LocalPseudo(grid=grid, ions=ions,PP_list=PP_list,PME=False)
-        func  = PSEUDO(rho=mol.field)
+        func  = PSEUDO(density=mol.field)
         a = func.potential
         IE_Energy = func.energy
         IE_Force  = PSEUDO.force(rho)
         IE_Stress = PSEUDO.stress(rho,energy=IE_Energy)
 
         PSEUDO = LocalPseudo(grid=grid, ions=ions,PP_list=PP_list,PME=True)
-        func  = IONS(rho=mol.field)
+        func  = PSEUDO(density=mol.field)
         IE_Energy_PME = func.energy
         IE_Force_PME  = PSEUDO.force(rho)
         IE_Stress_PME = PSEUDO.stress(rho,energy=IE_Energy_PME)

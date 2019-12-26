@@ -2,18 +2,33 @@ BuildAndTest:
   image: python:3
   before_script:
     - apt-get update -qq && apt-get install -y -qq gcc gfortran automake cmake
-    - git clone https://gitlab.com/libxc/libxc.git
-    - home=$( pwd )
-    - cd libxc
-    - python setup.py install
-    - cd ..
     - pip install setuptools
     - pip install ase pymatgen
     - pip install pytest pytest-cov
-    - pip install upf_to_json
   script:
     - python setup.py install
     - pip install -r requirements.txt
     - cd examples
     - DFTPY_DATA_PATH='./DATA/' pytest --cov-report term-missing --cov=./ ./test/
-  coverage: '/TOTAL\s+\d+\s+\d+\s+(\d+\%)/'
+  coverage: '/TOTAL\s+\d+\s+\d+\s+(\d+\%)/'BuildAndTest:
+
+#BuildAndTestLibXC:
+#  image: python:3
+#  with_libxc:
+#    - git clone https://gitlab.com/libxc/libxc.git
+#    - home=$( pwd )
+#    - cd libxc
+#    - python setup.py install
+#    - cd ..
+#  before_script:
+#    - apt-get update -qq && apt-get install -y -qq gcc gfortran automake cmake
+#    - pip install setuptools
+#    - pip install ase pymatgen
+#    - pip install pytest pytest-cov
+#  script:
+#    - python setup.py install
+#    - pip install -r requirements.txt
+#    - cd examples
+#    - DFTPY_DATA_PATH='./DATA/' pytest --cov-report term-missing --cov=./ ./test/
+#  coverage: '/TOTAL\s+\d+\s+\d+\s+(\d+\%)/'
+#
