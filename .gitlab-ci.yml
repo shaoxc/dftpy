@@ -14,13 +14,12 @@ BuildAndTest:
 
 .BuildAndTestLibXC:
   image: python:3
-  with_libxc:
+  before_script:
     - git clone https://gitlab.com/libxc/libxc.git
     - home=$( pwd )
     - cd libxc
     - python setup.py install
     - cd ..
-  before_script:
     - apt-get update -qq && apt-get install -y -qq gcc gfortran automake cmake
     - pip install setuptools
     - pip install ase pymatgen
