@@ -11,3 +11,4 @@ BuildAndTest:
     - cd examples
     - DFTPY_DATA_PATH='./DATA/' pytest --cov-report term-missing --cov=./ ./test/
   coverage: '/TOTAL\s+\d+\s+\d+\s+(\d+\%)/'BuildAndTest:
+
