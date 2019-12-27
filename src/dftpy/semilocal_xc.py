@@ -6,7 +6,7 @@ from dftpy.functional_output import Functional
 from dftpy.constants import MATHLIB
 from dftpy.math_utils import TimeData
 
-def CheckLibXC()
+def CheckLibXC():
     import importlib
     islibxc = importlib.util.find_spec("pylibxc")
     found = islibxc is not None
