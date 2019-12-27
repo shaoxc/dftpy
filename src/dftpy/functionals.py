@@ -4,7 +4,7 @@
 # local imports
 from dftpy.field import DirectField
 from dftpy.functional_output import Functional
-from dftpy.semilocal_xc import PBE, LDA, XC
+from dftpy.semilocal_xc import PBE, LDA, XC, LIBXC_KEDF
 from dftpy.hartree import HartreeFunctional
 from dftpy.kedf import KEDFunctional
 from dftpy.pseudo import LocalPseudo
@@ -152,19 +152,24 @@ class FunctionalClass(AbstractFunctional):
     def ComputeEnergyPotential(self,rho, calcType = 'Both',  **kwargs):
         self.optional_kwargs.update(kwargs)
         if self.type == 'KEDF':
-            return KEDFunctional(rho, self.name, calcType=calcType, **self.optional_kwargs)
+            if self.name != 'LIBXC_KEDF':
+                return KEDFunctional(rho, self.name, calcType=calcType, **self.optional_kwargs)
+            else:
+                polarization = self.optional_kwargs.get('polarization','unpolarized')
+                k_str = self.optional_kwargs.get('k_str','gga_k_lc94')
+                return LIBXC_KEDF(density=rho,k_str=k_str,polarization=polarization, calcType=calcType)
         if self.type == 'XC':
             if self.name == 'LDA':
                 polarization = self.optional_kwargs.get('polarization','unpolarized')
-                return LDA(rho,polarization=polarization, calcType=calcType, **self.optional_kwargs)
+                return LDA(rho,polarization=polarization, calcType=calcType)
             if self.name == 'PBE':
                 polarization = self.optional_kwargs.get('polarization','unpolarized')
-                return PBE(density=rho,polarization=polarization, calcType=calcType, **self.optional_kwargs)
+                return PBE(density=rho,polarization=polarization, calcType=calcType)
             if self.name == 'LIBXC_XC':
                 polarization = self.optional_kwargs.get('polarization','unpolarized')
                 x_str = self.optional_kwargs.get('x_str','gga_x_pbe')
                 c_str = self.optional_kwargs.get('c_str','gga_c_pbe')
-                return XC(density=rho,x_str=x_str,c_str=c_str,polarization=polarization, calcType=calcType, **self.optional_kwargs)
+                return XC(density=rho,x_str=x_str,c_str=c_str,polarization=polarization, calcType=calcType)
         if self.type == 'HARTREE':
             return HartreeFunctional(density=rho, calcType=calcType)
 

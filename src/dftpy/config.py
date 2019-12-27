@@ -69,7 +69,7 @@ def DefaultOption(dicts = None):
             'fd'             : 0,
             'kdd'            : 3, # kernel density denpendent
             'rho0'           : None,
-            'kstr'           : 'gga_k_revapbe'
+            'k_str'          : 'gga_k_revapbe'
             }
 
     OUTPUT = {

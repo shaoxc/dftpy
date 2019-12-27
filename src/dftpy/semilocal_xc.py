@@ -27,8 +27,8 @@ def Get_LibXC_Input(density,do_sigma=True):
     inp = {}
     inp["rho"]=rho
     if do_sigma:
-        sigma = density.sigma().ravel()
-        # sigma = density.sigma('standard').ravel()
+        # sigma = density.sigma().ravel()
+        sigma = density.sigma('standard').ravel()
         inp["sigma"]=sigma
     return inp
 
@@ -59,7 +59,7 @@ def Get_LibXC_Output(out,density, calcType = 'Both'):
         do_sigma = True
 
     if do_sigma:
-        sigma = density.sigma().reshape(np.shape(density)[0]*np.shape(density)[1]*np.shape(density)[2])
+        sigma = density.sigma(flag='standard').reshape(np.shape(density)[0]*np.shape(density)[1]*np.shape(density)[2])
     if "zk" in out.keys():
         edens = out["zk"].reshape(np.shape(density))
 
@@ -73,12 +73,10 @@ def Get_LibXC_Output(out,density, calcType = 'Both'):
         ene = np.einsum('ijkl, ijkl->',edens,density) * density.grid.dV
         pot = DirectField(density.grid,rank=1,griddata_3d=vrho)
     else:
-        # print('rhoLIB1', np.max(density), np.min(density))
-        grho = density.gradient(flag='supersmooth')
-        # print('rhoLIB2', np.max(density), np.min(density))
+        #grho = density.gradient(flag='smooth')
+        grho = density.gradient(flag='standard')
         prodotto=vsigma*grho 
-        vsigma_last = prodotto.divergence()
-        # print('rhoLIB3', np.max(density), np.min(density))
+        vsigma_last = prodotto.divergence(flag='standard')
         v=vrho-2*vsigma_last
 
         ene = np.real(np.einsum('ijkl->',edens*density)) * density.grid.dV
@@ -127,10 +125,10 @@ def XC(density,x_str,c_str,polarization, do_sigma = True, calcType = 'Both'):
     return Functional_XC
 
 # def PBE_XC(density,polarization, calcType = 'Both'):
-def PBE(density,polarization = 'unpolarized', calcType = 'Both', **kwargs):
+def PBE(density,polarization = 'unpolarized', calcType = 'Both'):
     return XC(density=density,x_str='gga_x_pbe',c_str='gga_c_pbe',polarization=polarization, do_sigma=True, calcType=calcType)
 
-def LDA_XC(density,polarization = 'unpolarized', calcType = 'Both',  **kwargs):
+def LDA_XC(density,polarization = 'unpolarized', calcType = 'Both'):
     return XC(density=density,x_str='lda_x',c_str='lda_c_pz',polarization=polarization, do_sigma=False, calcType=calcType)
 
 def LDA(rho, polarization = 'unpolarized', calcType = 'Both',  **kwargs):
@@ -222,7 +220,7 @@ def LDAStress(rho, polarization='unpolarized', energy=None):
     TimeData.End('LDA_Stress')
     return stress
 
-def LIBXC_KEDF(density,polarization = 'unpolarized', kstr='gga_k_lc94', calcType = 'Both', split = False, **kwargs):
+def LIBXC_KEDF(density,polarization = 'unpolarized', k_str='gga_k_lc94', calcType = 'Both', **kwargs):
     if CheckLibXC ():
         from pylibxc.functional import LibXCFunctional
     '''
@@ -230,19 +228,19 @@ def LIBXC_KEDF(density,polarization = 'unpolarized', kstr='gga_k_lc94', calcType
         - Functional_KEDF: a KEDF functional evaluated with LibXC
      Input:
         - density: a DirectField (rank=1)
-        - kstr: strings like "gga_k_lc94"
+        - k_str: strings like "gga_k_lc94"
         - polarization: string like "polarized" or "unpolarized"
     '''
-    if not isinstance(kstr, str):
-        raise AttributeError("kstr must be a LibXC functional. Check pylibxc.util.xc_available_functional_names()")
+    if not isinstance(k_str, str):
+        raise AttributeError("k_str must be a LibXC functional. Check pylibxc.util.xc_available_functional_names()")
     if not isinstance(polarization, str):
         raise AttributeError("polarization must be a ``polarized`` or ``unpolarized``")
     if not isinstance(density,(DirectField)):
         raise AttributeError("density must be a rank-1 PBCpy DirectField")
-    func_k = LibXCFunctional(kstr, polarization)
+    func_k = LibXCFunctional(k_str, polarization)
     inp=Get_LibXC_Input(density)
     out_k = func_k.compute(inp)
     Functional_KEDF = Get_LibXC_Output(out_k,density)
-    name = kstr[6:]
+    name = k_str[6:]
     Functional_KEDF.name = name.upper()
     return Functional_KEDF

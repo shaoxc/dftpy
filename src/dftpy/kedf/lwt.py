@@ -212,7 +212,7 @@ def LWT(rho, x=1.0,y=1.0, Sigma=0.025, interp = 'linear', kerneltype = 'WT', sym
     q = rho.grid.get_reciprocal().q
     rho0 = np.mean(rho)
     if abs(KE_kernel_saved['rho0']-rho0) > 1E-6 or np.shape(rho) != KE_kernel_saved['shape'] :
-        print('Re-calculate %s KernelTable ' %kerneltype)
+        #print('Re-calculate %s KernelTable ' %kerneltype)
         eta = np.linspace(0, etamax, neta)
         if kerneltype == 'WT' :
             KernelTable = WTKernelTable(eta, x, y, alpha, beta)
@@ -224,7 +224,7 @@ def LWT(rho, x=1.0,y=1.0, Sigma=0.025, interp = 'linear', kerneltype = 'WT', sym
             KernelTable = MGPKernelTable(eta, q, maxpoints = maxpoints, symmetrization = 'Geometric')
         # Add MGP kinetic electron
         if lumpfactor is not None :
-            print('Calculate MGP kinetic electron(%f)' %lumpfactor)
+            #print('Calculate MGP kinetic electron(%f)' %lumpfactor)
             Ne = rho0 * np.size(rho) * rho.grid.dV
             MGPKernelE = MGPOmegaE(q, Ne, lumpfactor)
             KE_kernel_saved['MGPKernelE'] = MGPKernelE

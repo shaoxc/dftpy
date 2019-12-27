@@ -445,6 +445,14 @@ def GGAFs(s, functional = 'LKT', calcType = 'Both', parms = None, **kwargs):
     return F, dFds2
 
 def GGA(rho, functional = 'LKT', calcType = 'Both', split = False, **kwargs):
+    '''
+    Interface to compute GGAs internally to DFTpy. 
+    This is the default way, even though DFTpy can generate some of the GGAs with LibXC.
+    Nota Bene: gradient and divergence is done brute force here and in a non-smooth way. 
+               while the LibXC implementation can be numerically smoothed by changing 
+               flag='standard' to flag='smooth'. The results with smooth math are 
+               slightly different.
+    '''
     rhom = rho.copy()
     tol = 1E-16
     rhom[rhom < tol] = tol

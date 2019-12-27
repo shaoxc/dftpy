@@ -8,14 +8,12 @@ from dftpy.kedf.fp import *
 from dftpy.kedf.sm import *
 from dftpy.kedf.mgp import *
 from dftpy.kedf.gga import *
-from dftpy.semilocal_xc import LIBXC_KEDF
 
 __all__  =  ['KEDFunctional']
 
 KEDF_Dict = {
         'TF'         : TF,
         'vW'         : vW,
-        'LIBXC_KEDF' : LIBXC_KEDF,
         'GGA'        : GGA,
         }
 
@@ -35,11 +33,11 @@ NLKEDF_Dict = {
 def KEDFunctional(rho, name = 'WT', calcType = 'Both', split = False, **kwargs):
     if name[:3] == 'GGA' :
         func = GGA
-        kstr = kwargs['kstr']
-        if kstr not in GGA_KEDF_list :
-            raise AttributeError("%s GGA KEDF to be implemented" %kstr)
+        k_str = kwargs['k_str'].upper()
+        if k_str not in GGA_KEDF_list :
+            raise AttributeError("%s GGA KEDF to be implemented" %k_str)
         else :
-            OutFunctional = GGA(rho, functional=kstr, calcType = calcType,  **kwargs)
+            OutFunctional = GGA(rho, functional=k_str, calcType = calcType,  **kwargs)
             OutFunctionalDict = {'GGA': OutFunctional}
     elif name in KEDF_Dict :
         func = KEDF_Dict[name]

@@ -54,7 +54,7 @@ def WTStress(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 5.0/6.0, beta = 5.0/6.0, energ
     if energy is None :
         global KE_kernel_saved
         if abs(KE_kernel_saved['rho0']-rho0) > 1E-6 or np.shape(rho) != KE_kernel_saved['shape'] :
-            print('Re-calculate KE_kernel')
+            #print('Re-calculate KE_kernel')
             KE_kernel = WTkernel(q, rho0, alpha = alpha, beta = beta)
             KE_kernel_saved['Kernel'] = KE_kernel
             KE_kernel_saved['rho0'] = rho0
@@ -98,7 +98,7 @@ def WT(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 5.0/6.0, beta = 5.0/6.0, rho0 = None
     # print('rho0', rho0)
 
     if abs(KE_kernel_saved['rho0']-rho0) > 1E-6 or np.shape(rho) != KE_kernel_saved['shape'] :
-        print('Re-calculate KE_kernel')
+        #print('Re-calculate KE_kernel')
         KE_kernel = WTKernel(q,rho0, x = x, y = y, alpha = alpha, beta = beta)
         KE_kernel_saved['Kernel'] = KE_kernel
         KE_kernel_saved['rho0'] = rho0
