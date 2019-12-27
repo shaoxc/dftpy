@@ -10,10 +10,8 @@ def CheckLibXC():
     import importlib
     islibxc = importlib.util.find_spec("pylibxc")
     found = islibxc is not None
-    if found:
-        from pylibxc.functional import LibXCFunctional
-    else: 
-        raise ModuleNotFoundError("Must install LibXC and pylibxc") 
+    if not found:
+        print("Install LibXC and pylibxc to use this functionality") 
     return found
 
 
