@@ -1,7 +1,6 @@
 BuildAndTest:
   image: python:3
   before_script:
-   - apt-get update -qq && apt-get install -y -qq gcc gfortran automake cmake
    - pip install setuptools
    - pip install ase pymatgen
    - pip install pytest pytest-cov

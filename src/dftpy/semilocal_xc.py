@@ -5,11 +5,17 @@ from dftpy.field import DirectField
 from dftpy.functional_output import Functional
 from dftpy.constants import MATHLIB
 from dftpy.math_utils import TimeData
-### Import LibXC
-try:
-    from pylibxc.functional import LibXCFunctional
-except:
-    print('!WARN : Now you can only use LDA functional')
+
+def CheckLibXC()
+    import importlib
+    islibxc = importlib.util.find_spec("pylibxc")
+    found = islibxc is not None
+    if found:
+        from pylibxc.functional import LibXCFunctional
+    else: 
+        raise ModuleNotFoundError("Must install LibXC and pylibxc") 
+    return found
+
 
 def Get_LibXC_Input(density,do_sigma=True):
     if not isinstance(density,(DirectField)):
@@ -86,6 +92,8 @@ def Get_LibXC_Output(out,density, calcType = 'Both'):
     return OutFunctional 
 
 def XC(density,x_str,c_str,polarization, do_sigma = True, calcType = 'Both'):
+    if CheckLibXC ():
+        from pylibxc.functional import LibXCFunctional
     '''
      Output: 
         - Functional_XC: a XC functional evaluated with LibXC
@@ -217,6 +225,8 @@ def LDAStress(rho, polarization='unpolarized', energy=None):
     return stress
 
 def LIBXC_KEDF(density,polarization = 'unpolarized', kstr='gga_k_lc94', calcType = 'Both', split = False, **kwargs):
+    if CheckLibXC ():
+        from pylibxc.functional import LibXCFunctional
     '''
      Output: 
         - Functional_KEDF: a KEDF functional evaluated with LibXC
