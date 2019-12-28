@@ -15,26 +15,27 @@ from dftpy.interface import OptimizeDensityConf
 from dftpy.api.api4ase import DFTpyCalculator
 
 
-
-
 class Test(unittest.TestCase):
     def test_md(self):
         dftpy_data_path = os.environ.get('DFTPY_DATA_PATH')
         conf = DefaultOption()
-        conf['PATH']['pppath'] = os.environ.get('DFTPY_DATA_PATH') 
+        conf['PATH']['pppath'] = os.environ.get('DFTPY_DATA_PATH')
         conf['PP']['Al'] = '/Al_lda.oe01.recpot'
         conf['OPT']['method'] = 'TN'
         conf['KEDF']['kedf'] = 'WT'
         conf['JOB']['calctype'] = 'Energy Force'
         conf['OUTPUT']['time'] = 'False'
         conf = OptionFormat(conf)
-        calc = DFTpyCalculator(config = conf)
-        atoms = read(filename=dftpy_data_path+'/initial_atoms_md.traj',format='traj',index=-1)
+        calc = DFTpyCalculator(config=conf)
+        atoms = read(filename=dftpy_data_path + '/initial_atoms_md.traj',
+                     format='traj',
+                     index=-1)
         atoms.set_calculator(calc)
         dyn = VelocityVerlet(atoms, 2 * units.fs)
         dyn.run(3)
-        atoms_fin = read(filename=dftpy_data_path+'/md.traj',index=-1)
-        self.assertTrue( atoms == atoms_fin )
+        atoms_fin = read(filename=dftpy_data_path + '/md.traj', index=-1)
+        self.assertTrue(atoms == atoms_fin)
+
 
 if __name__ == "__main__":
     unittest.main()

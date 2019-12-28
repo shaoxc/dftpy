@@ -9,13 +9,20 @@ from dftpy.kedf.wt import WTPotential, WTEnergy
 from dftpy.kedf.kernel import MGPKernel, MGPOmegaE, LindhardDerivative
 from dftpy.math_utils import TimeData
 
-__all__  =  ['MGP', 'MGPStress', 'MGPA', 'MGPG']
+__all__ = ['MGP', 'MGPStress', 'MGPA', 'MGPG']
 
 KE_kernel_saved ={'Kernel':None, 'rho0':0.0, 'shape':None, \
         'KernelTable':None, 'etaMax':None, 'KernelDeriv':None, \
         'MGPKernelE' :None}
 
-def MGPStress(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 5.0/6.0, beta = 5.0/6.0, calcType='Both'):
+
+def MGPStress(rho,
+              x=1.0,
+              y=1.0,
+              Sigma=0.025,
+              alpha=5.0 / 6.0,
+              beta=5.0 / 6.0,
+              calcType='Both'):
     pass
 
 def MGP(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 5.0/6.0, beta = 5.0/6.0, lumpfactor = 0.2, \
@@ -26,10 +33,14 @@ def MGP(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 5.0/6.0, beta = 5.0/6.0, lumpfactor
     q = rho.grid.get_reciprocal().q
     rho0 = np.einsum('ijkl -> ', rho) / np.size(rho)
     # if abs(KE_kernel_saved['rho0']-rho0) > 1E-6 or np.shape(rho) != KE_kernel_saved['shape'] :
-    if abs(KE_kernel_saved['rho0']-rho0) > 1E-2 or np.shape(rho) != KE_kernel_saved['shape'] :
+    if abs(KE_kernel_saved['rho0'] -
+           rho0) > 1E-2 or np.shape(rho) != KE_kernel_saved['shape']:
         print('Re-calculate KE_kernel')
-        KE_kernel = MGPKernel(q,rho0, maxpoints = maxpoint, symmetrization = symmetrization)
-        if lumpfactor is not None :
+        KE_kernel = MGPKernel(q,
+                              rho0,
+                              maxpoints=maxpoint,
+                              symmetrization=symmetrization)
+        if lumpfactor is not None:
             Ne = rho0 * np.size(rho) * rho.grid.dV
             KE_kernel += MGPOmegaE(q, Ne, lumpfactor)
         #-----------------------------------------------------------------------
@@ -43,30 +54,32 @@ def MGP(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 5.0/6.0, beta = 5.0/6.0, lumpfactor
         KE_kernel_saved['Kernel'] = KE_kernel
         KE_kernel_saved['rho0'] = rho0
         KE_kernel_saved['shape'] = np.shape(rho)
-    else :
+    else:
         KE_kernel = KE_kernel_saved['Kernel']
 
-
-    if calcType == 'Energy' :
+    if calcType == 'Energy':
         ene = WTEnergy(rho, rho0, KE_kernel, alpha, beta)
         pot = np.empty_like(rho)
-    elif calcType == 'Potential' :
+    elif calcType == 'Potential':
         pot = WTPotential(rho, rho0, KE_kernel, alpha, beta)
         ene = 0
-    else :
+    else:
         pot = WTPotential(rho, rho0, KE_kernel, alpha, beta)
-        if abs(beta - alpha) < 1E-9 :
-            ene = np.einsum('ijkl, ijkl->', pot, rho) * rho.grid.dV / (2 * alpha)
-        else :
+        if abs(beta - alpha) < 1E-9:
+            ene = np.einsum('ijkl, ijkl->', pot,
+                            rho) * rho.grid.dV / (2 * alpha)
+        else:
             ene = WTEnergy(rho, rho0, KE_kernel, alpha, beta)
 
-    NL = Functional(name='NL', potential = pot, energy= ene)
+    NL = Functional(name='NL', potential=pot, energy=ene)
     return NL
 
 def MGPA(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 5.0/6.0, beta = 5.0/6.0, lumpfactor = 0.2, \
         maxpoint = 1000, symmetrization = 'Arithmetic', calcType='Both', split = False, **kwargs):
-    return MGP(rho,x,y,Sigma, alpha, beta, lumpfactor, maxpoint, 'Arithmetic', calcType, split, **kwargs)
+    return MGP(rho, x, y, Sigma, alpha, beta, lumpfactor, maxpoint,
+               'Arithmetic', calcType, split, **kwargs)
 
 def MGPG(rho,x=1.0,y=1.0,Sigma=0.025, alpha = 5.0/6.0, beta = 5.0/6.0, lumpfactor = 0.2, \
         maxpoint = 1000, symmetrization = 'Geometric', calcType='Both', split = False, **kwargs):
-    return MGP(rho,x,y,Sigma, alpha, beta, lumpfactor, maxpoint, 'Geometric', calcType, split, **kwargs)
+    return MGP(rho, x, y, Sigma, alpha, beta, lumpfactor, maxpoint,
+               'Geometric', calcType, split, **kwargs)

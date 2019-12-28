@@ -4,20 +4,21 @@ from dftpy.atom import Atom
 from dftpy.base import BaseCell, DirectCell
 from dftpy.constants import LEN_CONV
 
-BOHR2ANG   = LEN_CONV['Bohr']['Angstrom']
+BOHR2ANG = LEN_CONV['Bohr']['Angstrom']
+
 
 def read_POSCAR(infile, names=None, **kwargs):
     with open(infile) as fr:
         title = fr.readline()
         scale = list(map(float, fr.readline().split()))
-        if len(scale) == 1 :
+        if len(scale) == 1:
             scale = np.ones(3) * scale
-        elif len(scale) == 3 :
+        elif len(scale) == 3:
             scale = np.asarray(scale)
         lat = []
         for i in range(2, 5):
             lat.append(list(map(float, fr.readline().split())))
-        lat = np.asarray(lat).T/BOHR2ANG
+        lat = np.asarray(lat).T / BOHR2ANG
         for i in range(3):
             lat[i] *= scale[i]
         lineL = fr.readline().split()
@@ -26,27 +27,27 @@ def read_POSCAR(infile, names=None, **kwargs):
         else:
             names = lineL
             typ = list(map(int, fr.readline().split()))
-        if names is None :
+        if names is None:
             raise AttributeError("Must input the atoms names")
         Format = fr.readline().strip()[0]
-        if Format == 'D' or Format == 'd' :
+        if Format == 'D' or Format == 'd':
             Format = 'Crystal'
-        elif Format == 'F' or Format == 'f' :
+        elif Format == 'F' or Format == 'f':
             Format = 'Cartesian'
-        nat=sum(typ)
+        nat = sum(typ)
         pos = []
         i = 0
-        for line in fr :
+        for line in fr:
             i += 1
-            if i > nat :
+            if i > nat:
                 break
-            else :
+            else:
                 pos.append(list(map(float, line.split()[:3])))
-    labels =[]
+    labels = []
     for i in range(len(names)):
         labels.extend([names[i]] * typ[i])
 
     cell = DirectCell(lat)
-    atoms = Atom(label=labels,pos=pos, cell=cell, basis = Format)
+    atoms = Atom(label=labels, pos=pos, cell=cell, basis=Format)
 
     return atoms
