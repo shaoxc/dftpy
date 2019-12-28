@@ -34,7 +34,7 @@ class Test(unittest.TestCase):
         dyn = VelocityVerlet(atoms, 2 * units.fs)
         dyn.run(3)
         atoms_fin = read(filename=dftpy_data_path + '/md.traj', index=-1)
-        self.assertTrue(np.isclose(atoms.get_momenta(), atoms_fin.get_momenta()).all(),1.e-4)
+        self.assertTrue(np.isclose(atoms.get_momenta(), atoms_fin.get_momenta()).all(),1.e-3)
 
 
 if __name__ == "__main__":
