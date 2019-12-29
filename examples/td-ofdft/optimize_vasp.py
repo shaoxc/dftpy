@@ -66,14 +66,14 @@ def main():
     optional_kwargs["PP_list"] = dict(zip(atom_name, atom_pseudo))
     optional_kwargs["ions"] = ions
 
-    IONS = FunctionalClass(type='IONS', optional_kwargs=optional_kwargs)
+    PSEUDO = FunctionalClass(type='PSEUDO', optional_kwargs=optional_kwargs)
     HARTREE = FunctionalClass(type='HARTREE')
 
     E_v_Evaluator = TotalEnergyAndPotential(rho=rho_ini,
                                             KineticEnergyFunctional=KE,
                                             XCFunctional=XC,
                                             HARTREE=HARTREE,
-                                            IONS=IONS)
+                                            PSEUDO=PSEUDO)
     
     optional_kwargs = {}
     optional_kwargs['econv'] = 1.0e-11
