@@ -404,7 +404,7 @@ class Coord(np.ndarray):
         """
         ds12 = other.to_crys() - self.to_crys()
         for i in range(3):
-            ds12[i] = ds12[i] - round(ds12[i])
+            ds12[i] = ds12[i] - np.round(ds12[i])
         # dr12 = s2r(ds12, cell)
         return ds12.to_basis(self.basis)
 
@@ -671,6 +671,6 @@ def s2r(pos, cell):
 def getrMIC(atm2, atm1, cell):
     ds12 = atm1.spos - atm2.spos
     for i in range(3):
-        ds12[i] = ds12[i] - round(ds12[i])
+        ds12[i] = ds12[i] - np.round(ds12[i])
         dr12 = s2r(ds12, cell)
     return dr12

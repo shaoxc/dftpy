@@ -74,12 +74,46 @@ class TestField(unittest.TestCase):
         field_cut = field.get_cut(origin=x0, r0=r0, nr=nr[0])
         self.assertTrue(np.isclose(field_cut[:,0,0,0], field[:,0,0,0]).all())
 
+    def test_fft_ifft(self):
+        nr=(51,51,51)
+        A=10.0
+        B=10.0
+        C=10.0
+        
+        dgrid = make_orthorombic_cell( A=A, B=B, C=C, CellClass=DirectGrid, nr=nr, units='Bohr' )
+        rgrid=dgrid.get_reciprocal()
+        
+        def ReciprocalSpaceGaussian(sigma,mu,grid):
+            if not isinstance(grid,(ReciprocalGrid)):
+                raise Exception()
+            a = np.einsum('ijkl,l->ijk',grid.g,mu)
+            b = np.exp(-sigma**2*grid.gg/2.0)
+            c = np.exp(-1j*a)
+            d=np.einsum('ijkl,ijk->ijk',b,c)
+            return ReciprocalField(grid=grid,rank=1,griddata_3d=d)
+        
+        def DirectSpaceGaussian (sigma,mu,grid): 
+            if not isinstance(grid,(DirectGrid)):
+                raise Exception()
+            a = grid.r-mu
+            b = (sigma*np.sqrt(2.0*np.pi))**(-3.0)*np.exp( - 0.5 * np.einsum('ijkl,ijkl->ijk', a, a) / sigma**2.0 )
+            return DirectField(grid=grid,rank=1,griddata_3d=b)
+        
+        center = dgrid.r[25,25,25,:]
+        sigma = 0.5
+        
+        rf = ReciprocalSpaceGaussian(sigma,center,rgrid)
+        df = DirectSpaceGaussian(sigma,center,dgrid)
+        
+        df_dftpy=rf.ifft()
+        rf_dftpy=df.fft()
+        
+        self.assertTrue(np.isclose(df_dftpy.integral(),1.0))
+        self.assertTrue(np.isclose(df.integral(),1.0))
+        
+        self.assertTrue(np.isclose(rf,rf_dftpy).all())
+        self.assertTrue(np.isclose(df,df_dftpy).all())
+        
 
 
-    def test_reciprocal_field(self):
-        print()
-        print("*"*50)
-        print("Testing ReciprocalScalarField")
-        print("TODO: Michele, some simple tests for which we have analytic solutions?")
-        # TODO: Michele, some simple tests for which we have analytic solutions?
-        pass
+

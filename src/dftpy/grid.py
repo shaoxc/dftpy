@@ -90,6 +90,7 @@ class DirectGrid(BaseGrid, DirectCell):
                          units=units,
                          **kwargs)
         self._r = None
+        self._rr = None
         self._s = None
         self.RPgrid = None
         self._Rtable = None
