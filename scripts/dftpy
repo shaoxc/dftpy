@@ -4,6 +4,7 @@ import argparse
 from dftpy.interface import OptimizeDensityConf, GetEnergyPotential, GetForces, GetStress
 from dftpy.config import DefaultOption, OptionFormat
 
+
 def RunJob():
     parser = argparse.ArgumentParser(description='Process task')
 
@@ -11,29 +12,30 @@ def RunJob():
             default='config.ini', help='input file (default: config.ini)')
 
     args = parser.parse_args()
-    config  =  configparser.ConfigParser()
+    config = configparser.ConfigParser()
     config.read(args.input)
 
     conf = DefaultOption()
-    for section in config.sections() :
+    for section in config.sections():
         for key in config.options(section):
-            if section != 'PP' and key not in conf[section] :
-                print('!WARN : "%s.%s" not in the dictionary'%(section, key))
-            elif section == 'PP' :
+            if section != 'PP' and key not in conf[section]:
+                print('!WARN : "%s.%s" not in the dictionary' % (section, key))
+            elif section == 'PP':
                 conf['PP'][key.capitalize()] = config.get(section, key)
-            else :
+            else:
                 conf[section][key] = config.get(section, key)
 
     # configNEW = configparser.ConfigParser()
     # configNEW.read_dict(conf)
     # with open('run.ini', 'w') as fw :
-        # configNEW.write(fw)
+    # configNEW.write(fw)
 
     config = OptionFormat(conf)
     print('config...')
     print(config)
     # if config['JOB']['task'] == 'Optdensity' :
     results = OptimizeDensityConf(config)
+
 
 if __name__ == "__main__":
     RunJob()

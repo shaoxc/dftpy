@@ -1,6 +1,7 @@
 import numpy as np
-class System(object):
 
+
+class System(object):
     def __init__(self, ions, cell, name=None, field=None):
 
         self.ions = ions
