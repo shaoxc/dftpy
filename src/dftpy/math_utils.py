@@ -206,8 +206,8 @@ def PYifft(grid, cplx=False, threads=1):
                 nrc = grid.nr
                 rA = pyfftw.empty_aligned(tuple(nr), dtype='float64')
                 cA = pyfftw.empty_aligned(tuple(nrc), dtype='complex128')
-                fft_object = pyfftw.FFTW(cA, rA, axes = (0, 1, 2), \
-                        flags=('FFTW_MEASURE',), direction='FFTW_BACKWARD', threads = threads)
+            fft_object = pyfftw.FFTW(cA, rA, axes = (0, 1, 2), \
+                    flags=('FFTW_MEASURE',), direction='FFTW_BACKWARD', threads = threads)
             FFT_SAVE['IFFT_Grid'][cplx] = nr
             FFT_SAVE['IFFT_OBJ'][cplx] = fft_object
         return fft_object

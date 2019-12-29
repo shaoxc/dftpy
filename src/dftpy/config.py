@@ -92,23 +92,41 @@ def DefaultOption(dicts=None):
         'h0': 1.0,  # for LBFGS
     }
 
-    conf = {
-        'JOB': JOB,
-        'PATH': PATH,
-        'MATH': MATH,
-        'PP': PP,
-        'KEDF': KEDF,
-        'CELL': CELL,
-        'GRID': GRID,
-        'EXC': EXC,
-        'KEDF': KEDF,
-        'OPT': OPT,
-        'DENSITY': DENSITY,
-        'OUTPUT': OUTPUT
+    PROPAGATOR = {
+            'order'          : 20,
+            'linearsolver'   : 'bicgstab',
+            'tol'            : 1e-10,
+            'maxiter'        : 100,
+            'sigma'          : 0.025
     }
 
-    for section in conf:
-        for key in conf[section]:
+    TD = {
+            'outfile'        : 'td_out',
+            'int_t'          : 1e-3,
+            'tmax'           : 1.0,
+            'order'          : 1,
+            'direc'          : 0,
+    }
+
+    conf = {
+            'JOB'     : JOB,
+            'PATH'    : PATH,
+            'MATH'    : MATH,
+            'PP'      : PP,
+            'KEDF'    : KEDF ,
+            'CELL'    : CELL,
+            'GRID'    : GRID,
+            'EXC'     : EXC,
+            'KEDF'    : KEDF,
+            'OPT'     : OPT,
+            'DENSITY' : DENSITY,
+            'OUTPUT'  : OUTPUT,
+            'PROPAGATOR' : PROPAGATOR,
+            'TD'      : TD
+            }
+
+    for section in conf :
+        for key in conf[section] :
             conf[section][key] = str(conf[section][key])
     return conf
 

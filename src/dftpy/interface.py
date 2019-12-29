@@ -16,6 +16,7 @@ from dftpy.kedf.tf import ThomasFermiStress
 from dftpy.kedf.vw import vonWeizsackerStress
 from dftpy.kedf.wt import WTStress
 from dftpy.hartree import HartreeFunctionalStress
+from dftpy.tdrunner import tdrunner
 
 
 def OptimizeDensityConf(config, ions=None, rhoini=None):
@@ -147,12 +148,14 @@ def OptimizeDensityConf(config, ions=None, rhoini=None):
             rho_ini = DirectField(grid=grid2, griddata_3d=rho_ini, rank=1)
             rho_ini *= (charge_total / (np.sum(rho_ini) * rho_ini.grid.dV))
             ions.restart()
-            opt = Optimization(EnergyEvaluator=E_v_Evaluator,
-                               optimization_options=optimization_options,
-                               optimization_method=config['OPT']['method'])
+            opt = Optimization(EnergyEvaluator=E_v_Evaluator, optimization_options = optimization_options,
+                    optimization_method = config['OPT']['method'])
             rho = opt.optimize_rho(guess_rho=rho_ini)
-        optimization_options["econv"] /= ions.nat  # reset the value
-    else:
+        optimization_options["econv"] /= ions.nat # reset the value
+    elif 'Propagate' in config['JOB']['task']:
+        tdrunner(rho_ini, E_v_Evaluator, config)
+        return 0
+    else :
         rho = rho_ini
     ############################## calctype  ##############################
     linearii = config['MATH']['linearii']
