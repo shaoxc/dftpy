@@ -34,6 +34,7 @@ class Test(unittest.TestCase):
         dyn = VelocityVerlet(atoms, 2 * units.fs)
         dyn.run(3)
         atoms_fin = read(filename=dftpy_data_path + '/md.traj', index=-1)
+        print(atoms.positions - atoms_fin.positions)
         self.assertTrue(np.isclose(atoms.positions, atoms_fin.positions).all(),1.e-3)
 
 
