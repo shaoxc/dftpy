@@ -35,7 +35,7 @@ class Test(unittest.TestCase):
         dyn.run(3)
         atoms_fin = read(filename=dftpy_data_path + '/md.traj', index=-1)
         print(atoms.positions - atoms_fin.positions)
-        self.assertTrue(np.isclose(atoms.positions, atoms_fin.positions).all(),1.e-3)
+        self.assertTrue(np.isclose(atoms.get_momenta(), atoms_fin.get_momenta(), atol=1.e-3).all())
 
 
 if __name__ == "__main__":
