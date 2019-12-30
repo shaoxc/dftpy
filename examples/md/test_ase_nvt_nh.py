@@ -67,4 +67,4 @@ dyn.attach(printenergy, interval=1)
 traj = Trajectory('md.traj', 'w', atoms)
 dyn.attach(traj.write, interval=1)
 
-dyn.run(50000)
+dyn.run(500)

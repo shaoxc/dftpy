@@ -3,19 +3,22 @@ from dftpy.formats.qepp import PP
 from dftpy.optimization import Optimization
 from dftpy.functionals import FunctionalClass, TotalEnergyAndPotential
 from dftpy.constants import LEN_CONV, ENERGY_CONV
-from dftpy.formats.qepp import PP
+# from dftpy.formats.qepp import PP
+from dftpy.formats import io
 from dftpy.ewald import ewald
 from dftpy.grid import DirectGrid, ReciprocalGrid
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
 from dftpy.math_utils import TimeData, bestFFTsize
+from dftpy.pseudo import LocalPseudo
 
-def test_optim(self):
+def test_optim():
     path_pp='../DATA/'
+    path_pos='../DATA/'
     file1='Al_lda.oe01.recpot'
     posfile='fcc.vasp'
-    ions = read_POSCAR(path_pos+posfile, names=['Al'])
+    ions = io.read(path_pos+posfile, names=['Al'])
     lattice = ions.pos.cell.lattice
     metric = np.dot(lattice.T, lattice)
     gap = 0.4
@@ -29,12 +32,8 @@ def test_optim(self):
     grid = DirectGrid(lattice=lattice, nr=nr, units=None, full=False)
     zerosA = np.zeros(grid.nnr, dtype=float)
     rho_ini = DirectField(grid=grid, griddata_F=zerosA, rank=1)
-    optional_kwargs = {}
-    optional_kwargs["PP_list"] = {'Al': path_pp+file1}
-    optional_kwargs["ions"]    = ions 
-    IONS = FunctionalClass(type='IONS', optional_kwargs=optional_kwargs)
-    Vloc = IONS(rho_ini)
-    ions.set_Zval()
+    PP_list = {'Al': path_pp+file1}
+    PSEUDO = LocalPseudo(grid = grid, ions=ions,PP_list=PP_list,PME=True)
     optional_kwargs = {}
     KE = FunctionalClass(type='KEDF',name='x_TF_y_vW',optional_kwargs=optional_kwargs)
     XC = FunctionalClass(type='XC',name='LDA')
@@ -44,11 +43,10 @@ def test_optim(self):
     for i in range(ions.nat) :
         charge_total += ions.Zval[ions.labels[i]]
     rho_ini[:] = charge_total/ions.pos.cell.volume
-    E_v_Evaluator = TotalEnergyAndPotential(rho=rho_ini,
-                                    KineticEnergyFunctional=KE,
+    E_v_Evaluator = TotalEnergyAndPotential(KineticEnergyFunctional=KE,
                                     XCFunctional=XC,
                                     HARTREE=HARTREE,
-                                    IONS=IONS)
+                                    PSEUDO=PSEUDO)
     optimization_options = {\
             'econv' : 1e-6, # Energy Convergence (a.u./atom)
             'maxfun' : 50,  # For TN method, it's the max steps for searching direction
@@ -68,3 +66,6 @@ def test_optim(self):
     for key in TimeData.cost :
         print("{:28s}{:<24.4f}{:<20d}".format(key, TimeData.cost[key], TimeData.number[key]))
     print('-' * 80)
+
+if __name__ == "__main__":
+    test_optim()
