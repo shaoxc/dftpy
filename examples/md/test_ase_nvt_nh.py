@@ -8,7 +8,7 @@ from ase.io.trajectory import Trajectory
 from ase import units
 from ase.md.npt import NPT
 
-from dftpy.config import DefaultOption, OptionFormat
+from dftpy.config import DefaultOption, OptionFormat, PrintConf
 from dftpy.interface import OptimizeDensityConf
 from dftpy.api.api4ase import DFTpyCalculator
 
@@ -24,7 +24,7 @@ conf['KEDF']['kedf'] = 'WT'
 conf['JOB']['calctype'] = 'Energy Force'
 conf['OUTPUT']['time'] = 'False'
 conf = OptionFormat(conf)
-print(conf)
+PrintConf(conf)
 #-----------------------------------------------------------------------
 '''
 Ref :

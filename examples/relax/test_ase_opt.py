@@ -9,7 +9,7 @@ from ase.io.trajectory import Trajectory
 from ase import units
 import ase.io
 
-from dftpy.config import DefaultOption, OptionFormat
+from dftpy.config import DefaultOption, OptionFormat, PrintConf
 from dftpy.interface import OptimizeDensityConf
 from dftpy.api.api4ase import DFTpyCalculator
 
@@ -28,7 +28,7 @@ conf['OPT']['method'] = 'TN'
 conf['OUTPUT']['stress'] = 'False'
 # conf['MATH']['reuse'] = 'False'
 conf = OptionFormat(conf)
-print(conf)
+PrintConf(conf)
 #-----------------------------------------------------------------------
 path = os.environ.get('DFTPY_DATA_PATH') 
 # atoms = ase.io.read(path+'/'+'GaAs.vasp')

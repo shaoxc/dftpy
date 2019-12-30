@@ -3,7 +3,7 @@ import copy
 from dftpy.constants import ENERGY_CONV, LEN_CONV
 
 
-def DefaultOption(dicts=None):
+def DefaultOption():
     JOB = {'task': 'Optdensity', 'calctype': 'Energy'}
 
     PATH = {
@@ -93,45 +93,47 @@ def DefaultOption(dicts=None):
     }
 
     PROPAGATOR = {
-            'order'          : 20,
-            'linearsolver'   : 'bicgstab',
-            'tol'            : 1e-10,
-            'maxiter'        : 100,
-            'sigma'          : 0.025
+        'order': 20,
+        'linearsolver': 'bicgstab',
+        'tol': 1e-10,
+        'maxiter': 100,
+        'sigma': 0.025
     }
 
     TD = {
-            'outfile'        : 'td_out',
-            'int_t'          : 1e-3,
-            'tmax'           : 1.0,
-            'order'          : 1,
-            'direc'          : 0,
+        'outfile': 'td_out',
+        'int_t': 1e-3,
+        'tmax': 1.0,
+        'order': 1,
+        'direc': 0,
     }
 
     conf = {
-            'JOB'     : JOB,
-            'PATH'    : PATH,
-            'MATH'    : MATH,
-            'PP'      : PP,
-            'KEDF'    : KEDF ,
-            'CELL'    : CELL,
-            'GRID'    : GRID,
-            'EXC'     : EXC,
-            'KEDF'    : KEDF,
-            'OPT'     : OPT,
-            'DENSITY' : DENSITY,
-            'OUTPUT'  : OUTPUT,
-            'PROPAGATOR' : PROPAGATOR,
-            'TD'      : TD
-            }
+        'JOB': JOB,
+        'PATH': PATH,
+        'MATH': MATH,
+        'PP': PP,
+        'KEDF': KEDF,
+        'CELL': CELL,
+        'GRID': GRID,
+        'EXC': EXC,
+        'KEDF': KEDF,
+        'OPT': OPT,
+        'DENSITY': DENSITY,
+        'OUTPUT': OUTPUT,
+        'PROPAGATOR': PROPAGATOR,
+        'TD': TD
+    }
 
-    for section in conf :
-        for key in conf[section] :
+    for section in conf:
+        for key in conf[section]:
             conf[section][key] = str(conf[section][key])
     return conf
 
 
 def OptionFormat(config):
+    if not isinstance(config, dict):
+        raise AttributeError("config must be dict")
     conf = copy.deepcopy(config)
     for section in conf:
         for key in conf[section]:
@@ -228,3 +230,15 @@ def OptionFormat(config):
         conf['PP'][key.capitalize()] = conf['PP'][key]
 
     return conf
+
+
+def PrintConf(conf):
+    if not isinstance(conf, dict):
+        raise AttributeError("conf must be dict")
+    try:
+        import json
+        print(json.dumps(conf, indent=4, sort_keys=True))
+    except:
+        import pprint
+        pprint.pprint(conf)
+        pretty_dict_str = pprint.pformat(conf)
