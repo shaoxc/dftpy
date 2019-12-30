@@ -2,7 +2,7 @@
 import configparser
 import argparse
 from dftpy.interface import OptimizeDensityConf, GetEnergyPotential, GetForces, GetStress
-from dftpy.config import DefaultOption, OptionFormat
+from dftpy.config import DefaultOption, OptionFormat, PrintConf
 
 
 def RunJob():
@@ -25,15 +25,8 @@ def RunJob():
             else:
                 conf[section][key] = config.get(section, key)
 
-    # configNEW = configparser.ConfigParser()
-    # configNEW.read_dict(conf)
-    # with open('run.ini', 'w') as fw :
-    # configNEW.write(fw)
-
     config = OptionFormat(conf)
-    print('config...')
-    print(config)
-    # if config['JOB']['task'] == 'Optdensity' :
+    PrintConf(config)
     results = OptimizeDensityConf(config)
 
 
