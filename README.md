@@ -1,7 +1,7 @@
 # DFTpy: Density Functional Theory in Python
 
-![pipeline](https://gitlab.com/pavanello-research-group/dftpy/badges/master/pipeline.svg?job=pipeline)
-![coverage](https://gitlab.com/pavanello-research-group/dftpy/badges/master/coverage.svg?job=coverage)
+[![pipeline status](https://gitlab.com/pavanello-research-group/dftpy/badges/master/pipeline.svg)](https://gitlab.com/pavanello-research-group/dftpy/commits/master)
+[![coverage report](https://gitlab.com/pavanello-research-group/dftpy/badges/master/coverage.svg)](https://gitlab.com/pavanello-research-group/dftpy/commits/master)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 `DFTpy` is an orbital-free Density Functional Theory code based on a plane-wave expansion of the electron density developed by [PRG](https://sites.rutgers.edu/prg/) at [Rutgers University-Newark](http://sasn.rutgers.edu). The code bases itself on [`pbcpy`](https://gitlab.com/ales.genova/pbcpy).
