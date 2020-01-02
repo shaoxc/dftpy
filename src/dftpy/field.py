@@ -220,7 +220,7 @@ class DirectField(BaseField):
                 raise ValueError(
                     "Standard Gradient: Gradient rank incompatible with shape")
             return grad
-        if ipol is not None:
+        else :
             raise Exception(
                 "ipol not yet implemented in super_smooth_gradient")
 
@@ -237,17 +237,18 @@ class DirectField(BaseField):
             grad_g = ReciprocalField(grid=self.grid.get_reciprocal(),
                                      rank=3,
                                      griddata_3d=grad_g)
-            grad = grad_g.ifft(force_real=True)
-            return grad
-        if ipol is not None:
+        elif ipol > 3 :
+                raise ValueError(
+                    "Standard Gradient: ipol can not large than 3")
+        else :
             i = ipol - 1
             grad_g = reciprocal_self.grid.g[..., i] * (
                 reciprocal_self[..., 0] * imag)
             grad_g = ReciprocalField(grid=self.grid.get_reciprocal(),
                                      rank=1,
                                      griddata_3d=grad_g)
-            grad = grad_g.ifft(force_real=True)
-            return grad
+        grad = grad_g.ifft(force_real=True)
+        return grad
 
     def divergence(self, flag='smooth'):
         #if self.rank != 3:
