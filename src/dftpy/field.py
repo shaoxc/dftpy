@@ -80,9 +80,12 @@ class BaseField(np.ndarray):
     def __array_wrap__(self, obj, context=None):
         """wrap it up"""
         b = np.ndarray.__array_wrap__(self, obj, context)
-        a = np.shape(np.shape(self))[0]
+        a = np.shape(np.shape(b))[0]
+        #a = np.shape(np.shape(self))[0]
+        #self.rank = np.max([self.rank, obj.rank])
         if a == 4:
-            rank = np.shape(self)[0]
+            rank = np.shape(b)[0]
+            #rank = np.shape(self)[0]
         else:
             rank = 1
         # if rank == 1:
@@ -238,9 +241,18 @@ class DirectField(BaseField):
             return self.numerically_smooth_gradient(ipol)
         elif flag is "supersmooth":
             return self.super_smooth_gradient(ipol)
+        else :
+            raise Exception("Incorrect flag")
 
-    def laplacian(self, flag="smooth"):
-        return self.gradient(flag=flag).divergence(flag=flag)
+    def laplacian(self, check_real = False, force_real = False, sigma = 0.025):
+        self_fft = self.fft()
+        gg = self_fft.grid.gg
+        self_fft = -gg*self_fft*np.exp(-gg*(sigma*sigma)/4.0)
+        #self_fft = -self_fft.grid.gg*self_fft
+        return self_fft.ifft(check_real = check_real, force_real = force_real)
+
+    #def laplacian(self, flag="smooth"):
+        #return self.gradient(flag=flag).divergence(flag=flag)
 
     def sigma(self, flag="smooth"):
         """

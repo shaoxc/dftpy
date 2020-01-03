@@ -57,7 +57,7 @@ class Propagator(object):
 
 
 def hamiltonian(psi, v, sigma=0.025):
-    return -0.5 * psi.laplacian(sigma) + v * psi
+    return -0.5 * psi.laplacian(sigma = 0.0) + v * psi
     # return v*psi
 
 

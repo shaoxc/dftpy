@@ -27,7 +27,6 @@ def tdrunner(rho0, E_v_Evaluator, config):
 
     begin_t = time.time()
     x = rho0.grid.r[direc]
-    x = np.expand_dims(x, 3)
     k = 1.0e-6
     psi = np.sqrt(rho0) * np.exp(1j * k * x)
     rho, j = cal_rho_j(psi)
