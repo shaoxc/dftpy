@@ -10,12 +10,10 @@ from dftpy.math_utils import TimeData
 
 
 class Atom(object):
-
-    def __init__(self, Z=None, Zval=None, label=None, pos=None, cell=None, \
-            basis='Cartesian'):
-        '''
+    def __init__(self, Z=None, Zval=None, label=None, pos=None, cell=None, basis="Cartesian"):
+        """
         Atom class handles atomic position, atom type and local pseudo potentials.
-        '''
+        """
 
         if Zval is None:
             self.Zval = {}
@@ -48,34 +46,135 @@ class Atom(object):
             raise Exception("Must initialize Pseudo Potential with ReadPseudo")
 
     def strf(self, reciprocal_grid, iatom):
-        '''
+        """
         Returns the Structure Factor associated to i-th ion.
-        '''
-        a = np.exp(
-            -1j * np.einsum('ijkl,l->ijk', reciprocal_grid.g, self.pos[iatom]))
-        return np.reshape(a, [
-            reciprocal_grid.nr[0], reciprocal_grid.nr[1],
-            reciprocal_grid.nr[2], 1
-        ])
+        """
+        a = np.exp(-1j * np.einsum("lijk,l->ijk", reciprocal_grid.g, self.pos[iatom]))
+        return a
 
     def istrf(self, reciprocal_grid, iatom):
-        a = np.exp(
-            1j * np.einsum('ijkl,l->ijk', reciprocal_grid.g, self.pos[iatom]))
-        return np.reshape(a, [
-            reciprocal_grid.nr[0], reciprocal_grid.nr[1],
-            reciprocal_grid.nr[2], 1
-        ])
+        a = np.exp(1j * np.einsum("lijk,l->ijk", reciprocal_grid.g, self.pos[iatom]))
+        return a
 
 
 z2lab = [
-    'NA', 'H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Na', 'Mg',
-    'Al', 'Si', 'P', 'S', 'Cl', 'Ar', 'K', 'Ca', 'Sc', 'Ti', 'V', 'Cr', 'Mn',
-    'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr', 'Rb',
-    'Sr', 'Y', 'Zr', 'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd', 'In',
-    'Sn', 'Sb', 'Te', 'I', 'Xe', 'Cs', 'Ba', 'La', 'Ce', 'Pr', 'Nd', 'Pm',
-    'Sm', 'Eu', 'Gd', 'Tb', 'Dy', 'Ho', 'Er', 'Tm', 'Yb', 'Lu', 'Hf', 'Ta',
-    'W', 'Re', 'Os', 'Ir', 'Pt', 'Au', 'Hg', 'Tl', 'Pb', 'Bi', 'Po', 'At',
-    'Rn', 'Fr', 'Ra', 'Ac', 'Th', 'Pa', 'U', 'Np', 'Pu', 'Am', 'Cm', 'Bk',
-    'Cf', 'Es', 'Fm', 'Md', 'No', 'Lr', 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt',
-    'Ds', 'Rg', 'Cn', 'Uut', 'Fl', 'Uup', 'Lv', 'Uus', 'Uuo'
+    "NA",
+    "H",
+    "He",
+    "Li",
+    "Be",
+    "B",
+    "C",
+    "N",
+    "O",
+    "F",
+    "Ne",
+    "Na",
+    "Mg",
+    "Al",
+    "Si",
+    "P",
+    "S",
+    "Cl",
+    "Ar",
+    "K",
+    "Ca",
+    "Sc",
+    "Ti",
+    "V",
+    "Cr",
+    "Mn",
+    "Fe",
+    "Co",
+    "Ni",
+    "Cu",
+    "Zn",
+    "Ga",
+    "Ge",
+    "As",
+    "Se",
+    "Br",
+    "Kr",
+    "Rb",
+    "Sr",
+    "Y",
+    "Zr",
+    "Nb",
+    "Mo",
+    "Tc",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Cd",
+    "In",
+    "Sn",
+    "Sb",
+    "Te",
+    "I",
+    "Xe",
+    "Cs",
+    "Ba",
+    "La",
+    "Ce",
+    "Pr",
+    "Nd",
+    "Pm",
+    "Sm",
+    "Eu",
+    "Gd",
+    "Tb",
+    "Dy",
+    "Ho",
+    "Er",
+    "Tm",
+    "Yb",
+    "Lu",
+    "Hf",
+    "Ta",
+    "W",
+    "Re",
+    "Os",
+    "Ir",
+    "Pt",
+    "Au",
+    "Hg",
+    "Tl",
+    "Pb",
+    "Bi",
+    "Po",
+    "At",
+    "Rn",
+    "Fr",
+    "Ra",
+    "Ac",
+    "Th",
+    "Pa",
+    "U",
+    "Np",
+    "Pu",
+    "Am",
+    "Cm",
+    "Bk",
+    "Cf",
+    "Es",
+    "Fm",
+    "Md",
+    "No",
+    "Lr",
+    "Rf",
+    "Db",
+    "Sg",
+    "Bh",
+    "Hs",
+    "Mt",
+    "Ds",
+    "Rg",
+    "Cn",
+    "Uut",
+    "Fl",
+    "Uup",
+    "Lv",
+    "Uus",
+    "Uuo",
 ]

@@ -7,14 +7,14 @@ from dftpy.system import System
 from dftpy.atom import Atom
 
 
-def read_xsf(infile, kind='All', full=False, pbc=True, **kwargs):
-    #http ://www.xcrysden.org/doc/XSF.html
-    with open(infile, 'r') as fr:
+def read_xsf(infile, kind="All", full=False, pbc=True, **kwargs):
+    # http ://www.xcrysden.org/doc/XSF.html
+    with open(infile, "r") as fr:
 
         def readline():
             for line in fr:
                 line = line.strip()
-                if len(line) == 0 or line.startswith('#'):
+                if len(line) == 0 or line.startswith("#"):
                     continue
                 else:
                     return line
@@ -22,40 +22,40 @@ def read_xsf(infile, kind='All', full=False, pbc=True, **kwargs):
         celltype = readline()
         lattice = []
         line = readline()
-        if line.startswith('PRIMVEC'):
+        if line.startswith("PRIMVEC"):
             for i in range(3):
                 l = list(map(float, fr.readline().split()))
                 lattice.append(l)
-            lattice = np.asarray(lattice) / LEN_CONV["Bohr"]['Angstrom']
+            lattice = np.asarray(lattice) / LEN_CONV["Bohr"]["Angstrom"]
             lattice = lattice.T  # cell = [a, b, c]
             line = readline()
 
         label = []
         pos = []
-        if line.startswith('PRIMCOORD'):
+        if line.startswith("PRIMCOORD"):
             natom = int(fr.readline().split()[0])
             for i in range(natom):
                 line = readline().split()
                 label.append(line[0])
                 p = list(map(float, line[1:4]))
                 pos.append(p)
-            pos = np.asarray(pos) / LEN_CONV["Bohr"]['Angstrom']
+            pos = np.asarray(pos) / LEN_CONV["Bohr"]["Angstrom"]
             line = readline()
 
         if lattice != []:
             cell = DirectCell(lattice)
-            atoms = Atom(label=label, pos=pos, cell=cell, basis='Cartesian')
-            if kind == 'cell':
+            atoms = Atom(label=label, pos=pos, cell=cell, basis="Cartesian")
+            if kind == "cell":
                 return atoms
 
-        if line.startswith('BEGIN_BLOCK_DATAGRID_3D'):
+        if line.startswith("BEGIN_BLOCK_DATAGRID_3D"):
             line = readline()
             line = readline()
         data = []
-        if line.startswith('BEGIN_DATAGRID_3D'):
+        if line.startswith("BEGIN_DATAGRID_3D"):
             nrx = np.empty(3, dtype=int)
             nrx[0], nrx[1], nrx[2] = map(int, readline().split())
-            readline()  #read one useless line
+            readline()  # read one useless line
             if lattice == []:
                 for i in range(3):
                     l = list(map(float, readline().split()))
@@ -63,11 +63,8 @@ def read_xsf(infile, kind='All', full=False, pbc=True, **kwargs):
                 lattice = np.asarray(lattice)
                 lattice = lattice.T  # cell = [a, b, c]
                 cell = DirectCell(lattice)
-                atoms = Atom(label=label,
-                             pos=pos,
-                             cell=cell,
-                             basis='Cartesian')
-                if kind == 'cell':
+                atoms = Atom(label=label, pos=pos, cell=cell, basis="Cartesian")
+                if kind == "cell":
                     return atoms
             else:
                 for i in range(3):
@@ -77,7 +74,7 @@ def read_xsf(infile, kind='All', full=False, pbc=True, **kwargs):
                 line = line.split()
                 if not line:
                     continue
-                if line[0][0] == 'E':
+                if line[0][0] == "E":
                     break
                 else:
                     l = list(map(float, line))
@@ -87,8 +84,8 @@ def read_xsf(infile, kind='All', full=False, pbc=True, **kwargs):
             raise AttributeError("!!!ERROR : XSF file have some problem")
         data = np.asarray(data)
         if np.size(data) > np.prod(nrx):  # double xsf grid data
-            data = data[:np.prod(nrx)]
-        data = np.reshape(data, nrx, order='F')
+            data = data[: np.prod(nrx)]
+        data = np.reshape(data, nrx, order="F")
         if pbc:
             bound = nrx.copy()
             for i in range(len(nrx)):
@@ -96,22 +93,22 @@ def read_xsf(infile, kind='All', full=False, pbc=True, **kwargs):
                     bound[i] = nrx[i] - 1
                 else:
                     bound[i] = nrx[i]
-            data = data[:bound[0], :bound[1], :bound[2]]
+            data = data[: bound[0], : bound[1], : bound[2]]
             nrx = bound.copy()
 
         grid = DirectGrid(lattice=lattice, nr=nrx, units=None, full=full)
         plot = DirectField(grid=grid, griddata_3d=data, rank=1)
         # plot = DirectField(grid=grid, griddata_F=data, rank=1)
-        return System(atoms, grid, name='xsf', field=plot)
+        return System(atoms, grid, name="xsf", field=plot)
 
 
 class XSF(object):
 
-    xsf_units = 'Angstrom'
+    xsf_units = "Angstrom"
 
     def __init__(self, filexsf):
         self.filexsf = filexsf
-        self.title = ''
+        self.title = ""
         self.cutoffvars = {}
 
     def write(self, system, field=None):
@@ -133,7 +130,7 @@ class XSF(object):
         if field is None:
             field = system.field
 
-        with open(self.filexsf, 'w') as fileout:
+        with open(self.filexsf, "w") as fileout:
             self._write_header(fileout, title)
             self._write_cell(fileout, cell)
             self._write_coord(fileout, ions)
@@ -141,7 +138,7 @@ class XSF(object):
 
         return 0
 
-    def read(self, kind='All', full=False, **kwargs):
+    def read(self, kind="All", full=False, **kwargs):
         return read_xsf(self.filexsf, kind=kind, full=full, **kwargs)
 
     def _write_header(self, fileout, title):
@@ -158,9 +155,7 @@ class XSF(object):
         mywrite(fileout, "PRIMCOORD", True)
         mywrite(fileout, (len(ions.pos), 1), True)
         for i in range(len(ions.pos)):
-            mywrite(fileout, (ions.labels[i],
-                              ions.pos[i] * LEN_CONV["Bohr"][self.xsf_units]),
-                    True)
+            mywrite(fileout, (ions.labels[i], ions.pos[i] * LEN_CONV["Bohr"][self.xsf_units]), True)
         # for iat, atom in enumerate(ions):
         # mywrite(fileout, (atom.label, atom.pos*LEN_CONV["Bohr"][self.xsf_units]), True)
 
@@ -169,7 +164,7 @@ class XSF(object):
         if ndim < 2:
             return  # XSF format doesn't support one data grids
         val_per_line = 5
-        values = plot.get_values_flatarray(pad=1, order='F')
+        values = plot.get_values_flatarray(pad=1, order="F")
 
         mywrite(fileout, "BEGIN_BLOCK_DATAGRID_{}D".format(ndim), True)
         mywrite(fileout, "{}d_datagrid_from_pbcpy".format(ndim), True)
@@ -177,23 +172,21 @@ class XSF(object):
         nnr = len(values)
         origin = plot.grid.origin * LEN_CONV["Bohr"][self.xsf_units]
         if ndim == 3:
-            mywrite(fileout, (plot.grid.nr[0] + 1, plot.grid.nr[1] + 1,
-                              plot.grid.nr[2] + 1), True)
+            mywrite(fileout, (plot.grid.nr[0] + 1, plot.grid.nr[1] + 1, plot.grid.nr[2] + 1), True)
         elif ndim == 2:
             mywrite(fileout, (plot.grid.nr[0] + 1, plot.grid.nr[1] + 1), True)
         mywrite(
             fileout, origin, True
         )  # TODO, there might be an actual origin if we're dealing with a custom cut of the grid
         for ilat in range(ndim):
-            latt = plot.grid.lattice[:,
-                                     ilat] * LEN_CONV["Bohr"][self.xsf_units]
+            latt = plot.grid.lattice[:, ilat] * LEN_CONV["Bohr"][self.xsf_units]
             mywrite(fileout, latt, True)
 
         nlines = nnr // val_per_line
 
         for iline in range(nlines):
             igrid = iline * val_per_line
-            mywrite(fileout, values[igrid:igrid + val_per_line], True)
+            mywrite(fileout, values[igrid : igrid + val_per_line], True)
         igrid = nlines * val_per_line
         mywrite(fileout, values[igrid:nnr], True)
 
@@ -203,10 +196,10 @@ class XSF(object):
 
 def mywrite(fileobj, iterable, newline=False):
     if newline:
-        fileobj.write('\n  ')
+        fileobj.write("\n  ")
     if isinstance(iterable, (np.ndarray, list, tuple)):
         for ele in iterable:
             mywrite(fileobj, ele)
             # fileobj.write(str(ele)+'    ')
     else:
-        fileobj.write(str(iterable) + '    ')
+        fileobj.write(str(iterable) + "    ")

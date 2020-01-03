@@ -6,7 +6,7 @@ import numpy as np
 
 
 class Functional(object):
-    '''
+    """
     Object handling DFT functional output
     
     Attributes
@@ -24,18 +24,14 @@ class Functional(object):
     kernel: ReciprocalField
         The value of the reciprocal space kernel. This will
         be populated only if the functional is nonlocal
-    '''
-    def __init__(self,
-                 name=None,
-                 energy=None,
-                 potential=None,
-                 energydensity=None,
-                 kernel=None):
+    """
+
+    def __init__(self, name=None, energy=None, potential=None, energydensity=None, kernel=None):
 
         if name is not None:
             self.name = name
         else:
-            raise AttributeError('Functional name must be specified')
+            raise AttributeError("Functional name must be specified")
 
         if energy is not None:
             self.energy = energy

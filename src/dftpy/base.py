@@ -17,11 +17,8 @@ class BaseCell(object):
         volume of the cell in units**3
 
     """
-    def __init__(self,
-                 lattice,
-                 origin=np.array([0., 0., 0.]),
-                 units=None,
-                 **kwargs):
+
+    def __init__(self, lattice, origin=np.array([0.0, 0.0, 0.0]), units=None, **kwargs):
         """
         Parameters
         ----------
@@ -30,17 +27,16 @@ class BaseCell(object):
         units : {'Bohr', 'Angstrom', 'nm', 'm'}, optional
             lattice is always passed as Bohr, but we can save a preferred unit for print purposes
         """
-        #print("BaseCell __init__")
+        # print("BaseCell __init__")
         # lattice is always stored in atomic units: Bohr for direct lattices, 1/Bohr for reciprocal lattices
         self._lattice = np.asarray(lattice)
-        #self.bg = np.linalg.inv(at)
+        # self.bg = np.linalg.inv(at)
         self._origin = np.asarray(origin)
         if units is not None:
             print("WARN")
             warnings.warn(units_warning, DeprecationWarning)
         self._units = None
-        self._volume = np.abs(
-            np.dot(lattice[:, 0], np.cross(lattice[:, 1], lattice[:, 2])))
+        self._volume = np.abs(np.dot(lattice[:, 0], np.cross(lattice[:, 1], lattice[:, 2])))
         super().__init__(**kwargs)
 
     def __eq__(self, other):
@@ -66,7 +62,7 @@ class BaseCell(object):
 
         # internally the lattice vectors are always saved in Bohr or 1/Bohr, no need to convert anymore
         eps = 1e-4
-        #conv = LEN_CONV[other.units][self.units]
+        # conv = LEN_CONV[other.units][self.units]
         conv = 1.0
 
         for ilat in range(3):
@@ -74,8 +70,8 @@ class BaseCell(object):
             lat1 = other.lattice[:, ilat] * conv
             if not np.isclose(lat0, lat1).all():
                 return False
-            #overlap = np.dot(lat0, lat1) / np.dot(lat0, lat0)
-            #if abs(1 - overlap) > eps:
+            # overlap = np.dot(lat0, lat1) / np.dot(lat0, lat0)
+            # if abs(1 - overlap) > eps:
             #    return False
 
         return True
@@ -90,7 +86,7 @@ class BaseCell(object):
 
     @property
     def units(self):
-        #warnings.warn(units_warning, DeprecationWarning)
+        # warnings.warn(units_warning, DeprecationWarning)
         return self._units
 
     @property
@@ -115,18 +111,14 @@ class BaseCell(object):
         raise NotImplementedError(
             "Cell objects are now always convertend internally to atomic units. Can only be provided when initializing."
         )
-        #if self.units == units:
+        # if self.units == units:
         #    return self
-        #else:
+        # else:
         #    return Cell(at=self.at*LEN_CONV[self.units][units], units=units)
 
 
 class DirectCell(BaseCell):
-    def __init__(self,
-                 lattice,
-                 origin=np.array([0., 0., 0.]),
-                 units=None,
-                 **kwargs):
+    def __init__(self, lattice, origin=np.array([0.0, 0.0, 0.0]), units=None, **kwargs):
         """
         Parameters
         ----------
@@ -135,9 +127,9 @@ class DirectCell(BaseCell):
         units : {'Bohr', 'Angstrom', 'nm', 'm'}, optional
             length units of the lattice vectors.
         """
-        #print("DirectCell __init__")
+        # print("DirectCell __init__")
         # internally always convert the units to Bohr
-        #lattice *= LEN_CONV[units]["Bohr"]
+        # lattice *= LEN_CONV[units]["Bohr"]
         super().__init__(lattice=lattice, origin=origin, units=units, **kwargs)
 
     def __eq__(self, other):
@@ -146,11 +138,10 @@ class DirectCell(BaseCell):
         Refer to the __eq__ method of Cell for more information.
         """
         if not isinstance(other, DirectCell):
-            raise TypeError(
-                "You can only compare a DirectCell with another DirectCell")
+            raise TypeError("You can only compare a DirectCell with another DirectCell")
         return super().__eq__(other)
 
-    def get_reciprocal(self, scale=[1., 1., 1.], convention='physics'):
+    def get_reciprocal(self, scale=[1.0, 1.0, 1.0], convention="physics"):
         """
             Returns a new ReciprocalCell, the reciprocal cell of self
             The ReciprocalCell is scaled properly to include
@@ -169,12 +160,12 @@ class DirectCell(BaseCell):
         # TODO define in constants module hbar value for all units allowed
         scale = np.array(scale)
         fac = 1.0
-        if convention == 'physics' or convention == 'p':
+        if convention == "physics" or convention == "p":
             fac = 2 * np.pi
         bg = fac * np.linalg.inv(self.lattice)
         bg = bg.T
-        #bg = bg/LEN_CONV["Bohr"][self.units]
-        reciprocal_lat = np.einsum('ij,j->ij', bg, scale)
+        # bg = bg/LEN_CONV["Bohr"][self.units]
+        reciprocal_lat = np.einsum("ij,j->ij", bg, scale)
 
         return ReciprocalCell(lattice=reciprocal_lat, units=self.units)
 
@@ -189,9 +180,9 @@ class ReciprocalCell(BaseCell):
         units : {'Bohr', 'Angstrom', 'nm', 'm'}, optional
             length units of the lattice vectors.
         """
-        #print("ReciprocalCell __init__")
+        # print("ReciprocalCell __init__")
         # internally always convert the units to Bohr
-        #lattice /= LEN_CONV[units]["Bohr"]
+        # lattice /= LEN_CONV[units]["Bohr"]
         super().__init__(lattice=lattice, units=units, **kwargs)
 
     def __eq__(self, other):
@@ -200,11 +191,10 @@ class ReciprocalCell(BaseCell):
         Refer to the __eq__ method of Cell for more information.
         """
         if not isinstance(other, ReciprocalCell):
-            raise TypeError(
-                "You can only compare a DirectCell with another DirectCell")
+            raise TypeError("You can only compare a DirectCell with another DirectCell")
         return super().__eq__(other)
 
-    def get_direct(self, scale=[1., 1., 1.], convention='physics'):
+    def get_direct(self, scale=[1.0, 1.0, 1.0], convention="physics"):
         """
             Returns a new DirectCell, the direct cell of self
             The DirectCell is scaled properly to include
@@ -223,15 +213,13 @@ class ReciprocalCell(BaseCell):
         # TODO define in constants module hbar value for all units allowed
         scale = np.array(scale)
         fac = 1.0
-        if convention == 'physics' or convention == 'p':
-            fac = 1. / (2 * np.pi)
+        if convention == "physics" or convention == "p":
+            fac = 1.0 / (2 * np.pi)
         at = np.linalg.inv(self.lattice.T * fac)
-        #at = at*LEN_CONV["Bohr"][self.units]
-        direct_lat = np.einsum('ij,j->ij', at, 1. / scale)
+        # at = at*LEN_CONV["Bohr"][self.units]
+        direct_lat = np.einsum("ij,j->ij", at, 1.0 / scale)
 
-        return DirectCell(lattice=direct_lat,
-                          units=self.units,
-                          origin=np.array([0., 0., 0.]))
+        return DirectCell(lattice=direct_lat, units=self.units, origin=np.array([0.0, 0.0, 0.0]))
 
 
 class Coord(np.ndarray):
@@ -246,10 +234,11 @@ class Coord(np.ndarray):
         Describes whether the array contains crystal or cartesian coordinates.
 
     """
-    cart_names = ['Cartesian', 'Cart', 'Ca', 'R']
-    crys_names = ['Crystal', 'Crys', 'Cr', 'S']
 
-    def __new__(cls, pos, cell, basis='Cartesian'):
+    cart_names = ["Cartesian", "Cart", "Ca", "R"]
+    crys_names = ["Crystal", "Crys", "Cr", "S"]
+
+    def __new__(cls, pos, cell, basis="Cartesian"):
         """
         Parameters
         ----------
@@ -266,10 +255,8 @@ class Coord(np.ndarray):
         """
         # Input array is an already formed ndarray instance
         # We first cast to be our class type
-        if not isinstance(cell, (DirectCell, )):
-            raise TypeError(
-                "Coord represent coordinates in real space, cell needs to be a DirectCell",
-                type(cell))
+        if not isinstance(cell, (DirectCell,)):
+            raise TypeError("Coord represent coordinates in real space, cell needs to be a DirectCell", type(cell))
 
         if basis not in Coord.cart_names and basis not in Coord.crys_names:
             raise NameError("Unknown basis name: {}".format(basis))
@@ -278,7 +265,7 @@ class Coord(np.ndarray):
         obj = np.asarray(pos, dtype=float).view(cls)
 
         if basis in Coord.cart_names:
-            #obj *= LEN_CONV[cell.units]["Bohr"]
+            # obj *= LEN_CONV[cell.units]["Bohr"]
             pass
         # add the new attribute to the created instance
         obj._basis = basis
@@ -291,8 +278,8 @@ class Coord(np.ndarray):
         if obj is None:
             return
 
-        self._cell = getattr(obj, '_cell', None)
-        self._basis = getattr(obj, '_basis', None)
+        self._cell = getattr(obj, "_cell", None)
+        self._basis = getattr(obj, "_basis", None)
         # We do not need to return anything
 
     def __add__(self, other):
@@ -312,12 +299,10 @@ class Coord(np.ndarray):
         if isinstance(other, type(self)):
             # if isinstance(other, Coord):
             if self.cell == other.cell:
-                #other = other.conv(self.cell.units).to_ctype(self.ctype)
+                # other = other.conv(self.cell.units).to_ctype(self.ctype)
                 other = other.to_basis(self.basis)
             else:
-                raise Exception(
-                    "Two Coord objects can only be added if they are represented in the same cell"
-                )
+                raise Exception("Two Coord objects can only be added if they are represented in the same cell")
 
         return np.ndarray.__add__(self, other)
 
@@ -326,8 +311,7 @@ class Coord(np.ndarray):
         if isinstance(scalar, (int, float)):
             return np.multiply(self, scalar)
         else:
-            raise TypeError(
-                "Coord can only be multiplied by a int or float scalar")
+            raise TypeError("Coord can only be multiplied by a int or float scalar")
 
     @property
     def cell(self):
@@ -350,7 +334,7 @@ class Coord(np.ndarray):
             return self
         else:
             pos = s2r(self, self.cell)
-            #pos *= LEN_CONV["Bohr"][self.cell.units]
+            # pos *= LEN_CONV["Bohr"][self.cell.units]
             return Coord(pos=pos, cell=self.cell, basis=Coord.cart_names[0])
 
     def to_crys(self):
@@ -449,15 +433,15 @@ class Coord(np.ndarray):
         out : Coord
 
         """
-        #new_at = self.cell.at.copy()
-        #new_at *= LEN_CONV[self.cell.units][new_units]
-        #return Coord(self.to_crys(), Cell(new_at, units=new_units),
+        # new_at = self.cell.at.copy()
+        # new_at *= LEN_CONV[self.cell.units][new_units]
+        # return Coord(self.to_crys(), Cell(new_at, units=new_units),
         #             ctype=Coord.crys_names[0]).to_ctype(self.ctype)
         raise NotImplementedError(
             "Coord objects are now always convertend internally to atomic units. Can only be provided when initializing."
         )
 
-    def change_of_basis(self, new_cell, new_origin=np.array([0., 0., 0.])):
+    def change_of_basis(self, new_cell, new_origin=np.array([0.0, 0.0, 0.0])):
         """
         Perform a change of basis on the coordinates.
 
@@ -474,12 +458,11 @@ class Coord(np.ndarray):
             Coord in the new basis.
 
         """
-        #M = np.dot(self.cell.bg, new_cell.bg)
-        #P = np.linalg.inv(M)
-        #new_pos = np.dot(P, self.to_crys())
-        #return Coord(new_pos, cell=new_cell)
-        raise NotImplementedError(
-            "Generic change of basis non implemented yet in the Coord class")
+        # M = np.dot(self.cell.bg, new_cell.bg)
+        # P = np.linalg.inv(M)
+        # new_pos = np.dot(P, self.to_crys())
+        # return Coord(new_pos, cell=new_cell)
+        raise NotImplementedError("Generic change of basis non implemented yet in the Coord class")
 
 
 class pbcarray(np.ndarray):
@@ -512,6 +495,7 @@ class pbcarray(np.ndarray):
      [0 0 3 0 0 3]]
 
     """
+
     def __new__(cls, pos):
         # Input array is an already formed ndarray instance
         # We first cast to be our class type
@@ -555,7 +539,7 @@ class pbcarray(np.ndarray):
                 if pad > 0:
                     pad_tup = [(0, 0)] * rank
                     pad_tup[idim] = (0, pad)
-                    newarr = np.pad(newarr, pad_tup, mode='wrap')
+                    newarr = np.pad(newarr, pad_tup, mode="wrap")
                 slice_tup[idim] = slice(start, stop, step)
 
         slice_tup = tuple(slice_tup)
@@ -570,7 +554,7 @@ def _reconstruct_full_slices(shape_, index):
 
     """
     if not isinstance(index, tuple):
-        index = (index, )
+        index = (index,)
     slices = []
     idx_len, rank = len(index), len(shape_)
 
@@ -584,7 +568,7 @@ def _reconstruct_full_slices(shape_, index):
 
     sli_len = len(slices)
     if sli_len > rank:
-        msg = 'too many indices for array'
+        msg = "too many indices for array"
         raise IndexError(msg)
     elif sli_len < rank:
         slices.extend([slice(None)] * (rank - sli_len))
@@ -629,7 +613,7 @@ def _check_slice(sli, dim):
     step = sli.step or 1
     start = (0 if step > 0 else dim) if sli.start is None else sli.start
     stop = (dim if step > 0 else 0) if sli.stop is None else sli.stop
-    span = (stop - start if step > 0 else start - stop)
+    span = stop - start if step > 0 else start - stop
 
     if span <= 0:
         return _roll, _pad, sli.start, sli.stop, sli.step
@@ -655,8 +639,9 @@ def r2s(pos, cell):
     # TODO: Vectorize with einsum
     pos = np.asarray(pos)
     bg = np.linalg.inv(cell.lattice)
-    xyzs = np.tensordot(bg, pos.T, axes=([-1], 0)).T
-    #xyzs = np.dot(bg, pos)
+    # xyzs = np.tensordot(bg, pos.T, axes=([-1], 0)).T
+    xyzs = np.einsum("...j,kj->...k", pos, bg)
+    # xyzs = np.dot(bg, pos)
     return xyzs
 
 
@@ -664,7 +649,8 @@ def s2r(pos, cell):
     # Vectorize the code: the right most axis is where the coordinates are
     # TODO: Vectorize with einsum
     pos = np.asarray(pos)
-    xyzr = np.tensordot(cell.lattice, pos.T, axes=([-1], 0)).T
+    # xyzr = np.tensordot(cell.lattice, pos.T, axes=([-1], 0)).T
+    xyzr = np.einsum("...j,kj->...k", pos, cell.lattice)
     return xyzr
 
 

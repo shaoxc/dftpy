@@ -8,7 +8,7 @@ from dftpy.atom import Atom
 class PP(object):
     def __init__(self, filepp):
         self.filepp = filepp
-        self.title = ''
+        self.title = ""
         self.cutoffvars = {}
         # self.readpp()
 
@@ -21,8 +21,7 @@ class PP(object):
             # nr1x, nr2x, nr3x, nr1, nr2, nr3, nat, ntyp
             nrx = np.empty(3, dtype=int)
             nr = np.empty(3, dtype=int)
-            nrx[0], nrx[1], nrx[2], nr[0], nr[1], nr[2], nat, ntyp = (
-                int(x) for x in filepp.readline().split())
+            nrx[0], nrx[1], nrx[2], nr[0], nr[1], nr[2], nat, ntyp = (int(x) for x in filepp.readline().split())
 
             # ibrav, celldm
             celldm = np.zeros(6, dtype=float)
@@ -46,12 +45,12 @@ class PP(object):
             # gcutm, dual, ecut, plot_num = (float(x) for x in filepp.readline().split())
             # plot_num = int(plot_num)
             filepp.readline()
-            gcutm, dual, ecut, plot_num = 1., 1., 1., 0
-            self.cutoffvars['ibrav'] = ibrav
-            self.cutoffvars['celldm'] = celldm
-            self.cutoffvars['gcutm'] = gcutm
-            self.cutoffvars['dual'] = dual
-            self.cutoffvars['ecut'] = ecut
+            gcutm, dual, ecut, plot_num = 1.0, 1.0, 1.0, 0
+            self.cutoffvars["ibrav"] = ibrav
+            self.cutoffvars["celldm"] = celldm
+            self.cutoffvars["gcutm"] = gcutm
+            self.cutoffvars["dual"] = dual
+            self.cutoffvars["ecut"] = ecut
 
             # ntyp
             atm = []
@@ -79,8 +78,7 @@ class PP(object):
                 # atoms.append(Atom(Zval=zv[ity], label=atm[
                 # ity], pos=tau, cell=grid, basis = 'Crystal'))
                 # ity], pos=tau * celldm[0], cell=grid))
-            atoms = Atom(Zval=Zval, label=label, \
-                         pos=pos, cell=grid, basis = 'Crystal')
+            atoms = Atom(Zval=Zval, label=label, pos=pos, cell=grid, basis="Crystal")
 
             # self.atoms = Ions( nat, ntyp, atm, zv, tau*celldm[0], ityp, self.grid)
 
@@ -88,13 +86,13 @@ class PP(object):
             igrid = 0
             nnr = nrx[0] * nrx[1] * nrx[2]
             blocksize = 1024 * 8
-            strings = ''
+            strings = ""
             while True:
                 line = filepp.read(blocksize)
                 if not line:
                     break
                 strings += line
-            ppgrid = np.fromstring(strings, dtype=float, sep=' ')
+            ppgrid = np.fromstring(strings, dtype=float, sep=" ")
 
             # ppgrid = np.zeros(nnr, dtype=float)
             # for line in filepp:
@@ -109,52 +107,51 @@ class PP(object):
 
     def writepp(self, system):
 
-        with open(self.filepp, 'w') as filepp:
+        with open(self.filepp, "w") as filepp:
             val_per_line = 5
 
-            #title
+            # title
             filepp.write(system.name)
 
-            #nr1x, nr2x, nr3x, nr1, nr2, nr3, nat, ntyp
+            # nr1x, nr2x, nr3x, nr1, nr2, nr3, nat, ntyp
             mywrite(filepp, system.cell.nrx, False)
             mywrite(filepp, system.cell.nr, False)
-            mywrite(filepp, [len(self.atoms.ions),
-                             len(self.atoms.species)], False)
+            mywrite(filepp, [len(self.atoms.ions), len(self.atoms.species)], False)
 
-            #ibrav, celldm
+            # ibrav, celldm
             mywrite(filepp, self.cell.ibrav, True)
             mywrite(filepp, self.cell.celldm, False)
 
-            #at(:,i) three times
+            # at(:,i) three times
             if self.cell.ibrav == 0:
                 for ilat in range(3):
                     mywrite(filepp, self.cell.at[:, ilat], True)
 
-            #gcutm, dual, ecut, plot_num
-            mywrite(filepp, self.cutoffvars['gcutm'], True)
-            mywrite(filepp, self.cutoffvars['dual'], False)
-            mywrite(filepp, self.cutoffvars['ecut'], False)
+            # gcutm, dual, ecut, plot_num
+            mywrite(filepp, self.cutoffvars["gcutm"], True)
+            mywrite(filepp, self.cutoffvars["dual"], False)
+            mywrite(filepp, self.cutoffvars["ecut"], False)
             mywrite(filepp, self.plot.plot_num, False)
 
-            #ntyp
+            # ntyp
             for ity, spc in enumerate(self.atoms.species):
                 mywrite(filepp, [ity + 1, spc[0], spc[1]], True)
 
-            #tau
+            # tau
             for iat, ion in enumerate(self.atoms.ions):
                 mywrite(filepp, iat + 1, True)
                 mywrite(filepp, ion.pos, False)
                 mywrite(filepp, ion.typ + 1, False)
 
-            #plot
+            # plot
             nlines = system.field.grid.nnr // val_per_line
-            grid_pp = system.field.get_values_1darray(order='F')
+            grid_pp = system.field.get_values_1darray(order="F")
             for iline in range(nlines):
                 igrid = iline * val_per_line
-                mywrite(filepp, grid_pp[igrid:igrid + val_per_line], True)
+                mywrite(filepp, grid_pp[igrid : igrid + val_per_line], True)
             igrid = (iline + 1) * val_per_line
-            mywrite(filepp, grid_pp[igrid:self.grid.nnr], True)
-            #pass
+            mywrite(filepp, grid_pp[igrid : self.grid.nnr], True)
+            # pass
 
     def celldm2at(self, ibrav, celldm):
 
@@ -163,13 +160,12 @@ class PP(object):
         if ibrav == 1:
             at = celldm[0] * np.identity(3)
         elif ibrav == 2:
-            at[:, 0] = 0.5 * celldm[0] * np.array([-1., 0., 1.])
-            at[:, 1] = 0.5 * celldm[0] * np.array([0., 1., 1.])
-            at[:, 2] = 0.5 * celldm[0] * np.array([-1., 1., 0.])
+            at[:, 0] = 0.5 * celldm[0] * np.array([-1.0, 0.0, 1.0])
+            at[:, 1] = 0.5 * celldm[0] * np.array([0.0, 1.0, 1.0])
+            at[:, 2] = 0.5 * celldm[0] * np.array([-1.0, 1.0, 0.0])
         else:
             # implement all the other Bravais lattices
-            raise NotImplementedError(
-                "celldm2at is only implemented for ibrav = 0 and ibrav = 1")
+            raise NotImplementedError("celldm2at is only implemented for ibrav = 0 and ibrav = 1")
 
         return at
 
@@ -182,20 +178,15 @@ class Ions(object):
             self.species.append([atm[ity], zv[ity]])
 
         for iat in range(nat):
-            self.ions.append(
-                Atom(Zval=zv[ityp[iat]],
-                     pos=tau[:, iat],
-                     typ=ityp[iat],
-                     label=atm[ityp[iat]],
-                     cell=cell))
+            self.ions.append(Atom(Zval=zv[ityp[iat]], pos=tau[:, iat], typ=ityp[iat], label=atm[ityp[iat]], cell=cell))
 
 
 def mywrite(fileobj, iterable, newline):
     if newline:
-        fileobj.write('\n  ')
+        fileobj.write("\n  ")
     # if len(iterable) > 1 :
     try:
         for ele in iterable:
-            fileobj.write(str(ele) + '    ')
+            fileobj.write(str(ele) + "    ")
     except:
-        fileobj.write(str(iterable) + '    ')
+        fileobj.write(str(iterable) + "    ")
