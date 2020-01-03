@@ -209,6 +209,25 @@ def OptionFormat(config):
 
     conf['OUTPUT']['time'] = bools(conf['OUTPUT']['time'])
     conf['OUTPUT']['stress'] = bools(conf['OUTPUT']['stress'])
+    
+    conf['PROPAGATOR']['order'] = int(conf['PROPAGATOR']['order'])
+    conf['PROPAGATOR']['tol'] = float(conf['PROPAGATOR']['tol'])
+    conf['PROPAGATOR']['maxiter'] = int(conf['PROPAGATOR']['maxiter'])
+    conf['PROPAGATOR']['sigma'] = float(conf['PROPAGATOR']['sigma'])
+
+    conf['TD']['int_t'] = float(conf['TD']['int_t'])
+    conf['TD']['tmax'] = float(conf['TD']['tmax'])
+    conf['TD']['order'] = int(conf['TD']['order'])
+    if conf['TD']['direc']:
+        if conf['TD']['direc'] == 'x':
+            conf['TD']['direc'] = 0
+        elif conf['TD']['direc'] == 'y':
+            conf['TD']['direc'] = 1
+        elif conf['TD']['direc'] == 'z':
+            conf['TD']['direc'] = 2
+        else:
+            conf['TD']['direc']    = int(conf['TD']['direc'])
+
     ############################## Conversion of units  ##############################
     '''
     Ecut = pi^2/(2 * h^2)
