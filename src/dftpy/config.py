@@ -90,7 +90,12 @@ def DefaultOption():
         "h0": 1.0,  # for LBFGS
     }
 
-    PROPAGATOR = {"order": 20, "linearsolver": "bicgstab", "tol": 1e-10, "maxiter": 100, "sigma": 0.025}
+    PROPAGATOR = {
+        "order": 20, 
+        "linearsolver": "bicgstab", 
+        "tol": 1e-10, 
+        "maxiter": 100, 
+    }
 
     TD = {
         "outfile": "td_out",
@@ -201,7 +206,6 @@ def OptionFormat(config):
     conf['PROPAGATOR']['order'] = int(conf['PROPAGATOR']['order'])
     conf['PROPAGATOR']['tol'] = float(conf['PROPAGATOR']['tol'])
     conf['PROPAGATOR']['maxiter'] = int(conf['PROPAGATOR']['maxiter'])
-    conf['PROPAGATOR']['sigma'] = float(conf['PROPAGATOR']['sigma'])
 
     conf['TD']['int_t'] = float(conf['TD']['int_t'])
     conf['TD']['tmax'] = float(conf['TD']['tmax'])

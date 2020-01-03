@@ -43,21 +43,20 @@ class Propagator(object):
 
     def __call__(self, psi, v):
 
-        sigma = self.optional_kwargs.get("sigma", 0.025)
         if self.type == "taylor":
             order = self.optional_kwargs.get("order", 1)
-            return taylor(psi, v, self.interval, sigma, order)
+            return taylor(psi, v, self.interval, order)
         elif self.type == "crank-nicolson":
             linearsolver = self.optional_kwargs.get("linearsolver", "bicgstab")
             tol = self.optional_kwargs.get("tol", 1e-8)
             maxiter = self.optional_kwargs.get("maxiter", 100)
-            return CrankNicolson(psi, v, self.interval, sigma, linearsolver, tol, maxiter)
+            return CrankNicolson(psi, v, self.interval, linearsolver, tol, maxiter)
         elif self.type == "rk4":
-            return RK4(psi, v, self.interval, sigma)
+            return RK4(psi, v, self.interval)
 
 
-def hamiltonian(psi, v, sigma=0.025):
-    return -0.5 * psi.laplacian(sigma = 0.0) + v * psi
+def hamiltonian(psi, v):
+    return -0.5 * psi.laplacian() + v * psi
     # return v*psi
 
 
@@ -65,13 +64,13 @@ def hamiltonian_fft(psi_fft, v):
     return 0.5 * psi_fft.grid.gg * psi_fft + (v * psi_fft.ifft()).fft()
 
 
-def taylor(psi0, v, interval, sigma=0.025, order=1):
+def taylor(psi0, v, interval, order=1):
     N0 = (psi0 * np.conj(psi0)).integral()
     psi1 = psi0
 
     new_psi = psi0
     for i_order in range(order):
-        new_psi = 1j * interval / (i_order + 1) * hamiltonian(new_psi, v, sigma)
+        new_psi = 1j * interval / (i_order + 1) * hamiltonian(new_psi, v)
         # new_psi = 1j * interval / (i_order+1) * hamiltonian_fft(new_psi, v)
         if np.isnan(new_psi).any():
             print("Warning: taylor propagator exits on order {0:d} due to NaN in new psi.".format(i_order))
@@ -84,10 +83,10 @@ def taylor(psi0, v, interval, sigma=0.025, order=1):
     return psi1, 0
 
 
-def cnMatvecUtil(v, dt, sigma):
+def cnMatvecUtil(v, dt):
     def cnMatvec(psi_):
         psi = DirectField(grid=v.grid, rank=1, griddata_3d=np.reshape(psi_, np.shape(v)), cplx=True)
-        prod = psi - 1j * hamiltonian(psi, v, sigma) * dt / 2.0
+        prod = psi - 1j * hamiltonian(psi, v) * dt / 2.0
         return prod.ravel()
 
     return cnMatvec
@@ -105,7 +104,7 @@ def cnMatvecUtil_fft(v, dt):
     return cnMatvec_fft
 
 
-def CrankNicolson(psi0, v, interval, sigma=0.025, linearsolver="bicgstab", tol=1e-8, maxiter=100):
+def CrankNicolson(psi0, v, interval, linearsolver="bicgstab", tol=1e-8, maxiter=100):
 
     LinearSolverDict = {
         "bicg": linalg.bicg,
@@ -118,13 +117,13 @@ def CrankNicolson(psi0, v, interval, sigma=0.025, linearsolver="bicgstab", tol=1
         "qmr": linalg.qmr,
     }
 
-    # tmp = hamiltonian(psi0, v, sigma)/psi0
+    # tmp = hamiltonian(psi0, v)/psi0
     # print(np.std(tmp))
     # N0 = (np.real(psi0 * np.conj(psi0))).integral()
-    b = (psi0 + 1j * hamiltonian(psi0, v, sigma) * interval / 2.0).ravel()
+    b = (psi0 + 1j * hamiltonian(psi0, v) * interval / 2.0).ravel()
     # b = (psi0 + 1j * hamiltonian_fft(psi0, v) * interval/2.0).ravel()
     size = np.size(b)
-    A = LinearOperator((size, size), dtype=psi0.dtype, matvec=cnMatvecUtil(v, interval, sigma))
+    A = LinearOperator((size, size), dtype=psi0.dtype, matvec=cnMatvecUtil(v, interval))
     # A = LinearOperator((size,size), dtype=psi0.dtype, matvec=cnMatvecUtil_fft(v, interval))
     try:
         psi1_, info = LinearSolverDict[linearsolver](A, b, x0=psi0.ravel(), tol=tol, maxiter=maxiter)
@@ -140,13 +139,13 @@ def CrankNicolson(psi0, v, interval, sigma=0.025, linearsolver="bicgstab", tol=1
     return psi1, info
 
 
-def RK4(psi0, v, interval, sigma=0.025):
+def RK4(psi0, v, interval):
     # N0 = (psi0 * np.conj(psi0)).integral()
 
-    k1 = -1j * interval * hamiltonian(psi0, v, sigma)
-    k2 = -1j * interval * hamiltonian(psi0 + k1 / 2.0, v, sigma)
-    k3 = -1j * interval * hamiltonian(psi0 + k2 / 2.0, v, sigma)
-    k4 = -1j * interval * hamiltonian(psi0 + k3, v, sigma)
+    k1 = -1j * interval * hamiltonian(psi0, v)
+    k2 = -1j * interval * hamiltonian(psi0 + k1 / 2.0, v)
+    k3 = -1j * interval * hamiltonian(psi0 + k2 / 2.0, v)
+    k4 = -1j * interval * hamiltonian(psi0 + k3, v)
     psi1 = psi0 + (k1 + 2.0 * k2 + 2.0 * k3 + k4) / 6.0
 
     # N1 = (psi1 * np.conj(psi1)).integral()

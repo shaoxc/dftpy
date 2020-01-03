@@ -520,13 +520,6 @@ PROPAGATOR
 
         *Default* : 100
 
-.. option:: sigma
-
-    The parameter for `FFT`.
-        *Options* :
-
-        *Default* : 0.025
-
 
 TD
 --
