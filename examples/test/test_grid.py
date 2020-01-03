@@ -24,12 +24,12 @@ class TestCell(unittest.TestCase):
 
         # calculate grid points
         r = grid.r
-        self.assertTrue(np.isclose(r[0,0,0],np.array([0,0,0])).all())
-        #self.assertTrue(np.isclose(r[nr-1,nr-1,nr-1],np.array([a-a/nr,b-b/nr,c-c/nr]),rtol=1.e-3).all())
+        self.assertTrue(np.isclose(r[:,0,0,0],np.array([0,0,0])).all())
+        #self.assertTrue(np.isclose(r[:, nr-1,nr-1,nr-1],np.array([a-a/nr,b-b/nr,c-c/nr]),rtol=1.e-3).all())
         # calculate crystal grid points
         s = grid.s
-        self.assertTrue(np.isclose(s[0,0,0],np.array([0,0,0])).all())
-        self.assertTrue(np.isclose(s[nr-1,nr-1,nr-1],np.array([1.-1./nr,1.-1./nr,1.-1./nr])).all())
+        self.assertTrue(np.isclose(s[:, 0,0,0],np.array([0,0,0])).all())
+        self.assertTrue(np.isclose(s[:, nr-1,nr-1,nr-1],np.array([1.-1./nr,1.-1./nr,1.-1./nr])).all())
 
     def test_triclinic_cell(self):
         print()

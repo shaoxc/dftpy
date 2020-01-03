@@ -16,9 +16,10 @@ import warnings
 # NEVER TOUCH THIS CLASS
 # NEVER TOUCH THIS CLASS
 class AbstractLocalPseudo(ABC):
-    '''
+    """
     This is a pseudo potential template class and should never be touched.
-    '''
+    """
+
     @abstractmethod
     def __init__(self):
         pass
@@ -61,10 +62,11 @@ class AbstractLocalPseudo(ABC):
 
 # Only touch this class if you know what you are doing
 class LocalPseudo(AbstractLocalPseudo):
-    '''
+    """
     LocalPseudo class handles local pseudo potentials.
     This is a template class and should never be touched.
-    '''
+    """
+
     def __init__(self, grid=None, ions=None, PP_list=None, PME=True):
         #
         # private vars
@@ -110,26 +112,24 @@ class LocalPseudo(AbstractLocalPseudo):
             self._vlines = readPP.vlines
             self._gp = readPP.gp
             self._vp = readPP.vp
-            #update Zval in ions
+            # update Zval in ions
             readPP.get_Zval(self.ions)
 
     def __call__(self, density=None, calcType=None):
         if self._vreal is None:
             self.local_PP()
         pot = self._vreal
-        if calcType == 'Energy' or calcType == 'Both':
-            ene = np.einsum('ijkl, ijkl->', self._vreal,
-                            density) * self.grid.dV
+        if calcType == "Energy" or calcType == "Both":
+            ene = np.einsum("ijk, ijk->", self._vreal, density) * self.grid.dV
         else:
             ene = 0
-        return Functional(name='eN', energy=ene, potential=pot)
+        return Functional(name="eN", energy=ene, potential=pot)
 
     def local_PP(self, BsplineOrder=10):
-        '''
-        '''
-        if BsplineOrder is not 10:
-            warnings.warn(
-                "BsplineOrder not 10. Do you know what you are doing?")
+        """
+        """
+        # if BsplineOrder is not 10:
+        # warnings.warn("BsplineOrder not 10. Do you know what you are doing?")
         self.BsplineOrder = BsplineOrder
 
         if self._v is None:
@@ -141,11 +141,11 @@ class LocalPseudo(AbstractLocalPseudo):
             self._vreal = self._v.ifft(force_real=True)
 
     def restart(self, grid=None, ions=None, full=False):
-        '''
+        """
         Clean all private data and resets the ions and grid.
         This will prompt the computation of a new pseudo 
         without recomputing the local pp on the atoms.
-        '''
+        """
         if full:
             self._gp = {}  # 1D PP grid g-space
             self._vp = {}  # PP on 1D PP grid
@@ -180,9 +180,9 @@ class LocalPseudo(AbstractLocalPseudo):
 
     @property
     def vreal(self):
-        '''
+        """
         The vloc represented on the real space grid.
-        '''
+        """
         if self._vreal is not None:
             return self._vreal
         else:
@@ -190,9 +190,9 @@ class LocalPseudo(AbstractLocalPseudo):
 
     @property
     def v(self):
-        '''
+        """
         The vloc represented on the reciprocal space grid.
-        '''
+        """
         if self._v is not None:
             return self._v
         else:
@@ -200,16 +200,16 @@ class LocalPseudo(AbstractLocalPseudo):
 
     @property
     def vlines(self):
-        '''
+        """
         The vloc for each atom type represented on the reciprocal space grid.
-        '''
+        """
         if self._vlines:
             return self._vlines
         else:
             return Exception("Must load PP first")
 
     def _PP_Reciprocal(self):
-        TimeData.Begin('Vion')
+        TimeData.Begin("Vion")
         reciprocal_grid = self.grid.get_reciprocal()
         q = reciprocal_grid.q
         v = np.zeros_like(q, dtype=np.complex128)
@@ -219,14 +219,12 @@ class LocalPseudo(AbstractLocalPseudo):
                     strf = self.ions.strf(reciprocal_grid, i)
                     v += self._vlines[key] * strf
         self._v = ReciprocalField(reciprocal_grid, griddata_3d=v)
-        TimeData.End('Vion')
+        TimeData.End("Vion")
         return "PP successfully interpolated"
 
     def _PP_Reciprocal_PME(self):
-        TimeData.Begin('Vion_PME')
-        self.Bspline = CBspline(ions=self.ions,
-                                grid=self.grid,
-                                order=self.BsplineOrder)
+        TimeData.Begin("Vion_PME")
+        self.Bspline = CBspline(ions=self.ions, grid=self.grid, order=self.BsplineOrder)
         reciprocal_grid = self.grid.get_reciprocal()
         q = reciprocal_grid.q
         v = np.zeros_like(q, dtype=np.complex128)
@@ -240,7 +238,7 @@ class LocalPseudo(AbstractLocalPseudo):
             v = v + self._vlines[key] * Qarray.fft()
         v = v * self.Bspline.Barray * self.grid.nnr / self.grid.volume
         self._v = v
-        TimeData.End('Vion_PME')
+        TimeData.End("Vion_PME")
         return "PP successfully interpolated"
 
     def _PP_Derivative_One(self, key=None):
@@ -248,8 +246,7 @@ class LocalPseudo(AbstractLocalPseudo):
         q = reciprocal_grid.q
         vloc_interp = self._vloc_interp[key]
         vloc_deriv = np.zeros(np.shape(q))
-        vloc_deriv[q < np.max(self._gp[key])] = splev(
-            q[q < np.max(self._gp[key])], vloc_interp, der=1)
+        vloc_deriv[q < np.max(self._gp[key])] = splev(q[q < np.max(self._gp[key])], vloc_interp, der=1)
         return ReciprocalField(reciprocal_grid, griddata_3d=vloc_deriv)
 
     def _PP_Derivative(self, labels=None):
@@ -262,8 +259,7 @@ class LocalPseudo(AbstractLocalPseudo):
         for key in labels:
             vloc_interp = self._vloc_interp[key]
             vloc_deriv[:] = 0.0
-            vloc_deriv[q < np.max(self._gp[key])] = splev(
-                q[q < np.max(self._gp[key])], vloc_interp, der=1)
+            vloc_deriv[q < np.max(self._gp[key])] = splev(q[q < np.max(self._gp[key])], vloc_interp, der=1)
             for i in range(len(self.ions.pos)):
                 if self.ions.labels[i] == key:
                     strf = self.ions.strf(reciprocal_grid, i)
@@ -272,26 +268,23 @@ class LocalPseudo(AbstractLocalPseudo):
 
     def _Stress(self, rho, energy=None):
         if energy is None:
-            energy = self(density=rho, calcType='Energy').energy
+            energy = self(density=rho, calcType="Energy").energy
         reciprocal_grid = self.grid.get_reciprocal()
         g = reciprocal_grid.g
-        #gg= reciprocal_grid.gg
+        # gg= reciprocal_grid.gg
         mask = reciprocal_grid.mask
-        mask2 = mask[..., np.newaxis]
         q = reciprocal_grid.q
-        q[0, 0, 0, 0] = 1.0
+        q[0, 0, 0] = 1.0
         rhoG = rho.fft()
         stress = np.zeros((3, 3))
         v_deriv = self._PP_Derivative()
         rhoGV_q = rhoG * v_deriv / q
         for i in range(3):
             for j in range(i, 3):
-                # den = (g[..., i]*g[..., j])[..., np.newaxis] * rhoGV_q
-                # stress[i, j] = (np.einsum('ijkl->', den)).real / rho.grid.volume
-                den = (g[..., i][mask] * g[..., j][mask]) * rhoGV_q[mask2]
-                stress[i, j] = stress[
-                    j,
-                    i] = -(np.einsum('i->', den)).real / self.grid.volume * 2.0
+                # den = (g[i]*g[j])[np.newaxis] * rhoGV_q
+                # stress[i, j] = (np.einsum('ijk->', den)).real / rho.grid.volume
+                den = (g[i][mask] * g[j][mask]) * rhoGV_q[mask]
+                stress[i, j] = stress[j, i] = -(np.einsum("i->", den)).real / self.grid.volume * 2.0
                 if i == j:
                     stress[i, j] -= energy
         stress /= self.grid.volume
@@ -303,13 +296,11 @@ class LocalPseudo(AbstractLocalPseudo):
         g = reciprocal_grid.g
         Forces = np.zeros((self.ions.nat, 3))
         mask = reciprocal_grid.mask
-        mask2 = mask[..., np.newaxis]
         for i in range(self.ions.nat):
             strf = self.ions.istrf(reciprocal_grid, i)
-            den = self.vlines[self.ions.labels[i]][mask2] * (rhoG[mask2] *
-                                                             strf[mask2]).imag
+            den = self.vlines[self.ions.labels[i]][mask] * (rhoG[mask] * strf[mask]).imag
             for j in range(3):
-                Forces[i, j] = np.einsum('i, i->', g[..., j][mask], den)
+                Forces[i, j] = np.einsum("i, i->", g[j][mask], den)
         Forces *= 2.0 / self.grid.volume
         return Forces
 
@@ -322,17 +313,15 @@ class LocalPseudo(AbstractLocalPseudo):
         Barray = np.conjugate(Barray)
         denG = rhoG * Barray
         nr = self.grid.nr
-        #cell_inv = np.linalg.inv(self.ions.pos[0].cell.lattice)
+        # cell_inv = np.linalg.inv(self.ions.pos[0].cell.lattice)
         cell_inv = reciprocal_grid.lattice / 2 / np.pi
         Forces = np.zeros((self.ions.nat, 3))
-        ixyzA = np.mgrid[:self.BsplineOrder, :self.BsplineOrder, :self.
-                         BsplineOrder].reshape((3, -1))
-        Q_derivativeA = np.zeros(
-            (3, self.BsplineOrder * self.BsplineOrder * self.BsplineOrder))
+        ixyzA = np.mgrid[: self.BsplineOrder, : self.BsplineOrder, : self.BsplineOrder].reshape((3, -1))
+        Q_derivativeA = np.zeros((3, self.BsplineOrder * self.BsplineOrder * self.BsplineOrder))
         for key in self.ions.Zval.keys():
             denGV = denG * self.vlines[key]
-            denGV[0, 0, 0, 0] = 0.0 + 0.0j
-            rhoPB = denGV.ifft(force_real=True)[..., 0]
+            denGV[0, 0, 0] = 0.0 + 0.0j
+            rhoPB = denGV.ifft(force_real=True)
             for i in range(self.ions.nat):
                 if self.ions.labels[i] == key:
                     Up = np.array(self.ions.pos[i].to_crys()) * nr
@@ -340,37 +329,32 @@ class LocalPseudo(AbstractLocalPseudo):
                     Mn_2 = []
                     for j in range(3):
                         Mn.append(Bspline.calc_Mn(Up[j] - np.floor(Up[j])))
-                        Mn_2.append(
-                            Bspline.calc_Mn(Up[j] - np.floor(Up[j]),
-                                            order=self.BsplineOrder - 1))
+                        Mn_2.append(Bspline.calc_Mn(Up[j] - np.floor(Up[j]), order=self.BsplineOrder - 1))
                     Q_derivativeA[0] = nr[0] * np.einsum(
-                        'i, j, k -> ijk', Mn_2[0][1:] - Mn_2[0][:-1],
-                        Mn[1][1:], Mn[2][1:]).reshape(-1)
+                        "i, j, k -> ijk", Mn_2[0][1:] - Mn_2[0][:-1], Mn[1][1:], Mn[2][1:]
+                    ).reshape(-1)
                     Q_derivativeA[1] = nr[1] * np.einsum(
-                        'i, j, k -> ijk', Mn[0][1:],
-                        Mn_2[1][1:] - Mn_2[1][:-1], Mn[2][1:]).reshape(-1)
+                        "i, j, k -> ijk", Mn[0][1:], Mn_2[1][1:] - Mn_2[1][:-1], Mn[2][1:]
+                    ).reshape(-1)
                     Q_derivativeA[2] = nr[2] * np.einsum(
-                        'i, j, k -> ijk', Mn[0][1:], Mn[1][1:],
-                        Mn_2[2][1:] - Mn_2[2][:-1]).reshape(-1)
-                    l123A = np.mod(
-                        1 + np.floor(Up).astype(np.int32).reshape(
-                            (3, 1)) - ixyzA, nr.reshape((3, 1)))
+                        "i, j, k -> ijk", Mn[0][1:], Mn[1][1:], Mn_2[2][1:] - Mn_2[2][:-1]
+                    ).reshape(-1)
+                    l123A = np.mod(1 + np.floor(Up).astype(np.int32).reshape((3, 1)) - ixyzA, nr.reshape((3, 1)))
                     Forces[i] = -np.sum(
-                        np.matmul(Q_derivativeA.T, cell_inv) *
-                        rhoPB[l123A[0], l123A[1], l123A[2]][:, np.newaxis],
-                        axis=0)
+                        np.matmul(Q_derivativeA.T, cell_inv) * rhoPB[l123A[0], l123A[1], l123A[2]][:, np.newaxis],
+                        axis=0,
+                    )
         return Forces
 
     def _StressPME(self, rho, energy=None):
         if energy is None:
-            energy = self(density=rho, calcType='Energy').energy
+            energy = self(density=rho, calcType="Energy").energy
         rhoG = rho.fft()
         reciprocal_grid = self.grid.get_reciprocal()
         g = reciprocal_grid.g
         q = reciprocal_grid.q
-        q[0, 0, 0, 0] = 1.0
+        q[0, 0, 0] = 1.0
         mask = reciprocal_grid.mask
-        mask2 = mask[..., np.newaxis]
         Bspline = self.Bspline
         Barray = Bspline.Barray
         rhoGB = np.conjugate(rhoG) * Barray
@@ -387,10 +371,8 @@ class LocalPseudo(AbstractLocalPseudo):
             rhoGBV = rhoGBV * Qarray.fft()
             for i in range(3):
                 for j in range(i, 3):
-                    den = (g[..., i][mask] *
-                           g[..., j][mask]) * rhoGBV[mask2] / q[mask2]
-                    stress[i, j] -= (np.einsum('i->',
-                                               den)).real / self.grid.volume**2
+                    den = (g[i][mask] * g[j][mask]) * rhoGBV[mask] / q[mask]
+                    stress[i, j] -= (np.einsum("i->", den)).real / self.grid.volume ** 2
         stress *= 2.0 * self.grid.nnr
         for i in range(3):
             for j in range(i, 3):
@@ -401,9 +383,10 @@ class LocalPseudo(AbstractLocalPseudo):
 
 
 class ReadPseudo(object):
-    '''
+    """
     Support class for LocalPseudo.
-    '''
+    """
+
     def __init__(self, grid=None, PP_list=None):
         self._gp = {}  # 1D PP grid g-space
         self._vp = {}  # PP on 1D PP grid
@@ -414,55 +397,54 @@ class ReadPseudo(object):
         self.PP_list = PP_list
         self.grid = grid
         key = list(self.PP_list.keys())[0]
-        if PP_list[key][-6:].lower() == 'recpot':
-            self.PP_type = 'recpot'
-        elif PP_list[key][-3:].lower() == 'upf':
-            self.PP_type = 'upf'
+        if PP_list[key][-6:].lower() == "recpot":
+            self.PP_type = "recpot"
+        elif PP_list[key][-3:].lower() == "upf":
+            self.PP_type = "upf"
         else:
             raise Exception("Pseudopotential not supported")
-        if self.PP_type is 'recpot':
+        if self.PP_type is "recpot":
             self._init_PP_recpot()
-        elif self.PP_type is 'upf':
+        elif self.PP_type is "upf":
             self._init_PP_upf()
 
     def _init_PP_recpot(self):
-        '''
+        """
         This is a private method used only in this specific class. 
-        '''
+        """
+
         def set_PP(Single_PP_file):
-            '''Reads CASTEP-like recpot PP file
-            Returns tuple (g, v)'''
+            """Reads CASTEP-like recpot PP file
+            Returns tuple (g, v)"""
             # HARTREE2EV = 27.2113845
             # BOHR2ANG   = 0.529177211
-            HARTREE2EV = ENERGY_CONV['Hartree']['eV']
-            BOHR2ANG = LEN_CONV['Bohr']['Angstrom']
-            with open(Single_PP_file, 'r') as outfil:
+            HARTREE2EV = ENERGY_CONV["Hartree"]["eV"]
+            BOHR2ANG = LEN_CONV["Bohr"]["Angstrom"]
+            with open(Single_PP_file, "r") as outfil:
                 lines = outfil.readlines()
 
             for i in range(0, len(lines)):
                 line = lines[i]
-                if 'END COMMENT' in line:
+                if "END COMMENT" in line:
                     ibegin = i + 3
-                elif line.strip() == '1000':
+                elif line.strip() == "1000":
                     # if '  1000' in line:
                     iend = i
             line = " ".join([line.strip() for line in lines[ibegin:iend]])
 
-            if '1000' in lines[iend]:
-                print('Recpot pseudopotential ' + Single_PP_file + ' loaded')
+            if "1000" in lines[iend]:
+                print("Recpot pseudopotential " + Single_PP_file + " loaded")
             else:
                 return Exception
             gmax = np.float(lines[ibegin - 1].strip()) * BOHR2ANG
-            v = np.array(line.split()).astype(
-                np.float) / HARTREE2EV / BOHR2ANG**3
+            v = np.array(line.split()).astype(np.float) / HARTREE2EV / BOHR2ANG ** 3
             g = np.linspace(0, gmax, num=len(v))
             return g, v
 
         for key in self.PP_list:
-            print('setting key: ' + key)
+            print("setting key: " + key)
             if not os.path.isfile(self.PP_list[key]):
-                raise Exception("PP file for atom type " + str(key) +
-                                " not found")
+                raise Exception("PP file for atom type " + str(key) + " not found")
             else:
                 gp, vp = set_PP(self.PP_list[key])
                 self._gp[key] = gp
@@ -475,37 +457,35 @@ class ReadPseudo(object):
         for key in self._vloc_interp.keys():
             vloc_interp = self._vloc_interp[key]
             vloc[:] = 0.0
-            vloc[q < np.max(self._gp[key])] = splev(
-                q[q < np.max(self._gp[key])], vloc_interp, der=0)
+            vloc[q < np.max(self._gp[key])] = splev(q[q < np.max(self._gp[key])], vloc_interp, der=0)
             self._vlines[key] = vloc
 
     def _init_PP_upf(self):
-        '''
+        """
         This is a private method used only in this specific class. 
-        '''
+        """
+
         def set_PP(Single_PP_file, MaxPoints=1000, Gmax=60):
-            '''Reads QE UPF type PP'''
+            """Reads QE UPF type PP"""
             import importlib
+
             upf2json = importlib.util.find_spec("upf_to_json")
             found = upf2json is not None
             if found:
                 from upf_to_json import upf_to_json
             else:
                 raise ModuleNotFoundError("Must pip install upf_to_json")
-            Ry2Ha = ENERGY_CONV['Rydberg']['Hartree']
-            with open(Single_PP_file, 'r') as outfil:
+            Ry2Ha = ENERGY_CONV["Rydberg"]["Hartree"]
+            with open(Single_PP_file, "r") as outfil:
                 upf = upf_to_json(upf_str=outfil.read(), fname=Single_PP_file)
-            r = np.array(upf['pseudo_potential']['radial_grid'],
-                         dtype=np.float64)
-            v = np.array(upf['pseudo_potential']['local_potential'],
-                         dtype=np.float64) / Ry2Ha
+            r = np.array(upf["pseudo_potential"]["radial_grid"], dtype=np.float64)
+            v = np.array(upf["pseudo_potential"]["local_potential"], dtype=np.float64) / Ry2Ha
             return r, v, upf
 
         for key in self.PP_list:
-            print('setting key: ' + key)
+            print("setting key: " + key)
             if not os.path.isfile(self.PP_list[key]):
-                raise Exception("PP file for atom type " + str(key) +
-                                " not found")
+                raise Exception("PP file for atom type " + str(key) + " not found")
             else:
                 r, vr, self._upf[key] = set_PP(self.PP_list[key])
 
@@ -513,8 +493,7 @@ class ReadPseudo(object):
                 vp = np.zeros_like(gp)
                 vp[0] = 0.0
                 for k in np.arange(start=1, stop=len(gp)):
-                    vp[k] = (4.0 * np.pi / gp[k]) * np.sum(
-                        r * vr * np.sin(gp[k] * r))
+                    vp[k] = (4.0 * np.pi / gp[k]) * np.sum(r * vr * np.sin(gp[k] * r))
                 self._gp[key] = gp
                 self._vp[key] = vp
                 vloc_interp = splrep(gp, vp)
@@ -525,21 +504,18 @@ class ReadPseudo(object):
         for key in self._vloc_interp.keys():
             vloc_interp = self._vloc_interp[key]
             vloc[:] = 0.0
-            vloc[q < np.max(self._gp[key])] = splev(
-                q[q < np.max(self._gp[key])], vloc_interp, der=0)
+            vloc[q < np.max(self._gp[key])] = splev(q[q < np.max(self._gp[key])], vloc_interp, der=0)
             self._vlines[key] = vloc.copy()
 
     def get_Zval(self, ions):
-        if self.PP_type is 'upf':
+        if self.PP_type is "upf":
             for key in self._gp.keys():
-                ions.Zval[key] = self._upf[key]['pseudo_potential']['header'][
-                    'z_valence']
-        elif self.PP_type is 'recpot':
+                ions.Zval[key] = self._upf[key]["pseudo_potential"]["header"]["z_valence"]
+        elif self.PP_type is "recpot":
             for key in self._gp.keys():
                 gp = self._gp[key]
                 vp = self._vp[key]
-                val = (vp[0] - vp[1]) * (gp[-1] /
-                                         (gp.size - 1))**2 / (4.0 * np.pi)
+                val = (vp[0] - vp[1]) * (gp[-1] / (gp.size - 1)) ** 2 / (4.0 * np.pi)
                 ions.Zval[key] = round(val)
 
     @property

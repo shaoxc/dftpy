@@ -4,7 +4,7 @@ from dftpy.atom import Atom
 from dftpy.base import BaseCell, DirectCell
 from dftpy.constants import LEN_CONV
 
-BOHR2ANG = LEN_CONV['Bohr']['Angstrom']
+BOHR2ANG = LEN_CONV["Bohr"]["Angstrom"]
 
 
 def read_POSCAR(infile, names=None, **kwargs):
@@ -30,10 +30,10 @@ def read_POSCAR(infile, names=None, **kwargs):
         if names is None:
             raise AttributeError("Must input the atoms names")
         Format = fr.readline().strip()[0]
-        if Format == 'D' or Format == 'd':
-            Format = 'Crystal'
-        elif Format == 'F' or Format == 'f':
-            Format = 'Cartesian'
+        if Format == "D" or Format == "d":
+            Format = "Crystal"
+        elif Format == "F" or Format == "f" or Format == "C" or Format == "c":
+            Format = "Cartesian"
         nat = sum(typ)
         pos = []
         i = 0

@@ -41,7 +41,7 @@ class TestField(unittest.TestCase):
 
         # fft
         reciprocal_field = field.fft()
-        self.assertAlmostEqual(N, reciprocal_field[0,0,0,0])
+        self.assertAlmostEqual(N, reciprocal_field[0,0,0])
 
         # ifft
         field1 = reciprocal_field.ifft(check_real=True)
@@ -72,7 +72,7 @@ class TestField(unittest.TestCase):
         x0 = Coord(pos=[0,0,0], cell=field.grid, basis="Crystal")
         r0 = Coord(pos=[1,0,0], cell=field.grid, basis="Crystal")
         field_cut = field.get_cut(origin=x0, r0=r0, nr=nr[0])
-        self.assertTrue(np.isclose(field_cut[:,0,0,0], field[:,0,0,0]).all())
+        self.assertTrue(np.isclose(field_cut[0,0,:], field[0,0,:]).all())
 
     def test_fft_ifft(self):
         nr=(51,51,51)
@@ -86,20 +86,20 @@ class TestField(unittest.TestCase):
         def ReciprocalSpaceGaussian(sigma,mu,grid):
             if not isinstance(grid,(ReciprocalGrid)):
                 raise Exception()
-            a = np.einsum('ijkl,l->ijk',grid.g,mu)
+            a = np.einsum('lijk,l->ijk',grid.g,mu)
             b = np.exp(-sigma**2*grid.gg/2.0)
             c = np.exp(-1j*a)
-            d=np.einsum('ijkl,ijk->ijk',b,c)
+            d=np.einsum('ijk,ijk->ijk',b,c)
             return ReciprocalField(grid=grid,rank=1,griddata_3d=d)
         
         def DirectSpaceGaussian (sigma,mu,grid): 
             if not isinstance(grid,(DirectGrid)):
                 raise Exception()
-            a = grid.r-mu
-            b = (sigma*np.sqrt(2.0*np.pi))**(-3.0)*np.exp( - 0.5 * np.einsum('ijkl,ijkl->ijk', a, a) / sigma**2.0 )
+            a = grid.r-mu[:, None, None, None]
+            b = (sigma*np.sqrt(2.0*np.pi))**(-3.0)*np.exp( - 0.5 * np.einsum('lijk,lijk->ijk', a, a) / sigma**2.0 )
             return DirectField(grid=grid,rank=1,griddata_3d=b)
         
-        center = dgrid.r[25,25,25,:]
+        center = dgrid.r[:, 25,25,25]
         sigma = 0.5
         
         rf = ReciprocalSpaceGaussian(sigma,center,rgrid)
@@ -115,5 +115,5 @@ class TestField(unittest.TestCase):
         self.assertTrue(np.isclose(df,df_dftpy).all())
         
 
-
-
+if __name__ == "__main__":
+    unittest.main()
