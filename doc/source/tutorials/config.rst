@@ -18,7 +18,9 @@ Config of dftpy script
        - `OUTPUT`_
        - `OPT`_
        - `PROPAGATOR`_
-       - `TD`_
+     * - `TD`_
+       -
+       -
        -
 
 JOB
@@ -484,6 +486,7 @@ OPT
 
         *Default* : 1.0
 
+
 PROPAGATOR
 ----------
 
@@ -524,8 +527,9 @@ PROPAGATOR
 
         *Default* : 0.025
 
+
 TD
-----------
+--
 
     Control the non-propagator related time-depend parameters.
 

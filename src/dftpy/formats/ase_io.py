@@ -8,7 +8,7 @@ from dftpy.atom import Atom
 from dftpy.base import BaseCell, DirectCell
 from dftpy.constants import LEN_CONV
 
-BOHR2ANG = LEN_CONV['Bohr']['Angstrom']
+BOHR2ANG = LEN_CONV["Bohr"]["Angstrom"]
 
 
 def ase_read(infile, index=None, format=None, **kwargs):
@@ -18,7 +18,7 @@ def ase_read(infile, index=None, format=None, **kwargs):
     Z = struct.numbers
     cell = DirectCell(lattice)
     pos = struct.get_positions() / BOHR2ANG
-    atoms = Atom(Z=Z, pos=pos, cell=cell, basis='Cartesian')
+    atoms = Atom(Z=Z, pos=pos, cell=cell, basis="Cartesian")
     return atoms
 
 
