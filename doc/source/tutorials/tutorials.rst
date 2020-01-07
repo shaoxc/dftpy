@@ -23,3 +23,8 @@ OFDFT
 
 TDDFT
 -----
+
+.. toctree::
+   :maxdepth: 1
+
+   tddft/propagate
