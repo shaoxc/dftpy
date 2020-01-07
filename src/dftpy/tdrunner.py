@@ -21,13 +21,13 @@ def tdrunner(rho0, E_v_Evaluator, config):
     t_max = config["TD"]["tmax"]
     order = config["TD"]["order"]
     direc = config["TD"]["direc"]
+    k = config["TD"]["strength"]
     num_t = int(t_max / int_t)
 
     prop = Propagator(interval=int_t, type=config["PROPAGATOR"]["type"], optional_kwargs=config["PROPAGATOR"])
 
     begin_t = time.time()
     x = rho0.grid.r[direc]
-    k = 1.0e-6
     psi = np.sqrt(rho0) * np.exp(1j * k * x)
     psi.cplx = True
     rho, j = cal_rho_j(psi)

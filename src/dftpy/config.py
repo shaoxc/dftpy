@@ -104,6 +104,7 @@ def DefaultOption():
         "tmax": 1.0,
         "order": 1,
         "direc": 0,
+        "strength": 1.0e-3,
     }
 
     conf = {
@@ -211,6 +212,7 @@ def OptionFormat(config):
     conf['TD']['int_t'] = float(conf['TD']['int_t'])
     conf['TD']['tmax'] = float(conf['TD']['tmax'])
     conf['TD']['order'] = int(conf['TD']['order'])
+    conf['TD']['strength'] = float(conf['TD']['strength'])
     if conf['TD']['direc']:
         if conf['TD']['direc'] == 'x':
             conf['TD']['direc'] = 0

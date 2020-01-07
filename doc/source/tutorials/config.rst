@@ -538,7 +538,7 @@ TD
     The time step in atomic units.
         *Options* :
 
-        *Default* : 1e-3
+        *Default* : 1.0e-3
 
 .. option:: tmax
 
@@ -560,6 +560,13 @@ TD
         *Options* : x, y, z
 
         *Default* : x
+
+.. option:: strength
+
+    The strength of the initial kick in atomic units.
+        *Options* :
+
+        *Default* : 1.0e-3
 
 
 .. note::
