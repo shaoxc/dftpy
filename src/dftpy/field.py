@@ -5,6 +5,7 @@ from scipy import interpolate, signal
 from dftpy.grid import DirectGrid, ReciprocalGrid
 from dftpy.constants import LEN_CONV, FFTLIB
 from dftpy.math_utils import PYfft, PYifft, TimeData
+from dftpy.base import Coord
 
 
 class BaseField(np.ndarray):
@@ -361,7 +362,7 @@ class DirectField(BaseField):
         new_grid = DirectGrid(new_lattice, nr_new, units=self.grid.units)
         return DirectField(new_grid, self.memo, griddata_3d=new_values)
 
-    def get_cut(self, r0, r1=None, r2=None, origin=None, center=None, nr=10):
+    def get_cut(self, r0, r1=None, r2=None, origin=None, center=None, nr=10, basis = 'Crystal'):
         """
         general routine to get the arbitrary cuts of a Grid_Function_Base object in 1,2,
         or 3 dimensions. spline interpolation will be used.
@@ -373,6 +374,11 @@ class DirectField(BaseField):
             nr[i] = number points to discretize each direction ; i = 0,1,2
         r0, r1, r2, origin, center are instances of Coord
         """
+        if not isinstance(r0, Coord): r0 = Coord(r0, self.grid, basis = basis).to_cart()
+        if not isinstance(r1, (Coord, type(None))): r1 = Coord(r1, self.grid, basis = basis).to_cart()
+        if not isinstance(r2, (Coord, type(None))): r2 = Coord(r2, self.grid, basis = basis).to_cart()
+        if not isinstance(origin, (Coord, type(None))): origin = Coord(origin, self.grid, basis = basis).to_cart()
+        if not isinstance(center, (Coord, type(None))): center = Coord(center, self.grid, basis = basis).to_cart()
 
         if self.rank > 1:
             raise Exception("get_cut is only implemented for scalar fields")
@@ -419,18 +425,18 @@ class DirectField(BaseField):
             dr[1, :] = (r1) / nrx[1]
             if span == 3:
                 dr[2, :] = (r2) / nrx[2]
-        # points = np.zeros((3, nrx[0], nrx[1], nrx[2]))
         axis = []
         for ipol in range(3):
             axis.append(np.zeros((nrx[ipol], 3)))
             for ir in range(nrx[ipol]):
                 axis[ipol][ir, :] = ir * dr[ipol]
 
+        # points = np.zeros((nrx[0], nrx[1], nrx[2], 3))
         # for i in range(nrx[0]):
-        # for j in range(nrx[1]):
-        # for k in range(nrx[2]):
-        # points[i, j, k, :] = x0 + axis[0][i, :] + axis[1][j, :] + axis[2][k, :]
-        points = np.einsum("il, jl, kl -> ijkl", axis[0], axis[1], axis[2])
+            # for j in range(nrx[1]):
+                # for k in range(nrx[2]):
+                    # points[i, j, k, :] = x0 + axis[0][i, :] + axis[1][j, :] + axis[2][k, :]
+        points = axis[0].reshape((nrx[0], 1, 1, 3)) + axis[1].reshape((1, nrx[1], 1, 3)) + axis[2].reshape((1, 1, nrx[2], 3))
         points += x0[:]
 
         a, b, c = nrx[0], nrx[1], nrx[2]
