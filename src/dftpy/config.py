@@ -91,6 +91,7 @@ def DefaultOption():
     }
 
     PROPAGATOR = {
+        "type": "crank-nicolson",
         "order": 20, 
         "linearsolver": "bicgstab", 
         "tol": 1e-10, 
