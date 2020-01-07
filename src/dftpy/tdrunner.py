@@ -1,5 +1,5 @@
 import numpy as np
-from dftpy.functionals import FunctionalClass, TotalEnergyAndPotential
+from dftpy.functionals import TotalEnergyAndPotential
 from dftpy.propagator import Propagator, hamiltonian
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.grid import DirectGrid, ReciprocalGrid

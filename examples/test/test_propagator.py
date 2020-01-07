@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+import os
 import unittest
 import numpy as np
 
@@ -25,13 +27,14 @@ class TestPropagator(unittest.TestCase):
         self.assertEqual(self.cn.interval, 1.0e-3)
 
     def test_call(self):
-        sys = read_xsf('../DATA/GaAs_random.xsf',full=True)
+        dftpy_data_path = os.environ.get('DFTPY_DATA_PATH')
+        sys = read_xsf(dftpy_data_path+'/GaAs_random.xsf',full=True)
         
         KE = FunctionalClass(type='KEDF', name='TF')
         XC = FunctionalClass(type='XC', name='LDA')
         HARTREE = FunctionalClass(type="HARTREE")
-        PPlist = {'Ga':'../DATA/Ga_lda.oe04.recpot',
-            'As':'../DATA/As_lda.oe04.recpot'}
+        PPlist = {'Ga':dftpy_data_path+'/Ga_lda.oe04.recpot',
+            'As':dftpy_data_path+'/As_lda.oe04.recpot'}
         PSEUDO = LocalPseudo(grid=sys.cell, ions=sys.ions, PP_list=PPlist)
         E_v_Evaluator = TotalEnergyAndPotential(
             KineticEnergyFunctional=KE, 
