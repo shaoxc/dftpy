@@ -27,6 +27,9 @@ The next step is to run the propagation. We create another config file named pro
 
 .. literalinclude:: propagate.ini
 
+One thing to keep in mind is when running the propagate job, the kedf is the Pauli KEDF (i.e. total KESF minus the von
+Weizsacker term).
+
 Then we run the following command:
 
 .. highlight:: bash

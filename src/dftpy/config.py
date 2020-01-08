@@ -92,6 +92,7 @@ def DefaultOption():
 
     PROPAGATOR = {
         "type": "crank-nicolson",
+        "int_t": 1e-3,
         "order": 20, 
         "linearsolver": "bicgstab", 
         "tol": 1e-10, 
@@ -100,7 +101,6 @@ def DefaultOption():
 
     TD = {
         "outfile": "td_out",
-        "int_t": 1e-3,
         "tmax": 1.0,
         "order": 1,
         "direc": 0,
@@ -205,11 +205,11 @@ def OptionFormat(config):
     conf["OUTPUT"]["time"] = bools(conf["OUTPUT"]["time"])
     conf["OUTPUT"]["stress"] = bools(conf["OUTPUT"]["stress"])
     
+    conf['PROPAGATOR']['int_t'] = float(conf['TD']['int_t'])
     conf['PROPAGATOR']['order'] = int(conf['PROPAGATOR']['order'])
     conf['PROPAGATOR']['tol'] = float(conf['PROPAGATOR']['tol'])
     conf['PROPAGATOR']['maxiter'] = int(conf['PROPAGATOR']['maxiter'])
 
-    conf['TD']['int_t'] = float(conf['TD']['int_t'])
     conf['TD']['tmax'] = float(conf['TD']['tmax'])
     conf['TD']['order'] = int(conf['TD']['order'])
     conf['TD']['strength'] = float(conf['TD']['strength'])
