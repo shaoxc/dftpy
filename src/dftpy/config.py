@@ -205,7 +205,7 @@ def OptionFormat(config):
     conf["OUTPUT"]["time"] = bools(conf["OUTPUT"]["time"])
     conf["OUTPUT"]["stress"] = bools(conf["OUTPUT"]["stress"])
     
-    conf['PROPAGATOR']['int_t'] = float(conf['TD']['int_t'])
+    conf['PROPAGATOR']['int_t'] = float(conf['PROPAGATOR']['int_t'])
     conf['PROPAGATOR']['order'] = int(conf['PROPAGATOR']['order'])
     conf['PROPAGATOR']['tol'] = float(conf['PROPAGATOR']['tol'])
     conf['PROPAGATOR']['maxiter'] = int(conf['PROPAGATOR']['maxiter'])
