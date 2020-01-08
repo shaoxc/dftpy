@@ -44,7 +44,7 @@ class TestPropagator(unittest.TestCase):
 
         rho0 = sys.field
         x = rho0.grid.r[0]
-        k = 1.0e-6
+        k = 1.0e-3
         psi0 = np.sqrt(rho0) * np.exp(1j * k * x)
         psi0.cplx = True
 
@@ -63,7 +63,7 @@ class TestPropagator(unittest.TestCase):
         
         delta_rho = rho - rho0
         delta_mu = (delta_rho * delta_rho.grid.r).integral()
-        self.assertTrue(np.isclose(delta_mu[0], -1.3517e-05, rtol=1e-3))
+        self.assertTrue(np.isclose(delta_mu[0], -1.1614e-02, rtol=1e-3))
 
         psi = psi0
         func = E_v_Evaluator.ComputeEnergyPotential(rho0, calcType="Potential")
@@ -79,7 +79,7 @@ class TestPropagator(unittest.TestCase):
         
         delta_rho = rho - rho0
         delta_mu = (delta_rho * delta_rho.grid.r).integral()
-        self.assertTrue(np.isclose(delta_mu[0], -1.3517e-05, rtol=1e-3))
+        self.assertTrue(np.isclose(delta_mu[0], -1.1614e-02, rtol=1e-3))
 
 
 if __name__ == '__main__':
