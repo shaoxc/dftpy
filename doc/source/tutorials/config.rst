@@ -492,6 +492,20 @@ PROPAGATOR
 
     Control the propagator.
 
+.. option:: type
+    
+    The type of the propagator.
+        *Options* : crank-nicolson, taylor, rk4(experimental)
+
+        *Default* : crank-nicolson
+
+.. option:: int_t
+
+    The time step in atomic units.
+        *Options* :
+
+        *Default* : 1.0e-3
+
 .. option:: order
 
     The order used for the Taylor expansion propagator.
@@ -532,13 +546,6 @@ TD
         *Options* :
 
         *Default* : td_out
-
-.. option:: int_t
-
-    The time step in atomic units.
-        *Options* :
-
-        *Default* : 1.0e-3
 
 .. option:: tmax
 
