@@ -42,7 +42,7 @@ def read_xsf(infile, kind="All", full=False, pbc=True, **kwargs):
             pos = np.asarray(pos) / LEN_CONV["Bohr"]["Angstrom"]
             line = readline()
 
-        if lattice != []:
+        if len(lattice) > 1 :
             cell = DirectCell(lattice)
             atoms = Atom(label=label, pos=pos, cell=cell, basis="Cartesian")
             if kind == "cell":
@@ -56,7 +56,7 @@ def read_xsf(infile, kind="All", full=False, pbc=True, **kwargs):
             nrx = np.empty(3, dtype=int)
             nrx[0], nrx[1], nrx[2] = map(int, readline().split())
             readline()  # read one useless line
-            if lattice == []:
+            if len(lattice) == 0 :
                 for i in range(3):
                     l = list(map(float, readline().split()))
                     lattice.append(l)

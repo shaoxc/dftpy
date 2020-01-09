@@ -70,12 +70,13 @@ class LocalPseudo(AbstractLocalPseudo):
     def __init__(self, grid=None, ions=None, PP_list=None, PME=True):
         #
         # private vars
-        self._gp = {}  # 1D PP grid g-space
-        self._vp = {}  # PP on 1D PP grid
-        self._vloc_interp = {}  # Interpolates recpot PP
-        self._vlines = {}
-        self._v = None  # PP for atom on 3D PW grid
-        self._vreal = None  # PP for atom on 3D real space
+        # self._gp = {}  # 1D PP grid g-space
+        # self._vp = {}  # PP on 1D PP grid
+        # self._vloc_interp = {}  # Interpolates recpot PP
+        # self._vlines = {}
+        # self._v = None  # PP for atom on 3D PW grid
+        # self._vreal = None  # PP for atom on 3D real space
+        self.restart(grid, ions, full=True)
 
         if PME is not True:
             warnings.warn("Using N^2 method for strf!")
@@ -106,14 +107,13 @@ class LocalPseudo(AbstractLocalPseudo):
         if len(self.PP_list) != len(set(self.ions.Z)):
             raise ValueError("Incorrect number of pseudopotential files")
 
-        if not self._vloc_interp:
-            readPP = ReadPseudo(grid, PP_list)
-            self._vloc_interp = readPP.vloc_interp
-            self._vlines = readPP.vlines
-            self._gp = readPP.gp
-            self._vp = readPP.vp
-            # update Zval in ions
-            readPP.get_Zval(self.ions)
+        # if not self._vloc_interp:
+        readPP = ReadPseudo(PP_list)
+        self._vloc_interp = readPP.vloc_interp
+        self._gp = readPP.gp
+        self._vp = readPP.vp
+        # update Zval in ions
+        readPP.get_Zval(self.ions)
 
     def __call__(self, density=None, calcType=None):
         if self._vreal is None:
@@ -203,10 +203,16 @@ class LocalPseudo(AbstractLocalPseudo):
         """
         The vloc for each atom type represented on the reciprocal space grid.
         """
-        if self._vlines:
-            return self._vlines
-        else:
-            return Exception("Must load PP first")
+        if not self._vlines:
+            reciprocal_grid = self.grid.get_reciprocal()
+            q = reciprocal_grid.q
+            vloc = np.empty_like(q)
+            for key in self._vloc_interp.keys():
+                vloc_interp = self._vloc_interp[key]
+                vloc[:] = 0.0
+                vloc[q < np.max(self._gp[key])] = splev(q[q < np.max(self._gp[key])], vloc_interp, der=0)
+                self._vlines[key] = vloc.copy()
+        return self._vlines
 
     def _PP_Reciprocal(self):
         TimeData.Begin("Vion")
@@ -217,7 +223,7 @@ class LocalPseudo(AbstractLocalPseudo):
             for i in range(len(self.ions.pos)):
                 if self.ions.labels[i] == key:
                     strf = self.ions.strf(reciprocal_grid, i)
-                    v += self._vlines[key] * strf
+                    v += self.vlines[key] * strf
         self._v = ReciprocalField(reciprocal_grid, griddata_3d=v)
         TimeData.End("Vion")
         return "PP successfully interpolated"
@@ -235,7 +241,7 @@ class LocalPseudo(AbstractLocalPseudo):
                 if self.ions.labels[i] == key:
                     QA = self.Bspline.get_PME_Qarray(i, QA)
             Qarray = DirectField(grid=self.grid, griddata_3d=QA, rank=1)
-            v = v + self._vlines[key] * Qarray.fft()
+            v = v + self.vlines[key] * Qarray.fft()
         v = v * self.Bspline.Barray * self.grid.nnr / self.grid.volume
         self._v = v
         TimeData.End("Vion_PME")
@@ -307,7 +313,6 @@ class LocalPseudo(AbstractLocalPseudo):
     def _ForcePME(self, rho):
         rhoG = rho.fft()
         reciprocal_grid = self.grid.get_reciprocal()
-        g = reciprocal_grid.g
         Bspline = self.Bspline
         Barray = Bspline.Barray
         Barray = np.conjugate(Barray)
@@ -387,15 +392,13 @@ class ReadPseudo(object):
     Support class for LocalPseudo.
     """
 
-    def __init__(self, grid=None, PP_list=None):
+    def __init__(self, PP_list=None):
         self._gp = {}  # 1D PP grid g-space
         self._vp = {}  # PP on 1D PP grid
         self._vloc_interp = {}  # Interpolates recpot PP
-        self._vlines = {}
         self._upf = {}
 
         self.PP_list = PP_list
-        self.grid = grid
         key = list(self.PP_list.keys())[0]
         if PP_list[key][-6:].lower() == "recpot":
             self.PP_type = "recpot"
@@ -403,9 +406,9 @@ class ReadPseudo(object):
             self.PP_type = "upf"
         else:
             raise Exception("Pseudopotential not supported")
-        if self.PP_type is "recpot":
+        if self.PP_type == "recpot":
             self._init_PP_recpot()
-        elif self.PP_type is "upf":
+        elif self.PP_type == "upf":
             self._init_PP_upf()
 
     def _init_PP_recpot(self):
@@ -451,21 +454,13 @@ class ReadPseudo(object):
                 self._vp[key] = vp
                 vloc_interp = splrep(gp, vp)
                 self._vloc_interp[key] = vloc_interp
-        reciprocal_grid = self.grid.get_reciprocal()
-        q = reciprocal_grid.q
-        vloc = np.empty_like(q)
-        for key in self._vloc_interp.keys():
-            vloc_interp = self._vloc_interp[key]
-            vloc[:] = 0.0
-            vloc[q < np.max(self._gp[key])] = splev(q[q < np.max(self._gp[key])], vloc_interp, der=0)
-            self._vlines[key] = vloc
 
-    def _init_PP_upf(self):
+    def _init_PP_upf(self, MaxPoints=1000, Gmax=60):
         """
         This is a private method used only in this specific class. 
         """
 
-        def set_PP(Single_PP_file, MaxPoints=1000, Gmax=60):
+        def set_PP(Single_PP_file):
             """Reads QE UPF type PP"""
             import importlib
 
@@ -498,20 +493,12 @@ class ReadPseudo(object):
                 self._vp[key] = vp
                 vloc_interp = splrep(gp, vp)
                 self._vloc_interp[key] = vloc_interp
-        reciprocal_grid = self.grid.get_reciprocal()
-        q = reciprocal_grid.q
-        vloc = np.empty_like(q)
-        for key in self._vloc_interp.keys():
-            vloc_interp = self._vloc_interp[key]
-            vloc[:] = 0.0
-            vloc[q < np.max(self._gp[key])] = splev(q[q < np.max(self._gp[key])], vloc_interp, der=0)
-            self._vlines[key] = vloc.copy()
 
     def get_Zval(self, ions):
-        if self.PP_type is "upf":
+        if self.PP_type == "upf":
             for key in self._gp.keys():
                 ions.Zval[key] = self._upf[key]["pseudo_potential"]["header"]["z_valence"]
-        elif self.PP_type is "recpot":
+        elif self.PP_type == "recpot":
             for key in self._gp.keys():
                 gp = self._gp[key]
                 vp = self._vp[key]
@@ -523,12 +510,6 @@ class ReadPseudo(object):
         if not self._vloc_interp:
             raise Exception("Must init ReadPseudo")
         return self._vloc_interp
-
-    @property
-    def vlines(self):
-        if not self._vlines:
-            raise Exception("Must init ReadPseudo")
-        return self._vlines
 
     @property
     def gp(self):

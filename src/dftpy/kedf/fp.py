@@ -67,7 +67,7 @@ def FPStress(rho, energy=None):
     pass
 
 
-def FP_origin(rho, x=1.0, y=1.0, Sigma=0.025, alpha=1.0, beta=1.0, calcType="Both"):
+def FP_origin(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType="Both"):
     TimeData.Begin("FP")
     global KE_kernel_saved
     # Only performed once for each grid
@@ -109,7 +109,7 @@ def FP_origin(rho, x=1.0, y=1.0, Sigma=0.025, alpha=1.0, beta=1.0, calcType="Bot
     return OutFunctional
 
 
-def FP0(rho, x=1.0, y=1.0, Sigma=0.025, alpha=1.0, beta=1.0, calcType="Both", split=False, **kwargs):
+def FP0(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType="Both", split=False, **kwargs):
     TimeData.Begin("FP")
     global KE_kernel_saved
     # Only performed once for each grid
@@ -146,7 +146,7 @@ def FP0(rho, x=1.0, y=1.0, Sigma=0.025, alpha=1.0, beta=1.0, calcType="Both", sp
     return NL
 
 
-def FP(rho, x=1.0, y=1.0, Sigma=0.025, alpha=1.0, beta=1.0, rho0=None, calcType="Both", split=False, **kwargs):
+def FP(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, rho0=None, calcType="Both", split=False, **kwargs):
     TimeData.Begin("FP")
     global KE_kernel_saved
     # Only performed once for each grid

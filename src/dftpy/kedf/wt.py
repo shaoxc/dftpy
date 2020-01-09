@@ -49,7 +49,7 @@ def WTEnergy(rho, rho0, Kernel, alpha, beta):
     return ene
 
 
-def WTStress(rho, x=1.0, y=1.0, Sigma=0.025, alpha=5.0 / 6.0, beta=5.0 / 6.0, energy=None):
+def WTStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, energy=None):
     rho0 = np.mean(rho)
     g = rho.grid.get_reciprocal().g
     gg = rho.grid.get_reciprocal().gg
@@ -93,7 +93,7 @@ def WTStress(rho, x=1.0, y=1.0, Sigma=0.025, alpha=5.0 / 6.0, beta=5.0 / 6.0, en
 
 
 def WT(
-    rho, x=1.0, y=1.0, Sigma=0.025, alpha=5.0 / 6.0, beta=5.0 / 6.0, rho0=None, calcType="Both", split=False, **kwargs
+    rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, rho0=None, calcType="Both", split=False, **kwargs
 ):
     TimeData.Begin("WT")
     global KE_kernel_saved

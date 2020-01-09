@@ -1,6 +1,6 @@
 import warnings
 import numpy as np
-from dftpy.constants import LEN_CONV, units_warning
+from dftpy.constants import units_warning
 
 
 class BaseCell(object):
@@ -61,7 +61,7 @@ class BaseCell(object):
             return True
 
         # internally the lattice vectors are always saved in Bohr or 1/Bohr, no need to convert anymore
-        eps = 1e-4
+        # eps = 1e-4
         # conv = LEN_CONV[other.units][self.units]
         conv = 1.0
 
@@ -576,7 +576,7 @@ def _reconstruct_full_slices(shape_, index):
     return slices
 
 
-def _order_slices(dim, slices):
+def _order_slices(dim, slices, shape_):
     """
     Order the slices span in ascending order.
     When we are slicing a pbcarray we might be rolling and padding the array

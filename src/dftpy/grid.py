@@ -1,7 +1,5 @@
 import numpy as np
-from scipy import ndimage
 from dftpy.base import BaseCell, DirectCell, ReciprocalCell, Coord, s2r
-from dftpy.constants import LEN_CONV, FFTLIB
 
 
 class BaseGrid(BaseCell):
@@ -60,7 +58,7 @@ class DirectGrid(BaseGrid, DirectCell):
     """
 
     # def __init__(self, lattice, nr, origin=np.array([0.,0.,0.]), units=None, full = False, **kwargs):
-    def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), units=None, full=True, **kwargs):
+    def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), units=None, full=True, uppergrid = None, **kwargs):
         """
         Parameters
         ----------
@@ -77,9 +75,9 @@ class DirectGrid(BaseGrid, DirectCell):
         self._r = None
         self._rr = None
         self._s = None
-        self.RPgrid = None
+        self.RPgrid = uppergrid
         self._Rtable = None
-        self.full = full
+        self._full = full
         if full:
             self._nrG = nr
         else:
@@ -122,6 +120,24 @@ class DirectGrid(BaseGrid, DirectCell):
     @property
     def nrG(self):
         return self._nrG
+
+    @property
+    def full(self):
+        return self._full
+
+    @full.setter
+    def full(self, value):
+        if self._full != value :
+            '''
+            Clean stored information of reciprocal grid.
+            '''
+            self._full = value
+            self.RPgrid = None
+            if self._full:
+                self._nrG = self.nr
+            else:
+                self._nrG = self.nr.copy()
+                self._nrG[-1] = self._nrG[-1] // 2 + 1
 
     def get_reciprocal(self, scale=[1.0, 1.0, 1.0], convention="physics"):
         """
@@ -192,7 +208,7 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
         gg : square of each g vector
     """
 
-    def __init__(self, lattice, nr, units=None, full=False, **kwargs):
+    def __init__(self, lattice, nr, units=None, full=False, uppergrid = None, **kwargs):
         """
         Parameters
         ----------
@@ -213,13 +229,13 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
         super().__init__(lattice=lattice, nr=nrG, origin=np.array([0.0, 0.0, 0.0]), units=units, **kwargs)
         self._g = None
         self._gg = None
-        self.Dgrid = None
+        self.Dgrid = uppergrid
         self._q = None
         self._mask = None
         self._nrR = nr
         self._gF = None
         self._ggF = None
-        self.full = full
+        self._full = full
 
     @property
     def g(self):
@@ -358,3 +374,12 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
             self._ggF = ggF
             # self._ggF = np.reshape(gg, (*self._gF.shape, 1))
         return self._ggF
+
+    @property
+    def full(self):
+        return self._full
+
+    @full.setter
+    def full(self, value):
+        if self._full != value :
+            self._full = value

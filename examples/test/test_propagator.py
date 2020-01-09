@@ -29,6 +29,9 @@ class TestPropagator(unittest.TestCase):
     def test_call(self):
         dftpy_data_path = os.environ.get('DFTPY_DATA_PATH')
         sys = read_xsf(dftpy_data_path+'/GaAs_random.xsf',full=True)
+        # or 
+        # sys = read_xsf(dftpy_data_path+'/GaAs_random.xsf')
+        # sys.cell.full = True
         
         KE = FunctionalClass(type='KEDF', name='TF')
         XC = FunctionalClass(type='XC', name='LDA')
@@ -63,7 +66,7 @@ class TestPropagator(unittest.TestCase):
         
         delta_rho = rho - rho0
         delta_mu = (delta_rho * delta_rho.grid.r).integral()
-        self.assertTrue(np.isclose(delta_mu[0], -1.1614e-02, rtol=1e-3))
+        self.assertTrue(np.isclose(delta_mu[0], -1.1647e-02, rtol=1e-3))
 
         psi = psi0
         func = E_v_Evaluator.ComputeEnergyPotential(rho0, calcType="Potential")
@@ -79,7 +82,7 @@ class TestPropagator(unittest.TestCase):
         
         delta_rho = rho - rho0
         delta_mu = (delta_rho * delta_rho.grid.r).integral()
-        self.assertTrue(np.isclose(delta_mu[0], -1.1614e-02, rtol=1e-3))
+        self.assertTrue(np.isclose(delta_mu[0], -1.1647e-02, rtol=1e-3))
 
 
 if __name__ == '__main__':
