@@ -1,15 +1,15 @@
 .. _md:
 
-============================
-Molecular Dynamic Simulation
-============================
+=============================
+Molecular Dynamics Simulation
+=============================
 
-Perform the molecular dynamic (MD) simulation with `ASE`_.
+DFTpy performs molecular dynamics (MD) simulations with `ASE`_.
 This is one example to run NVT (canonical ensemble) simulation:
 
  .. literalinclude:: nvt.py
 
-The output `md.traj` can convert via `ASE`_:
+The output `md.traj` can be converted with `ASE`_:
 
  .. literalinclude:: ase_traj.py
 

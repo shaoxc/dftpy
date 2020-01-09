@@ -28,3 +28,13 @@ TDDFT
    :maxdepth: 1
 
    tddft/propagate
+
+Do it on a Jupyter Notebook!
+----------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   jupyter/optimization
+

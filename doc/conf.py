@@ -9,12 +9,15 @@ release = '0.0.1'
 source_suffix = '.rst'
 master_doc = 'index'
 
+nbsphinx_execute = 'never'
+
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.doctest',
               'sphinx.ext.mathjax',
               'sphinx.ext.viewcode',
               'sphinx.ext.napoleon',
-              'sphinx.ext.intersphinx']
+              'sphinx.ext.intersphinx',
+              'nbsphinx']
 
 templates_path = ['templates']
 exclude_patterns = ['build']
