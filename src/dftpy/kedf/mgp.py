@@ -22,7 +22,7 @@ KE_kernel_saved = {
 }
 
 
-def MGPStress(rho, x=1.0, y=1.0, Sigma=0.025, alpha=5.0 / 6.0, beta=5.0 / 6.0, calcType="Both"):
+def MGPStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, calcType="Both"):
     pass
 
 
@@ -30,7 +30,7 @@ def MGP(
     rho,
     x=1.0,
     y=1.0,
-    Sigma=0.025,
+    sigma=None,
     alpha=5.0 / 6.0,
     beta=5.0 / 6.0,
     lumpfactor=0.2,
@@ -87,7 +87,7 @@ def MGPA(
     rho,
     x=1.0,
     y=1.0,
-    Sigma=0.025,
+    sigma=None,
     alpha=5.0 / 6.0,
     beta=5.0 / 6.0,
     lumpfactor=0.2,
@@ -97,14 +97,14 @@ def MGPA(
     split=False,
     **kwargs
 ):
-    return MGP(rho, x, y, Sigma, alpha, beta, lumpfactor, maxpoint, "Arithmetic", calcType, split, **kwargs)
+    return MGP(rho, x, y, sigma, alpha, beta, lumpfactor, maxpoint, "Arithmetic", calcType, split, **kwargs)
 
 
 def MGPG(
     rho,
     x=1.0,
     y=1.0,
-    Sigma=0.025,
+    sigma=None,
     alpha=5.0 / 6.0,
     beta=5.0 / 6.0,
     lumpfactor=0.2,
@@ -114,4 +114,4 @@ def MGPG(
     split=False,
     **kwargs
 ):
-    return MGP(rho, x, y, Sigma, alpha, beta, lumpfactor, maxpoint, "Geometric", calcType, split, **kwargs)
+    return MGP(rho, x, y, sigma, alpha, beta, lumpfactor, maxpoint, "Geometric", calcType, split, **kwargs)

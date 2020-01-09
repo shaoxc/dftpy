@@ -87,7 +87,7 @@ def SMStress(rho, energy=None):
     pass
 
 
-def SM(rho, x=1.0, y=1.0, Sigma=0.025, alpha=0.5, beta=0.5, rho0=None, calcType="Both", split=False, **kwargs):
+def SM(rho, x=1.0, y=1.0, sigma=None, alpha=0.5, beta=0.5, rho0=None, calcType="Both", split=False, **kwargs):
     TimeData.Begin("SM")
     # alpha = beta = 5.0/6.0
     global KE_kernel_saved

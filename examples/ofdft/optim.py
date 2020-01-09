@@ -67,5 +67,6 @@ def test_optim():
         print("{:28s}{:<24.4f}{:<20d}".format(key, TimeData.cost[key], TimeData.number[key]))
     print('-' * 80)
 
+
 if __name__ == "__main__":
     test_optim()

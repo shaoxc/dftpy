@@ -53,7 +53,8 @@ def DefaultOption():
         "y": 1.0,
         "alpha": 5.0 / 6.0,
         "beta": 5.0 / 6.0,
-        "sigma": 0.025,
+        # "sigma": 0.025,
+        "sigma": None,
         "nsp": None,  # The number of spline
         "interp": "hermite",
         "kerneltype": "WT",
@@ -161,7 +162,8 @@ def OptionFormat(config):
     conf["KEDF"]["y"] = float(eval(conf["KEDF"]["y"]))
     conf["KEDF"]["alpha"] = float(eval(conf["KEDF"]["alpha"]))
     conf["KEDF"]["beta"] = float(eval(conf["KEDF"]["beta"]))
-    conf["KEDF"]["Sigma"] = float(eval(conf["KEDF"]["sigma"]))
+    if conf["KEDF"]["sigma"] is not None :
+        conf["KEDF"]["sigma"] = float(eval(conf["KEDF"]["sigma"]))
     conf["KEDF"]["etamax"] = float(eval(conf["KEDF"]["etamax"]))
     conf["KEDF"]["neta"] = int(conf["KEDF"]["neta"])
     conf["KEDF"]["order"] = int(conf["KEDF"]["order"])
@@ -204,7 +206,7 @@ def OptionFormat(config):
 
     conf["OUTPUT"]["time"] = bools(conf["OUTPUT"]["time"])
     conf["OUTPUT"]["stress"] = bools(conf["OUTPUT"]["stress"])
-    
+
     conf['PROPAGATOR']['int_t'] = float(conf['PROPAGATOR']['int_t'])
     conf['PROPAGATOR']['order'] = int(conf['PROPAGATOR']['order'])
     conf['PROPAGATOR']['tol'] = float(conf['PROPAGATOR']['tol'])
@@ -221,7 +223,7 @@ def OptionFormat(config):
         elif conf['TD']['direc'] == 'z':
             conf['TD']['direc'] = 2
         else:
-            conf['TD']['direc']    = int(conf['TD']['direc'])
+            conf['TD']['direc'] = int(conf['TD']['direc'])
 
     ############################## Conversion of units  ##############################
     """
@@ -254,10 +256,10 @@ def PrintConf(conf):
         raise AttributeError("conf must be dict")
     try:
         import json
-
         print(json.dumps(conf, indent=4, sort_keys=True))
-    except:
+    except Exception:
         import pprint
 
         pprint.pprint(conf)
         pretty_dict_str = pprint.pformat(conf)
+        return pretty_dict_str

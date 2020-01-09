@@ -7,46 +7,49 @@ from dftpy.math_utils import TimeData, PowerInt
 from dftpy.kedf.tf import TF
 
 
-def vonWeizsackerPotentialCplx(wav, grid, Sigma=0.025):
+def vonWeizsackerPotentialCplx(wav, grid, sigma=0.025):
     """
     The von Weizsacker Potential for complex pseudo-wavefunction
     """
+    if not isinstance(sigma, (np.generic, int, float)):
+        print("Bad type for sigma")
+        return Exception
     wav = DirectField(grid=grid, griddata_3d=wav, cplx=True)
     gg = grid.get_reciprocal().ggF
-    potG = wav.fft() * np.exp(-gg * (Sigma) ** 2 / 4.0) * gg
+    potG = wav.fft() * np.exp(-gg * (sigma) ** 2 / 4.0) * gg
     potG = ReciprocalField(grid=grid, griddata_3d=wav, cplx=True)
     a = potG.ifft(force_real=True)
     np.multiply(0.5, a, out=a)
-    return DirectField(grid=rho.grid, griddata_3d=np.divide(a, sq_dens, out=a))
+    return DirectField(grid=grid, griddata_3d=a)
     # return DirectField(grid=rho.grid,griddata_3d=np.divide(a,sq_dens,out=np.zeros_like(a), where=sq_dens!=0))
 
 
-def vonWeizsackerPotential(rho, Sigma=0.025):
+def vonWeizsackerPotential(rho, sigma=None):
     """
     The von Weizsacker Potential
     """
-    if not isinstance(Sigma, (np.generic, int, float)):
-        print("Bad type for Sigma")
-        return Exception
 
     gg = rho.grid.get_reciprocal().gg
     sq_dens = np.sqrt(rho)
-    # n2_sq_dens = -sq_dens.fft()*np.exp(-gg*(Sigma)**2/4.0)*gg
-    n2_sq_dens = sq_dens.fft() * gg
+    if sigma is None :
+        n2_sq_dens = sq_dens.fft() * gg
+    else :
+        n2_sq_dens = sq_dens.fft()*np.exp(-gg*(sigma)**2/4.0)*gg
     a = n2_sq_dens.ifft(force_real=True)
     np.multiply(0.5, a, out=a)
     return DirectField(grid=rho.grid, griddata_3d=np.divide(a, sq_dens, out=a))
     # return DirectField(grid=rho.grid,griddata_3d=np.divide(a,sq_dens,out=np.zeros_like(a), where=sq_dens!=0))
 
 
-def vonWeizsackerEnergy(rho, Sigma=0.025):
+def vonWeizsackerEnergy(rho, sigma=None):
     """
     The von Weizsacker Energy Density
     """
     # sq_dens = np.sqrt(rho)
     # edens = 0.5*np.real(sq_dens.gradient()**2)
     # edens = rho*vonWeizsackerPotential(rho)
-    edens = vonWeizsackerPotential(rho)
+    edens = vonWeizsackerPotential(rho, sigma = sigma)
+    print(edens.shape)
     ene = np.einsum("ijk, ijk->", rho, edens) * rho.grid.dV
     return ene
 
@@ -68,16 +71,16 @@ def vonWeizsackerStress(rho, y=1.0, energy=None):
     return stress
 
 
-def vW(rho, y=1.0, Sigma=0.025, calcType="Both", split=False, **kwargs):
+def vW(rho, y=1.0, sigma=None, calcType="Both", split=False, **kwargs):
     TimeData.Begin("vW")
     if calcType == "Energy":
         ene = vonWeizsackerEnergy(rho)
         pot = np.empty_like(rho)
     elif calcType == "Potential":
-        pot = vonWeizsackerPotential(rho, Sigma)
+        pot = vonWeizsackerPotential(rho, sigma)
         ene = 0
     else:
-        pot = vonWeizsackerPotential(rho, Sigma)
+        pot = vonWeizsackerPotential(rho, sigma)
         ene = np.einsum("ijk->", rho * pot) * rho.grid.dV
 
     OutFunctional = Functional(name="vW")
@@ -90,9 +93,9 @@ def vW(rho, y=1.0, Sigma=0.025, calcType="Both", split=False, **kwargs):
         return OutFunctional
 
 
-def x_TF_y_vW(rho, x=1.0, y=1.0, Sigma=0.025, calcType="Both", split=False, **kwargs):
+def x_TF_y_vW(rho, x=1.0, y=1.0, sigma=None, calcType="Both", split=False, **kwargs):
     xTF = TF(rho, x=x, calcType=calcType)
-    yvW = vW(rho, y=y, Sigma=Sigma, calcType=calcType)
+    yvW = vW(rho, y=y, sigma=sigma, calcType=calcType)
     pot = xTF.potential + yvW.potential
     ene = xTF.energy + yvW.energy
     OutFunctional = Functional(name=str(x) + "_TF_" + str(y) + "_vW")

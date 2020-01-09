@@ -1,9 +1,9 @@
 import warnings
 import numpy as np
 from scipy import ndimage
-from scipy import interpolate, signal
+from scipy import signal
 from dftpy.grid import DirectGrid, ReciprocalGrid
-from dftpy.constants import LEN_CONV, FFTLIB
+from dftpy.constants import FFTLIB
 from dftpy.math_utils import PYfft, PYifft, TimeData
 from dftpy.base import Coord
 
@@ -82,8 +82,8 @@ class BaseField(np.ndarray):
         """wrap it up"""
         b = np.ndarray.__array_wrap__(self, obj, context)
         a = np.shape(np.shape(b))[0]
-        #a = np.shape(np.shape(self))[0]
-        #self.rank = np.max([self.rank, obj.rank])
+        # a = np.shape(np.shape(self))[0]
+        # self.rank = np.max([self.rank, obj.rank])
         if a == 4:
             rank = np.shape(b)[0]
             #rank = np.shape(self)[0]
@@ -125,7 +125,7 @@ class DirectField(BaseField):
         )
         obj._N = None
         obj.spl_coeffs = None
-        cls.cplx = cplx
+        cls._cplx = cplx
         cls.fft_object = None
         return obj
 
@@ -236,11 +236,11 @@ class DirectField(BaseField):
     def gradient(self, flag="smooth", ipol=None):
         if self.rank > 1 and ipol is None:
             raise Exception("gradient is only implemented for scalar fields")
-        if flag is "standard":
+        if flag == "standard":
             return self.standard_gradient(ipol)
-        elif flag is "smooth":
+        elif flag == "smooth":
             return self.numerically_smooth_gradient(ipol)
-        elif flag is "supersmooth":
+        elif flag == "supersmooth":
             return self.super_smooth_gradient(ipol)
         else :
             raise Exception("Incorrect flag")
@@ -248,8 +248,10 @@ class DirectField(BaseField):
     def laplacian(self, check_real = False, force_real = False, sigma = 0.025):
         self_fft = self.fft()
         gg = self_fft.grid.gg
-        self_fft = -gg*self_fft*np.exp(-gg*(sigma*sigma)/4.0)
-        #self_fft = -self_fft.grid.gg*self_fft
+        if sigma is None :
+            self_fft = -self_fft.grid.gg*self_fft
+        else :
+            self_fft = -gg*self_fft*np.exp(-gg*(sigma*sigma)/4.0)
         return self_fft.ifft(check_real = check_real, force_real = force_real)
 
     #def laplacian(self, flag="smooth"):
@@ -433,9 +435,9 @@ class DirectField(BaseField):
 
         # points = np.zeros((nrx[0], nrx[1], nrx[2], 3))
         # for i in range(nrx[0]):
-            # for j in range(nrx[1]):
-                # for k in range(nrx[2]):
-                    # points[i, j, k, :] = x0 + axis[0][i, :] + axis[1][j, :] + axis[2][k, :]
+        # for j in range(nrx[1]):
+        # for k in range(nrx[2]):
+        # points[i, j, k, :] = x0 + axis[0][i, :] + axis[1][j, :] + axis[2][k, :]
         points = axis[0].reshape((nrx[0], 1, 1, 3)) + axis[1].reshape((1, nrx[1], 1, 3)) + axis[2].reshape((1, 1, nrx[2], 3))
         points += x0[:]
 
@@ -491,6 +493,16 @@ class DirectField(BaseField):
             self._N = self.integral()
         return self._N
 
+    @property
+    def cplx(self):
+        return self._cplx
+
+    @cplx.setter
+    def cplx(self, value):
+        self._cplx = value
+        if self._cplx and not self.grid.full :
+            self.grid.full = True
+
 
 class ReciprocalField(BaseField):
     def __new__(cls, grid, memo="", rank=1, griddata_F=None, griddata_C=None, griddata_3d=None, cplx=False):
@@ -500,7 +512,7 @@ class ReciprocalField(BaseField):
             cls, grid, memo="", rank=rank, griddata_F=griddata_F, griddata_C=griddata_C, griddata_3d=griddata_3d
         )
         obj.spl_coeffs = None
-        cls.cplx = cplx
+        cls._cplx = cplx
         return obj
 
     def __array_finalize__(self, obj):
@@ -608,3 +620,13 @@ class ReciprocalField(BaseField):
             griddata_3d = np.real(griddata_3d)
         TimeData.End("InvFFT")
         return DirectField(grid=direct_grid, memo=self.memo, rank=self.rank, griddata_3d=griddata_3d, cplx=self.cplx)
+
+    @property
+    def cplx(self):
+        return self._cplx
+
+    @cplx.setter
+    def cplx(self, value):
+        self._cplx = value
+        if self._cplx and not self.grid.full :
+            self.grid.full = True

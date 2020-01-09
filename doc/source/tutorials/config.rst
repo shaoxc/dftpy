@@ -295,7 +295,7 @@ KEDF
     A parameter used to smooth with a Gaussian convolution FFTs of problematic functions (e.g., invfft of :math:`{G^2\rho(G)}` ). 
         *Options* :
 
-        *Default* : 0.025
+        *Default* : None
 
 .. option:: nsp
 
