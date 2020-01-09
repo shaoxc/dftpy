@@ -42,7 +42,7 @@ def read_xsf(infile, kind="All", full=False, pbc=True, **kwargs):
             pos = np.asarray(pos) / LEN_CONV["Bohr"]["Angstrom"]
             line = readline()
 
-        if len(lattice) > 1 :
+        if len(lattice) > 0 :
             cell = DirectCell(lattice)
             atoms = Atom(label=label, pos=pos, cell=cell, basis="Cartesian")
             if kind == "cell":

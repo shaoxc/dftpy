@@ -27,12 +27,12 @@ DFTpy is a set of python modules. However, it can be executed in the 'ol way by 
        -
 
 .. warning:: 
-    `PP`_ and `CELL`_ are mandatory inputs (i.e., no defaults are avaliable for them).
+    `PP`_ is a mandatory input (i.e., no default is avaliable for it).
 
 .. note::
     Defaults work well for most arguments.
 
-    When *Options* is empty, it can accept any `float` or `integer`.
+    When *Options* is empty, it can accept any value.
 
 
 JOB
@@ -188,7 +188,11 @@ GRID
 
         *Default* : False
 
-.. warning:: Be careful: '`gfull=True`' implies that the dftpy.field used is real in real space.
+..  
+    warning:: Be careful: '`gfull=True`' implies that the dftpy.field used is real in real space.
+
+.. note::
+    `gfull=False`' implies that the the number of points of reciprocal space is only half of real space.
 
 .. option:: nr
 

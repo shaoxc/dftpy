@@ -8,3 +8,4 @@ build/
 dftpy.egg-info
 src/dftpy/dev/
 doc/build/
+.ipynb_checkpoints/

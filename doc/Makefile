@@ -26,4 +26,4 @@ help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 browse:
-	firefox build/html/index.html
+	x-www-browser build/html/index.html
