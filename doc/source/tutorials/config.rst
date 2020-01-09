@@ -26,6 +26,15 @@ DFTpy is a set of python modules. However, it can be executed in the 'ol way by 
        -
        -
 
+.. warning:: 
+    `PP`_ and `CELL`_ are mandatory inputs (i.e., no defaults are avaliable for them).
+
+.. note::
+    Defaults work well for most arguments.
+
+    When *Options* is empty, it can accept any `float` or `integer`.
+
+
 JOB
 ----------
 
@@ -504,6 +513,8 @@ PROPAGATOR
 
 .. math:: {-\frac{1}{2} \nabla^2 \psi(r,t) + v_s(r,t) \psi(r,t) = i\frac{d}{dt}\psi(r,t)}.
 
+where :math:`{v_s = v_{xc} + v_H + v_{T_s} - v_{vW} + v_{dyn}}`, See `paper <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.111.175002>`_.
+
 
 .. option:: type
     
@@ -589,9 +600,5 @@ TD
         *Default* : 1.0e-3
 
 
-.. note::
-    The defaults are work well for most arguments, only `PP`_ and `CELL`_ must be given.
-
-    The *Options* not given means, it can accept any `float` or `integer`.
-
 .. _pylibxc: https://tddft.org/programs/libxc/
+
