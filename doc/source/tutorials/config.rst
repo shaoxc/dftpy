@@ -562,7 +562,7 @@ where :math:`{v_s = v_{xc} + v_H + v_{T_s} - v_{vW} + v_{dyn}}`, See `paper <htt
 TD
 --
 
-    Control the parameters that lie outside the propagator class.
+    Control the TDDFT parameters that lie outside the propagator class.
 
 .. option:: outfile
 
