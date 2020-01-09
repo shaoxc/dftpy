@@ -68,52 +68,76 @@ class LocalPseudo(AbstractLocalPseudo):
     """
 
     def __init__(self, grid=None, ions=None, PP_list=None, PME=True):
-        #
-        # private vars
-        # self._gp = {}  # 1D PP grid g-space
-        # self._vp = {}  # PP on 1D PP grid
-        # self._vloc_interp = {}  # Interpolates recpot PP
-        # self._vlines = {}
-        # self._v = None  # PP for atom on 3D PW grid
-        # self._vreal = None  # PP for atom on 3D real space
-        self.restart(grid, ions, full=True)
-
-        if PME is not True:
-            warnings.warn("Using N^2 method for strf!")
-
-        self.usePME = PME
 
         if PP_list is not None:
             self.PP_list = PP_list
         else:
             raise AttributeError("Must specify PP_list for Pseudopotentials")
-
-        if grid is not None:
-            self.grid = grid
-        else:
-            raise AttributeError("Must specify Grid for Pseudopotentials")
-
-        if not isinstance(self.grid, (DirectGrid)):
-            raise TypeError("Grid must be DirectGrid")
-
-        if ions is not None:
-            self.ions = ions
-        else:
-            raise AttributeError("Must specify ions for Pseudopotentials")
-
-        if not isinstance(self.ions, (Atom)):
-            raise TypeError("Ions must be an array of Atom classes")
-
-        if len(self.PP_list) != len(set(self.ions.Z)):
-            raise ValueError("Incorrect number of pseudopotential files")
-
-        # if not self._vloc_interp:
+        # Read PP first, then initialize other variables.
         readPP = ReadPseudo(PP_list)
+        self.readpp = readPP
+
+        self.restart(grid, ions, full=True)
+
+        if not PME :
+            warnings.warn("Using N^2 method for strf!")
+
+        self.usePME = PME
+
         self._vloc_interp = readPP.vloc_interp
         self._gp = readPP.gp
         self._vp = readPP.vp
+
+    def restart(self, grid=None, ions=None, full=False):
+        """
+        Clean all private data and resets the ions and grid.
+        This will prompt the computation of a new pseudo 
+        without recomputing the local pp on the atoms.
+        """
+        if full:
+            self._gp = {}  # 1D PP grid g-space
+            self._vp = {}  # PP on 1D PP grid
+            self._vloc_interp = {}  # Interpolates recpot PP
+        self._vlines = {} # PP for each atomic species on 3D PW grid
+        self._v = None  # PP for atom on 3D PW grid
+        self._vreal = None  # PP for atom on 3D real space
+        self._ions = None
+        self._grid = None
+        if ions is not None:
+            self.ions = ions
+        if grid is not None:
+            self.grid = grid
+
+    @property
+    def grid(self):
+        if self._grid is not None:
+            return self._grid
+        else:
+            raise AttributeError("Must specify grid for Pseudopotentials")
+
+    @grid.setter
+    def grid(self, value):
+        if not isinstance(value, (DirectGrid)):
+            raise TypeError("Grid must be DirectGrid")
+        self._grid= value
+
+    @property
+    def ions(self):
+        if self._ions is not None:
+            return self._ions 
+        else:
+            raise AttributeError("Must specify ions for Pseudopotentials")
+
+    @ions.setter
+    def ions(self, value):
+        if not isinstance(value, (Atom)):
+            raise TypeError("Ions must be an array of Atom classes")
+        for key in set(value.labels[:]):
+            if key not in self.PP_list.keys():
+                raise ValueError("There is no pseudopotential for {:4s} atom".format(key))
+        self._ions = value
         # update Zval in ions
-        readPP.get_Zval(self.ions)
+        self.readpp.get_Zval(self._ions)
 
     def __call__(self, density=None, calcType=None):
         if self._vreal is None:
@@ -139,24 +163,6 @@ class LocalPseudo(AbstractLocalPseudo):
                 self._PP_Reciprocal()
         if self._vreal is None:
             self._vreal = self._v.ifft(force_real=True)
-
-    def restart(self, grid=None, ions=None, full=False):
-        """
-        Clean all private data and resets the ions and grid.
-        This will prompt the computation of a new pseudo 
-        without recomputing the local pp on the atoms.
-        """
-        if full:
-            self._gp = {}  # 1D PP grid g-space
-            self._vp = {}  # PP on 1D PP grid
-            self._vloc_interp = {}  # Interpolates recpot PP
-        self._vlines = {}
-        self._v = None  # PP for atom on 3D PW grid
-        self._vreal = None  # PP for atom on 3D real space
-        if ions is not None:
-            self.ions = ions
-        if grid is not None:
-            self.grid = grid
 
     def stress(self, rho, energy):
         if rho is None:

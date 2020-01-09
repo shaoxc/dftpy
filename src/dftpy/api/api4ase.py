@@ -1,6 +1,6 @@
 import numpy as np
 from dftpy.atom import Atom
-from dftpy.base import BaseCell, DirectCell
+from dftpy.base import DirectCell
 from dftpy.constants import LEN_CONV, ENERGY_CONV, FORCE_CONV, STRESS_CONV
 from dftpy.interface import OptimizeDensityConf
 
@@ -31,6 +31,18 @@ class DFTpyCalculator(object):
             # pos = atoms.get_positions()
             # pos /= LEN_CONV['Bohr']['Angstrom']
             pos = atoms.get_scaled_positions()
+            if self.results is not None and len(self.atoms) > 0 :
+                pseudo = self.results["pseudo"]
+                pseudo.restart(full=False)
+                if np.allclose(self.atoms["lattice"], atoms.cell[:]):
+                    grid = self.results["density"].grid
+                else :
+                    grid = None
+            else :
+                pseudo = None
+                grid = None
+
+            # Save the information of structure
             self.atoms["lattice"] = lattice.copy()
             self.atoms["position"] = pos.copy()
             lattice = np.asarray(lattice).T / LEN_CONV["Bohr"]["Angstrom"]
@@ -38,19 +50,23 @@ class DFTpyCalculator(object):
             ions = Atom(Z=Z, pos=pos, cell=cell, basis="Crystal")
             # ions.restart()
             if self.results is not None and self.config["MATH"]["reuse"]:
-                results = OptimizeDensityConf(self.config, ions=ions, rhoini=self.results["density"])
+                results = OptimizeDensityConf(self.config, ions=ions, rhoini=self.results["density"], pseudo=pseudo, grid=grid)
             else:
-                results = OptimizeDensityConf(self.config, ions=ions)
+                results = OptimizeDensityConf(self.config, ions=ions, pseudo=pseudo, grid=grid)
             self.results = results
         return self.results["energypotential"]["TOTAL"].energy * ENERGY_CONV["Hartree"]["eV"]
 
     def get_forces(self, atoms):
         if self.check_restart(atoms):
+            # if 'Force' not in self.config['JOB']['calctype'] :
+                # self.config['JOB']['calctype'] += ' Force'
             self.get_potential_energy(atoms)
         return self.results["forces"]["TOTAL"] * FORCE_CONV["Ha/Bohr"]["eV/A"]
 
     def get_stress(self, atoms):
         if self.check_restart(atoms):
+            # if 'Stress' not in self.config['JOB']['calctype'] :
+                # self.config['JOB']['calctype'] += ' Stress'
             self.get_potential_energy(atoms)
         # return self.results['stress']['TOTAL'] * STRESS_CONV['Ha/Bohr3']['eV/A3']
         stress_voigt = np.zeros(6)

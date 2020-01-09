@@ -1,14 +1,13 @@
 import numpy as np
 import time
-from dftpy.formats.qepp import PP
 from dftpy.optimization import Optimization
 from dftpy.functionals import FunctionalClass, TotalEnergyAndPotential
 from dftpy.constants import LEN_CONV, ENERGY_CONV, FORCE_CONV, STRESS_CONV
 from dftpy.formats.io import read
 from dftpy.ewald import ewald
-from dftpy.grid import DirectGrid, ReciprocalGrid
-from dftpy.field import DirectField, ReciprocalField
-from dftpy.math_utils import TimeData, bestFFTsize, interpolation_3d, prolongation
+from dftpy.grid import DirectGrid
+from dftpy.field import DirectField
+from dftpy.math_utils import TimeData, bestFFTsize, interpolation_3d
 from dftpy.functional_output import Functional
 from dftpy.semilocal_xc import LDAStress
 from dftpy.pseudo import LocalPseudo
@@ -19,10 +18,14 @@ from dftpy.hartree import HartreeFunctionalStress
 from dftpy.tdrunner import tdrunner
 
 
-def OptimizeDensityConf(config, ions=None, rhoini=None):
+def OptimizeDensityConf(config, ions=None, rhoini=None, pseudo=None, grid=None):
     print("Begin on :", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
     print("#" * 80)
     TimeData.Begin("TOTAL")
+    # check the input
+    if grid is not None and config["MATH"]["multistep"] > 1:
+        raise AttributeError("Given the 'grid', can't use 'multistep' method anymore.")
+
     if ions is None:
         ions = read(
             config["PATH"]["cellpath"] + config["CELL"]["cellfile"],
@@ -50,7 +53,8 @@ def OptimizeDensityConf(config, ions=None, rhoini=None):
         print("Grid size of 1  step is ", nr)
 
     ############################## Grid  ##############################
-    grid = DirectGrid(lattice=lattice, nr=nr, units=None, full=config["GRID"]["gfull"])
+    if grid is None:
+        grid = DirectGrid(lattice=lattice, nr=nr, units=None, full=config["GRID"]["gfull"])
     ############################## PSEUDO  ##############################
     PPlist = {}
     for key in config["PP"]:
@@ -68,7 +72,12 @@ def OptimizeDensityConf(config, ions=None, rhoini=None):
                 ions.Zval[ele] = z
 
     linearie = config["MATH"]["linearie"]
-    PSEUDO = LocalPseudo(grid=grid, ions=ions, PP_list=PPlist, PME=linearie)
+    if pseudo is None:
+        PSEUDO = LocalPseudo(grid=grid, ions=ions, PP_list=PPlist, PME=linearie)
+    else:
+        PSEUDO = pseudo
+        PSEUDO.grid = grid
+        PSEUDO.ions = ions
     KE = FunctionalClass(type="KEDF", name=config["KEDF"]["kedf"], **config["KEDF"])
     ############################## XC and Hartree ##############################
     HARTREE = FunctionalClass(type="HARTREE")
@@ -291,6 +300,7 @@ def OptimizeDensityConf(config, ions=None, rhoini=None):
     results["energypotential"] = energypotential
     results["forces"] = forces
     results["stress"] = stress
+    results["pseudo"] = PSEUDO
     # print('-' * 31, 'Time information', '-' * 31)
     TimeData.End("TOTAL")
     print(format("Time information", "-^80"))
@@ -374,7 +384,7 @@ def GetStress(
         "x_TF_y_vW",
         "TFvW",
         "WT",
-    ]  # KEDFNLNameList = ['WT','MGP','FP', 'SM'] # is_nonlocal = True
+    ]
     if ke not in KEDFNameList:
         raise AttributeError("%s KEDF have not implemented for stress" % ke)
     if ke == "TF":
