@@ -1,8 +1,11 @@
 .. _config:
 
-======================
-Config of dftpy script
-======================
+====================
+Script mode of DFTpy
+====================
+
+DFTpy is a set of python modules. However, it can be executed in the 'ol way by using the `dftpy` script which is generated at installation time. Here's a quick guide to the script's configuration dictionary, or `config`. 
+
 
 .. list-table::
 
@@ -26,7 +29,7 @@ Config of dftpy script
 JOB
 ----------
 
-    Control the job running.
+    Control of the running job.
 
 .. option:: task
 
@@ -45,7 +48,7 @@ JOB
 PATH
 ----------
 
-    Control the path of input files.
+    Specify the path of needed files.
 
 .. option:: pppath
 
@@ -65,39 +68,39 @@ PATH
 MATH
 ----------
 
-    Some method and technique to make code faster.
+    Some methods and techniques that make `DFTpy` really fast.
 
 .. option:: linearii
 
-    The linear method to deal with Ion-Ion interaction.
+    Linear-scaling method to deal with Ion-Ion interactions (PME).
         *Options* : True, False
 
         *Default* : True
 
 .. option:: linearie
 
-    The linear method to deal with Ion-Electron interaction.
+    Linear-scaling method to deal with Ion-Electron interactions (PME).
         *Options* : True
 
         *Default* : True
 
 .. option:: twostep
 
-    The multi-step method (two steps) to perform density optimization. if '`True`' is same as :option:`multistep` = 2.
+    A two-step method for performing density optimizations. '`True`' is equivalent to :option:`multistep` = 2.
         *Options* : True, False
 
         *Default* : False
 
 .. option:: multistep
 
-    The multi-step method to perform density optimization.
+    A multi-step method for performing density optimizations.
         *Options* : 1,2,...
 
         *Default* : 1
 
 .. option:: reuse
 
-    Except first step, the initial density is given by optimization density of previous step.
+    Except in the first step, the initial density is given by the optimized density of the previous step.
         *Options* : True, False
 
         *Default* : True
@@ -106,7 +109,7 @@ MATH
 PP
 ----------
 
-    The pseudopotential file of each elements.
+    Pseudopotential file of each atom type.
 
         *e.g.*
 
@@ -118,7 +121,7 @@ PP
 CELL
 ----------
 
-    The information of input structure.
+    Information about the input structure.
 
 .. option:: cellfile
 
@@ -152,7 +155,7 @@ CELL
 GRID
 ----------
 
-    Control the grid.
+     Control the grid.
 
 .. option:: ecut
 
@@ -163,21 +166,24 @@ GRID
 
 .. option:: spacing
 
-    The spacing of real space grid. If set this, :option:`ecut` will no longer working.
+    The spacing (or gap) separating nearest real space grid points. If set this, :option:`ecut` is disabled.
         *Options* :
 
         *Default* : None
 
 .. option:: gfull
 
-    The number of grid points in G-space is equal to real space, or not. if '`False`' only use half grid, which will be faster.
+    Determines oif the number of grid points in the reciprocal and real space grids are equal. If '`False`' only use half grid, which will be faster. 
+
         *Options* : True, False
 
         *Default* : False
 
+.. warning:: Be careful: '`gfull=True`' implies that the dftpy.field used is real in real space.
+
 .. option:: nr
 
-    Given the number of grid points in three directions.
+    The number of grid points in the direction of the three lattice vectors.
         *Options* :
 
         *Default* : None
@@ -190,7 +196,7 @@ GRID
 DENSITY
 ----------
 
-    Control the charge density information.
+    Control the charge density.
 
 .. option:: densityini
 
@@ -217,25 +223,27 @@ DENSITY
 EXC
 ----------
 
-    Control the exchange-correlation.
+    Control the exchange-correlation functional.
 
 .. option:: xc
 
-    The kind of exchange-correlation. If not set `LDA`, must be make sure already installed pylibxc_, and not contain stress calculation.
+    The kind of exchange-correlation functional. If not `LDA`, must have pylibxc_ installed.
         *Options* : LDA, PBE,...
 
         *Default* : LDA
 
+.. warning:: Stress is not implemented for non-LDA xc functionals.
+
 .. option:: x_str
 
-    The formular of exchange functionals.
+    The type of exchange functional.
         *Options* :
 
         *Default* : lda_x
 
 .. option:: c_str
 
-    The format of correlation functionals.
+    The type of correlation functional.
         *Options* :
 
         *Default* : lda_c_pz
@@ -244,11 +252,12 @@ EXC
 KEDF
 ----------
 
-    Control the kinetic energy density functional (KEDF).
+    Control the kinetic energy density functional (KEDF). 
+    `DFTpy` features most KEDFs, from GGAs to nonlocal to nonlocal with density dependent kernel.
 
 .. option:: kedf
 
-    The format of KEDF.
+    The type of KEDF.
         *Options* : TF, vW, x_TF_y_vW, WT, MGP,...
 
         *Default* : WT
@@ -269,28 +278,28 @@ KEDF
 
 .. option:: alpha
 
-    The parameter of Non-local KEDF :math:`\rho^{\alpha}`.
+    The alpha parameter typical in  nonlocal KEDF :math:`\rho^{\alpha}`.
         *Options* :
 
         *Default* : 5.0/6.0
 
 .. option:: beta
 
-    The parameter of Non-local KEDF :math:`\rho^{\beta}`.
+    The beta parameter typical in  nonlocal KEDF :math:`\rho^{\beta}`.
         *Options* :
 
         *Default* : 5.0/6.0
 
 .. option:: sigma
 
-    The parameter for `FFT`.
+    A parameter used to smooth with a Gaussian convolution FFTs of problematic functions (e.g., invfft of :math:`{G^2\rho(G)}` ). 
         *Options* :
 
         *Default* : 0.025
 
 .. option:: nsp
 
-    The number of :math:`{k_{f}}` for spline in `LWT` KEDF. There are three options to do same thing, the priority is :option:`nsp` -> :option:`delta` -> :option:`ratio`. Default is using :option:`ratio`.
+    The number of :math:`{k_{f}}` points for splining `LWT` like nonlocal KEDFs. There are three options to achieve the same goal, the priority is :option:`nsp` -> :option:`delta` -> :option:`ratio`. Default is using :option:`ratio`.
         *Options* :
 
         *Default* : None
@@ -311,7 +320,7 @@ KEDF
 
 .. option:: interp
 
-    The interpolate method for `LWT` KEDF.
+    The interpolation method for `LWT` KEDF's kernel from the kernel table.
         *Options* : linear, newton, hermite
 
         *Default* : hermite
@@ -325,7 +334,7 @@ KEDF
 
 .. option:: symmetrization
 
-    The symmetrization way for `MGP` KEDF.
+    The symmetrization way for `MGP` KEDF. See `paper <https://aip.scitation.org/doi/abs/10.1063/1.5023926>`_.
         *Options* : None, Arithmetic, Geometric
 
         *Default* : None
@@ -353,14 +362,14 @@ KEDF
 
 .. option:: order
 
-    The order for interpolate the kernel in `LWT` KEDF. '0' means using the value of nearest-neighbor point.
+    The order for the interpolation of the kernel in `LWT` KEDF. '0' means using the value of nearest-neighbor point is used.
         *Options* :
 
         *Default* : 3
 
 .. option:: maxpoints
 
-    The max number for evaluation of `MGP` kernel.
+    The max number of integration points for the evaluation of the `MGP` kernel.
         *Options* :
 
         *Default* : 1000
@@ -369,8 +378,8 @@ KEDF
 
     The kernel density denpendent for `LWT` KEDF:
         + 1 : The origin `LWT` KEDF.
-        + 2 : Conside the :math:`\rho^{\beta}(r')\omega(\rho(r),r-r')`.
-        + 3 : Also considering the derivative of kernel.
+        + 2 : Considers the :math:`\rho^{\beta}(r')\omega(\rho(r),r-r')` term in the potential.
+        + 3 : Also considers the derivative of kernel which is neglected in LWT. See `paper <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.100.041105>`_.
 
         *Options* : 1,2,3
 
@@ -378,7 +387,7 @@ KEDF
 
 .. option:: rho0
 
-    The 'average' density for the Fermi momentum. Default is None, which means it calculated based on the total charge and system volume.
+    The 'average' density used for the definition of the Fermi momentum. Default is None, which means it calculated based on the total charge and system volume.
         *Options* :
 
         *Default* : None
@@ -481,7 +490,7 @@ OPT
 
 .. option:: h0
 
-    The initial approximate of the inverse Hessian for `LBFGS`.
+    The initial approximation for the inverse Hessian needed by `LBFGS`.
         *Options* :
 
         *Default* : 1.0
@@ -490,12 +499,16 @@ OPT
 PROPAGATOR
 ----------
 
-    Control the propagator.
+    Control of the propagator.
+    `DFTpy` has an implementation of hydrodynamic TDDFT. This is essentially TDDFT with one orbital only, defined as :math:`{\psi(r,t)=\sqrt{\rho(r,t)}e^{iS(r,t)}}`, and determined by the following time-dependent Schroedinger equation,
+
+.. math:: {-\frac{1}{2} \nabla^2 \psi(r,t) + v_s(r,t) \psi(r,t) = i\frac{d}{dt}\psi(r,t)}.
+
 
 .. option:: type
     
-    The type of the propagator.
-        *Options* : crank-nicolson, taylor, rk4(experimental)
+    The type of propagator.
+        *Options* : crank-nicolson, taylor, rk4 (experimental)
 
         *Default* : crank-nicolson
 
@@ -515,7 +528,7 @@ PROPAGATOR
 
 .. option:: linearsolver
 
-    The linear solver used for the Crank-Nicolson expansion propagator.
+    The linear solver used for the Crank-Nicolson expansion propagator (from `SciPy`).
         *Options* : bicg, bicgstab, cg, cgs, gmres, lgmres, minres, qmr
 
         *Default* : bicgstab
@@ -538,7 +551,7 @@ PROPAGATOR
 TD
 --
 
-    Control the non-propagator related time-depend parameters.
+    Control the parameters that lie outside the propagator class.
 
 .. option:: outfile
 

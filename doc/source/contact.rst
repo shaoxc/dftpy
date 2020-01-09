@@ -14,12 +14,12 @@ Feel free to contact the developers:
 On-line
 =======
 
-You can find out more about the `Pavanello Research Group <http://sites.rutgers.edu/prg>`_. Or simply send us an email.
+To find out more about the `Pavanello Research Group <http://sites.rutgers.edu/prg>`_. Or simply send us an email.
 
 GitLab
 ======
 
 Feel free to create new issues, merge requests or fork your own `DFTpy` on our gitlab page: https://gitlab.com/pavanello-research-group/dftpy
 
-
+Make sure to let us know about your developments!
 
