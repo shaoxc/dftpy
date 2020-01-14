@@ -17,7 +17,7 @@ def cal_rho_j(psi):
 def tdrunner(rho0, E_v_Evaluator, config):
 
     outfile = config["TD"]["outfile"]
-    int_t = config["PROPAGAROR"]["int_t"]
+    int_t = config["PROPAGATOR"]["int_t"]
     t_max = config["TD"]["tmax"]
     order = config["TD"]["order"]
     direc = config["TD"]["direc"]
