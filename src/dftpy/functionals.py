@@ -101,13 +101,15 @@ class FunctionalClass(AbstractFunctional):
         return self._outfunctional
 
     @property
-    def GetFunctional(self):
+    def GetFunctional(self, rho, calcType = 'Both'):
         if self._outfunctional is None:
             self._outfunctional = self.ComputeEnergyPotential(rho, calcType)
         return self._outfunctional
 
-    def __init__(self, type=None, name=None, is_nonlocal=None, optional_kwargs=None, **kwargs):
+    def __init__(self, type=None, name=None, PSEUDO = None, is_nonlocal=None, optional_kwargs=None, **kwargs):
         # init the class
+
+        # This is compatible for PSEUDO FunctionalClass 
 
         if optional_kwargs is None:
             self.optional_kwargs = {}
@@ -141,8 +143,9 @@ class FunctionalClass(AbstractFunctional):
             "GGA",
         ]
         HNameList = ["HARTREE"]
+        PPNameList = ["PSEUDO"]
 
-        self.FunctionalNameList = XCNameList + KEDFNameList + KEDFNLNameList + HNameList
+        self.FunctionalNameList = XCNameList + KEDFNameList + KEDFNLNameList + HNameList + PPNameList
 
         if type is None:
             raise AttributeError("Must assign type to FunctionalClass")
@@ -150,10 +153,10 @@ class FunctionalClass(AbstractFunctional):
             self.type = type
 
         if name is None:
-            if type not in ["HARTREE"]:
-                raise AttributeError("Must assign name to FunctionalClass")
-            else:
+            if type in ["HARTREE", "PSEUDO"] :
                 self.name = self.type
+            else :
+                raise AttributeError("Must assign name to FunctionalClass")
         else:
             self.name = name
 
@@ -162,6 +165,12 @@ class FunctionalClass(AbstractFunctional):
 
         if not self.CheckFunctional():
             raise Exception("Functional check failed")
+
+        if self.name == 'PSEUDO' :
+            if PSEUDO is None :
+                self.PSEUDO = LocalPseudo(**kwargs)
+            else :
+                self.PSEUDO = PSEUDO
 
     def ComputeEnergyPotential(self, rho, calcType="Both", **kwargs):
         self.optional_kwargs.update(kwargs)
@@ -172,7 +181,7 @@ class FunctionalClass(AbstractFunctional):
                 polarization = self.optional_kwargs.get("polarization", "unpolarized")
                 k_str = self.optional_kwargs.get("k_str", "gga_k_lc94")
                 return LIBXC_KEDF(density=rho, k_str=k_str, polarization=polarization, calcType=calcType)
-        if self.type == "XC":
+        elif self.type == "XC":
             if self.name == "LDA":
                 polarization = self.optional_kwargs.get("polarization", "unpolarized")
                 return LDA(rho, polarization=polarization, calcType=calcType)
@@ -184,8 +193,21 @@ class FunctionalClass(AbstractFunctional):
                 x_str = self.optional_kwargs.get("x_str", "gga_x_pbe")
                 c_str = self.optional_kwargs.get("c_str", "gga_c_pbe")
                 return XC(density=rho, x_str=x_str, c_str=c_str, polarization=polarization, calcType=calcType)
-        if self.type == "HARTREE":
+        elif self.type == "HARTREE":
             return HartreeFunctional(density=rho, calcType=calcType)
+        elif self.type == "PSEUDO":
+            return self.PSEUDO(density=rho, calcType=calcType)
+
+    def force(self, rho, **kwargs):
+        if self.type != 'PSEUDO' :
+            raise AttributeError("Only PSEUDO Functional have force property")
+        return self.PSEUDO.force(rho)
+
+    def stress(self, rho, energy=None, **kwargs):
+        if self.type == 'PSEUDO' :
+            return self.PSEUDO.stress(rho, energy=energy, **kwargs)
+        else :
+            raise AttributeError("Only PSEUDO Functional have stress property, others will implemented later")
 
 
 class TotalEnergyAndPotential(AbstractFunctional):

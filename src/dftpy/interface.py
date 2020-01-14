@@ -73,9 +73,15 @@ def OptimizeDensityConf(config, ions=None, rhoini=None, pseudo=None, grid=None):
 
     linearie = config["MATH"]["linearie"]
     if pseudo is None:
-        PSEUDO = LocalPseudo(grid=grid, ions=ions, PP_list=PPlist, PME=linearie)
+        # PSEUDO = LocalPseudo(grid=grid, ions=ions, PP_list=PPlist, PME=linearie)
+        PSEUDO = FunctionalClass(type = 'PSEUDO', grid=grid, ions=ions, PP_list=PPlist, PME=linearie)
     else:
-        PSEUDO = pseudo
+        if isinstance(pseudo, FunctionalClass):
+            PSEUDO = pseudo.PSEUDO
+        else :
+            PSEUDO = pseudo
+
+        PSEUDO.restart(full=False)
         PSEUDO.grid = grid
         PSEUDO.ions = ions
     KE = FunctionalClass(type="KEDF", name=config["KEDF"]["kedf"], **config["KEDF"])

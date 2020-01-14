@@ -67,7 +67,7 @@ class LocalPseudo(AbstractLocalPseudo):
     This is a template class and should never be touched.
     """
 
-    def __init__(self, grid=None, ions=None, PP_list=None, PME=True):
+    def __init__(self, grid=None, ions=None, PP_list=None, PME=True,  **kwargs):
 
         if PP_list is not None:
             self.PP_list = PP_list

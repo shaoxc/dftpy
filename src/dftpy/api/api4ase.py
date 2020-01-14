@@ -33,7 +33,6 @@ class DFTpyCalculator(object):
             pos = atoms.get_scaled_positions()
             if self.results is not None and len(self.atoms) > 0 :
                 pseudo = self.results["pseudo"]
-                pseudo.restart(full=False)
                 if np.allclose(self.atoms["lattice"], atoms.cell[:]):
                     grid = self.results["density"].grid
                 else :
