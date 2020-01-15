@@ -1,37 +1,38 @@
-def view_density(mol,level=2.0E-2):
-    '''
-    Visualize a DFTpy system on jupyter notebooks.
-    Uses ipyvolume to render the density.
-    '''
-    from dftpy.system import System
-    import numpy as np
-    if not isinstance(mol,System):
-        raise AttributeError("argument must be an instance of DFTpy system")
-    try:
-        import ipyvolume as ipv
-    except:
-        raise ModuleNotFoundError("Must install ipyvolume")
-    rho = np.reshape(mol.field,np.shape(mol.field)[:3])
-    density = np.pad(rho, [[0,1],[0,1],[0,1]], mode="wrap")
-    ipv.figure()
-    ipv.plot_isosurface(density,level)
-    ipv.show()
+import numpy as np
+from dftpy.system import System
+import importlib
+try:
+    import dftpy.visualize.ipv_viewer as ipvv
+except Exception:
+    import dftpy.visualize.mpl_viewer as mplv
+import dftpy.visualize.mpl_viewer as mplv
 
 
-def view_ions(mol):
+def view_density(mol,level=None):
     '''
     Visualize a DFTpy system on jupyter notebooks.
-    Uses ipyvolume to render the ionic positions.
     '''
-    from dftpy.system import System
-    import numpy as np
     if not isinstance(mol,System):
         raise AttributeError("argument must be an instance of DFTpy system")
-    try:
-        import ipyvolume as ipv
-    except:
-        raise ModuleNotFoundError("Must install ipyvolume")
-    pos = mol.ions.pos.to_crys()
+    density = mol.field
+    rho = np.pad(density, [[0,1],[0,1],[0,1]], mode="wrap")
+    isipv= importlib.util.find_spec("ipyvolume")
+    isipv= False
+    if isipv :
+        ipvv.view_density(rho, level)
+    else :
+        mplv.plot_isosurface(rho, level)
+
+
+def view_ions(mol, **kwargs):
+    '''
+    Visualize a DFTpy system on jupyter notebooks.
+    '''
+    if not isinstance(mol,System):
+        raise AttributeError("argument must be an instance of DFTpy system")
+
+    ions = mol.ions
+    pos = ions.pos.to_crys()
     tol=1E-6
     tol2=2.0*tol
     ixyzA = np.mgrid[-1:2,-1:2,-1:2].reshape((3, -1)).T
@@ -42,9 +43,10 @@ def view_ions(mol):
     val=pbcpos
     for i in range(3):
         val=val[np.logical_and(val[:,i]<1+tol, val[:,i]>-tol)]
-    
-    ipv.figure()
-    ipv.scatter(val[:,0],val[:,1],val[:,2], marker='sphere', size=8,color='blue')
-    ipv.xyzlim(0-tol2, 1+tol2)
-    ipv.show()
 
+    isipv= importlib.util.find_spec("ipyvolume")
+    isipv= False
+    if isipv :
+        ipvv.view_ions(val, tol2)
+    else :
+        mplv.plot_scatter(val, tol2)
