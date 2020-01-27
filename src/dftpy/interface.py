@@ -152,11 +152,17 @@ def OptimizeDensityConf(config, ions=None, rhoini=None, pseudo=None, grid=None):
             print("MULTI-STEP: Perform %d optimization step" % istep)
             print("Grid size of %d" % istep, " step is ", nr)
             grid2 = DirectGrid(lattice=lattice, nr=nr, units=None, full=config["GRID"]["gfull"])
-            rho_ini = interpolation_3d(rho[..., 0], nr)
+            rho_ini = interpolation_3d(rho, nr)
             rho_ini[rho_ini < 1e-12] = 1e-12
             rho_ini = DirectField(grid=grid2, griddata_3d=rho_ini, rank=1)
             rho_ini *= charge_total / (np.sum(rho_ini) * rho_ini.grid.dV)
-            ions.restart()
+            # ions.restart()
+            pseudo=E_v_Evaluator.PSEUDO
+            if isinstance(pseudo, FunctionalClass):
+                PSEUDO = pseudo.PSEUDO
+            else :
+                PSEUDO = pseudo
+            PSEUDO.restart(full=False, ions=PSEUDO.ions, grid=grid2)
             opt = Optimization(
                 EnergyEvaluator=E_v_Evaluator,
                 optimization_options=optimization_options,
