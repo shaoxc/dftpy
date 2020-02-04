@@ -421,6 +421,8 @@ class Optimization(AbstractOptimization):
                 directionA.pop(0)
 
         TimeData.End("Optimize")
+        mu = (func.potential * rho).integral() / rho.N
+        print('Chemical potential :', mu)
         return rho
 
     def __call__(self, guess_rho=None, calcType="Both"):

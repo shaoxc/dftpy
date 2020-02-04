@@ -2,32 +2,21 @@
 import configparser
 import argparse
 from dftpy.interface import OptimizeDensityConf
-from dftpy.config import DefaultOption, OptionFormat, PrintConf
+from dftpy.config import OptionFormat, PrintConf, ReadConf
 
 
 def RunJob():
     parser = argparse.ArgumentParser(description='Process task')
 
-    parser.add_argument('-i', '--ini', '--input', dest='input', type=str, action='store',\
+    parser.add_argument('-i', '--ini', '--input', dest='input', type=str, action='store',
             default='config.ini', help='input file (default: config.ini)')
 
     args = parser.parse_args()
-    config = configparser.ConfigParser()
-    config.read(args.input)
-
-    conf = DefaultOption()
-    for section in config.sections():
-        for key in config.options(section):
-            if section != 'PP' and key not in conf[section]:
-                print('!WARN : "%s.%s" not in the dictionary' % (section, key))
-            elif section == 'PP':
-                conf['PP'][key.capitalize()] = config.get(section, key)
-            else:
-                conf[section][key] = config.get(section, key)
-
+    conf = ReadConf(args.input)
     config = OptionFormat(conf)
     PrintConf(config)
     results = OptimizeDensityConf(config)
+    # results = OptimizeDensityConf(args.input)
 
 
 if __name__ == "__main__":
