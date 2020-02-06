@@ -20,7 +20,7 @@
     1. Main energy evaluator for `DFTpy`
     2. Input: `XC`, `KEDF`, `IONS` and `HARTREE` `FunctionalClass` instances
     3. Output: total energy and total potential
-- `OptimizationClass`
+- `Optimization`
     1. Optimizes the electron density given a `TotalEnergyAndPotential` evaluator
     2. Uses `scipy.minimize` as the under-the-hood minimizer as well as in-house algorithms
 - `config`, a dictionary (and associated methods) handling I/O

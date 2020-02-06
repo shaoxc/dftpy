@@ -230,7 +230,9 @@ class TotalEnergyAndPotential(AbstractFunctional):
      HARTREE = FunctionalClass(type='HARTREE')
      PSEUDO = FunctionalClass(type='PSEUDO', kwargs)
 
-     EnergyEvaluator = TotalEnergyAndPotential(KEDF,XC,PSEUDO,HARTREE,rho_guess)
+     EnergyEvaluator = TotalEnergyAndPotential(KEDF,XC,PSEUDO,HARTREE)
+     or given a dict
+     EnergyEvaluator = TotalEnergyAndPotential()
 
      [the energy:]
      E = EnergyEvaluator.Energy(rho,ions)
@@ -241,6 +243,58 @@ class TotalEnergyAndPotential(AbstractFunctional):
      [time for optimization of density:]
      in_for_scipy_minimize = EnergyEvaluator(phi)
     """
+
+    def __init__(self, KineticEnergyFunctional=None, XCFunctional=None, PSEUDO=None, HARTREE=None, **kwargs):
+
+        self.name = ""
+        self.type = ""
+        funcDict = {}
+        funcDict['KineticEnergyFunctional'] = KineticEnergyFunctional
+        funcDict['XCFunctional'] = XCFunctional
+        funcDict['PSEUDO'] = PSEUDO
+        funcDict['HARTREE'] = HARTREE
+        funcDict.update(kwargs)
+        # remove useless key
+        keys = list(funcDict.keys())
+        for key in keys :
+            if funcDict[key] is None :
+                del funcDict[key]
+
+        self.funcDict = funcDict
+
+        for key, evalfunctional in self.funcDict.items():
+            if isinstance(evalfunctional, LocalPseudo):
+                # This is a trick for PSEUDO
+                if not hasattr(evalfunctional, 'name'):
+                    setattr(evalfunctional, 'name', 'PSEUDO')
+                if not hasattr(evalfunctional, 'type'):
+                    setattr(evalfunctional, 'type', 'PSEUDO')
+            elif not isinstance(evalfunctional, FunctionalClass):
+                raise AttributeError("{} must be FunctionalClass".format(key))
+            setattr(self, key, evalfunctional)
+            self.name += getattr(evalfunctional, 'name') + " "
+            self.type += getattr(evalfunctional, 'type') + " "
+
+    def __call__(self, rho, calcType="Both"):
+        return self.ComputeEnergyPotential(rho, calcType)
+
+    def ComputeEnergyPotential(self, rho, calcType="Both"):
+        Obj = None
+        for key, evalfunctional in self.funcDict.items():
+            if Obj is None :
+                Obj = evalfunctional(rho, calcType)
+            else :
+                Obj += evalfunctional(rho, calcType)
+        return Obj
+
+    def Energy(self, rho, ions, usePME=False, calcType="Energy"):
+        from .ewald import ewald
+
+        ewald_ = ewald(rho=rho, ions=ions, PME=usePME)
+        total_e = self.ComputeEnergyPotential(rho, calcType="Energy")
+        return ewald_.energy + total_e.energy
+
+class TotalEnergyAndPotentialOld(AbstractFunctional):
 
     def __init__(self, KineticEnergyFunctional=None, XCFunctional=None, PSEUDO=None, HARTREE=None):
 

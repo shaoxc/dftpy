@@ -1,5 +1,6 @@
 import numpy as np
 import copy
+import configparser
 from dftpy.constants import ENERGY_CONV, LEN_CONV
 
 
@@ -263,3 +264,19 @@ def PrintConf(conf):
         pprint.pprint(conf)
         pretty_dict_str = pprint.pformat(conf)
         return pretty_dict_str
+
+
+def ReadConf(infile):
+    config = configparser.ConfigParser()
+    config.read(infile)
+
+    conf = DefaultOption()
+    for section in config.sections():
+        for key in config.options(section):
+            if section != 'PP' and key not in conf[section]:
+                print('!WARN : "%s.%s" not in the dictionary' % (section, key))
+            elif section == 'PP':
+                conf['PP'][key.capitalize()] = config.get(section, key)
+            else:
+                conf[section][key] = config.get(section, key)
+    return conf

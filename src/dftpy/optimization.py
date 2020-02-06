@@ -109,11 +109,16 @@ class Optimization(AbstractOptimization):
         else:
             beta = np.einsum("ijk->", resA[-1] ** 2) / np.einsum("ijk->", resA[-2] ** 2)
 
-        if len(dirA) > 0:
-            direction = -resA[-1] + beta * dirA[-1]
-        else:
+        if dirA is None or len(dirA) == 0:
             direction = -resA[-1]
+        else:
+            direction = -resA[-1] + beta * dirA[-1]
 
+        return direction, number
+
+    def get_direction_GD(self, resA, dirA=None, method="GD", **kwargs):
+        number = 1
+        direction = -resA[-1]
         return direction, number
 
     def get_direction_TN(self, resA, phi=None, mu=None, **kwargs):
@@ -213,8 +218,10 @@ class Optimization(AbstractOptimization):
             return self.get_direction_TN(resA, dirA=dirA, phi=phi, method=method, lbfgs=lbfgs, mu=mu)
         elif method == "LBFGS":
             return self.get_direction_LBFGS(resA, dirA=dirA, phi=phi, method=method, lbfgs=lbfgs, mu=mu)
+        elif method == "GD":
+            return self.get_direction_GD(resA, dirA=dirA, phi=phi, method=method, lbfgs=lbfgs, mu=mu)
         elif method == "DIIS":
-            return self.get_direction_DIIS(resA, dirA=dirA, phi=phi, method=method, lbfgs=lbfgs, mu=mu)
+            return self.get_direction_GD(resA, dirA=dirA, phi=phi, method=method, lbfgs=lbfgs, mu=mu)
         else:
             raise AttributeError("The %s direction method not implemented." % method)
 
@@ -278,6 +285,7 @@ class Optimization(AbstractOptimization):
         c1 = self.optimization_options["c1"]
         c2 = self.optimization_options["c2"]
         theta = 0.5
+        lsfun = "dcsrch"
         # -----------------------------------------------------------------------
         EnergyHistory = []
         phi = np.sqrt(rho)
@@ -309,6 +317,10 @@ class Optimization(AbstractOptimization):
 
         if self.optimization_method == "DIIS":
             self.optimization_options["vector"] = "Scaling"
+            lsfun = 'DIIS'
+        elif self.optimization_method == "Mixing":
+            self.optimization_options["vector"] = "Scaling"
+            lsfun = 'mixing'
 
         for it in range(1, self.optimization_options["maxiter"]):
             p, NumDirectrion = self.get_direction(
@@ -331,7 +343,6 @@ class Optimization(AbstractOptimization):
                 vector=self.optimization_options["vector"],
             )
 
-            lsfun = "dcsrch"
             if lsfun == "dcsrch":
                 func0 = fun_value_deriv(0.0, func=func)
                 theta, _, _, task, NumLineSearch, valuederiv = LineSearchDcsrch2(
@@ -350,9 +361,12 @@ class Optimization(AbstractOptimization):
                     fun_value_deriv, theta, brack=(0.0, theta), tol=1e-8, full_output=1
                 )
             else:
-                # p = -residual
-                theta = 0.1
-                newphi = phi + p * theta
+                if lsfun == 'DIIS' :
+                    theta = 0.1
+                    newphi = phi + p * theta
+                elif lsfun == 'mixing' :
+                    newphi = phi + p * theta
+
                 newrho = newphi * newphi
                 norm = rho.N / newrho.integral()
                 newrho *= norm
@@ -421,6 +435,8 @@ class Optimization(AbstractOptimization):
                 directionA.pop(0)
 
         TimeData.End("Optimize")
+        mu = (func.potential * rho).integral() / rho.N
+        print('Chemical potential :', mu)
         return rho
 
     def __call__(self, guess_rho=None, calcType="Both"):

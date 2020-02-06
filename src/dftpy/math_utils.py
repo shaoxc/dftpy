@@ -295,8 +295,8 @@ def restriction(arr, scheme="bilinear"):
 
 def prolongation(arr, scheme="bilinear"):
     nr = np.array(arr.shape)
-    nr2 = nr + 1
-    print(nr2, nr)
+    # nr2 = nr + 1
+    # print(nr2, nr)
     f1 = np.pad(arr, ((0, 1), (0, 1), (0, 1)), mode="wrap")
     f2 = f1 * 0.5
     f4 = f1 * 0.25

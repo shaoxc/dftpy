@@ -9,6 +9,7 @@ DFTpy: Density Functional Theory with Python
    source/contact
    source/install
    source/tutorials/tutorials
+   source/releases
 
 
 

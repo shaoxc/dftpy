@@ -16,12 +16,19 @@ from dftpy.kedf.vw import vonWeizsackerStress
 from dftpy.kedf.wt import WTStress
 from dftpy.hartree import HartreeFunctionalStress
 from dftpy.tdrunner import tdrunner
+from dftpy.config import OptionFormat, PrintConf, ReadConf
+from dftpy.system import System
+from functools import reduce
 
 
-def OptimizeDensityConf(config, ions=None, rhoini=None, pseudo=None, grid=None):
-    print("Begin on :", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-    print("#" * 80)
-    TimeData.Begin("TOTAL")
+def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None):
+    if isinstance(config, dict):
+        pass
+    elif isinstance(config, str):
+        # config is a file
+        conf = ReadConf(config)
+        config = OptionFormat(conf)
+
     # check the input
     if grid is not None and config["MATH"]["multistep"] > 1:
         raise AttributeError("Given the 'grid', can't use 'multistep' method anymore.")
@@ -46,8 +53,8 @@ def OptimizeDensityConf(config, ions=None, rhoini=None, pseudo=None, grid=None):
         for i in range(3):
             nr[i] = bestFFTsize(nr[i])
     print("The final grid size is ", nr)
+    nr2 = nr.copy()
     if config["MATH"]["multistep"] > 1:
-        nr2 = nr.copy()
         nr = nr2 // config["MATH"]["multistep"]
         print("MULTI-STEP: Perform first optimization step")
         print("Grid size of 1  step is ", nr)
@@ -128,8 +135,26 @@ def OptimizeDensityConf(config, ions=None, rhoini=None, pseudo=None, grid=None):
             charge_total += ions.Zval[ions.labels[i]]
         rho_ini *= charge_total / (np.sum(rho_ini) * rho_ini.grid.dV)
     # rho_ini[:] = density.reshape(rho_ini.shape, order='F')
-    ############################## optimization  ##############################
+
+    struct = System(ions, grid, name='density', field=rho_ini)
     E_v_Evaluator = TotalEnergyAndPotential(KineticEnergyFunctional=KE, XCFunctional=XC, HARTREE=HARTREE, PSEUDO=PSEUDO)
+    # The last is a list, which return some properties are used for different situations.
+    return struct, E_v_Evaluator, [config, nr2]
+
+
+def OptimizeDensityConf(config, ions=None, rhoini=None, pseudo=None, grid=None):
+    print("Begin on :", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+    print("#" * 80)
+    TimeData.Begin("TOTAL")
+    struct, E_v_Evaluator, others = ConfigParser(config, ions, rhoini, pseudo, grid)
+    ions = struct.ions
+    rho_ini = struct.field
+    config = others[0]
+    nr2 = others[1]
+    charge_total = 0.0
+    PSEUDO=E_v_Evaluator.PSEUDO
+    for i in range(ions.nat):
+        charge_total += ions.Zval[ions.labels[i]]
     if "Optdensity" in config["JOB"]["task"]:
         optimization_options = config["OPT"]
         optimization_options["econv"] *= ions.nat
@@ -151,12 +176,18 @@ def OptimizeDensityConf(config, ions=None, rhoini=None, pseudo=None, grid=None):
             print("#" * 80)
             print("MULTI-STEP: Perform %d optimization step" % istep)
             print("Grid size of %d" % istep, " step is ", nr)
-            grid2 = DirectGrid(lattice=lattice, nr=nr, units=None, full=config["GRID"]["gfull"])
-            rho_ini = interpolation_3d(rho[..., 0], nr)
+            grid2 = DirectGrid(lattice=grid.lattice, nr=nr, units=None, full=config["GRID"]["gfull"])
+            rho_ini = interpolation_3d(rho, nr)
             rho_ini[rho_ini < 1e-12] = 1e-12
             rho_ini = DirectField(grid=grid2, griddata_3d=rho_ini, rank=1)
             rho_ini *= charge_total / (np.sum(rho_ini) * rho_ini.grid.dV)
-            ions.restart()
+            # ions.restart()
+            pseudo=E_v_Evaluator.PSEUDO
+            if isinstance(pseudo, FunctionalClass):
+                PSEUDO = pseudo.PSEUDO
+            else :
+                PSEUDO = pseudo
+            PSEUDO.restart(full=False, ions=PSEUDO.ions, grid=grid2)
             opt = Optimization(
                 EnergyEvaluator=E_v_Evaluator,
                 optimization_options=optimization_options,
@@ -410,3 +441,5 @@ def GetStress(
             stress["TOTAL"][i, j] = stress["TOTAL"][j, i]
 
     return stress
+
+

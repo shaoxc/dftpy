@@ -49,7 +49,7 @@ def vonWeizsackerEnergy(rho, sigma=None):
     # edens = 0.5*np.real(sq_dens.gradient()**2)
     # edens = rho*vonWeizsackerPotential(rho)
     edens = vonWeizsackerPotential(rho, sigma = sigma)
-    print(edens.shape)
+    # print(edens.shape)
     ene = np.einsum("ijk, ijk->", rho, edens) * rho.grid.dV
     return ene
 
