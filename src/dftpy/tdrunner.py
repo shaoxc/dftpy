@@ -9,8 +9,10 @@ import time
 
 def cal_rho_j(psi):
     rho = np.real(psi * np.conj(psi))
-    s = DirectField(psi.grid, rank=1, griddata_3d=np.angle(psi))
-    j = np.real(rho * s.gradient())
+    #s = DirectField(psi.grid, rank=1, griddata_3d=np.angle(psi))
+    #j = np.real(rho * s.gradient())
+    psi_conj = DirectField(psi.grid, rank=1, griddata_3d=np.conj(psi))
+    j = np.real(-0.5j * (psi_conj * psi.gradient() - psi * psi_conj.gradient()))
     return rho, j
 
 
