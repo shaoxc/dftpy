@@ -8,8 +8,8 @@ def DefaultOption():
     JOB = {"task": "Optdensity", "calctype": "Energy"}
 
     PATH = {
-        "pppath": "",
-        "cellpath": "",
+        "pppath": "./",
+        "cellpath": "./",
     }
 
     MATH = {

@@ -1,5 +1,6 @@
 import numpy as np
 import time
+import os
 from dftpy.optimization import Optimization
 from dftpy.functionals import FunctionalClass, TotalEnergyAndPotential
 from dftpy.constants import LEN_CONV, ENERGY_CONV, FORCE_CONV, STRESS_CONV
@@ -35,7 +36,7 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None):
 
     if ions is None:
         ions = read(
-            config["PATH"]["cellpath"] + config["CELL"]["cellfile"],
+            config["PATH"]["cellpath"] +os.sep+ config["CELL"]["cellfile"],
             format=config["CELL"]["format"],
             names=config["CELL"]["elename"],
         )
@@ -66,7 +67,7 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None):
     PPlist = {}
     for key in config["PP"]:
         ele = key.capitalize()
-        PPlist[ele] = config["PATH"]["pppath"] + "/" + config["PP"][key]
+        PPlist[ele] = config["PATH"]["pppath"] +os.sep+ config["PP"][key]
     optional_kwargs = {}
     optional_kwargs["PP_list"] = PPlist
     optional_kwargs["ions"] = ions
