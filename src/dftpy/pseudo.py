@@ -425,14 +425,15 @@ class ReadPseudo(object):
 
     def _real2recip(self, r, v, zval, MaxPoints=15000, Gmax=30):
         gp = np.linspace(start=0, stop=Gmax, num=MaxPoints)
-        vp = np.zeros_like(gp)
-        vr = (v * r + zval) * r
-        dr = r[1]-r[0]
+        vp = np.empty_like(gp)
+        dr = np.empty_like(r)
+        dr[1:] = r[1:]-r[:-1]
+        dr[0] = r[0]
+        vr = (v * r + zval) * r * dr
         for k in range(1, len(gp)):
-            # vp[k] = (4.0 * np.pi / gp[k]) * np.sum(vr * np.sin(gp[k] * r)) * dr
-            vp[k] = (4.0 * np.pi) * np.sum(sp.spherical_jn(0, gp[k] * r) * vr) * dr
+            vp[k] = (4.0 * np.pi) * np.sum(sp.spherical_jn(0, gp[k] * r) * vr)
         vp[1:] -= 4.0 * np.pi * zval / (gp[1:] ** 2)
-        vp[0] = (4.0 * np.pi) * np.sum(vr) * dr
+        vp[0] = (4.0 * np.pi) * np.sum(vr)
         return gp, vp
 
     def get_Zval(self, ions):
@@ -508,11 +509,10 @@ class ReadPseudo(object):
                 from upf_to_json import upf_to_json
             else:
                 raise ModuleNotFoundError("Must pip install upf_to_json")
-            Ry2Ha = ENERGY_CONV["Rydberg"]["Hartree"]
             with open(Single_PP_file, "r") as outfil:
                 upf = upf_to_json(upf_str=outfil.read(), fname=Single_PP_file)
             r = np.array(upf["pseudo_potential"]["radial_grid"], dtype=np.float64)
-            v = np.array(upf["pseudo_potential"]["local_potential"], dtype=np.float64) / Ry2Ha
+            v = np.array(upf["pseudo_potential"]["local_potential"], dtype=np.float64)
             return r, v, upf
 
         for key in self.PP_list:
