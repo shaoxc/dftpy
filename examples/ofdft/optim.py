@@ -43,11 +43,17 @@ def test_optim():
     for i in range(ions.nat) :
         charge_total += ions.Zval[ions.labels[i]]
     rho_ini[:] = charge_total/ions.pos.cell.volume
-    E_v_Evaluator = TotalEnergyAndPotential(KineticEnergyFunctional=KE,
-                                    XCFunctional=XC,
-                                    HARTREE=HARTREE,
-                                    PSEUDO=PSEUDO)
-    optimization_options = {\
+    # E_v_Evaluator = TotalEnergyAndPotential(KineticEnergyFunctional=KE,
+                                    # XCFunctional=XC,
+                                    # HARTREE=HARTREE,
+                                    # PSEUDO=PSEUDO)
+
+    #Or
+    funcDict = {'KE' :KE, 'XC' :XC, 'HARTREE' :HARTREE, 'PSEUDO' :PSEUDO}
+    # E_v_Evaluator = TotalEnergyAndPotential(KineticEnergyFunctional=KE,
+                                    # XCFunctional=XC,**funcDict)
+    E_v_Evaluator = TotalEnergyAndPotential(**funcDict)
+    optimization_options = {
             'econv' : 1e-6, # Energy Convergence (a.u./atom)
             'maxfun' : 50,  # For TN method, it's the max steps for searching direction
             'maxiter' : 100,# The max steps for optimization

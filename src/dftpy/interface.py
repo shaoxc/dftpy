@@ -229,12 +229,12 @@ def OptimizeDensityConf(config, ions=None, rhoini=None, pseudo=None, grid=None):
         if key == "TOTAL":
             continue
         value = energypotential[key]
-        if key == "KE":
+        if key == "KEDF":
             ene = 0.0
             for key1 in value:
                 print(
                     "{:>10s} energy (eV): {:22.15E}".format(
-                        "KE-" + key1, value[key1].energy * ENERGY_CONV["Hartree"]["eV"]
+                        "KEDF-" + key1, value[key1].energy * ENERGY_CONV["Hartree"]["eV"]
                     )
                 )
                 ene += value[key1].energy
@@ -291,10 +291,10 @@ def OptimizeDensityConf(config, ions=None, rhoini=None, pseudo=None, grid=None):
                 if key == "TOTAL":
                     continue
                 value = stress[key]
-                if key == "KE":
+                if key == "KEDF":
                     kestress = np.zeros((3, 3))
                     for key1 in value:
-                        print("{:>10s} stress (a.u.): ".format("KE-" + key1))
+                        print("{:>10s} stress (a.u.): ".format("KEDF-" + key1))
                         for i in range(3):
                             print(fstr_s.format(value[key1][i]))
                         kestress += value[key1]
@@ -358,6 +358,110 @@ def OptimizeDensityConf(config, ions=None, rhoini=None, pseudo=None, grid=None):
 
 def GetEnergyPotential(ions, rho, EnergyEvaluator, calcType="Both", linearii=True, linearie=True):
     energypotential = {}
+    ewaldobj = ewald(rho=rho, ions=ions, PME=linearii)
+    energypotential["II"] = Functional(name="Ewald", potential=np.zeros_like(rho), energy=ewaldobj.energy)
+
+    energypotential["TOTAL"] = energypotential["II"].copy()
+    funcDict = EnergyEvaluator.funcDict
+    for key in funcDict :
+        func = getattr(EnergyEvaluator, key)
+        if func.type == "KEDF" :
+            results = func(rho, calcType, split=True)
+            for key2 in results :
+                energypotential["TOTAL"] += results[key2]
+        else :
+            results = func(rho, calcType)
+            energypotential["TOTAL"] += results
+        energypotential[func.type] = results
+    return energypotential
+
+
+def GetForces(ions, rho, EnergyEvaluator, linearii=True, linearie=True, PPlist=None):
+    forces = {}
+    forces["PSEUDO"] = EnergyEvaluator.PSEUDO.force(rho)
+    ewaldobj = ewald(rho=rho, ions=ions, verbose=False, PME=linearii)
+    forces["II"] = ewaldobj.forces
+    forces["TOTAL"] = forces["PSEUDO"] + forces["II"]
+    return forces
+
+
+def GetStress(
+    ions,
+    rho,
+    EnergyEvaluator,
+    energypotential=None,
+    energy=None,
+    xc="LDA",
+    ke="WT",
+    ke_options={"x": 1.0, "y": 1.0},
+    linearii=True,
+    linearie=True,
+    PPlist=None,
+):
+    """
+    Get stress tensor
+    """
+    #Initial energy dict
+    energy = {}
+    if energypotential is not None:
+        for key in energypotential :
+            if key == 'KEDF' :
+                energy[key] = {}
+                for key2 in energypotential["KEDF"] :
+                    energy["KEDF"][key2] = energypotential["KEDF"][key2].energy
+            else :
+                energy[key] = energypotential[key].energy
+    elif energy is None :
+        funcDict = EnergyEvaluator.funcDict
+        for key in funcDict :
+            func = getattr(EnergyEvaluator, key)
+            if func.type == "KEDF" :
+                energy[func.type] = {"TF": None, "vW": None, "NL": None}
+            else :
+                energy[func.type] = None
+
+    ewaldobj = ewald(rho=rho, ions=ions, verbose=False, PME=linearii)
+    stress = {}
+    # self.FunctionalTypeList = ["XC", "KEDF", "PSEUDO", "HARTREE"]
+    if xc == "LDA":
+        stress["XC"] = LDAStress(rho, energy=energy["XC"])
+    else:
+        raise AttributeError("%s exchange-correlation have not implemented for stress" % xc)
+    stress["HARTREE"] = HartreeFunctionalStress(rho, energy=energy["HARTREE"])
+    stress["II"] = ewaldobj.stress
+    stress["PSEUDO"] = EnergyEvaluator.PSEUDO.stress(rho, energy=energy["PSEUDO"])
+    ############################## KE ##############################
+    stress["KEDF"] = {}
+    KEDFNameList = [
+        "TF",
+        "vW",
+        "x_TF_y_vW",
+        "TFvW",
+        "WT",
+    ]
+    if ke not in KEDFNameList:
+        raise AttributeError("%s KEDF have not implemented for stress" % ke)
+    if ke == "TF":
+        stress["KEDF"]["TF"] = ThomasFermiStress(rho, x=ke_options["x"], energy=energy["KEDF"]["TF"])
+    elif ke == "vW":
+        stress["KEDF"]["vW"] = vonWeizsackerStress(rho, y=ke_options["y"], energy=energy["KEDF"]["vW"])
+    else:
+        stress["KEDF"]["TF"] = ThomasFermiStress(rho, x=ke_options["x"], energy=energy["KEDF"]["TF"])
+        stress["KEDF"]["vW"] = vonWeizsackerStress(rho, y=ke_options["y"], energy=energy["KEDF"]["vW"])
+        if ke == "WT":
+            stress["KEDF"]["NL"] = WTStress(rho, energy=energy["KEDF"]["NL"])
+    stress["TOTAL"] = stress["XC"] + stress["HARTREE"] + stress["II"] + stress["PSEUDO"]
+    for key in stress["KEDF"]:
+        stress["TOTAL"] += stress["KEDF"][key]
+    for i in range(1, 3):
+        for j in range(i - 1, -1, -1):
+            stress["TOTAL"][i, j] = stress["TOTAL"][j, i]
+
+    return stress
+
+
+def GetEnergyPotentialOLD(ions, rho, EnergyEvaluator, calcType="Both", linearii=True, linearie=True):
+    energypotential = {}
     energypotential["KE"] = EnergyEvaluator.KineticEnergyFunctional.ComputeEnergyPotential(rho, calcType, split=True)
     energypotential["XC"] = EnergyEvaluator.XCFunctional.ComputeEnergyPotential(rho, calcType)
     energypotential["HARTREE"] = EnergyEvaluator.HARTREE.ComputeEnergyPotential(rho, calcType)
@@ -372,16 +476,7 @@ def GetEnergyPotential(ions, rho, EnergyEvaluator, calcType="Both", linearii=Tru
     return energypotential
 
 
-def GetForces(ions, rho, EnergyEvaluator, linearii=True, linearie=True, PPlist=None):
-    forces = {}
-    forces["IE"] = EnergyEvaluator.PSEUDO.force(rho)
-    ewaldobj = ewald(rho=rho, ions=ions, verbose=False, PME=linearii)
-    forces["II"] = ewaldobj.forces
-    forces["TOTAL"] = forces["IE"] + forces["II"]
-    return forces
-
-
-def GetStress(
+def GetStressOLD(
     ions,
     rho,
     EnergyEvaluator,

@@ -436,6 +436,28 @@ class ReadPseudo(object):
         vp[0] = (4.0 * np.pi) * np.sum(vr)
         return gp, vp
 
+    def _recip2real(self, gp, vp, zval, MaxPoints=1001, Rmax=10, r=None):
+        if r is None :
+            r = np.linspace(0, Rmax, MaxPoints)
+        v = np.empty_like(r)
+        dg = np.empty_like(gp)
+        dg[1:] = gp[1:]-gp[:-1]
+        dg[0] = gp[0]
+        vr = vp * gp * gp * dg
+        for i in range(0, len(r)):
+            v[i] = (0.5 / np.pi ** 2) * np.sum(sp.spherical_jn(0, r[i] * gp) * vr)
+        return r, v
+
+    def _vloc2rho(self, r, v, r2 = None):
+        if r2 is None : r2 = r
+        tck = splrep(r, v)
+        dv1 = splev(r2[1:], tck, der = 1)
+        dv2 = splev(r2[1:], tck, der = 2)
+        rhop = np.empty_like(r2)
+        rhop[1:] = 1.0/(4 * np.pi) * (2.0/r2[1:] * dv1 + dv2)
+        rhop[0] = rhop[1]
+        return rhop
+
     def get_Zval(self, ions):
         if self.PP_type == "upf":
             for key in self._gp.keys():
@@ -447,7 +469,8 @@ class ReadPseudo(object):
             for key in self._gp.keys():
                 gp = self._gp[key]
                 vp = self._vp[key]
-                val = (vp[0] - vp[1]) * (gp[-1] / (gp.size - 1)) ** 2 / (4.0 * np.pi)
+                val = (vp[0] - vp[1]) * (gp[1] ** 2) / (4.0 * np.pi)
+                # val = (vp[0] - vp[1]) * (gp[-1] / (gp.size - 1)) ** 2 / (4.0 * np.pi)
                 ions.Zval[key] = round(val)
 
     def _init_PP_recpot(self):
@@ -481,6 +504,7 @@ class ReadPseudo(object):
             gmax = np.float(lines[ibegin - 1].strip()) * BOHR2ANG
             v = np.array(line.split()).astype(np.float) / HARTREE2EV / BOHR2ANG ** 3
             g = np.linspace(0, gmax, num=len(v))
+            # self._recip2real(g, v, 3.0)
             return g, v
 
         for key in self.PP_list:
@@ -527,6 +551,15 @@ class ReadPseudo(object):
                 self._vp[key] = vp
                 vloc_interp = splrep(gp, vp)
                 self._vloc_interp[key] = vloc_interp
+                #-----------------------------------------------------------------------
+                #-----------------------------------------------------------------------
+
+    def _self_energy(self, r, vr, rhop):
+        dr = np.empty_like(r)
+        dr[1:] = r[1:]-r[:-1]
+        dr[0] = r[0]
+        ene = np.sum(r *r * vr * rhop * dr) * 4 * np.pi
+        return ene
 
     def _init_PP_psp(self, MaxPoints=15000, Gmax=30):
         """
@@ -566,8 +599,6 @@ class ReadPseudo(object):
             data = [line.split()[1:3] for line in lines[ibegin:iend]]
             data = np.asarray(data, dtype = float)
 
-            # r = data[:, 0] / BOHR2ANG
-            # v = data[:, 1] * BOHR2ANG
             r = data[:, 0] 
             v = data[:, 1] 
             print("psp pseudopotential " + Single_PP_file + " loaded")

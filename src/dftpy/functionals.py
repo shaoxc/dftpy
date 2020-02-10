@@ -83,7 +83,7 @@ class FunctionalClass(AbstractFunctional):
      outXC.potential     --> the pot
     """
 
-    def __call__(self, rho, calcType="Both"):
+    def __call__(self, rho, calcType="Both", **kwargs):
         """
         Functional class is callable
 
@@ -97,7 +97,7 @@ class FunctionalClass(AbstractFunctional):
           Functional: functional output handler
              The output is a Functional class
         """
-        self._outfunctional = self.ComputeEnergyPotential(rho, calcType)
+        self._outfunctional = self.ComputeEnergyPotential(rho, calcType, **kwargs)
         return self._outfunctional
 
     @property
