@@ -95,14 +95,6 @@ class BaseField(np.ndarray):
         b.rank = rank
         return b
 
-    def integral(self):
-        """ Returns the integral of self """
-        if self.rank == 1:
-            return np.einsum("ijk->", self) * self.grid.dV
-        else:
-            return np.einsum("ijkl->i", self) * self.grid.dV
-        # return float(np.sum(self))*self.grid.dV
-
     def dot(self, obj):
         """ Returns the dot product of vector fields self and obj """
         if np.shape(self) != np.shape(obj):
@@ -153,6 +145,13 @@ class DirectField(BaseField):
     #    b = np.reshape(b,nr)
     #    return DirectField(grid=self.grid,rank=rank,griddata_3d=b)
 
+    def integral(self):
+        """ Returns the integral of self """
+        if self.rank == 1:
+            return np.einsum("ijk->", self) * self.grid.dV
+        else:
+            return np.einsum("ijkl->i", self) * self.grid.dV
+
     def _calc_spline(self):
         padded_values = np.pad(self, ((self.spl_order,)), mode="wrap")
         self.spl_coeffs = ndimage.spline_filter(padded_values, order=self.spl_order)
@@ -184,64 +183,75 @@ class DirectField(BaseField):
                 raise ValueError("Gradient rank incompatible with shape")
             return DirectField(grid=grad.grid, rank=1, griddata_3d=2.0 * sq_self * np.reshape(grad, np.shape(sq_self)))
 
-    def super_smooth_gradient(self, ipol=None):
+    def super_smooth_gradient(self, ipol=None, force_real=True):
         reciprocal_self = self.fft()
+        print(np.shape(reciprocal_self.grid.gg))
         imag = 0 + 1j
         nr = 3, *reciprocal_self.grid.nr
         grad_g = np.empty(nr, dtype=complex)
         if ipol is None:
-            for i in range(3):
-                # FFT(\grad A) = i \vec(G) * FFT(A)
-                grad_g[i] = (
-                    reciprocal_self.grid.g[i]
-                    * (reciprocal_self[0] * imag)
-                    * np.exp(-reciprocal_self.grid.gg[0] * (0.1 / 2.0) ** 2)
-                )
+            # FFT(\grad A) = i \vec(G) * FFT(A)
+            grad_g = (
+                reciprocal_self.grid.g
+                * (reciprocal_self * imag)
+                * np.exp(-reciprocal_self.grid.gg * (0.1 / 2.0) ** 2)
+            )
             grad_g = ReciprocalField(grid=self.grid.get_reciprocal(), rank=3, griddata_3d=grad_g)
-            grad = grad_g.ifft(force_real=True)
-            if grad.rank != np.shape(grad)[3]:
+            grad = grad_g.ifft(force_real=force_real)
+            if grad.rank != np.shape(grad)[0]:
                 raise ValueError("Standard Gradient: Gradient rank incompatible with shape")
             return grad
         else:
-            raise Exception("ipol not yet implemented in super_smooth_gradient")
+            i = ipol - 1
+            grad_g = (
+                reciprocal_self.grid.g[i]
+                * (reciprocal_self * imag)
+                * np.exp(-reciprocal_self.grid.gg * (0.1 / 2.0) ** 2)
+            )
+            grad_g = ReciprocalField(grid=self.grid.get_reciprocal(), rank=1, griddata_3d=grad_g)
+            grad = grad_g.ifft(force_real=force_real)
+            if grad.rank != np.shape(grad)[0]:
+                raise ValueError("Standard Gradient: Gradient rank incompatible with shape")
+            return grad
 
-    def standard_gradient(self, ipol=None):
+    def standard_gradient(self, ipol=None, force_real=True):
         reciprocal_self = self.fft()
         imag = 0 + 1j
         nr = 3, *reciprocal_self.grid.nr
         grad_g = np.empty(nr, dtype=complex)
         if ipol is None:
-            for i in range(3):
-                # FFT(\grad A) = i \vec(G) * FFT(A)
-                grad_g[i] = reciprocal_self.grid.g[i] * (reciprocal_self[0] * imag)
+            # FFT(\grad A) = i \vec(G) * FFT(A)
+            grad_g = reciprocal_self.grid.g * (reciprocal_self * imag)
             grad_g = ReciprocalField(grid=self.grid.get_reciprocal(), rank=3, griddata_3d=grad_g)
         elif ipol > 3:
             raise ValueError("Standard Gradient: ipol can not large than 3")
         else:
             i = ipol - 1
-            grad_g = reciprocal_self.grid.g[i] * (reciprocal_self[0] * imag)
+            grad_g = reciprocal_self.grid.g[i] * (reciprocal_self * imag)
             grad_g = ReciprocalField(grid=self.grid.get_reciprocal(), rank=1, griddata_3d=grad_g)
-        grad = grad_g.ifft(force_real=True)
+        grad = grad_g.ifft(force_real=force_real)
         return grad
 
-    def divergence(self, flag="smooth"):
-        # if self.rank != 3:
-        #    raise ValueError("Divergence: Rank incompatible ", self.rank)
-        div = self[0].gradient(flag=flag, ipol=1)
-        div += self[1].gradient(flag=flag, ipol=2)
-        div += self[2].gradient(flag=flag, ipol=3)
+    def divergence(self, flag="smooth", force_real=True):
+        if self.rank != 3:
+            raise ValueError("Divergence: Rank incompatible ", self.rank)
+        div = self[0].gradient(flag=flag, ipol=1, force_real=force_real)
+        div += self[1].gradient(flag=flag, ipol=2, force_real=force_real)
+        div += self[2].gradient(flag=flag, ipol=3, force_real=force_real)
         div.rank = 1
         return div
 
-    def gradient(self, flag="smooth", ipol=None):
+    def gradient(self, flag="smooth", ipol=None, force_real=True):
         if self.rank > 1 and ipol is None:
             raise Exception("gradient is only implemented for scalar fields")
         if flag == "standard":
-            return self.standard_gradient(ipol)
+            return self.standard_gradient(ipol, force_real)
         elif flag == "smooth":
+            if force_real == False:
+                raise Exception("Smooth gradient is not implemented for complex fields")
             return self.numerically_smooth_gradient(ipol)
         elif flag == "supersmooth":
-            return self.super_smooth_gradient(ipol)
+            return self.super_smooth_gradient(ipol, force_real)
         else :
             raise Exception("Incorrect flag")
 
@@ -567,6 +577,13 @@ class ReciprocalField(BaseField):
     #    return ReciprocalField(grid=self.grid,rank=s_pol*o_pol,griddata_3d=prod)
     # else:
     #    return self*other
+    
+    def integral(self):
+        """ Returns the integral of self """
+        if self.rank == 1:
+            return np.einsum("ijk->", self) * self.grid.dV * self.grid.nnr / (2.0 * np.pi) ** 3
+        else:
+            return np.einsum("ijkl->i", self) * self.grid.dV * self.grid.nnr / (2.0 * np.pi) ** 3
 
     def ifft(self, check_real=False, force_real=False):
         """
