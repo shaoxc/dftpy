@@ -185,7 +185,6 @@ class DirectField(BaseField):
 
     def super_smooth_gradient(self, ipol=None, force_real=True):
         reciprocal_self = self.fft()
-        print(np.shape(reciprocal_self.grid.gg))
         imag = 0 + 1j
         nr = 3, *reciprocal_self.grid.nr
         grad_g = np.empty(nr, dtype=complex)
