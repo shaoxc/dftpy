@@ -61,3 +61,9 @@ class Functional(object):
 
     def __mul__(self, x):
         return self.mul(x)
+
+    def copy(self):
+        energy = self.energy
+        potential = self.potential.copy()
+        name = self.name
+        return Functional(name=name, energy=energy, potential=potential)

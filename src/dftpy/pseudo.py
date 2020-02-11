@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from scipy.interpolate import interp1d, splrep, splev
+import scipy.special as sp
 from dftpy.base import Coord
 from dftpy.field import ReciprocalField, DirectField
 from dftpy.functional_output import Functional
@@ -403,6 +404,7 @@ class ReadPseudo(object):
         self._vp = {}  # PP on 1D PP grid
         self._vloc_interp = {}  # Interpolates recpot PP
         self._upf = {}
+        self._info= {}
 
         self.PP_list = PP_list
         key = list(self.PP_list.keys())[0]
@@ -410,12 +412,66 @@ class ReadPseudo(object):
             self.PP_type = "recpot"
         elif PP_list[key][-3:].lower() == "upf":
             self.PP_type = "upf"
+        elif PP_list[key][-3:].lower() == "psp" or PP_list[key][-4:].lower() == "psp8":
+            self.PP_type = "psp"
         else:
             raise Exception("Pseudopotential not supported")
         if self.PP_type == "recpot":
             self._init_PP_recpot()
         elif self.PP_type == "upf":
             self._init_PP_upf()
+        elif self.PP_type == "psp":
+            self._init_PP_psp()
+
+    def _real2recip(self, r, v, zval, MaxPoints=15000, Gmax=30):
+        gp = np.linspace(start=0, stop=Gmax, num=MaxPoints)
+        vp = np.empty_like(gp)
+        dr = np.empty_like(r)
+        dr[1:] = r[1:]-r[:-1]
+        dr[0] = r[0]
+        vr = (v * r + zval) * r * dr
+        for k in range(1, len(gp)):
+            vp[k] = (4.0 * np.pi) * np.sum(sp.spherical_jn(0, gp[k] * r) * vr)
+        vp[1:] -= 4.0 * np.pi * zval / (gp[1:] ** 2)
+        vp[0] = (4.0 * np.pi) * np.sum(vr)
+        return gp, vp
+
+    def _recip2real(self, gp, vp, zval, MaxPoints=1001, Rmax=10, r=None):
+        if r is None :
+            r = np.linspace(0, Rmax, MaxPoints)
+        v = np.empty_like(r)
+        dg = np.empty_like(gp)
+        dg[1:] = gp[1:]-gp[:-1]
+        dg[0] = gp[0]
+        vr = vp * gp * gp * dg
+        for i in range(0, len(r)):
+            v[i] = (0.5 / np.pi ** 2) * np.sum(sp.spherical_jn(0, r[i] * gp) * vr)
+        return r, v
+
+    def _vloc2rho(self, r, v, r2 = None):
+        if r2 is None : r2 = r
+        tck = splrep(r, v)
+        dv1 = splev(r2[1:], tck, der = 1)
+        dv2 = splev(r2[1:], tck, der = 2)
+        rhop = np.empty_like(r2)
+        rhop[1:] = 1.0/(4 * np.pi) * (2.0/r2[1:] * dv1 + dv2)
+        rhop[0] = rhop[1]
+        return rhop
+
+    def get_Zval(self, ions):
+        if self.PP_type == "upf":
+            for key in self._gp.keys():
+                ions.Zval[key] = self._upf[key]["pseudo_potential"]["header"]["z_valence"]
+        elif self.PP_type == "psp":
+            for key in self._gp.keys():
+                ions.Zval[key] = self._info[key]["Zval"]
+        elif self.PP_type == "recpot":
+            for key in self._gp.keys():
+                gp = self._gp[key]
+                vp = self._vp[key]
+                val = (vp[0] - vp[1]) * (gp[1] ** 2) / (4.0 * np.pi)
+                # val = (vp[0] - vp[1]) * (gp[-1] / (gp.size - 1)) ** 2 / (4.0 * np.pi)
+                ions.Zval[key] = round(val)
 
     def _init_PP_recpot(self):
         """
@@ -448,6 +504,7 @@ class ReadPseudo(object):
             gmax = np.float(lines[ibegin - 1].strip()) * BOHR2ANG
             v = np.array(line.split()).astype(np.float) / HARTREE2EV / BOHR2ANG ** 3
             g = np.linspace(0, gmax, num=len(v))
+            # self._recip2real(g, v, 3.0)
             return g, v
 
         for key in self.PP_list:
@@ -461,7 +518,7 @@ class ReadPseudo(object):
                 vloc_interp = splrep(gp, vp)
                 self._vloc_interp[key] = vloc_interp
 
-    def _init_PP_upf(self, MaxPoints=1000, Gmax=60):
+    def _init_PP_upf(self, MaxPoints=15000, Gmax=30):
         """
         This is a private method used only in this specific class. 
         """
@@ -476,11 +533,10 @@ class ReadPseudo(object):
                 from upf_to_json import upf_to_json
             else:
                 raise ModuleNotFoundError("Must pip install upf_to_json")
-            Ry2Ha = ENERGY_CONV["Rydberg"]["Hartree"]
             with open(Single_PP_file, "r") as outfil:
                 upf = upf_to_json(upf_str=outfil.read(), fname=Single_PP_file)
             r = np.array(upf["pseudo_potential"]["radial_grid"], dtype=np.float64)
-            v = np.array(upf["pseudo_potential"]["local_potential"], dtype=np.float64) / Ry2Ha
+            v = np.array(upf["pseudo_potential"]["local_potential"], dtype=np.float64)
             return r, v, upf
 
         for key in self.PP_list:
@@ -489,27 +545,77 @@ class ReadPseudo(object):
                 raise Exception("PP file for atom type " + str(key) + " not found")
             else:
                 r, vr, self._upf[key] = set_PP(self.PP_list[key])
-
-                gp = np.linspace(start=0, stop=Gmax, num=MaxPoints)
-                vp = np.zeros_like(gp)
-                vp[0] = 0.0
-                for k in np.arange(start=1, stop=len(gp)):
-                    vp[k] = (4.0 * np.pi / gp[k]) * np.sum(r * vr * np.sin(gp[k] * r))
+                zval = self._upf[key]["pseudo_potential"]["header"]["z_valence"]
+                gp, vp = self._real2recip(r, vr, zval, MaxPoints, Gmax)
                 self._gp[key] = gp
                 self._vp[key] = vp
                 vloc_interp = splrep(gp, vp)
                 self._vloc_interp[key] = vloc_interp
+                #-----------------------------------------------------------------------
+                #-----------------------------------------------------------------------
 
-    def get_Zval(self, ions):
-        if self.PP_type == "upf":
-            for key in self._gp.keys():
-                ions.Zval[key] = self._upf[key]["pseudo_potential"]["header"]["z_valence"]
-        elif self.PP_type == "recpot":
-            for key in self._gp.keys():
-                gp = self._gp[key]
-                vp = self._vp[key]
-                val = (vp[0] - vp[1]) * (gp[-1] / (gp.size - 1)) ** 2 / (4.0 * np.pi)
-                ions.Zval[key] = round(val)
+    def _self_energy(self, r, vr, rhop):
+        dr = np.empty_like(r)
+        dr[1:] = r[1:]-r[:-1]
+        dr[0] = r[0]
+        ene = np.sum(r *r * vr * rhop * dr) * 4 * np.pi
+        return ene
+
+    def _init_PP_psp(self, MaxPoints=15000, Gmax=30):
+        """
+        """
+
+        def set_PP(Single_PP_file):
+            # Only support psp8 format
+            # HARTREE2EV = ENERGY_CONV["Hartree"]["eV"]
+            # BOHR2ANG = LEN_CONV["Bohr"]["Angstrom"]
+            with open(Single_PP_file, "r") as outfil:
+                lines = outfil.readlines()
+            info = {}
+
+            # line 2 :atomic number, pseudoion charge, date
+            values = lines[1].split()
+            atomicnum = int(float(values[0]))
+            Zval = float(values[1])
+            # line 3 :pspcod,pspxc,lmax,lloc,mmax,r2well
+            values = lines[2].split()
+            if int(values[0]) != 8 :
+                raise AttributeError("Only support psp8 format pseudopotential with psp")
+            info['atomicnum'] = atomicnum
+            info['Zval'] = Zval
+            info['pspcod'] = 8
+            info['pspxc'] = int(values[1])
+            info['lmax'] = int(values[2])
+            info['lloc'] = int(values[3])
+            info['r2well'] = int(values[5])
+            # pspxc = int(value[1])
+            mmax = int(values[4])
+
+            ibegin = 7
+            iend = ibegin + mmax
+            # line = " ".join([line for line in lines[ibegin:iend]])
+            # data = np.fromstring(line, dtype=float, sep=" ")
+            # data = np.array(line.split()).astype(np.float) / HARTREE2EV / BOHR2ANG ** 3
+            data = [line.split()[1:3] for line in lines[ibegin:iend]]
+            data = np.asarray(data, dtype = float)
+
+            r = data[:, 0] 
+            v = data[:, 1] 
+            print("psp pseudopotential " + Single_PP_file + " loaded")
+            return r, v, info
+
+        for key in self.PP_list:
+            print("setting key: " + key)
+            if not os.path.isfile(self.PP_list[key]):
+                raise Exception("PP file for atom type " + str(key) + " not found")
+            else:
+                r, v, self._info[key] = set_PP(self.PP_list[key])
+                zval = self._info[key]['Zval']
+                gp, vp = self._real2recip(r, v, zval, MaxPoints, Gmax)
+                self._gp[key] = gp
+                self._vp[key] = vp
+                vloc_interp = splrep(gp, vp)
+                self._vloc_interp[key] = vloc_interp
 
     @property
     def vloc_interp(self):
