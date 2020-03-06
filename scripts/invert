@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+import configparser
+import argparse
+from dftpy.interface import ConfigParser
+from dftpy.config import OptionFormat, PrintConf, ReadConf
+from dftpy.inverter import Inverter
+from dftpy.formats.xsf import XSF
+from dftpy.formats.qepp import PP
+
+def RunJob():
+    parser = argparse.ArgumentParser(description='Process task')
+
+    parser.add_argument('-i', '--ini', '--input', dest='input', type=str, action='store',
+            default='config.ini', help='input file (default: config.ini)')
+
+    parser.add_argument('-r', '--rho', dest='rho', type=str, action='store')
+
+    args = parser.parse_args()
+    struct, EnergyEvaluater, config = ConfigParser(args.input)
+    rho_in_struct = PP(args.rho).read()
+    xsf = XSF('./rho_in.xsf')
+    xsf.write(rho_in_struct)
+
+    if struct.cell != rho_in_struct.cell:
+        raise ValueError('The grid of the input density does not match the grid of the system')
+
+    inv = Inverter()
+    ext, rho = inv(rho_in_struct.field, EnergyEvaluater)
+    xsf = XSF('./v.xsf')
+    xsf.write(struct, field=ext.v)
+    xsf = XSF('./rho.xsf')
+    xsf.write(struct, field=rho)
+
+
+if __name__ == "__main__":
+    RunJob()

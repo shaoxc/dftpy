@@ -279,11 +279,10 @@ class Optimization(AbstractOptimization):
         TimeData.Begin("Optimize")
         if guess_rho is None and self.rho is None:
             raise AttributeError("Must provide a guess density")
-        elif self.rho is None :
-            rho = guess_rho
-            self.rho = rho
+        elif guess_rho is None:
+            rho = self.rho
         else:
-            self.old_rho = rho
+            rho = guess_rho
         # -----------------------------------------------------------------------
         xtol = self.optimization_options["xtol"]
         maxls = self.optimization_options["maxls"]

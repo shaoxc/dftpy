@@ -8,6 +8,7 @@ from dftpy.semilocal_xc import PBE, LDA, XC, LIBXC_KEDF
 from dftpy.hartree import HartreeFunctional
 from dftpy.kedf import KEDFunctional
 from dftpy.pseudo import LocalPseudo
+from dftpy.external_potential import ExternalPotential
 
 # general python imports
 from abc import ABC, abstractmethod
@@ -120,7 +121,7 @@ class FunctionalClass(AbstractFunctional):
         self.FunctionalNameList = []
         self.FunctionalTypeList = []
 
-        self.FunctionalTypeList = ["XC", "KEDF", "PSEUDO", "HARTREE"]
+        self.FunctionalTypeList = ["XC", "KEDF", "PSEUDO", "HARTREE","EXT"]
         XCNameList = ["LDA", "PBE", "LIBXC_XC", "CUSTOM_XC"]
         KEDFNameList = ["TF", "vW", "x_TF_y_vW", "LC94", "revAPBEK", "TFvW", "LIBXC_KEDF", "CUSTOM_KEDF"]
         KEDFNLNameList = [
@@ -144,8 +145,9 @@ class FunctionalClass(AbstractFunctional):
         ]
         HNameList = ["HARTREE"]
         PPNameList = ["PSEUDO"]
+        EXTNameList = ["EXT"]
 
-        self.FunctionalNameList = XCNameList + KEDFNameList + KEDFNLNameList + HNameList + PPNameList
+        self.FunctionalNameList = XCNameList + KEDFNameList + KEDFNLNameList + HNameList + PPNameList + EXTNameList
 
         if type is None:
             raise AttributeError("Must assign type to FunctionalClass")
@@ -153,7 +155,7 @@ class FunctionalClass(AbstractFunctional):
             self.type = type
 
         if name is None:
-            if type in ["HARTREE", "PSEUDO"] :
+            if type in ["HARTREE", "PSEUDO", "EXT"] :
                 self.name = self.type
             else :
                 raise AttributeError("Must assign name to FunctionalClass")
@@ -171,6 +173,8 @@ class FunctionalClass(AbstractFunctional):
                 self.PSEUDO = LocalPseudo(**kwargs)
             else :
                 self.PSEUDO = PSEUDO
+        elif self.name == 'EXT':
+            self.EXT = ExternalPotential(**kwargs)
 
     def ComputeEnergyPotential(self, rho, calcType="Both", **kwargs):
         self.optional_kwargs.update(kwargs)
@@ -197,6 +201,8 @@ class FunctionalClass(AbstractFunctional):
             return HartreeFunctional(density=rho, calcType=calcType)
         elif self.type == "PSEUDO":
             return self.PSEUDO(density=rho, calcType=calcType)
+        elif self.type == "EXT":
+            return self.EXT(density=rho, calcType=calcType)
 
     def force(self, rho, **kwargs):
         if self.type != 'PSEUDO' :
@@ -244,24 +250,31 @@ class TotalEnergyAndPotential(AbstractFunctional):
      in_for_scipy_minimize = EnergyEvaluator(phi)
     """
 
-    def __init__(self, KineticEnergyFunctional=None, XCFunctional=None, PSEUDO=None, HARTREE=None, **kwargs):
+    def __init__(self, funcDict={}, KineticEnergyFunctional=None, XCFunctional=None, PSEUDO=None, HARTREE=None, **kwargs):
 
-        self.name = ""
-        self.type = ""
-        funcDict = {}
-        funcDict['KineticEnergyFunctional'] = KineticEnergyFunctional
-        funcDict['XCFunctional'] = XCFunctional
-        funcDict['PSEUDO'] = PSEUDO
-        funcDict['HARTREE'] = HARTREE
-        funcDict.update(kwargs)
-        # remove useless key
-        keys = list(funcDict.keys())
-        for key in keys :
-            if funcDict[key] is None :
-                del funcDict[key]
+        #funcDict = {}
+        if not funcDict:
+            funcDict['KineticEnergyFunctional'] = KineticEnergyFunctional
+            funcDict['XCFunctional'] = XCFunctional
+            funcDict['PSEUDO'] = PSEUDO
+            funcDict['HARTREE'] = HARTREE
+            funcDict.update(kwargs)
+            # remove useless key
+            keys = list(funcDict.keys())
+            for key in keys :
+                if funcDict[key] is None :
+                    del funcDict[key]
 
         self.funcDict = funcDict
 
+        self.UpdateNameType()
+
+    def __call__(self, rho, calcType="Both",  **kwargs):
+        return self.ComputeEnergyPotential(rho, calcType, **kwargs)
+
+    def UpdateNameType(self):
+        self.name = ""
+        self.type = ""
         for key, evalfunctional in self.funcDict.items():
             if isinstance(evalfunctional, LocalPseudo):
                 # This is a trick for PSEUDO
@@ -269,14 +282,20 @@ class TotalEnergyAndPotential(AbstractFunctional):
                     setattr(evalfunctional, 'name', 'PSEUDO')
                 if not hasattr(evalfunctional, 'type'):
                     setattr(evalfunctional, 'type', 'PSEUDO')
+            elif isinstance(evalfunctional, ExternalPotential):
+                pass
             elif not isinstance(evalfunctional, FunctionalClass):
                 raise AttributeError("{} must be FunctionalClass".format(key))
             setattr(self, key, evalfunctional)
             self.name += getattr(evalfunctional, 'name') + " "
             self.type += getattr(evalfunctional, 'type') + " "
 
-    def __call__(self, rho, calcType="Both",  **kwargs):
-        return self.ComputeEnergyPotential(rho, calcType, **kwargs)
+    def UpdateFunctional(self, keysToRemove=[], newFuncDict={}):
+        for key in keysToRemove:
+            del self.funcDict[key]
+
+        self.funcDict.update(newFuncDict)
+        self.UpdateNameType()
 
     def ComputeEnergyPotential(self, rho, calcType="Both"):
         Obj = None

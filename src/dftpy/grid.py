@@ -29,6 +29,15 @@ class BaseGrid(BaseCell):
         # self._r = None # initialize them on request
         # self._s = None # initialize them on request
 
+    def __eq__(self, other):
+        if not super().__eq__(other):
+            return false
+        for ilat in range(3):
+            if self._nr[ilat] != other._nr[ilat]:
+                return false
+
+        return True
+
     @property
     def nr(self):
         return self._nr
@@ -83,6 +92,15 @@ class DirectGrid(BaseGrid, DirectCell):
         else:
             self._nrG = nr.copy()
             self._nrG[-1] = self._nrG[-1] // 2 + 1
+    
+    def __eq__(self, other):
+        """
+        Implement the == operator in the DirectGrid class.
+        Refer to the __eq__ method of Grid for more information.
+        """
+        if not isinstance(other, DirectGrid):
+            raise TypeError("You can only compare a DirectGrid with another DirectGrid")
+        return BaseGrid.__eq__(self, other)
 
     def _calc_grid_crys_points(self):
         if self._s is None:
@@ -236,6 +254,15 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
         self._gF = None
         self._ggF = None
         self._full = full
+    
+    def __eq__(self, other):
+        """
+        Implement the == operator in the ReciprocalGrid class.
+        Refer to the __eq__ method of Grid for more information.
+        """
+        if not isinstance(other, ReciprocalGrid):
+            raise TypeError("You can only compare a ReciprocalGrid with another ReciprocalGrid")
+        return BaseGrid.__eq__(self, other)
 
     @property
     def g(self):
