@@ -275,8 +275,8 @@ class TotalEnergyAndPotential(AbstractFunctional):
             self.name += getattr(evalfunctional, 'name') + " "
             self.type += getattr(evalfunctional, 'type') + " "
 
-    def __call__(self, rho, calcType="Both"):
-        return self.ComputeEnergyPotential(rho, calcType)
+    def __call__(self, rho, calcType="Both",  **kwargs):
+        return self.ComputeEnergyPotential(rho, calcType, **kwargs)
 
     def ComputeEnergyPotential(self, rho, calcType="Both"):
         Obj = None
@@ -291,6 +291,7 @@ class TotalEnergyAndPotential(AbstractFunctional):
         from .ewald import ewald
 
         ewald_ = ewald(rho=rho, ions=ions, PME=usePME)
+        print('Ewald :', ewald_.energy)
         total_e = self.ComputeEnergyPotential(rho, calcType="Energy")
         return ewald_.energy + total_e.energy
 

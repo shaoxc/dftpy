@@ -43,6 +43,9 @@ def read_POSCAR(infile, names=None, **kwargs):
                 break
             else:
                 pos.append(list(map(float, line.split()[:3])))
+        # pos = np.asarray(pos)
+        if Format == "Cartesian" :
+            pos = np.asarray(pos) / BOHR2ANG
     labels = []
     for i in range(len(names)):
         labels.extend([names[i]] * typ[i])

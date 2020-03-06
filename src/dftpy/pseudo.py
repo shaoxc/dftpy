@@ -399,7 +399,7 @@ class ReadPseudo(object):
     Support class for LocalPseudo.
     """
 
-    def __init__(self, PP_list=None):
+    def __init__(self, PP_list=None, MaxPoints = 15000, Gmax = 30, Rmax = 10):
         self._gp = {}  # 1D PP grid g-space
         self._vp = {}  # PP on 1D PP grid
         self._vloc_interp = {}  # Interpolates recpot PP
@@ -419,9 +419,9 @@ class ReadPseudo(object):
         if self.PP_type == "recpot":
             self._init_PP_recpot()
         elif self.PP_type == "upf":
-            self._init_PP_upf()
+            self._init_PP_upf(MaxPoints, Gmax)
         elif self.PP_type == "psp":
-            self._init_PP_psp()
+            self._init_PP_psp(MaxPoints, Gmax)
 
     def _real2recip(self, r, v, zval, MaxPoints=15000, Gmax=30):
         gp = np.linspace(start=0, stop=Gmax, num=MaxPoints)
@@ -536,6 +536,7 @@ class ReadPseudo(object):
             with open(Single_PP_file, "r") as outfil:
                 upf = upf_to_json(upf_str=outfil.read(), fname=Single_PP_file)
             r = np.array(upf["pseudo_potential"]["radial_grid"], dtype=np.float64)
+            # v = np.array(upf["pseudo_potential"]["local_potential"], dtype=np.float64) 
             v = np.array(upf["pseudo_potential"]["local_potential"], dtype=np.float64)
             return r, v, upf
 
@@ -551,17 +552,17 @@ class ReadPseudo(object):
                 self._vp[key] = vp
                 vloc_interp = splrep(gp, vp)
                 self._vloc_interp[key] = vloc_interp
-                #-----------------------------------------------------------------------
-                #-----------------------------------------------------------------------
 
     def _self_energy(self, r, vr, rhop):
         dr = np.empty_like(r)
         dr[1:] = r[1:]-r[:-1]
         dr[0] = r[0]
         ene = np.sum(r *r * vr * rhop * dr) * 4 * np.pi
+        print('Ne ', np.sum(r *r * rhop * dr) * 4 * np.pi)
         return ene
 
-    def _init_PP_psp(self, MaxPoints=15000, Gmax=30):
+    # def _init_PP_psp(self, MaxPoints=15000, Gmax=30):
+    def _init_PP_psp(self, MaxPoints=200000, Gmax=30):
         """
         """
 

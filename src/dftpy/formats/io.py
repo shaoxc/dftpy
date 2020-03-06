@@ -37,3 +37,4 @@ def guessType(infile, **kwargs):
         raise AttributeError("%s not support yet" % infile)
 
     return format
+

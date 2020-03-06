@@ -248,6 +248,8 @@ def MGPKernelTable(eta, q, maxpoints=1000, symmetrization=None, KernelTable=None
     The MGP Kernel
     symmetrization : 'None', 'Arithmetic', 'Geometric'
     """
+    if symmetrization == "Try":
+        return MGPKernelTableSym(eta, q, maxpoints, symmetrization, KernelTable)
     TimeData.Begin("MGPKernelTable")
     dt = 1.0 / (maxpoints)
     cTF = 0.3 * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
@@ -279,7 +281,6 @@ def MGPKernelTable(eta, q, maxpoints=1000, symmetrization=None, KernelTable=None
         kernel *= coe
     TimeData.End("MGPKernelTable")
     return kernel
-
 
 def WTKernel(q, rho0, x=1.0, y=1.0, alpha=5.0 / 6.0, beta=5.0 / 6.0):
     """ 
@@ -371,12 +372,16 @@ def MGPOmegaE(q, Ne=1, lumpfactor=0.2):
     if isinstance(lumpfactor, list):
         a = lumpfactor[0]
         b = lumpfactor[1]
+        c = lumpfactor[2]
     else:
         a = float(lumpfactor / Ne ** (2.0 / 3.0))
         b = a
+        c = 1.0
     q[0, 0, 0] = 1.0
     gg = q ** 2
-    corr = 4 * np.pi * sp.erf(q) ** 2 * a * np.exp(-gg * b) / gg
+    # corr = 4 * np.pi * sp.erf(q) ** 2 * a * np.exp(-gg * b) / gg
+    # corr = 4 * np.pi * sp.erf(c * q) ** 2* a * np.exp(-gg * b) / gg
+    corr = 4 * np.pi * sp.erf(c * q) ** 2* a * np.exp(-gg * b) / gg + 0.001*np.exp(-0.1*(gg-1.5)**2)
     q[0, 0, 0] = 0.0
     corr[0, 0, 0] = 0.0
     # Same as the formular in MGP

@@ -1,11 +1,13 @@
 import numpy as np
 from scipy.optimize import minimize, line_search
 from scipy import optimize as sopt
+import scipy.special as sp
 from functools import partial
 from dftpy.field import DirectField
 from dftpy.math_utils import LineSearchDcsrch, LineSearchDcsrch2, Brent, TimeData
 from dftpy.math_utils import LBFGS
 from abc import ABC, abstractmethod
+from dftpy.constants import ENERGY_CONV
 
 
 class AbstractOptimization(ABC):
@@ -263,6 +265,7 @@ class Optimization(AbstractOptimization):
                 # f = self.EnergyEvaluator(newrho, calcType = 'Potential')
             mu = (f.potential * newrho).integral() / Ne
             residual = (f.potential - mu) * newphi
+            # residual = (f.potential - mu) 
             resN = np.einsum("ijk, ijk->", residual, residual) * phi.grid.dV
             value = resN
         if vector == "Orthogonalization":
@@ -276,8 +279,10 @@ class Optimization(AbstractOptimization):
         TimeData.Begin("Optimize")
         if guess_rho is None and self.rho is None:
             raise AttributeError("Must provide a guess density")
-        else:
+        elif self.rho is None :
             rho = guess_rho
+            self.rho = rho
+        else:
             self.old_rho = rho
         # -----------------------------------------------------------------------
         xtol = self.optimization_options["xtol"]
@@ -387,6 +392,9 @@ class Optimization(AbstractOptimization):
 
             rho = phi * phi
             func = newfunc
+            #-----------------------------------------------------------------------
+            # phi = np.sqrt(rho)
+            #-----------------------------------------------------------------------
             # if self.optimization_options["algorithm"] == 'RMM' :
             # f = self.EnergyEvaluator(rho, calcType = 'Energy')
             # func.energy = f.energy
@@ -414,7 +422,7 @@ class Optimization(AbstractOptimization):
             EnergyHistory.append(energy)
             CostTime = TimeData.Time("Optimize")
             dE = EnergyHistory[-1] - EnergyHistory[-2]
-            resN = np.einsum("ijk, ijk->", residual, residual) * rho.grid.dV
+            resN = np.einsum("ijk, ijk->", residual, residual) * rho.grid.dV/rho.N
             fmt = "{:<8d}{:<24.12E}{:<16.6E}{:<16.6E}{:<8d}{:<8d}{:<16.6E}".format(
                 it, energy, dE, resN, NumDirectrion, NumLineSearch, CostTime
             )
@@ -436,7 +444,8 @@ class Optimization(AbstractOptimization):
 
         TimeData.End("Optimize")
         mu = (func.potential * rho).integral() / rho.N
-        print('Chemical potential :', mu)
+        print('Chemical potential (a.u.):', mu)
+        print('Chemical potential (eV)  :', mu * ENERGY_CONV['Hartree']['eV'])
         return rho
 
     def __call__(self, guess_rho=None, calcType="Both"):

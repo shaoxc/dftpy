@@ -1,10 +1,11 @@
-# Collection of local and semilocal functionals
+# Collection of semilocal functionals
 
 import numpy as np
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.functional_output import Functional
 from dftpy.math_utils import TimeData, PowerInt
 from dftpy.kedf.tf import TF
+import scipy.special as sp
 
 __all__ = ["GGA", "GGA_KEDF_list", "GGAStress"]
 
@@ -39,7 +40,8 @@ GGA_KEDF_list = [
     "VJKS00",
     "LC94",
     "VT84F",
-    "SMP19",
+    "LKT-PADE46",
+    "SMP",
 ]
 
 
@@ -117,6 +119,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
     tol2 = 1e-8  # It's a very small value for safe deal with 1/s
     F = np.empty_like(s)
     dFds2 = np.empty_like(s)  # Actually, it's 1/s*dF/ds
+
     if functional == "LKT":  # \cite{luo2018simple}
         if not parms:
             parms = [1.3]
@@ -542,22 +545,71 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
 
             dFds2 /= tkf0 * tkf0
 
-    elif functional == "SMP19":
+    elif functional == "LKT-PADE46":
         if not parms:
-            parms = [33873.81423879, -1044.95674204, 33885.39245476, 27374.01470582, 3523.63738304]
+            parms = 1.3
+        coef = [131040, 3360, 34, 62160, 3814, 59]
+        # 131040 - 3360 *x**2 + 34 *x**4)/(131040 + 62160 *x**2 + 3814 *x**4 + 59 *x**6
+        coef[1] *= parms ** 2
+        coef[2] *= parms ** 4
+        coef[3] *= parms ** 2
+        coef[4] *= parms ** 4
+        coef[5] *= parms ** 6
+
         ss = s / tkf0
         s2 = ss * ss
         s4 = s2 * s2
-        Fa = parms[0] + parms[1] * s2
-        Fb = parms[2] + parms[3] * s2 + parms[4] * s4
+        s6 = s4 * s2
+        Fa = coef[0] + coef[1] * s2 + coef[2] * s4
+        Fb = coef[0] + coef[3] * s2 + coef[4] * s4 + coef[5] * s6
         F = Fa / Fb + 5.0 / 3.0 * s2
         if calcType != "Energy":
             dFds2 = (
-                2.0 * parms[1] / Fb
-                - (parms[0] + parms[1] * s2) * (2 * parms[3] + 4 * parms[4] * s2) / (Fb * Fb)
+                (2.0 * coef[1]+4.0 * coef[2] * s2) / Fb
+                - Fa * (2 * coef[3] + 4 * coef[4] * s2 + 6 * coef[5] * s4) / (Fb * Fb)
                 + 10.0 / 3.0
             )
             dFds2 /= tkf0 * tkf0
+
+    elif functional == "LKT-PADE46-S":
+        if not parms:
+            parms = [1.3, 0.01]
+        coef = [131040, 3360, 34, 62160, 3814, 59]
+        coef[1] *= parms[0] ** 2
+        coef[2] *= parms[0] ** 4
+        coef[3] *= parms[0] ** 2
+        coef[4] *= parms[0] ** 4
+        coef[5] *= parms[0] ** 6
+        alpha = parms[1]
+
+        ss = s / tkf0
+        s2 = ss * ss
+        s4 = s2 * s2
+        s6 = s4 * s2
+        ms = 1.0/(1.0+alpha * s2)
+        Fa = coef[0] + coef[1] * s2 + coef[2] * s4
+        Fb = coef[0] + coef[3] * s2 + coef[4] * s4 + coef[5] * s6
+        F = Fa / Fb + 5.0 / 3.0 * s2 * ms
+        if calcType != "Energy":
+            dFds2 = (
+                (2.0 * coef[1]+4.0 * coef[2] * s2) / Fb
+                - Fa * (2 * coef[3] + 4 * coef[4] * s2 + 6 * coef[5] * s4) / (Fb * Fb)
+                + 10.0 / 3.0 * (ms - alpha * s2 * ms * ms)
+            )
+            dFds2 /= tkf0 * tkf0
+
+    if functional == "SMP":  # test functional
+        if not parms:
+            parms = [1.0]
+        ss = s / tkf0
+        s2 = ss * ss
+        F = 5.0 / 3.0 * s2 + sp.erfc(s2/parms[0])
+        mask = ss > 1e-5
+        # mask1 = np.invert(mask)
+        if calcType != "Energy":
+            dFds2[:] = 10.0 / 3.0
+            dFds2[mask] += 2/np.sqrt(np.pi) * np.exp(-(s2[mask]/parms[0])**2) / ss[mask]
+            dFds2 /= tkf0 ** 2
 
     return F, dFds2
 
@@ -571,6 +623,7 @@ def GGA(rho, functional="LKT", calcType="Both", split=False, **kwargs):
                flag='standard' to flag='smooth'. The results with smooth math are 
                slightly different.
     """
+    sigma = kwargs.get('sigma', None)
     rhom = rho.copy()
     tol = 1e-16
     rhom[rhom < tol] = tol
@@ -582,12 +635,18 @@ def GGA(rho, functional="LKT", calcType="Both", split=False, **kwargs):
     tf = cTF * rho53
     rho43 = rho23 * rho23
     rho83 = rho43 * rho43
+    q = rho.grid.get_reciprocal().q
     g = rho.grid.get_reciprocal().g
 
     rhoG = rho.fft()
     rhoGrad = []
     for i in range(3):
-        item = (1j * g[i] * rhoG).ifft(force_real=True)
+        # item = (1j * g[i] * rhoG).ifft(force_real=True)
+        if sigma is None :
+            grhoG = g[i] * rhoG * 1j
+        else :
+            grhoG = g[i] * rhoG * np.exp(-q*(sigma)**2/4.0) * 1j
+        item = (grhoG).ifft(force_real=True)
         rhoGrad.append(item)
     s = np.sqrt(rhoGrad[0] ** 2 + rhoGrad[1] ** 2 + rhoGrad[2] ** 2) / rho43
     ene = 0.0

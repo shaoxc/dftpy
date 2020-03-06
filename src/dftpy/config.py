@@ -71,6 +71,8 @@ def DefaultOption():
         "kdd": 3,  # kernel density denpendent
         "rho0": None,
         "k_str": "gga_k_revapbe",
+        "kfmin": None,
+        "kfmax": None,
     }
 
     OUTPUT = {
@@ -172,6 +174,10 @@ def OptionFormat(config):
     conf["KEDF"]["ratio"] = float(eval(conf["KEDF"]["ratio"]))
     conf["KEDF"]["fd"] = int(conf["KEDF"]["fd"])
     conf["KEDF"]["kdd"] = int(conf["KEDF"]["kdd"])
+    if conf["KEDF"]["kfmin"]:
+        conf["KEDF"]["kfmin"] = float(eval(conf["KEDF"]["kfmin"]))
+    if conf["KEDF"]["kfmax"]:
+        conf["KEDF"]["kfmax"] = float(eval(conf["KEDF"]["kfmax"]))
     if conf["KEDF"]["rho0"]:
         conf["KEDF"]["rho0"] = float(eval(conf["KEDF"]["rho0"]))
     if conf["KEDF"]["nsp"]:

@@ -29,7 +29,7 @@ class Atom(object):
         if self.labels:
             for i in range(len(self.labels)):
                 if self.labels[i].isdigit():
-                    self.labels[i] = z2lab[self.labels[i]]
+                    self.labels[i] = z2lab[int(self.labels[i])]
 
         if self.Z is None:
             self.Z = []

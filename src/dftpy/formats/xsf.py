@@ -32,6 +32,10 @@ def read_xsf(infile, kind="All", full=False, pbc=True, **kwargs):
 
         label = []
         pos = []
+        if line.startswith("CONVVEC"):
+            for i in range(4):
+                line = readline()
+
         if line.startswith("PRIMCOORD"):
             natom = int(fr.readline().split()[0])
             for i in range(natom):

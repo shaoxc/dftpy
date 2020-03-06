@@ -12,7 +12,10 @@ BOHR2ANG = LEN_CONV["Bohr"]["Angstrom"]
 
 
 def ase_read(infile, index=None, format=None, **kwargs):
-    struct = ase.io.read(infile, index=index, format=format, **kwargs)
+    if isinstance(infile, ase.Atoms):
+        struct = infile
+    else :
+        struct = ase.io.read(infile, index=index, format=format, **kwargs)
     lattice = struct.cell[:]
     lattice = np.asarray(lattice).T / BOHR2ANG
     Z = struct.numbers
@@ -31,3 +34,4 @@ def ase_write(outfile, ions, format=None, pbc=None, **kwargs):
     struct = ase.Atoms(positions=pos, numbers=numbers, cell=cell, pbc=pbc)
     ase.io.write(outfile, struct, format=format, **kwargs)
     return
+
