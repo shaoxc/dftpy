@@ -250,26 +250,25 @@ class TotalEnergyAndPotential(AbstractFunctional):
      in_for_scipy_minimize = EnergyEvaluator(phi)
     """
 
-    def __init__(self, funcDict={}, KineticEnergyFunctional=None, XCFunctional=None, PSEUDO=None, HARTREE=None, **kwargs):
+    def __init__(self, KineticEnergyFunctional=None, XCFunctional=None, PSEUDO=None, HARTREE=None, **kwargs):
 
-        #funcDict = {}
-        if not funcDict:
-            funcDict['KineticEnergyFunctional'] = KineticEnergyFunctional
-            funcDict['XCFunctional'] = XCFunctional
-            funcDict['PSEUDO'] = PSEUDO
-            funcDict['HARTREE'] = HARTREE
-            funcDict.update(kwargs)
-            # remove useless key
-            keys = list(funcDict.keys())
-            for key in keys :
-                if funcDict[key] is None :
-                    del funcDict[key]
+        funcDict = {}
+        funcDict['KineticEnergyFunctional'] = KineticEnergyFunctional
+        funcDict['XCFunctional'] = XCFunctional
+        funcDict['PSEUDO'] = PSEUDO
+        funcDict['HARTREE'] = HARTREE
+        funcDict.update(kwargs)
+        # remove useless key
+        keys = list(funcDict.keys())
+        for key in keys :
+            if funcDict[key] is None :
+                del funcDict[key]
 
         self.funcDict = funcDict
 
         self.UpdateNameType()
 
-    def __call__(self, rho, calcType="Both",  **kwargs):
+    def __call__(self, rho, calcType="Both", **kwargs):
         return self.ComputeEnergyPotential(rho, calcType, **kwargs)
 
     def UpdateNameType(self):
@@ -313,6 +312,7 @@ class TotalEnergyAndPotential(AbstractFunctional):
         print('Ewald :', ewald_.energy)
         total_e = self.ComputeEnergyPotential(rho, calcType="Energy")
         return ewald_.energy + total_e.energy
+
 
 class TotalEnergyAndPotentialOld(AbstractFunctional):
 

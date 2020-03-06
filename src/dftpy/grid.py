@@ -98,7 +98,9 @@ class DirectGrid(BaseGrid, DirectCell):
         Implement the == operator in the DirectGrid class.
         Refer to the __eq__ method of Grid for more information.
         """
-        if not isinstance(other, DirectGrid):
+        if isinstance(other, DirectCell):
+            return DirectCell.__eq__(self, other)
+        elif not isinstance(other, (BaseGrid,DirectGrid)):
             raise TypeError("You can only compare a DirectGrid with another DirectGrid")
         return BaseGrid.__eq__(self, other)
 
@@ -260,7 +262,9 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
         Implement the == operator in the ReciprocalGrid class.
         Refer to the __eq__ method of Grid for more information.
         """
-        if not isinstance(other, ReciprocalGrid):
+        if isinstance(other, ReciprocalCell):
+            return ReciprocalCell.__eq__(self, other)
+        elif not isinstance(other, (BaseGrid, ReciprocalGrid)):
             raise TypeError("You can only compare a ReciprocalGrid with another ReciprocalGrid")
         return BaseGrid.__eq__(self, other)
 
