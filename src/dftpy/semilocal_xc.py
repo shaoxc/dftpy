@@ -273,7 +273,16 @@ def LIBXC_KEDF(density, polarization="unpolarized", k_str="gga_k_lc94", calcType
         raise AttributeError("density must be a rank-1 PBCpy DirectField")
     func_k = LibXCFunctional(k_str, polarization)
     inp = Get_LibXC_Input(density)
-    out_k = func_k.compute(inp)
+    kargs = {'do_exc': False, 'do_vxc': False}
+    if 'E' in calcType:
+        kargs.update({'do_exc': True})
+    if 'V' in calcType:
+        kargs.update({'do_vxc': True})
+    if 'F' in calcType:
+        kargs.update({'do_fxc': True})
+    if 'K' in calcType:
+        kargs.update({'do_kxc': True})
+    out_k = func_k.compute(inp, **kargs)
     Functional_KEDF = Get_LibXC_Output(out_k, density)
     name = k_str[6:]
     Functional_KEDF.name = name.upper()

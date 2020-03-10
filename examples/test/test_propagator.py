@@ -52,13 +52,13 @@ class TestPropagator(unittest.TestCase):
         psi0.cplx = True
 
         psi = psi0
-        func = E_v_Evaluator.ComputeEnergyPotential(rho0, calcType="Potential")
+        func = E_v_Evaluator.ComputeEnergyPotential(rho0, calcType=["V"])
         potential = func.potential
         E0 = np.real(np.conj(psi) * hamiltonian(psi, potential)).integral()
         for i_t in range(10):
             psi, info = self.taylor(psi, potential)
             rho, _ = cal_rho_j(psi)
-            func = E_v_Evaluator.ComputeEnergyPotential(rho, calcType="Potential")
+            func = E_v_Evaluator.ComputeEnergyPotential(rho, calcType=["V"])
             potential = func.potential
 
         E = np.real(np.conj(psi) * hamiltonian(psi, potential)).integral()
@@ -70,12 +70,12 @@ class TestPropagator(unittest.TestCase):
         self.assertTrue(np.isclose(delta_mu[0], -1.1458e-02, rtol=1e-3))
 
         psi = psi0
-        func = E_v_Evaluator.ComputeEnergyPotential(rho0, calcType="Potential")
+        func = E_v_Evaluator.ComputeEnergyPotential(rho0, calcType=["V"])
         potential = func.potential
         for i_t in range(10):
             psi, info = self.cn(psi, potential)
             rho, _ = cal_rho_j(psi)
-            func = E_v_Evaluator.ComputeEnergyPotential(rho, calcType="Potential")
+            func = E_v_Evaluator.ComputeEnergyPotential(rho, calcType=["V"])
             potential = func.potential
 
         E = np.real(np.conj(psi) * hamiltonian(psi, potential)).integral()

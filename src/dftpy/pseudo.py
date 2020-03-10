@@ -140,7 +140,7 @@ class LocalPseudo(AbstractLocalPseudo):
         # update Zval in ions
         self.readpp.get_Zval(self._ions)
 
-    def __call__(self, density=None, calcType=None):
+    def __call__(self, density=None, calcType=["E", "V"]):
         if self._vreal is None:
             self.local_PP()
         pot = self._vreal
