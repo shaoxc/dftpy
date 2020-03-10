@@ -23,17 +23,23 @@ class Test(unittest.TestCase):
         rho = mol.field
 
         PSEUDO = LocalPseudo(grid=grid, ions=ions, PP_list=PP_list, PME=False)
-        func = PSEUDO(density=mol.field)
+        func = PSEUDO(density=rho)
         a = func.potential
         IE_Energy = func.energy
         IE_Force = PSEUDO.force(rho)
-        IE_Stress = PSEUDO.stress(rho, energy=IE_Energy)
+        #print(grid.nr, grid.dV, grid.lattice, grid.origin, grid.full)
+        #print(grid.r)
+        IE_Stress = PSEUDO.stress(rho)
+        #print(grid.nr, grid.dV, grid.lattice, grid.origin, grid.full)
+        #print(grid.r)
 
+        mol = PP(filepp=dftpy_data_path + "/Al_fde_rho.pp").read()
+        grid=mol.cell
         PSEUDO = LocalPseudo(grid=grid, ions=ions, PP_list=PP_list, PME=True)
-        func = PSEUDO(density=mol.field)
+        func = PSEUDO(density=rho)
         IE_Energy_PME = func.energy
         IE_Force_PME = PSEUDO.force(rho)
-        IE_Stress_PME = PSEUDO.stress(rho, energy=IE_Energy_PME)
+        IE_Stress_PME = PSEUDO.stress(rho)
 
         print('IE energy', IE_Energy, IE_Energy_PME)
         self.assertTrue(np.isclose(IE_Energy, IE_Energy_PME, atol=1.E-4))
@@ -41,6 +47,7 @@ class Test(unittest.TestCase):
         self.assertTrue(np.allclose(IE_Force, IE_Force_PME, atol=1.E-4))
         print('IE stress', IE_Stress, IE_Stress_PME)
         self.assertTrue(np.allclose(IE_Stress, IE_Stress_PME, atol=1.E-4))
+        #self.assertTrue(False)
 
     def test_ewald_PME(self):
         dftpy_data_path = os.environ.get('DFTPY_DATA_PATH')

@@ -147,7 +147,7 @@ class LocalPseudo(AbstractLocalPseudo):
         if 'E' in calcType:
             ene = np.einsum("ijk, ijk->", self._vreal, density) * self.grid.dV
         else:
-            ene = 0
+            ene = 0.0
         return Functional(name="eN", energy=ene, potential=pot)
 
     def local_PP(self, BsplineOrder=10):
@@ -165,7 +165,7 @@ class LocalPseudo(AbstractLocalPseudo):
         if self._vreal is None:
             self._vreal = self._v.ifft(force_real=True)
 
-    def stress(self, rho, energy):
+    def stress(self, rho, energy=None):
         if rho is None:
             raise AttributeError("Must specify rho")
         if not isinstance(rho, (DirectField)):
@@ -281,7 +281,7 @@ class LocalPseudo(AbstractLocalPseudo):
 
     def _Stress(self, rho, energy=None):
         if energy is None:
-            energy = self(density=rho, calcType="Energy").energy
+            energy = self(density=rho, calcType=["E"]).energy
         reciprocal_grid = self.grid.get_reciprocal()
         g = reciprocal_grid.g
         # gg= reciprocal_grid.gg
@@ -360,7 +360,7 @@ class LocalPseudo(AbstractLocalPseudo):
 
     def _StressPME(self, rho, energy=None):
         if energy is None:
-            energy = self(density=rho, calcType="Energy").energy
+            energy = self(density=rho, calcType=["E"]).energy
         rhoG = rho.fft()
         reciprocal_grid = self.grid.get_reciprocal()
         g = reciprocal_grid.g

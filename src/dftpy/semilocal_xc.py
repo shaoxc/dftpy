@@ -174,14 +174,13 @@ def LDA(rho, polarization="unpolarized", calcType=["E","V"], **kwargs):
     rs1 = Rs < 1
     rs2 = Rs >= 1
     Rs2sqrt = np.sqrt(Rs[rs2])
-    ene = 0
     if "E" in calcType:
         ExRho = -3.0 / 4.0 * np.cbrt(3.0 / np.pi) * rho_cbrt
         ExRho[rs1] += a[0] * np.log(Rs[rs1]) + b[0] + c[0] * Rs[rs1] * np.log(Rs[rs1]) + d[0] * Rs[rs1]
         ExRho[rs2] += gamma[0] / (1.0 + beta1[0] * Rs2sqrt + beta2[0] * Rs[rs2])
         ene = np.einsum("ijk, ijk->", ExRho, rho) * rho.grid.dV
-        if not "V" in calcType:
-            pot = np.empty_like(rho)
+    else:
+        ene = 0.0
     if "V" in calcType:
         pot = np.cbrt(-3.0 / np.pi) * rho_cbrt
         pot[rs1] += (
@@ -230,6 +229,8 @@ def LDA(rho, polarization="unpolarized", calcType=["E","V"], **kwargs):
         # /( 1.0+beta1[0] * Rs2sqrt + beta2[0] * Rs) ** 2
         # pot[rs1] += pot1[rs1]
         # pot[rs2] += pot2[rs2]
+    else:
+        pot = np.empty_like(rho)
 
     OutFunctional = Functional(name="XC")
     OutFunctional.energy = ene
@@ -282,6 +283,7 @@ def LIBXC_KEDF(density, polarization="unpolarized", k_str="gga_k_lc94", calcType
         kargs.update({'do_fxc': True})
     if 'K' in calcType:
         kargs.update({'do_kxc': True})
+    print(kargs)
     out_k = func_k.compute(inp, **kargs)
     Functional_KEDF = Get_LibXC_Output(out_k, density)
     name = k_str[6:]
