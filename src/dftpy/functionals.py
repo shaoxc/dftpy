@@ -269,7 +269,6 @@ class TotalEnergyAndPotential(AbstractFunctional):
         self.UpdateNameType()
 
     def __call__(self, rho, calcType=["E","V"],  **kwargs):
->>>>>>> Stashed changes
         return self.ComputeEnergyPotential(rho, calcType, **kwargs)
 
     def UpdateNameType(self):
