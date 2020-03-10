@@ -93,7 +93,7 @@ def WTStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, ene
 
 
 def WT(
-    rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, rho0=None, calcType="Both", split=False, **kwargs
+    rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, rho0=None, calcType=["E","V"], split=False, **kwargs
 ):
     TimeData.Begin("WT")
     global KE_kernel_saved
@@ -112,18 +112,14 @@ def WT(
     else:
         KE_kernel = KE_kernel_saved["Kernel"]
 
-    if calcType == "Energy":
+    if "E" in calcType:
         ene = WTEnergy(rho, rho0, KE_kernel, alpha, beta)
-        pot = np.empty_like(rho)
-    elif calcType == "Potential":
-        pot = WTPotential(rho, rho0, KE_kernel, alpha, beta)
-        ene = 0
     else:
+        ene = 0.0
+    if "V" in calcType:
         pot = WTPotential(rho, rho0, KE_kernel, alpha, beta)
-        if abs(beta - alpha) < 1e-9:
-            ene = np.einsum("ijk, ijk->", pot, rho) * rho.grid.dV / (2 * alpha)
-        else:
-            ene = WTEnergy(rho, rho0, KE_kernel, alpha, beta)
+    else:
+        pot = np.empty_like(rho)
 
     NL = Functional(name="NL", potential=pot, energy=ene)
     return NL

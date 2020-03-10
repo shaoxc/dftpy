@@ -67,7 +67,7 @@ def FPStress(rho, energy=None):
     pass
 
 
-def FP_origin(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType="Both"):
+def FP_origin(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType=["E","V"]):
     TimeData.Begin("FP")
     global KE_kernel_saved
     # Only performed once for each grid
@@ -91,9 +91,9 @@ def FP_origin(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType="Both
     Prho = (nu - (nuMinus1 * rho0) / rho) * (rhoFiveSixth - rho0 ** (5.0 / 6.0))
     pot = (Prho.fft() * KE_kernel).ifft(force_real=True)
     # -----------------------------------------------------------------------
-    if calcType == "Energy" or calcType == "Both":
+    if "E" in calcType:
         ene = np.einsum("ijk, ijk->", pot, Prho) * rho.grid.dV
-    if calcType == "Potential" or calcType == "Both":
+    if "V" in calcType:
         # dPrho = rho0 **(11.0/6.0) * (1 - nu)  + (1.0/6.0 * rho0 * nuMinus1 * rhoFiveSixth) + \
         # (5.0/6.0 * nu * rho * rhoFiveSixth)
         # dPrho /= (rho * rho)
@@ -109,7 +109,7 @@ def FP_origin(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType="Both
     return OutFunctional
 
 
-def FP0(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType="Both", split=False, **kwargs):
+def FP0(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType=["E","V"], split=False, **kwargs):
     TimeData.Begin("FP")
     global KE_kernel_saved
     # Only performed once for each grid
@@ -136,9 +136,9 @@ def FP0(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType="Both", spl
     pot = (Prho.fft() * KE_kernel).ifft(force_real=True)
     # -----------------------------------------------------------------------
     ene = 0
-    if calcType == "Energy" or calcType == "Both":
+    if "E" in calcType:
         ene = np.einsum("ijk, ijk->", pot, Prho) * rho.grid.dV
-    if calcType == "Potential" or calcType == "Both":
+    if "V" in calcType:
         # dPrho = 5.0/6.0 * Mr * rhoFiveSixth/rho;# pot *= 2.0 * dPrho
         pot *= (5.0 / 3.0) * Mr * rhoFiveSixth / rho
 
@@ -146,7 +146,7 @@ def FP0(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType="Both", spl
     return NL
 
 
-def FP(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, rho0=None, calcType="Both", split=False, **kwargs):
+def FP(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, rho0=None, calcType=["E","V"], split=False, **kwargs):
     TimeData.Begin("FP")
     global KE_kernel_saved
     # Only performed once for each grid
@@ -175,9 +175,9 @@ def FP(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, rho0=None, calcType="
     pot = (Prho.fft() * KE_kernel).ifft(force_real=True)
     # -----------------------------------------------------------------------
     ene = 0
-    if calcType == "Energy" or calcType == "Both":
+    if "E" in calcType:
         ene = np.einsum("ijk, ijk->", pot, Prho) * rho.grid.dV
-    if calcType == "Potential" or calcType == "Both":
+    if "V" in calcType:
         # dPrho = 5.0/6.0 * Mr * rhoFiveSixth/rho;# pot *= 2.0 * dPrho
         pot *= (5.0 / 3.0) * Mr * rhoFiveSixth / rho
 

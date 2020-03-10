@@ -87,7 +87,7 @@ def SMStress(rho, energy=None):
     pass
 
 
-def SM(rho, x=1.0, y=1.0, sigma=None, alpha=0.5, beta=0.5, rho0=None, calcType="Both", split=False, **kwargs):
+def SM(rho, x=1.0, y=1.0, sigma=None, alpha=0.5, beta=0.5, rho0=None, calcType=["E","V"], split=False, **kwargs):
     TimeData.Begin("SM")
     # alpha = beta = 5.0/6.0
     global KE_kernel_saved
@@ -107,16 +107,14 @@ def SM(rho, x=1.0, y=1.0, sigma=None, alpha=0.5, beta=0.5, rho0=None, calcType="
     else:
         KE_kernel = KE_kernel_saved["Kernel"]
 
-    if calcType == "Energy":
+    if "E" in calcType:
         ene = SMEnergy(rho, rho0, KE_kernel, alpha, beta)
-        pot = np.empty_like(rho)
-    elif calcType == "Potential":
-        pot = SMPotential(rho, rho0, KE_kernel, alpha, beta)
-        ene = 0
     else:
+        ene = 0.0
+    if "V" in calcType:
         pot = SMPotential(rho, rho0, KE_kernel, alpha, beta)
-        ene = SMEnergy(rho, rho0, KE_kernel, alpha, beta)
-        # ene = np.einsum('ijk, ijk->', pot, rho) * rho.grid.dV / (2 * alpha)
+    else:
+        pot = np.empty_like(rho)
 
     NL = Functional(name="NL", potential=pot, energy=ene)
     return NL

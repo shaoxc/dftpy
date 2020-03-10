@@ -67,7 +67,7 @@ def GGAStress(rho, functional="LKT", energy=None, potential=None, **kwargs):
     stress = np.zeros((3, 3))
 
     if potential is None:
-        gga = GGA(rho, functional=functional, calcType="Both", **kwargs)
+        gga = GGA(rho, functional=functional, calcType=["E","V"], **kwargs)
         energy = gga.energy
         potential = gga.potential
 
@@ -80,7 +80,7 @@ def GGAStress(rho, functional="LKT", energy=None, potential=None, **kwargs):
             stress[j, i] = stress[i, j]
 
 
-def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
+def GGAFs(s, functional="LKT", calcType=["E","V"], parms=None, **kwargs):
     """
     ckf = (3\pi^2)^{1/3}
     cTF = (3/10) * (3\pi^2)^{2/3} = (3/10) * ckf^2
@@ -133,7 +133,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         F[mask2] = (
             1.0 + (5.0 / 3.0 - 0.5 * parms[0] ** 2) * s2[mask2] + 5.0 / 24.0 * parms[0] ** 4 * s2[mask2] ** 2
         )  # - 61.0/720.0 * parms[0] ** 6 * s2[mask2] ** 3
-        if calcType != "Energy":
+        if "V" in calcType:
             dFds2[mask] = (
                 10.0 / 3.0 - parms[0] * np.sinh(parms[0] * ss[mask]) / np.cosh(parms[0] * ss[mask]) ** 2 / ss[mask]
             )
@@ -153,7 +153,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         Fa = 9.0 * parms[5] * x ** 4 + parms[2] * x ** 3 + parms[1] * x ** 2 + parms[0] * x + 1.0
         Fb = parms[5] * x ** 3 + parms[4] * x ** 2 + parms[3] * x + 1.0
         F = Fa / Fb
-        if calcType != "Energy":
+        if "V" in calcType:
             dFds2 = (36.0 * parms[5] * x ** 3 + 3 * parms[2] * x ** 2 + 2 * parms[1] * x + parms[0]) / Fb - Fa / (
                 Fb * Fb
             ) * (3.0 * parms[5] * x ** 2 + 2.0 * parms[4] * x + parms[3])
@@ -169,7 +169,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         Fa = parms[0] * bs2
         Fb = 1.0 + parms[1] * bs * np.arcsinh(bs)
         F = 1.0 + Fa / Fb
-        if calcType != "Energy":
+        if "V" in calcType:
             dFds2 = 2.0 * parms[0] / Fb - (
                 parms[0] * parms[1] * bs * np.arcsinh(bs) + Fa * parms[1] / np.sqrt(1.0 + bs2)
             ) / (Fb * Fb)
@@ -179,7 +179,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         if not parms:
             parms = [0.00677]
         F = 1.0 + s * s / 72.0 / cTF + parms[0] / cTF * s
-        if calcType != "Energy":
+        if "V" in calcType:
             mask = s > tol2
             dFds2[:] = 1.0 / 36.0 / cTF
             dFds2[mask] += parms[0] / cTF / s[mask]
@@ -188,7 +188,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         if not parms:
             parms = [0.0887]
         F = 1.0 + s * s / 72.0 / cTF + parms[0] / cTF * s / (1 + 4 * s)
-        if calcType != "Energy":
+        if "V" in calcType:
             mask = s > tol2
             dFds2[:] = 1.0 / 36.0 / cTF
             dFds2[mask] += parms[0] / cTF / (1 + 4 * s[mask]) ** 2 / s[mask]
@@ -206,7 +206,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
             - parms[2] * bs / (1.0 + 2 ** (5.0 / 3.0) * bs)
         )
         # F = 1.0 + parms[0] * bs2 / (1.0 + parms[1] * bs * np.arcsinh(bs)) - parms[2] * bs / (1.0+ 2**2 * bs)
-        if calcType != "Energy":
+        if "V" in calcType:
             mask = s > tol2
             Fb = (1.0 + parms[1] * bs * np.arcsinh(bs)) ** 2
             dFds2 = (
@@ -226,7 +226,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         Fa = parms[0] * bs2
         Fb = 1.0 + parms[1] * bs2
         F = 1.0 + Fa / Fb
-        if calcType != "Energy":
+        if "V" in calcType:
             dFds2 = 2 * parms[0] / (Fb * Fb) * (b * b)
 
     elif functional == "B86B":  # \cite{garcia2007kinetic} (14)
@@ -237,7 +237,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         Fa = parms[0] * bs2
         Fb = (1.0 + parms[1] * bs2) ** (4.0 / 5.0)
         F = 1.0 + Fa / Fb
-        if calcType != "Energy":
+        if "V" in calcType:
             dFds2 = (2 * parms[0] * (parms[1] * bs2 + 5.0)) / (5 * (1.0 + parms[1] * bs2) * Fb) * (b * b)
 
     elif functional == "DK87":  # \cite{garcia2007kinetic} (15)
@@ -248,7 +248,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         Fa = parms[0] * bs2 * (1 + parms[1] * bs)
         Fb = 1.0 + parms[2] * bs2
         F = 1.0 + Fa / Fb
-        if calcType != "Energy":
+        if "V" in calcType:
             dFds2 = parms[0] * (2.0 + 3.0 * parms[1] * bs + parms[1] * parms[2] * bs2 * bs) / (Fb * Fb) * (b * b)
 
     elif functional == "PW86":  # \cite{gotz2009performance} (19)
@@ -260,7 +260,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         s6 = s2 * s4
         Fa = 1.0 + parms[0] * s2 + parms[1] * s4 + parms[2] * s6
         F = Fa ** (1.0 / 15.0)
-        if calcType != "Energy":
+        if "V" in calcType:
             dFds2 = 2.0 / 15.0 * (parms[0] + 2 * parms[1] * s2 + 3 * parms[2] * s4) / Fa ** (14.0 / 15.0)
             dFds2 /= tkf0 * tkf0
 
@@ -273,7 +273,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         Fa = (parms[1] - parms[2] * np.exp(-parms[3] * s2)) * s2 - parms[5] * s4
         Fb = 1.0 + parms[0] * ss * np.arcsinh(parms[4] * ss) + parms[5] * s4
         F = 1.0 + Fa / Fb
-        if calcType != "Energy":
+        if "V" in calcType:
             Fa_s2 = (parms[1] - parms[2] * np.exp(-parms[3] * s2)) - parms[5] * s2
 
             dFds2 = 2.0 * (
@@ -296,7 +296,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         Fa = 1.0 + parms[0] * ss * np.arcsinh(parms[4] * ss) + (parms[1] - parms[2] * np.exp(-parms[3] * s2)) * s2
         Fb = 1.0 + parms[0] * ss * np.arcsinh(parms[4] * ss) + parms[5] * s4
         F = Fa / Fb
-        if calcType != "Energy":
+        if "V" in calcType:
             Fa_s = (
                 parms[0] * parms[4] * ss / np.sqrt(parms[4] ** 2 * s2 + 1)
                 + parms[0] * np.arcsinh(parms[4] * ss)
@@ -339,7 +339,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         Fa = 1.0 + parms[0] * s2 + parms[1] * s4 + parms[2] * s6 + parms[3] * s8 + parms[4] * s10 + parms[5] * s12
         Fb = 1.0 + 1e-8 * s2
         F = (Fa / Fb) ** parms[6]
-        if calcType != "Energy":
+        if "V" in calcType:
             dFds2 = (
                 -2
                 * parms[6]
@@ -369,7 +369,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         Fa = parms[0] + parms[1] * s2 + parms[2] * s4
         Fb = parms[0] + parms[3] * s2
         F = Fa / Fb
-        if calcType != "Energy":
+        if "V" in calcType:
             dFds2 = (2.0 * parms[1] + 4.0 * parms[2] * s2) / Fb - (2.0 * parms[3] * Fa) / (Fb * Fb)
             dFds2 /= tkf0 * tkf0
 
@@ -382,7 +382,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         Fa = parms[0] + parms[1] * s2 + parms[2] * s4
         Fb = parms[0] + parms[3] * s2
         F = Fa / Fb
-        if calcType != "Energy":
+        if "V" in calcType:
             dFds2 = (2.0 * parms[1] + 4.0 * parms[2] * s2) / Fb - (2.0 * parms[3] * Fa) / (Fb * Fb)
             dFds2 /= tkf0 * tkf0
 
@@ -394,7 +394,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         Fa = parms[1] * s2
         Fb = 1.0 + parms[0] * s2
         F = 1.0 + Fa / Fb
-        if calcType != "Energy":
+        if "V" in calcType:
             dFds2 = 2.0 * parms[1] / (Fb * Fb)
             dFds2 /= tkf0 * tkf0
 
@@ -407,7 +407,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         Fb = 1.0 + parms[0] * s2
         Fb2 = Fb * Fb
         F = 1.0 + parms[1] * s2 / Fb + parms[2] * s4 / Fb2
-        if calcType != "Energy":
+        if "V" in calcType:
             dFds2 = 2.0 * parms[1] / Fb2 + 4 * parms[2] * s2 / (Fb2 * Fb)
             dFds2 /= tkf0 * tkf0
 
@@ -422,7 +422,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         Fb2 = Fb * Fb
         Fb3 = Fb * Fb * Fb
         F = 1.0 + parms[1] * s2 / Fb + parms[2] * s4 / Fb2 + parms[3] * s6 / Fb3
-        if calcType != "Energy":
+        if "V" in calcType:
             dFds2 = 2.0 * parms[1] / Fb2 + 4 * parms[2] * s2 / (Fb3) + 4 * parms[3] * s4 / (Fb3 * Fb)
             dFds2 /= tkf0 * tkf0
 
@@ -434,7 +434,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         s6 = s2 * s2 * s2
         Fb = 1 + s6
         F = 1.0 + parms[0] * s2 / Fb
-        if calcType != "Energy":
+        if "V" in calcType:
             dFds2 = parms[0] * (2.0 / Fb - 6.0 * s6 / (Fb * Fb))
             dFds2 /= tkf0 * tkf0
 
@@ -446,7 +446,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         Fa = parms[1] * s2
         Fb = 1.0 + parms[1] * s2
         F = 1.0 + parms[0] - parms[0] / Fb
-        if calcType != "Energy":
+        if "V" in calcType:
             dFds2 = 2.0 * parms[0] * parms[1] / (Fb * Fb)
             dFds2 /= tkf0 * tkf0
 
@@ -458,7 +458,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         Fa = parms[0] * s2
         Fb = 1.0 + parms[0] / parms[1] * s2
         F = 1.0 + Fa / Fb
-        if calcType != "Energy":
+        if "V" in calcType:
             dFds2 = 2.0 * parms[0] / (Fb * Fb)
             dFds2 /= tkf0 * tkf0
 
@@ -470,7 +470,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         Fa = parms[0] * s2
         Fb = 1.0 + parms[0] / parms[1] * s2
         F = 1.0 + Fa / Fb
-        if calcType != "Energy":
+        if "V" in calcType:
             dFds2 = 2.0 * parms[0] / (Fb * Fb)
             dFds2 /= tkf0 * tkf0
 
@@ -485,7 +485,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         Fa = 1.0 + parms[0] * s2
         Fb = 1.0 + parms[1] * s2 + parms[2] * s4
         F = Fa / Fb
-        if calcType != "Energy":
+        if "V" in calcType:
             # dFds2 = (2.0 * parms[0] - 6.0 * parms[2] * s4)/ Fb - (2.0 * parms[1] + 4.0 * parms[2] * s2)*Fa/(Fb*Fb)
             dFds2 = (2.0 * parms[0]) / Fb - (2.0 * parms[1] + 4.0 * parms[2] * s2) * Fa / (Fb * Fb)
             dFds2 /= tkf0 * tkf0
@@ -499,7 +499,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         Fa = 1.0 + parms[0] * ss * np.arcsinh(parms[4] * ss) + (parms[1] - parms[2] * np.exp(-parms[3] * s2)) * s2
         Fb = 1.0 + parms[0] * ss * np.arcsinh(parms[4] * ss) + parms[5] * s4
         F = Fa / Fb
-        if calcType != "Energy":
+        if "V" in calcType:
             Fa_s = (
                 parms[0] * parms[4] * ss / np.sqrt(parms[4] ** 2 * s2 + 1)
                 + parms[0] * np.arcsinh(parms[4] * ss)
@@ -534,7 +534,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
             + parms[0] * s2 * np.exp(-parms[1] * s2) / (1 + parms[0] * s2)
             + (1 - np.exp(-parms[1] * s4)) * (1.0 / s2 - 1.0)
         )
-        if calcType != "Energy":
+        if "V" in calcType:
             dFds2 = (
                 10.0 / 3.0
                 + 2.0 * parms[0] * np.exp(-parms[1] * s2) * (1.0 - parms[1] * s2) / (1 + parms[0] * s2)
@@ -563,7 +563,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         Fa = coef[0] + coef[1] * s2 + coef[2] * s4
         Fb = coef[0] + coef[3] * s2 + coef[4] * s4 + coef[5] * s6
         F = Fa / Fb + 5.0 / 3.0 * s2
-        if calcType != "Energy":
+        if "V" in calcType:
             dFds2 = (
                 (2.0 * coef[1]+4.0 * coef[2] * s2) / Fb
                 - Fa * (2 * coef[3] + 4 * coef[4] * s2 + 6 * coef[5] * s4) / (Fb * Fb)
@@ -590,7 +590,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         Fa = coef[0] + coef[1] * s2 + coef[2] * s4
         Fb = coef[0] + coef[3] * s2 + coef[4] * s4 + coef[5] * s6
         F = Fa / Fb + 5.0 / 3.0 * s2 * ms
-        if calcType != "Energy":
+        if "V" in calcType:
             dFds2 = (
                 (2.0 * coef[1]+4.0 * coef[2] * s2) / Fb
                 - Fa * (2 * coef[3] + 4 * coef[4] * s2 + 6 * coef[5] * s4) / (Fb * Fb)
@@ -606,7 +606,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
         F = 5.0 / 3.0 * s2 + sp.erfc(s2/parms[0])
         mask = ss > 1e-5
         # mask1 = np.invert(mask)
-        if calcType != "Energy":
+        if "V" in calcType:
             dFds2[:] = 10.0 / 3.0
             dFds2[mask] += 2/np.sqrt(np.pi) * np.exp(-(s2[mask]/parms[0])**2) / ss[mask]
             dFds2 /= tkf0 ** 2
@@ -614,7 +614,7 @@ def GGAFs(s, functional="LKT", calcType="Both", parms=None, **kwargs):
     return F, dFds2
 
 
-def GGA(rho, functional="LKT", calcType="Both", split=False, **kwargs):
+def GGA(rho, functional="LKT", calcType=["E","V"], split=False, **kwargs):
     """
     Interface to compute GGAs internally to DFTpy. 
     This is the default way, even though DFTpy can generate some of the GGAs with LibXC.
@@ -649,12 +649,12 @@ def GGA(rho, functional="LKT", calcType="Both", split=False, **kwargs):
         item = (grhoG).ifft(force_real=True)
         rhoGrad.append(item)
     s = np.sqrt(rhoGrad[0] ** 2 + rhoGrad[1] ** 2 + rhoGrad[2] ** 2) / rho43
-    ene = 0.0
     F, dFds2 = GGAFs(s, functional=functional, calcType=calcType, **kwargs)
-    if calcType == "Energy":
+    if 'E' in calcType:
         ene = np.einsum("ijk, ijk -> ", tf, F) * rhom.grid.dV
-        pot = np.empty_like(rho)
     else:
+        ene = 0.0
+    if 'V' in calcType:
         pot = 5.0 / 3.0 * cTF * rho23 * F
         pot += -4.0 / 3.0 * tf * dFds2 * s * s / rhom
 
@@ -664,9 +664,8 @@ def GGA(rho, functional="LKT", calcType="Both", split=False, **kwargs):
             p3.append(item.fft())
         pot3G = g[0] * p3[0] + g[1] * p3[1] + g[2] * p3[2]
         pot -= (1j * pot3G).ifft(force_real=True)
-
-        if calcType == "Both":
-            ene = np.einsum("ijk, ijk -> ", tf, F) * rhom.grid.dV
+    else:
+        pot = np.empty_like(rho)
 
     OutFunctional = Functional(name="GGA-" + str(functional))
     OutFunctional.potential = pot

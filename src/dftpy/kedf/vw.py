@@ -71,17 +71,16 @@ def vonWeizsackerStress(rho, y=1.0, energy=None):
     return stress
 
 
-def vW(rho, y=1.0, sigma=None, calcType="Both", split=False, **kwargs):
+def vW(rho, y=1.0, sigma=None, calcType=["E","V"], split=False, **kwargs):
     TimeData.Begin("vW")
-    if calcType == "Energy":
+    if "E" in calcType:
         ene = vonWeizsackerEnergy(rho)
-        pot = np.empty_like(rho)
-    elif calcType == "Potential":
-        pot = vonWeizsackerPotential(rho, sigma)
-        ene = 0
     else:
+        ene = 0.0
+    if "V" in calcType:
         pot = vonWeizsackerPotential(rho, sigma)
-        ene = np.einsum("ijk->", rho * pot) * rho.grid.dV
+    else:
+        pot = np.empty_like(rho)
 
     OutFunctional = Functional(name="vW")
     OutFunctional.potential = pot * y
@@ -93,7 +92,7 @@ def vW(rho, y=1.0, sigma=None, calcType="Both", split=False, **kwargs):
         return OutFunctional
 
 
-def x_TF_y_vW(rho, x=1.0, y=1.0, sigma=None, calcType="Both", split=False, **kwargs):
+def x_TF_y_vW(rho, x=1.0, y=1.0, sigma=None, calcType=["E","V"], split=False, **kwargs):
     xTF = TF(rho, x=x, calcType=calcType)
     yvW = vW(rho, y=y, sigma=sigma, calcType=calcType)
     pot = xTF.potential + yvW.potential

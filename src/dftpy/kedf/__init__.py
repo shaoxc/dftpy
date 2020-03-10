@@ -31,7 +31,7 @@ NLKEDF_Dict = {
 }
 
 
-def KEDFunctional(rho, name="WT", calcType="Both", split=False, **kwargs):
+def KEDFunctional(rho, name="WT", calcType=["E","V"], split=False, **kwargs):
     if name[:3] == "GGA":
         func = GGA
         k_str = kwargs["k_str"].upper()
