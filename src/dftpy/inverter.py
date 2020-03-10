@@ -23,9 +23,9 @@ class Inverter(object):
 
         phi = np.sqrt(rho_in)
         v = phi.laplacian(force_real=True) / phi / 2.0
-        v_of = EnergyEvaluator(rho_in, calcType='Potential').potential
+        v_of = EnergyEvaluator(rho_in, calcType=['V']).potential
         vw = FunctionalClass(type='KEDF', name='vW')
-        v_vw = vw(rho_in, calcType='Potential').potential
+        v_vw = vw(rho_in, calcType=['V']).potential
         v_ext = v - v_of + v_vw
         ext = ExternalPotential(v_ext)
         EnergyEvaluator.UpdateFunctional(newFuncDict={'EXT': ext})

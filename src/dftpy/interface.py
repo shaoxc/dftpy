@@ -211,18 +211,18 @@ def OptimizeDensityConf(config, ions=None, rhoini=None, pseudo=None, grid=None):
     if "Both" in config["JOB"]["calctype"]:
         print("Calculate Energy and Potential...")
         energypotential = GetEnergyPotential(
-            ions, rho, E_v_Evaluator, calcType="Both", linearii=linearii, linearie=linearie
+            ions, rho, E_v_Evaluator, calcType=["E","V"], linearii=linearii, linearie=linearie
         )
     elif "Potential" in config["JOB"]["calctype"]:
         print("Calculate Potential...")
         energypotential = GetEnergyPotential(
-            ions, rho, E_v_Evaluator, calcType="Potential", linearii=linearii, linearie=linearie
+            ions, rho, E_v_Evaluator, calcType=["V"], linearii=linearii, linearie=linearie
         )
     # elif 'Energy' in config['JOB']['calctype'] :
     else:
         print("Calculate Energy...")
         energypotential = GetEnergyPotential(
-            ions, rho, E_v_Evaluator, calcType="Energy", linearii=linearii, linearie=linearie
+            ions, rho, E_v_Evaluator, calcType=["E"], linearii=linearii, linearie=linearie
         )
     print(format("Energy information", "-^80"))
     for key in sorted(energypotential.keys()):
@@ -356,7 +356,7 @@ def OptimizeDensityConf(config, ions=None, rhoini=None, pseudo=None, grid=None):
     return results
 
 
-def GetEnergyPotential(ions, rho, EnergyEvaluator, calcType="Both", linearii=True, linearie=True):
+def GetEnergyPotential(ions, rho, EnergyEvaluator, calcType=["E","V"], linearii=True, linearie=True):
     energypotential = {}
     ewaldobj = ewald(rho=rho, ions=ions, PME=linearii)
     energypotential["II"] = Functional(name="Ewald", potential=np.zeros_like(rho), energy=ewaldobj.energy)
@@ -460,7 +460,7 @@ def GetStress(
     return stress
 
 
-def GetEnergyPotentialOLD(ions, rho, EnergyEvaluator, calcType="Both", linearii=True, linearie=True):
+def GetEnergyPotentialOLD(ions, rho, EnergyEvaluator, calcType=["E","V"], linearii=True, linearie=True):
     energypotential = {}
     energypotential["KE"] = EnergyEvaluator.KineticEnergyFunctional.ComputeEnergyPotential(rho, calcType, split=True)
     energypotential["XC"] = EnergyEvaluator.XCFunctional.ComputeEnergyPotential(rho, calcType)

@@ -22,7 +22,7 @@ class ExternalPotential(object):
 
     def __call__(self, density=None, calcType=None):
         pot = self._v
-        if calcType == "Energy" or calcType == "Both":
+        if 'E' in calcType:
             ene = np.einsum("ijk, ijk->", self._v, density) * self._v.grid.dV
         else:
             ene = 0

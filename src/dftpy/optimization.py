@@ -128,7 +128,7 @@ class Optimization(AbstractOptimization):
         epsi = 1.0e-9
         rho = phi * phi
         if mu is None:
-            func = self.EnergyEvaluator(rho, calcType="Potential")
+            func = self.EnergyEvaluator(rho, calcType=["V"])
             mu = (func.potential * rho).integral() / rho.N
         res = -resA[-1]
         p = res.copy()
@@ -141,7 +141,7 @@ class Optimization(AbstractOptimization):
         for it in range(self.optimization_options["maxfun"]):
             phi1 = phi + epsi * p
             rho1 = phi1 * phi1
-            func = self.EnergyEvaluator(rho1, calcType="Potential")
+            func = self.EnergyEvaluator(rho1, calcType=["V"])
             # munew = (func.potential * rho1).integral() / rho.N
             Ap = ((func.potential - mu) * phi1 - resA[-1]) / epsi
             pAp = np.einsum("ijk, ijk->", p, Ap)
@@ -184,7 +184,7 @@ class Optimization(AbstractOptimization):
         direction = np.zeros_like(resA[-1])
         rho = phi * phi
         if mu is None:
-            func = self.EnergyEvaluator(rho, calcType="Potential")
+            func = self.EnergyEvaluator(rho, calcType=["V"])
             mu = (func.potential * rho).integral() / rho.N
         q = -resA[-1]
         alphaList = np.zeros(len(lbfgs.s))
@@ -257,11 +257,11 @@ class Optimization(AbstractOptimization):
             f = func
         if algorithm == "EMM":
             if func is None:
-                f = self.EnergyEvaluator(newrho, calcType="Both")
+                f = self.EnergyEvaluator(newrho, calcType=["E","V"])
             value = f.energy
         else:  # RMM
             if func is None:
-                f = self.EnergyEvaluator(newrho, calcType="Both")
+                f = self.EnergyEvaluator(newrho, calcType=["E","V"])
                 # f = self.EnergyEvaluator(newrho, calcType = 'Potential')
             mu = (f.potential * newrho).integral() / Ne
             residual = (f.potential - mu) * newphi
@@ -375,7 +375,7 @@ class Optimization(AbstractOptimization):
                 norm = rho.N / newrho.integral()
                 newrho *= norm
                 newphi *= np.sqrt(norm)
-                newfunc = self.EnergyEvaluator(newrho, calcType="Potential")
+                newfunc = self.EnergyEvaluator(newrho, calcType=["V"])
                 NumLineSearch = 1
 
             if theta is None:
@@ -408,7 +408,7 @@ class Optimization(AbstractOptimization):
                 norm = rho.N / rho.integral()
                 rho *= norm
                 phi *= np.sqrt(norm)
-                func = self.EnergyEvaluator(rho, calcType="Both")
+                func = self.EnergyEvaluator(rho, calcType=["E","V"])
                 mu = (func.potential * rho).integral() / rho.N
                 residual = (func.potential - mu) * phi
 
@@ -447,5 +447,5 @@ class Optimization(AbstractOptimization):
         print('Chemical potential (eV)  :', mu * ENERGY_CONV['Hartree']['eV'])
         return rho
 
-    def __call__(self, guess_rho=None, calcType="Both"):
+    def __call__(self, guess_rho=None, calcType=["E","V"]):
         return self.optimize_rho(guess_rho=guess_rho)

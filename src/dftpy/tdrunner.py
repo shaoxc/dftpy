@@ -49,7 +49,7 @@ def tdrunner(rho0, E_v_Evaluator, config):
         cost_t = time.time() - begin_t
         print("iter: {0:d} time: {1:f}".format(i_t, cost_t))
         t = int_t * i_t
-        func = E_v_Evaluator.ComputeEnergyPotential(rho, calcType="Potential")
+        func = E_v_Evaluator.ComputeEnergyPotential(rho, calcType=["V"])
         potential = func.potential
         E = np.real(np.conj(psi) * hamiltonian(psi, potential)).integral()
 
@@ -64,7 +64,7 @@ def tdrunner(rho0, E_v_Evaluator, config):
                 break
 
             rho_half = (rho + rho1) * 0.5
-            func = E_v_Evaluator.ComputeEnergyPotential(rho_half, calcType="Potential")
+            func = E_v_Evaluator.ComputeEnergyPotential(rho_half, calcType=["V"])
             potential = func.potential
 
         psi = psi1

@@ -47,7 +47,7 @@ def Compute_LibXC(inp, func, spin):
     return func.compute(inp)
 
 
-def Get_LibXC_Output(out, density, calcType="Both"):
+def Get_LibXC_Output(out, density, calcType=["E","V"]):
     if not isinstance(out, (dict)):
         raise TypeError("LibXC output must be a dictionary")
     if density.rank != 1:
@@ -94,7 +94,7 @@ def Get_LibXC_Output(out, density, calcType="Both"):
     return OutFunctional
 
 
-def XC(density, x_str, c_str, polarization, do_sigma=True, calcType="Both"):
+def XC(density, x_str, c_str, polarization, do_sigma=True, calcType=["E","V"]):
     if CheckLibXC():
         from pylibxc.functional import LibXCFunctional
     """
@@ -121,11 +121,15 @@ def XC(density, x_str, c_str, polarization, do_sigma=True, calcType="Both"):
     func_c = LibXCFunctional(c_str, polarization)
     # inp=Get_LibXC_Input(density, do_sigma = False)
     inp = Get_LibXC_Input(density, do_sigma=do_sigma)
-    kargs = {"do_exc": True, "do_vxc": True}
-    if calcType == "Energy":
-        kargs["do_vxc"] = False
-    elif calcType == "Potential":
-        kargs["do_exc"] = False
+    kargs = {'do_exc': False, 'do_vxc': False}
+    if 'E' in calcType:
+        kargs.update({'do_exc': True})
+    if 'V' in calcType:
+        kargs.update({'do_vxc': True})
+    if 'F' in calcType:
+        kargs.update({'do_fxc': True})
+    if 'K' in calcType:
+        kargs.update({'do_kxc': True})
     out_x = func_x.compute(inp, **kargs)
     out_c = func_c.compute(inp, **kargs)
     Functional_X = Get_LibXC_Output(out_x, density, calcType=calcType)
@@ -137,7 +141,7 @@ def XC(density, x_str, c_str, polarization, do_sigma=True, calcType="Both"):
 
 
 # def PBE_XC(density,polarization, calcType = 'Both'):
-def PBE(density, polarization="unpolarized", calcType="Both"):
+def PBE(density, polarization="unpolarized", calcType=["E","V"]):
     return XC(
         density=density,
         x_str="gga_x_pbe",
@@ -148,13 +152,13 @@ def PBE(density, polarization="unpolarized", calcType="Both"):
     )
 
 
-def LDA_XC(density, polarization="unpolarized", calcType="Both"):
+def LDA_XC(density, polarization="unpolarized", calcType=["E","V"]):
     return XC(
         density=density, x_str="lda_x", c_str="lda_c_pz", polarization=polarization, do_sigma=False, calcType=calcType
     )
 
 
-def LDA(rho, polarization="unpolarized", calcType="Both", **kwargs):
+def LDA(rho, polarization="unpolarized", calcType=["E","V"], **kwargs):
     TimeData.Begin("LDA")
     # return LDA_XC(rho,polarization, calcType)
     a = (0.0311, 0.01555)
@@ -171,14 +175,14 @@ def LDA(rho, polarization="unpolarized", calcType="Both", **kwargs):
     rs2 = Rs >= 1
     Rs2sqrt = np.sqrt(Rs[rs2])
     ene = 0
-    if calcType == "Energy" or calcType == "Both":
+    if "E" in calcType:
         ExRho = -3.0 / 4.0 * np.cbrt(3.0 / np.pi) * rho_cbrt
         ExRho[rs1] += a[0] * np.log(Rs[rs1]) + b[0] + c[0] * Rs[rs1] * np.log(Rs[rs1]) + d[0] * Rs[rs1]
         ExRho[rs2] += gamma[0] / (1.0 + beta1[0] * Rs2sqrt + beta2[0] * Rs[rs2])
         ene = np.einsum("ijk, ijk->", ExRho, rho) * rho.grid.dV
-        if calcType == "Energy":
+        if not "V" in calcType:
             pot = np.empty_like(rho)
-    if calcType == "Potential" or calcType == "Both":
+    if "V" in calcType:
         pot = np.cbrt(-3.0 / np.pi) * rho_cbrt
         pot[rs1] += (
             np.log(Rs[rs1]) * (a[0] + 2.0 / 3 * c[0] * Rs[rs1])
@@ -237,11 +241,11 @@ def LDA(rho, polarization="unpolarized", calcType="Both", **kwargs):
 def LDAStress(rho, polarization="unpolarized", energy=None):
     TimeData.Begin("LDA_Stress")
     if energy is None:
-        EnergyPotential = LDA(rho, polarization, calcType="Both")
+        EnergyPotential = LDA(rho, polarization, calcType=["E","V"])
         energy = EnergyPotential.energy
         potential = EnergyPotential.potential
     else:
-        potential = LDA(rho, polarization, calcType="Potential").potential
+        potential = LDA(rho, polarization, calcType=["V"]).potential
     stress = np.zeros((3, 3))
     Etmp = energy - np.einsum("ijk, ijk -> ", potential, rho) * rho.grid.dV
     for i in range(3):
@@ -250,7 +254,7 @@ def LDAStress(rho, polarization="unpolarized", energy=None):
     return stress
 
 
-def LIBXC_KEDF(density, polarization="unpolarized", k_str="gga_k_lc94", calcType="Both", **kwargs):
+def LIBXC_KEDF(density, polarization="unpolarized", k_str="gga_k_lc94", calcType=["E","V"], **kwargs):
     if CheckLibXC():
         from pylibxc.functional import LibXCFunctional
     """

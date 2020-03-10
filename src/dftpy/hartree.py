@@ -5,7 +5,7 @@ from dftpy.functional_output import Functional
 from dftpy.math_utils import TimeData
 
 
-def HartreeFunctional(density, calcType="Both"):
+def HartreeFunctional(density, calcType=["E","V"]):
     TimeData.Begin("Hartree_Func")
     gg = density.grid.get_reciprocal().gg
     rho_of_g = density.fft()
@@ -17,12 +17,12 @@ def HartreeFunctional(density, calcType="Both"):
     gg[0, 0, 0] = 0.0
     v_h[0, 0, 0] = 0.0
     v_h_of_r = v_h.ifft(force_real=True)
-    if calcType == "Potential":
-        e_h = 0
-    else:
+    if 'E' in calcType:
         # e_d = v_h_of_r*density/2.0
         # e_h = np.einsum('ijk->', e_d) * density.grid.dV
         e_h = np.einsum("ijk, ijk->", v_h_of_r, density) * density.grid.dV / 2.0
+    else:
+        e_h = 0
     TimeData.End("Hartree_Func")
     return Functional(name="Hartree", potential=v_h_of_r, energy=e_h)
 
@@ -40,7 +40,7 @@ def HartreePotentialReciprocalSpace(density):
 def HartreeFunctionalStress(rho, energy=None):
     TimeData.Begin("Hartree_Stress")
     if energy is None:
-        energy = HartreeFunctional(rho, calcType="Energy").energy
+        energy = HartreeFunctional(rho, calcType=["E"]).energy
     g = rho.grid.get_reciprocal().g
     gg = rho.grid.get_reciprocal().gg
     mask = rho.grid.get_reciprocal().mask

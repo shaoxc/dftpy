@@ -84,7 +84,7 @@ class FunctionalClass(AbstractFunctional):
      outXC.potential     --> the pot
     """
 
-    def __call__(self, rho, calcType="Both", **kwargs):
+    def __call__(self, rho, calcType=["E","V"], **kwargs):
         """
         Functional class is callable
 
@@ -102,7 +102,7 @@ class FunctionalClass(AbstractFunctional):
         return self._outfunctional
 
     @property
-    def GetFunctional(self, rho, calcType = 'Both'):
+    def GetFunctional(self, rho, calcType =["E","V"]):
         if self._outfunctional is None:
             self._outfunctional = self.ComputeEnergyPotential(rho, calcType)
         return self._outfunctional
@@ -176,7 +176,7 @@ class FunctionalClass(AbstractFunctional):
         elif self.name == 'EXT':
             self.EXT = ExternalPotential(**kwargs)
 
-    def ComputeEnergyPotential(self, rho, calcType="Both", **kwargs):
+    def ComputeEnergyPotential(self, rho, calcType=["E","V"], **kwargs):
         self.optional_kwargs.update(kwargs)
         if self.type == "KEDF":
             if self.name != "LIBXC_KEDF":
@@ -268,7 +268,8 @@ class TotalEnergyAndPotential(AbstractFunctional):
 
         self.UpdateNameType()
 
-    def __call__(self, rho, calcType="Both", **kwargs):
+    def __call__(self, rho, calcType=["E","V"],  **kwargs):
+>>>>>>> Stashed changes
         return self.ComputeEnergyPotential(rho, calcType, **kwargs)
 
     def UpdateNameType(self):
@@ -296,7 +297,7 @@ class TotalEnergyAndPotential(AbstractFunctional):
         self.funcDict.update(newFuncDict)
         self.UpdateNameType()
 
-    def ComputeEnergyPotential(self, rho, calcType="Both"):
+    def ComputeEnergyPotential(self, rho, calcType=["E","V"]):
         Obj = None
         for key, evalfunctional in self.funcDict.items():
             if Obj is None :
@@ -305,72 +306,11 @@ class TotalEnergyAndPotential(AbstractFunctional):
                 Obj += evalfunctional(rho, calcType)
         return Obj
 
-    def Energy(self, rho, ions, usePME=False, calcType="Energy"):
+    def Energy(self, rho, ions, usePME=False, calcType=["E"]):
         from .ewald import ewald
 
         ewald_ = ewald(rho=rho, ions=ions, PME=usePME)
         print('Ewald :', ewald_.energy)
-        total_e = self.ComputeEnergyPotential(rho, calcType="Energy")
+        total_e = self.ComputeEnergyPotential(rho, calcType=["E"])
         return ewald_.energy + total_e.energy
 
-
-class TotalEnergyAndPotentialOld(AbstractFunctional):
-
-    def __init__(self, KineticEnergyFunctional=None, XCFunctional=None, PSEUDO=None, HARTREE=None):
-
-        self.name = ""
-        self.type = ""
-
-        if KineticEnergyFunctional is None:
-            raise AttributeError("Must define KineticEnergyFunctional")
-        elif not isinstance(KineticEnergyFunctional, FunctionalClass):
-            raise AttributeError("KineticEnergyFunctional must be FunctionalClass")
-        else:
-            self.KineticEnergyFunctional = KineticEnergyFunctional
-            self.name += self.KineticEnergyFunctional.name + " "
-            self.type += self.KineticEnergyFunctional.type + " "
-
-        if XCFunctional is None:
-            raise AttributeError("Must define XCFunctional")
-        elif not isinstance(XCFunctional, FunctionalClass):
-            raise AttributeError("XCFunctional must be FunctionalClass")
-        else:
-            self.XCFunctional = XCFunctional
-            self.name += self.XCFunctional.name + " "
-            self.type += self.XCFunctional.type + " "
-
-        if PSEUDO is None:
-            raise AttributeError("Must define PSEUDO")
-        # elif not isinstance(PSEUDO, FunctionalClass):
-        # raise AttributeError('PSEUDO must be FunctionalClass')
-        else:
-            self.PSEUDO = PSEUDO
-            # self.name += self.PSEUDO.name + ' '
-            # self.type += self.PSEUDO.type + ' '
-
-        if HARTREE is None:
-            print("WARNING: using FFT Hartree")
-            self.HARTREE = HARTREE
-        else:
-            self.HARTREE = HARTREE
-            self.name += self.HARTREE.name + " "
-            self.type += self.HARTREE.type + " "
-
-    def __call__(self, rho, calcType="Both"):
-        return self.ComputeEnergyPotential(rho, calcType)
-
-    def ComputeEnergyPotential(self, rho, calcType="Both"):
-        Obj = (
-            self.KineticEnergyFunctional(rho, calcType)
-            + self.XCFunctional(rho, calcType)
-            + self.PSEUDO(rho, calcType)
-            + self.HARTREE(rho, calcType)
-        )
-        return Obj
-
-    def Energy(self, rho, ions, usePME=False, calcType="Energy"):
-        from .ewald import ewald
-
-        ewald_ = ewald(rho=rho, ions=ions, PME=usePME)
-        total_e = self.ComputeEnergyPotential(rho, calcType="Energy")
-        return ewald_.energy + total_e.energy

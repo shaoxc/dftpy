@@ -144,7 +144,7 @@ class LocalPseudo(AbstractLocalPseudo):
         if self._vreal is None:
             self.local_PP()
         pot = self._vreal
-        if calcType == "Energy" or calcType == "Both":
+        if 'E' in calcType:
             ene = np.einsum("ijk, ijk->", self._vreal, density) * self.grid.dV
         else:
             ene = 0
