@@ -30,3 +30,23 @@ def dipole_correction(rho, axis=2, ions=None, center = [0.0, 0.0, 0.0], coef=10.
     factor = -dm/dm_add
     rho_add *= factor
     return rho_add
+
+
+def hamiltonian(psi, v):
+    return -0.5 * psi.laplacian() + v * psi
+
+
+def hamiltonian_fft(psi_fft, v):
+    return 0.5 * psi_fft.grid.gg * psi_fft + (v * psi_fft.ifft()).fft()
+
+
+def calc_rho(psi, N=1):
+    return np.real(psi * np.conj(psi)) * N
+
+def calc_drho(psi, dpsi, N=1):
+    return 2.0*np.real(np.conj(dpsi)*psi) * N
+
+def calc_j(psi, N=1):
+    psi_conj = DirectField(psi.grid, rank=1, griddata_3d=np.conj(psi), cplx = True)
+    j = np.real(-0.5j * (psi_conj * psi.gradient(flag='standard', force_real=False) - psi * psi_conj.gradient(flag='standard', force_real=False))) * N
+    return j

@@ -2,6 +2,7 @@ import numpy as np
 from scipy.sparse.linalg import LinearOperator
 import scipy.sparse.linalg as linalg
 from .field import DirectField, ReciprocalField
+from .utils import hamiltonian, hamiltonian_fft
 
 
 class Propagator(object):
@@ -54,13 +55,6 @@ class Propagator(object):
         elif self.type == "rk4":
             return RK4(psi, v, self.interval)
 
-
-def hamiltonian(psi, v):
-    return -0.5 * psi.laplacian() + v * psi
-
-
-def hamiltonian_fft(psi_fft, v):
-    return 0.5 * psi_fft.grid.gg * psi_fft + (v * psi_fft.ifft()).fft()
 
 
 def taylor(psi0, v, interval, order=1):

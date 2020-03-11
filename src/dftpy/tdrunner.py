@@ -4,14 +4,10 @@ from dftpy.propagator import Propagator, hamiltonian
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.grid import DirectGrid, ReciprocalGrid
 from dftpy.system import System
+from dftpy.utils import calc_rho, calc_j
 import time
 
 
-def cal_rho_j(psi):
-    rho = np.real(psi * np.conj(psi))
-    psi_conj = DirectField(psi.grid, rank=1, griddata_3d=np.conj(psi), cplx = True)
-    j = np.real(-0.5j * (psi_conj * psi.gradient(flag='standard', force_real=False) - psi * psi_conj.gradient(flag='standard', force_real=False)))
-    return rho, j
 
 
 def tdrunner(rho0, E_v_Evaluator, config):
@@ -30,7 +26,8 @@ def tdrunner(rho0, E_v_Evaluator, config):
     x = rho0.grid.r[direc]
     psi = np.sqrt(rho0) * np.exp(1j * k * x)
     psi.cplx = True
-    rho, j = cal_rho_j(psi)
+    rho = calc_rho(psi)
+    j = calc_j(psi)
     delta_mu = np.empty(3)
     j_int = np.empty(3)
     delta_rho = rho - rho0
@@ -58,7 +55,8 @@ def tdrunner(rho0, E_v_Evaluator, config):
                 old_rho1 = rho1
                 old_j1 = j1
             psi1, info = prop(psi, potential)
-            rho1, j1 = cal_rho_j(psi1)
+            rho1 = calc_rho(psi1)
+            j1 = calc_j(psi1)
             if i_cn > 0 and np.max(np.abs(old_rho1 - rho1)) < eps and np.max(np.abs(old_j1 - j1)) < eps:
                 print(i_cn)
                 break
