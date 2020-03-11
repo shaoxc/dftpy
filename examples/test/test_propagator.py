@@ -5,8 +5,8 @@ import numpy as np
 
 from dftpy.functionals import FunctionalClass, TotalEnergyAndPotential
 from dftpy.pseudo import LocalPseudo
-from dftpy.propagator import Propagator, hamiltonian
-from dftpy.tdrunner import cal_rho_j
+from dftpy.propagator import Propagator
+from dftpy.utils import calc_rho, calc_j, hamiltonian
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.grid import DirectGrid, ReciprocalGrid
 from dftpy.system import System
@@ -57,7 +57,7 @@ class TestPropagator(unittest.TestCase):
         E0 = np.real(np.conj(psi) * hamiltonian(psi, potential)).integral()
         for i_t in range(10):
             psi, info = self.taylor(psi, potential)
-            rho, _ = cal_rho_j(psi)
+            rho = calc_rho(psi)
             func = E_v_Evaluator.ComputeEnergyPotential(rho, calcType=["V"])
             potential = func.potential
 
@@ -74,7 +74,7 @@ class TestPropagator(unittest.TestCase):
         potential = func.potential
         for i_t in range(10):
             psi, info = self.cn(psi, potential)
-            rho, _ = cal_rho_j(psi)
+            rho = calc_rho(psi)
             func = E_v_Evaluator.ComputeEnergyPotential(rho, calcType=["V"])
             potential = func.potential
 
