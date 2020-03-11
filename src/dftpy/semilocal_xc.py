@@ -58,9 +58,9 @@ def Get_LibXC_Output(out, density):
             else :
                 v = DirectField(density.grid, rank=density.rank, griddata_3d=out[key])
             if key == "vrho":
-                OutFuctional.potential = v
+                OutFunctional.potential = v
             else:
-                setattr(OutFuctional, key, v)
+                setattr(OutFunctional, key, v)
 
     if "vsigma" in out.keys():
         vsigma = DirectField(density.grid, griddata_3d=out["vsigma"].reshape(np.shape(density)))
@@ -70,7 +70,8 @@ def Get_LibXC_Output(out, density):
         grho = density.gradient(flag="standard")
         prodotto = vsigma * grho
         vsigma_last = prodotto.divergence(flag="standard")
-        vrho -= 2 * vsigma_last
+        if hasattr(OutFunctional, 'potential'):
+            OutFunctional.potential -= 2 * vsigma_last
 
     if "zk" in out.keys():
         if density.rank > 1 :
