@@ -37,7 +37,7 @@ def Get_LibXC_Input(density, do_sigma=True):
     return inp
 
 
-def Get_LibXC_Output(out, density, calcType=["E","V"]):
+def Get_LibXC_Output(out, density):
     if not isinstance(out, (dict)):
         raise TypeError("LibXC output must be a dictionary")
 
@@ -50,12 +50,17 @@ def Get_LibXC_Output(out, density, calcType=["E","V"]):
     if do_sigma:
         sigma = density.sigma(flag="standard").reshape(np.shape(density))
 
-    if "vrho" in out.keys():
-        if density.rank > 1 :
-            vrho = out["vrho"].reshape((-1, 2)).T
-            vrho = DirectField(density.grid, rank=density.rank, griddata_3d=vrho)
-        else :
-            vrho = DirectField(density.grid, rank=density.rank, griddata_3d=out["vrho"])
+    for key in ["vrho", "v2rho2", "v3rho3", "v4rho4"]:
+        if key in out.keys():
+            if density.rank > 1 :
+                v = out[key].reshape((-1, 2)).T
+                v = DirectField(density.grid, rank=density.rank, griddata_3d=v)
+            else :
+                v = DirectField(density.grid, rank=density.rank, griddata_3d=out[key])
+            if key == "vrho":
+                OutFuctional.potential = v
+            else:
+                setattr(OutFuctional, key, v)
 
     if "vsigma" in out.keys():
         vsigma = DirectField(density.grid, griddata_3d=out["vsigma"].reshape(np.shape(density)))
@@ -74,16 +79,7 @@ def Get_LibXC_Output(out, density, calcType=["E","V"]):
             rho = density
         edens = out["zk"].reshape(np.shape(rho))
         ene = np.einsum("ijk, ijk->", edens, rho) * density.grid.dV
-    else :
-        ene = 0.0
-    if 'vrho' in locals().keys():
-        pot = vrho
-
-    else :
-        pot = np.empty_like(density)
-
-    OutFunctional.energy = ene
-    OutFunctional.potential = pot
+        OutFunctional.energy = ene
 
     return OutFunctional
 
@@ -120,14 +116,16 @@ def XC(density, x_str, c_str, polarization, do_sigma=True, calcType=["E","V"]):
         kargs.update({'do_exc': True})
     if 'V' in calcType:
         kargs.update({'do_vxc': True})
-    if 'F' in calcType:
+    if 'V2' in calcType:
         kargs.update({'do_fxc': True})
-    if 'K' in calcType:
+    if 'V3' in calcType:
         kargs.update({'do_kxc': True})
+    if 'V4' in calcType:
+        kargs.update({'do_lxc': True})
     out_x = func_x.compute(inp, **kargs)
     out_c = func_c.compute(inp, **kargs)
-    Functional_X = Get_LibXC_Output(out_x, density, calcType=calcType)
-    Functional_C = Get_LibXC_Output(out_c, density, calcType=calcType)
+    Functional_X = Get_LibXC_Output(out_x, density)
+    Functional_C = Get_LibXC_Output(out_c, density)
     Functional_XC = Functional_X.sum(Functional_C)
     name = x_str[6:] + "_" + c_str[6:]
     Functional_XC.name = name.upper()
@@ -157,6 +155,7 @@ def LDA(rho, polarization="unpolarized", calcType=["E","V"], **kwargs):
     if polarization != 'unpolarized' :
         return LDA_XC(rho,polarization, calcType)
     TimeData.Begin("LDA")
+    OutFunctional = Functional(name="XC")
     a = (0.0311, 0.01555)
     b = (-0.048, -0.0269)
     c = (0.0020, 0.0007)
@@ -170,13 +169,13 @@ def LDA(rho, polarization="unpolarized", calcType=["E","V"], **kwargs):
     rs1 = Rs < 1
     rs2 = Rs >= 1
     Rs2sqrt = np.sqrt(Rs[rs2])
+
     if "E" in calcType:
         ExRho = -3.0 / 4.0 * np.cbrt(3.0 / np.pi) * rho_cbrt
         ExRho[rs1] += a[0] * np.log(Rs[rs1]) + b[0] + c[0] * Rs[rs1] * np.log(Rs[rs1]) + d[0] * Rs[rs1]
         ExRho[rs2] += gamma[0] / (1.0 + beta1[0] * Rs2sqrt + beta2[0] * Rs[rs2])
         ene = np.einsum("ijk, ijk->", ExRho, rho) * rho.grid.dV
-    else:
-        ene = 0.0
+        OutFunctional.energy = ene
     if "V" in calcType:
         pot = np.cbrt(-3.0 / np.pi) * rho_cbrt
         pot[rs1] += (
@@ -188,12 +187,21 @@ def LDA(rho, polarization="unpolarized", calcType=["E","V"], **kwargs):
         pot[rs2] += (
             gamma[0] + (7.0 / 6.0 * gamma[0] * beta1[0]) * Rs2sqrt + (4.0 / 3.0 * gamma[0] * beta2[0] * Rs[rs2])
         ) / (1.0 + beta1[0] * Rs2sqrt + beta2[0] * Rs[rs2]) ** 2
-    else:
-        pot = np.empty_like(rho)
+        OutFunctional.potential = pot
+    if "V2" in calcType:
+        fx = - np.cbrt(3.0 / np.pi) / 3.0 * np.cbrt(rho) /rho
 
-    OutFunctional = Functional(name="XC")
-    OutFunctional.energy = ene
-    OutFunctional.potential = pot
+        fc = np.empty(np.shape(rho))
+        fc[rs1] = -a[0] / 3.0 - (c[0] / 9.0 * (np.log(Rs[rs1]) * 2.0 + 1.0) + d[0] * 2.0 / 9.0) * Rs[rs1]
+        tmpa = beta1[0] * Rs2sqrt
+        tmpb = beta2[0] * Rs[rs2]
+        deno = 1.0 + tmpa + tmpb
+        fc[rs2] = gamma[0] / 36.0 * ( 5.0 * tmpa + 7.0 * tmpa * tmpa + 8.0 * tmpb + 16.0 * tmpb * tmpb + 21.0 * tmpa * tmpb) / deno / deno / deno
+        fc /= rho
+
+        OutFunctional.v2rho = fx + fc
+
+
     TimeData.End("LDA")
     return OutFunctional
 
@@ -238,10 +246,12 @@ def LIBXC_KEDF(density, polarization="unpolarized", k_str="gga_k_lc94", calcType
         kargs.update({'do_exc': True})
     if 'V' in calcType:
         kargs.update({'do_vxc': True})
-    if 'F' in calcType:
+    if 'V2' in calcType:
         kargs.update({'do_fxc': True})
-    if 'K' in calcType:
+    if 'V3' in calcType:
         kargs.update({'do_kxc': True})
+    if 'V4' in calcType:
+        kargs.update({'do_lxc': True})
     out_k = func_k.compute(inp, **kargs)
     Functional_KEDF = Get_LibXC_Output(out_k, density)
     name = k_str[6:]
