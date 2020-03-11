@@ -87,10 +87,12 @@ class Optimization(AbstractOptimization):
 
         self.optimization_method = optimization_method
 
-    def get_direction_TN(self, resA, phi=None, mu=None, **kwargs):
-        direction = np.zeros_like(resA[-1])
+    def get_direction_TN(self, res0, phi=None, mu=None, density=None, spin=1, **kwargs):
+        if self.nspin > 1 :
+            rho = density.copy()
+        direction = np.zeros_like(res0)
         epsi = 1.0e-9
-        res = -resA[-1]
+        res = -res0.copy()
         p = res.copy()
         r0Norm = np.einsum("ijk, ijk->", res, res)
         r1Norm = r0Norm
@@ -101,9 +103,13 @@ class Optimization(AbstractOptimization):
         for it in range(self.optimization_options["maxfun"]):
             phi1 = phi + epsi * p
             rho1 = phi1 * phi1
-            func = self.EnergyEvaluator(rho1, calcType=["V"])
-            # munew = (func.potential * rho1).integral() / rho.N
-            Ap = ((func.potential - mu) * phi1 - resA[-1]) / epsi
+            if self.nspin > 1 :
+                rho[spin] = rho1
+                func = self.EnergyEvaluator(rho, calcType=["V"])
+                Ap = ((func.potential[spin] - mu) * phi1 - res0) / epsi
+            else :
+                func = self.EnergyEvaluator(rho1, calcType=["V"])
+                Ap = ((func.potential - mu) * phi1 - res0) / epsi
             pAp = np.einsum("ijk, ijk->", p, Ap)
             if pAp < 0.0:
                 if it == 0:
@@ -165,23 +171,34 @@ class Optimization(AbstractOptimization):
         return direction, number
 
     def get_direction_DIIS(self, resA, **kwargs):
-        number = 1
         direction = -resA[-1]
-        return direction, number
+        return direction
 
     def get_direction(self, resA, dirA=None, phi=None, method="CG-HS", lbfgs=None, mu=None):
+        number = 1
         if method[0:2] == "CG":
-            return get_direction_CG(resA, dirA=dirA, phi=phi, method=method, lbfgs=lbfgs, mu=mu), 1
-        elif method == "TN":
-            return self.get_direction_TN(resA, dirA=dirA, phi=phi, method=method, lbfgs=lbfgs, mu=mu)
+            direction = get_direction_CG(resA, dirA=dirA, phi=phi, method=method, lbfgs=lbfgs, mu=mu)
         elif method == "LBFGS":
-            return get_direction_LBFGS(resA, dirA=dirA, phi=phi, method=method, lbfgs=lbfgs, mu=mu), 1
+            direction = get_direction_LBFGS(resA, dirA=dirA, phi=phi, method=method, lbfgs=lbfgs, mu=mu)
         elif method == "GD":
-            return get_direction_GD(resA, dirA=dirA, phi=phi, method=method, lbfgs=lbfgs, mu=mu), 1
+            direction = get_direction_GD(resA, dirA=dirA, phi=phi, method=method, lbfgs=lbfgs, mu=mu)
         elif method == "DIIS":
-            return get_direction_GD(resA, dirA=dirA, phi=phi, method=method, lbfgs=lbfgs, mu=mu), 1
+            direction = get_direction_GD(resA, dirA=dirA, phi=phi, method=method, lbfgs=lbfgs, mu=mu)
+        elif method == "TN":
+            if self.nspin > 1 :
+                density = phi * phi
+                direction, number = self.get_direction_TN(resA[-1][0], phi=phi[0], mu=mu[0], density=density, spin=0)
+                for i in range(1, self.nspin):
+                    d1, n1= self.get_direction_TN(resA[-1][i], phi=phi[i], mu=mu[i], density=density, spin=i)
+                    d1 = direction
+                    direction = np.vstack((direction, d1))
+                    number += n1
+                direction = DirectField(grid=self.rho.grid, griddata_3d=direction, rank=self.nspin)
+            else :
+                direction, number = self.get_direction_TN(resA[-1], phi=phi, mu=mu)
         else:
             raise AttributeError("The %s direction method not implemented." % method)
+        return direction, number
 
     def OrthogonalNormalization(self, p, phi, Ne=None, vector="Orthogonalization"):
         if vector == "Orthogonalization":
@@ -268,8 +285,7 @@ class Optimization(AbstractOptimization):
         c1 = self.optimization_options["c1"]
         c2 = self.optimization_options["c2"]
         lsfun = "dcsrch"
-        theta = 0.5
-        theta = 0.2
+        theta = 0.1
         if self.nspin > 1 :
             theta = np.ones(self.nspin) * theta
         # -----------------------------------------------------------------------
@@ -363,7 +379,9 @@ class Optimization(AbstractOptimization):
                     maxiter=maxls,
                 )
             elif lsfun == "dcsrchV":
-                func0 = fun_value_deriv(theta)
+                # func0 = fun_value_deriv(theta)
+                theta = np.zeros(self.nspin)
+                func0 = fun_value_deriv(theta, func = func)
                 theta, _, _, task, NumLineSearch, valuederiv = LineSearchDcsrchVector(
                     fun_value_deriv,
                     alpha0=theta,

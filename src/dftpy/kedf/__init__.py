@@ -1,5 +1,6 @@
 # Collection of Kinetic Energy Density Functionals
 import numpy as np
+from dftpy.field import DirectField
 from dftpy.kedf.tf import *
 from dftpy.kedf.vw import *
 from dftpy.kedf.wt import *
@@ -57,7 +58,7 @@ def KEDFunctional(rho, name="WT", calcType=["E","V"], split=False, nspin = 1, **
                 ke1 = KEDFunctional(rho[i] * nspin, name, calcType, split, nspin = nspin, **kwargs)
                 ke.energy = ke.energy + ke1.energy
                 ke.potential = np.vstack((ke.potential, ke1.potential))
-            ke.potential = ke.potential.reshape(rho.shape)
+            ke.potential = DirectField(grid=rho.grid, griddata_3d=ke.potential, rank=nspin)
         return ke
     #-----------------------------------------------------------------------
     if name[:3] == "GGA":
@@ -119,10 +120,11 @@ def KEDFStress(rho, name="WT", energy=None, **kwargs):
         func = KEDF_Stress_Dict[name]
 
     if rho.ndim > 3 :
+        nspin = rho.rank
         stress = func(rho[0] * nspin, energy=energy, **kwargs)
-        for i in range(1, rho.rank):
-            stress += func(rho[i] * nspin, name, energy=energy, **kwargs)
-        stress /= rho.rank
+        for i in range(1, nspin):
+            stress += func(rho[i] * nspin, energy=energy, **kwargs)
+        stress /= nspin
     else :
         stress = func(rho, energy=energy, **kwargs)
 

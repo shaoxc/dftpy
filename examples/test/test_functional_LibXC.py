@@ -36,6 +36,7 @@ class Test(unittest.TestCase):
         Functional_LibXC = XC(density=rho_r,
                               x_str='gga_x_pbe',
                               c_str='gga_c_pbe',
+                              do_sigma = True, 
                               polarization='unpolarized')
         Functional_LibXC2 = PBE(rho_r, 'unpolarized')
         self.assertTrue(

@@ -87,7 +87,7 @@ def Get_LibXC_Output(out, density):
     return OutFunctional
 
 
-def XC(density, x_str, c_str, polarization, do_sigma=True, calcType=["E","V"]):
+def XC(density, x_str='lda_x', c_str='lda_c_pz', polarization='unpolarized', do_sigma=False, calcType=["E","V"], **kwargs):
     TimeData.Begin("XC")
     if CheckLibXC():
         from pylibxc.functional import LibXCFunctional
@@ -155,6 +155,8 @@ def LDA_XC(density, polarization="unpolarized", calcType=["E","V"]):
 
 
 def LDA(rho, polarization="unpolarized", calcType=["E","V"], **kwargs):
+    if rho.rank > 2 :
+        polarization = 'polarized'
     if polarization != 'unpolarized' :
         return LDA_XC(rho,polarization, calcType)
     TimeData.Begin("LDA")
@@ -211,6 +213,8 @@ def LDA(rho, polarization="unpolarized", calcType=["E","V"], **kwargs):
 
 def LDAStress(rho, polarization="unpolarized", energy=None):
     TimeData.Begin("LDA_Stress")
+    if rho.rank > 1 :
+        polarization = 'polarized'
     if energy is None:
         EnergyPotential = LDA(rho, polarization, calcType=["E","V"])
         energy = EnergyPotential.energy
@@ -218,7 +222,7 @@ def LDAStress(rho, polarization="unpolarized", energy=None):
     else:
         potential = LDA(rho, polarization, calcType=["V"]).potential
     stress = np.zeros((3, 3))
-    Etmp = energy - np.einsum("ijk, ijk -> ", potential, rho) * rho.grid.dV
+    Etmp = energy - np.einsum("..., ...-> ", potential, rho, optimize = 'optimal') * rho.grid.dV
     for i in range(3):
         stress[i, i] = Etmp / rho.grid.volume
     TimeData.End("LDA_Stress")

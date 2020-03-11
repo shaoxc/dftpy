@@ -404,7 +404,7 @@ class LBFGS(object):
             self.rho.pop(0)
         self.s.append(dx)
         self.y.append(dg)
-        rho = 1.0 / np.einsum("ijk->", dg * dx)
+        rho = 1.0 / np.einsum("..., ...->", dg, dx, optimize = 'optimal')
         self.rho.append(rho)
 
 
