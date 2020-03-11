@@ -7,10 +7,12 @@ import time
 from dftpy.constants import FFTLIB
 
 if FFTLIB == "pyfftw":
+    """
+    pyfftw.config.NUM_THREADS  =  multiprocessing.cpu_count()
+    print('threads', pyfftw.config.NUM_THREADS)
+    """
     import pyfftw
 
-    # pyfftw.config.NUM_THREADS  =  multiprocessing.cpu_count()
-    # print('threads', pyfftw.config.NUM_THREADS)
 
 # Global variables
 FFT_SAVE = {
@@ -67,7 +69,6 @@ def LineSearchDcsrch(
 
 
 def LineSearchDcsrch2(func, alpha0=None, func0=None, c1=1e-4, c2=0.9, amax=1.0, amin=0.0, xtol=1e-14, maxiter=100):
-
     isave = np.zeros((2,), np.intc)
     dsave = np.zeros((13,), float)
     task = b"START"
@@ -81,20 +82,10 @@ def LineSearchDcsrch2(func, alpha0=None, func0=None, c1=1e-4, c2=0.9, amax=1.0, 
     g1 = func0[1]
     alists = [alpha1]
     func1 = func0
-    # tol = 1E-5
-    tol = 0.0
 
     for i in range(maxiter):
         alpha1, x1, g1, task = minpack2.dcsrch(alpha1, x1, g1, c1, c2, xtol, task, amin, amax, isave, dsave)
         alists.append(alpha1)
-        if len(alists) > 3:
-            sum0 = 0.0
-            for a in alists[-4:]:
-                sum0 += abs(a)
-            if abs(sum0 / 4.0 - alists[-1]) < tol:
-                # task = b'WARNING : THE STEP CHANGE TOO SMALL'
-                task = b"CONV : THE STEP CHANGE TOO SMALL"
-                break
         if task[:2] == b"FG":
             func1 = func(alpha1)
             x1 = func1[0]
@@ -108,6 +99,53 @@ def LineSearchDcsrch2(func, alpha0=None, func0=None, c1=1e-4, c2=0.9, amax=1.0, 
         alpha1 = None  # failed
     # return alpha1, x1, g1, task, i, func1[2], func1[3]
     return alpha1, x1, g1, task, i, func1
+
+
+def LineSearchDcsrchVector(func, alpha0=None, func0=None, c1=1e-4, c2=0.9, amax=1.0, amin=0.0, xtol=1e-14, maxiter=100):
+    isave = np.zeros((2,), np.intc)
+    dsave = np.zeros((13,), float)
+    econv = 1E-5
+
+    alpha1 = alpha0.copy()
+    x1 = func0[0]
+    g1 = func0[1]
+    func1 = func0
+
+    resA = []
+    dirA = []
+    it = 0
+    for i in range(1, 5):
+        alpha0 = alpha1.copy()
+        resA.append(g1)
+        direction = get_direction_CG(resA, dirA=dirA, method="CG-PR")
+        dirA.append(direction)
+        grad = np.sum(g1 * direction)
+        if grad > 0.0 :
+            direction = -g1
+            grad = np.sum(g1 * direction)
+
+        task = b"START"
+        factor = np.max(np.abs(direction))
+        beta = min(0.1, 0.1 * np.pi/factor)
+        # stop
+        for j in range(maxiter):
+            it += 1
+            beta, x1, grad, task = minpack2.dcsrch(beta, x1, grad, c1, c2, xtol, task, amin/factor, amax/factor, isave, dsave)
+            if task[:2] == b"FG":
+                alpha1 = alpha0 + beta * direction
+                func1 = func(alpha1)
+                x1 = func1[0]
+                g1 = func1[1]
+                grad = np.sum(g1 * direction)
+            else:
+                break
+        else:
+            alpha1 = None
+        if task[:5] == b"ERROR" or task[:4] == b"WARN":
+            alpha1 = None  # failed
+        if alpha1 is None or np.sum(g1 * g1) < econv :
+            break
+    return alpha1, x1, g1, task, it, func1
 
 
 def Brent(func, alpha0=None, brack=(0.0, 1.0), tol=1e-8, full_output=1):
@@ -368,3 +406,68 @@ class LBFGS(object):
         self.y.append(dg)
         rho = 1.0 / np.einsum("ijk->", dg * dx)
         self.rho.append(rho)
+
+
+def get_direction_CG(resA, dirA=None, method="CG-HS", **kwargs):
+    """
+    https ://en.wikipedia.org/wiki/Conjugate_gradient_method
+    HS->DY->CD
+
+    """
+    if len(resA) == 1:
+        beta = 0.0
+    elif method == "CG-HS" and len(dirA) > 0:  # Maybe the best of the CG.
+        beta = np.sum(resA[-1] * (resA[-1] - resA[-2])) / np.sum(
+            dirA[-1] * (resA[-1] - resA[-2])
+        )
+        # print('beta', beta)
+    elif method == "CG-FR":
+        beta = np.sum(resA[-1] ** 2) / np.sum(resA[-2] ** 2)
+    elif method == "CG-PR":
+        beta = np.sum(resA[-1] * (resA[-1] - resA[-2])) / np.sum(resA[-2] ** 2)
+        beta = max(beta, 0.0)
+    elif method == "CG-DY" and len(dirA) > 0:
+        beta = np.sum(resA[-1] ** 2) / np.sum(dirA[-1] * (resA[-1] - resA[-2]))
+    elif method == "CG-CD" and len(dirA) > 0:
+        beta = -np.sum(resA[-1] ** 2) / np.sum(dirA[-1] * resA[-2])
+    elif method == "CG-LS" and len(dirA) > 0:
+        beta = np.sum(resA[-1] * (resA[-1] - resA[-2])) / np.sum(dirA[-1] * resA[-2])
+    else:
+        beta = np.sum(resA[-1] ** 2) / np.sum(resA[-2] ** 2)
+
+    if dirA is None or len(dirA) == 0:
+        direction = -resA[-1]
+    else:
+        direction = -resA[-1] + beta * dirA[-1]
+
+    return direction
+
+
+def get_direction_GD(resA, dirA=None, method="GD", **kwargs):
+    direction = -resA[-1]
+    return direction
+
+
+def get_direction_LBFGS(resA, lbfgs=None, **kwargs):
+    direction = np.zeros_like(resA[-1])
+    q = -resA[-1]
+    alphaList = np.zeros(len(lbfgs.s))
+    for i in range(len(lbfgs.s) - 1, 0, -1):
+        alpha = lbfgs.rho[i] * np.sum(lbfgs.s[i] * q)
+        alphaList[i] = alpha
+        q -= alpha * lbfgs.y[i]
+
+    if not lbfgs.H0:
+        if len(lbfgs.s) < 1:
+            gamma = 1.0
+        else:
+            gamma = np.sum(lbfgs.s[-1] * lbfgs.y[-1]) / np.sum(lbfgs.y[-1] * lbfgs.y[-1])
+        direction = gamma * q
+    else:
+        direction = lbfgs.H0 * q
+
+    for i in range(len(lbfgs.s)):
+        beta = lbfgs.rho[i] * np.sum(lbfgs.y[i] * direction)
+        direction += lbfgs.s[i] * (alphaList[i] - beta)
+
+    return direction

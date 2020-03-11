@@ -186,14 +186,14 @@ class FunctionalClass(AbstractFunctional):
                 k_str = self.optional_kwargs.get("k_str", "gga_k_lc94")
                 return LIBXC_KEDF(density=rho, k_str=k_str, polarization=polarization, calcType=calcType)
         elif self.type == "XC":
+            polarization = self.optional_kwargs.get("polarization", "unpolarized")
+            if rho.ndim > 3 and rho.shape[0] > 1 :
+                polarization = "polarized"
             if self.name == "LDA":
-                polarization = self.optional_kwargs.get("polarization", "unpolarized")
                 return LDA(rho, polarization=polarization, calcType=calcType)
-            if self.name == "PBE":
-                polarization = self.optional_kwargs.get("polarization", "unpolarized")
+            elif self.name == "PBE":
                 return PBE(density=rho, polarization=polarization, calcType=calcType)
-            if self.name == "LIBXC_XC":
-                polarization = self.optional_kwargs.get("polarization", "unpolarized")
+            elif self.name == "LIBXC_XC":
                 x_str = self.optional_kwargs.get("x_str", "gga_x_pbe")
                 c_str = self.optional_kwargs.get("c_str", "gga_c_pbe")
                 return XC(density=rho, x_str=x_str, c_str=c_str, polarization=polarization, calcType=calcType)
@@ -301,8 +301,11 @@ class TotalEnergyAndPotential(AbstractFunctional):
         for key, evalfunctional in self.funcDict.items():
             if Obj is None :
                 Obj = evalfunctional(rho, calcType)
+                # print('key', key, Obj.energy)
             else :
                 Obj += evalfunctional(rho, calcType)
+                # sss = evalfunctional(rho, calcType)
+                # print('key', key, sss.energy)
         return Obj
 
     def Energy(self, rho, ions, usePME=False, calcType=["E"]):

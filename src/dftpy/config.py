@@ -37,6 +37,8 @@ def DefaultOption():
     }
 
     DENSITY = {
+        "nspin"  : 1,
+        "magmom" : 0.0,
         "densityini": "HEG",
         "densityfile": None,
         "densityoutput": None,
@@ -46,6 +48,7 @@ def DefaultOption():
         "xc": "LDA",
         "x_str": "lda_x",
         "c_str": "lda_c_pz",
+        "polarization": "unpolarized",
     }
 
     KEDF = {
@@ -210,6 +213,9 @@ def OptionFormat(config):
     conf["OPT"]["maxiter"] = int(conf["OPT"]["maxiter"])
     conf["OPT"]["xtol"] = float(eval(conf["OPT"]["xtol"]))
     conf["OPT"]["h0"] = float(eval(conf["OPT"]["h0"]))
+
+    conf["DENSITY"]["nspin"] = int(conf["DENSITY"]["nspin"])
+    conf["DENSITY"]["magmom"] = float(eval(conf["DENSITY"]["magmom"]))
 
     conf["OUTPUT"]["time"] = bools(conf["OUTPUT"]["time"])
     conf["OUTPUT"]["stress"] = bools(conf["OUTPUT"]["stress"])

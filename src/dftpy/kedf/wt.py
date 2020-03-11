@@ -49,7 +49,7 @@ def WTEnergy(rho, rho0, Kernel, alpha, beta):
     return ene
 
 
-def WTStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, energy=None):
+def WTStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, energy=None, **kwargs):
     rho0 = np.mean(rho)
     g = rho.grid.get_reciprocal().g
     gg = rho.grid.get_reciprocal().gg
@@ -81,7 +81,6 @@ def WTStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, ene
                 fac = 1.0 / 3.0
             else:
                 fac = 0.0
-            # den = (g[i] * g[j]/gg-fac) * DDrho
             den = (g[i][mask] * g[j][mask] / gg[mask] - fac) * DDrho[mask]
             stress[i, j] = stress[j, i] = (np.einsum("i->", den)).real
     stress *= np.pi ** 2 / (alpha * beta * rho0 ** (alpha + beta - 2) * tkf / 2.0)

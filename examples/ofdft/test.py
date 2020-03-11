@@ -16,8 +16,7 @@ from dftpy.pseudo import LocalPseudo
 def test_optim():
     path_pp='../DATA/'
     path_pos='../DATA/'
-    # file1='Al_lda.oe01.recpot'
-    file1='al.lda.recpot'
+    file1='Al_lda.oe01.recpot'
     posfile='fcc.vasp'
     ions = io.read(path_pos+posfile, names=['Al'])
     lattice = ions.pos.cell.lattice
@@ -36,10 +35,9 @@ def test_optim():
     PP_list = {'Al': path_pp+file1}
     PSEUDO = LocalPseudo(grid = grid, ions=ions,PP_list=PP_list,PME=True)
     optional_kwargs = {}
-    # KE = FunctionalClass(type='KEDF',name='x_TF_y_vW',optional_kwargs=optional_kwargs)
-    KE = FunctionalClass(type='KEDF',name='WT',optional_kwargs=optional_kwargs)
+    KE = FunctionalClass(type='KEDF',name='x_TF_y_vW',optional_kwargs=optional_kwargs)
     optional_kwargs = {"x_str":'lda_x','c_str':'lda_c_pz'}
-    XC = FunctionalClass(type='XC',name='LDA')
+    XC = FunctionalClass(type='XC',name='LIBXC_XC')
     HARTREE = FunctionalClass(type='HARTREE')
 
     charge_total = 0.0
@@ -63,8 +61,7 @@ def test_optim():
             }
     optimization_options["econv"] *= ions.nat
     opt = Optimization(EnergyEvaluator=E_v_Evaluator, optimization_options = optimization_options, 
-            optimization_method = 'CG-HS')
-            # optimization_method = 'TN')
+            optimization_method = 'TN')
     new_rho = opt.optimize_rho(guess_rho=rho_ini)
     print('Calc Energy')
     Enew = E_v_Evaluator.Energy(rho=new_rho, ions=ions, usePME = True)

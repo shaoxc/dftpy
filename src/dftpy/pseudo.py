@@ -145,9 +145,16 @@ class LocalPseudo(AbstractLocalPseudo):
             self.local_PP()
         pot = self._vreal
         if 'E' in calcType:
-            ene = np.einsum("ijk, ijk->", self._vreal, density) * self.grid.dV
+            if density.rank > 1 :
+                rho = np.sum(density, axis = 0)
+            else :
+                rho = density
+            ene = np.einsum("ijk, ijk->", self._vreal, rho) * self.grid.dV
         else:
             ene = 0.0
+
+        if density.rank > 1 :
+            pot = np.tile(pot, (density.rank, 1, 1, 1))
         return Functional(name="eN", energy=ene, potential=pot)
 
     def local_PP(self, BsplineOrder=10):
@@ -279,7 +286,11 @@ class LocalPseudo(AbstractLocalPseudo):
                     v += vloc_deriv * np.conjugate(strf)
         return v
 
-    def _Stress(self, rho, energy=None):
+    def _Stress(self, density, energy=None):
+        if density.rank > 1 :
+            rho = np.sum(density, axis = 0)
+        else :
+            rho = density
         if energy is None:
             energy = self(density=rho, calcType=["E"]).energy
         reciprocal_grid = self.grid.get_reciprocal()
@@ -301,9 +312,14 @@ class LocalPseudo(AbstractLocalPseudo):
                 if i == j:
                     stress[i, j] -= energy
         stress /= self.grid.volume
+        q[0, 0, 0] = 0.0
         return stress
 
-    def _Force(self, rho):
+    def _Force(self, density):
+        if density.rank > 1 :
+            rho = np.sum(density, axis = 0)
+        else :
+            rho = density
         rhoG = rho.fft()
         reciprocal_grid = self.grid.get_reciprocal()
         g = reciprocal_grid.g
@@ -317,7 +333,11 @@ class LocalPseudo(AbstractLocalPseudo):
         Forces *= 2.0 / self.grid.volume
         return Forces
 
-    def _ForcePME(self, rho):
+    def _ForcePME(self, density):
+        if density.rank > 1 :
+            rho = np.sum(density, axis = 0)
+        else :
+            rho = density
         rhoG = rho.fft()
         reciprocal_grid = self.grid.get_reciprocal()
         Bspline = self.Bspline
@@ -358,7 +378,12 @@ class LocalPseudo(AbstractLocalPseudo):
                     )
         return Forces
 
-    def _StressPME(self, rho, energy=None):
+    def _StressPME(self, density, energy=None):
+        if density.rank > 1 :
+            rho = np.sum(density, axis = 0)
+        else :
+            rho = density
+
         if energy is None:
             energy = self(density=rho, calcType=["E"]).energy
         rhoG = rho.fft()
@@ -391,6 +416,7 @@ class LocalPseudo(AbstractLocalPseudo):
                 stress[j, i] = stress[i, j]
             stress[i, i] -= energy
         stress /= self.grid.volume
+        q[0, 0, 0] = 0.0
         return stress
 
 

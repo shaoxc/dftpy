@@ -12,9 +12,7 @@ from dftpy.math_utils import TimeData, bestFFTsize, interpolation_3d
 from dftpy.functional_output import Functional
 from dftpy.semilocal_xc import LDAStress
 from dftpy.pseudo import LocalPseudo
-from dftpy.kedf.tf import ThomasFermiStress
-from dftpy.kedf.vw import vonWeizsackerStress
-from dftpy.kedf.wt import WTStress
+from dftpy.kedf import KEDFStress
 from dftpy.hartree import HartreeFunctionalStress
 from dftpy.tdrunner import tdrunner
 from dftpy.config import OptionFormat, PrintConf, ReadConf
@@ -136,7 +134,15 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None):
             charge_total += ions.Zval[ions.labels[i]]
         rho_ini *= charge_total / (np.sum(rho_ini) * rho_ini.grid.dV)
     # rho_ini[:] = density.reshape(rho_ini.shape, order='F')
-
+    ############################## add spin magmom ##############################
+    nspin=config["DENSITY"]["nspin"]
+    if nspin > 1 :
+        magmom = config["DENSITY"]["magmom"]
+        rho_spin = np.tile(rho_ini, (nspin, 1, 1, 1))
+        for ip in range(nspin):
+            rho_spin[ip] = 1.0/nspin * rho_spin[ip] + 1.0/nspin *(-1)**ip * magmom/ ions.pos.cell.volume
+        rho_ini = DirectField(grid=grid, griddata_3d=rho_spin, rank=nspin)
+    #-----------------------------------------------------------------------
     struct = System(ions, grid, name='density', field=rho_ini)
     E_v_Evaluator = TotalEnergyAndPotential(KineticEnergyFunctional=KE, XCFunctional=XC, HARTREE=HARTREE, PSEUDO=PSEUDO)
     # The last is a list, which return some properties are used for different situations.
@@ -432,24 +438,24 @@ def GetStress(
     stress["PSEUDO"] = EnergyEvaluator.PSEUDO.stress(rho, energy=energy["PSEUDO"])
     ############################## KE ##############################
     stress["KEDF"] = {}
-    KEDFNameList = [
-        "TF",
-        "vW",
-        "x_TF_y_vW",
-        "TFvW",
-        "WT",
-    ]
-    if ke not in KEDFNameList:
+    KEDF_Stress_L= {
+            "TF" : ["TF"], 
+            "vW": ["TF"], 
+            "x_TF_y_vW": ["TF", "vW"], 
+            "TFvW": ["TF", "vW"], 
+            "WT": ["TF", "vW", "WT"], 
+            }
+    if ke not in KEDF_Stress_L :
         raise AttributeError("%s KEDF have not implemented for stress" % ke)
-    if ke == "TF":
-        stress["KEDF"]["TF"] = ThomasFermiStress(rho, x=ke_options["x"], energy=energy["KEDF"]["TF"])
-    elif ke == "vW":
-        stress["KEDF"]["vW"] = vonWeizsackerStress(rho, y=ke_options["y"], energy=energy["KEDF"]["vW"])
-    else:
-        stress["KEDF"]["TF"] = ThomasFermiStress(rho, x=ke_options["x"], energy=energy["KEDF"]["TF"])
-        stress["KEDF"]["vW"] = vonWeizsackerStress(rho, y=ke_options["y"], energy=energy["KEDF"]["vW"])
-        if ke == "WT":
-            stress["KEDF"]["NL"] = WTStress(rho, energy=energy["KEDF"]["NL"])
+    kelist = KEDF_Stress_L[ke]
+
+    if "TF" in kelist :
+        stress["KEDF"]["TF"] = KEDFStress(rho, name="TF", x=ke_options["x"], energy=energy["KEDF"]["TF"])
+    if "vW" in kelist :
+        stress["KEDF"]["vW"] =KEDFStress(rho, name="vW", y=ke_options["y"], energy=energy["KEDF"]["vW"]) 
+    if 'NL' in energy["KEDF"] :
+        stress["KEDF"]["NL"] = KEDFStress(rho, name="vW", energy=energy["KEDF"]["NL"], **ke_options)
+
     stress["TOTAL"] = stress["XC"] + stress["HARTREE"] + stress["II"] + stress["PSEUDO"]
     for key in stress["KEDF"]:
         stress["TOTAL"] += stress["KEDF"][key]
@@ -458,84 +464,4 @@ def GetStress(
             stress["TOTAL"][i, j] = stress["TOTAL"][j, i]
 
     return stress
-
-
-def GetEnergyPotentialOLD(ions, rho, EnergyEvaluator, calcType=["E","V"], linearii=True, linearie=True):
-    energypotential = {}
-    energypotential["KE"] = EnergyEvaluator.KineticEnergyFunctional.ComputeEnergyPotential(rho, calcType, split=True)
-    energypotential["XC"] = EnergyEvaluator.XCFunctional.ComputeEnergyPotential(rho, calcType)
-    energypotential["HARTREE"] = EnergyEvaluator.HARTREE.ComputeEnergyPotential(rho, calcType)
-    energypotential["IE"] = EnergyEvaluator.PSEUDO(rho, calcType)
-    ewaldobj = ewald(rho=rho, ions=ions, PME=linearii)
-    energypotential["II"] = Functional(name="Ewald", potential=np.zeros_like(rho), energy=ewaldobj.energy)
-    energypotential["TOTAL"] = (
-        energypotential["XC"] + energypotential["HARTREE"] + energypotential["IE"] + energypotential["II"]
-    )
-    for key in energypotential["KE"]:
-        energypotential["TOTAL"] += energypotential["KE"][key]
-    return energypotential
-
-
-def GetStressOLD(
-    ions,
-    rho,
-    EnergyEvaluator,
-    energypotential=None,
-    energy=None,
-    xc="LDA",
-    ke="WT",
-    ke_options={"x": 1.0, "y": 1.0},
-    linearii=True,
-    linearie=True,
-    PPlist=None,
-):
-
-    if energypotential is not None:
-        energy = {}
-        energy["IE"] = energypotential["IE"].energy
-        energy["XC"] = energypotential["XC"].energy
-        energy["HARTREE"] = energypotential["HARTREE"].energy
-        energy["KE"] = {}
-        for key in energypotential["KE"]:
-            energy["KE"][key] = energypotential["KE"][key].energy
-    elif energy is None:
-        energy = {"XC": None, "HARTREE": None, "II": None, "IE": None, "KE": {"TF": None, "vW": None, "NL": None}}
-    ewaldobj = ewald(rho=rho, ions=ions, verbose=False, PME=linearii)
-    stress = {}
-    if xc == "LDA":
-        stress["XC"] = LDAStress(rho, energy=energy["XC"])
-    else:
-        raise AttributeError("%s exchange-correlation have not implemented for stress" % xc)
-    stress["HARTREE"] = HartreeFunctionalStress(rho, energy=energy["HARTREE"])
-    stress["II"] = ewaldobj.stress
-    stress["IE"] = EnergyEvaluator.PSEUDO.stress(rho, energy=energy["IE"])
-    ############################## KE ##############################
-    stress["KE"] = {}
-    KEDFNameList = [
-        "TF",
-        "vW",
-        "x_TF_y_vW",
-        "TFvW",
-        "WT",
-    ]
-    if ke not in KEDFNameList:
-        raise AttributeError("%s KEDF have not implemented for stress" % ke)
-    if ke == "TF":
-        stress["KE"]["TF"] = ThomasFermiStress(rho, x=ke_options["x"], energy=energy["KE"]["TF"])
-    elif ke == "vW":
-        stress["KE"]["vW"] = vonWeizsackerStress(rho, y=ke_options["y"], energy=energy["KE"]["vW"])
-    else:
-        stress["KE"]["TF"] = ThomasFermiStress(rho, x=ke_options["x"], energy=energy["KE"]["TF"])
-        stress["KE"]["vW"] = vonWeizsackerStress(rho, y=ke_options["y"], energy=energy["KE"]["vW"])
-        if ke == "WT":
-            stress["KE"]["NL"] = WTStress(rho, energy=energy["KE"]["NL"])
-    stress["TOTAL"] = stress["XC"] + stress["HARTREE"] + stress["II"] + stress["IE"]
-    for key in stress["KE"]:
-        stress["TOTAL"] += stress["KE"][key]
-    for i in range(1, 3):
-        for j in range(i - 1, -1, -1):
-            stress["TOTAL"][i, j] = stress["TOTAL"][j, i]
-
-    return stress
-
 

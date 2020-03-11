@@ -4,10 +4,11 @@ from scipy import optimize as sopt
 import scipy.special as sp
 from functools import partial
 from dftpy.field import DirectField
-from dftpy.math_utils import LineSearchDcsrch, LineSearchDcsrch2, Brent, TimeData
+from dftpy.math_utils import LineSearchDcsrchVector, LineSearchDcsrch2, Brent, TimeData
 from dftpy.math_utils import LBFGS
 from abc import ABC, abstractmethod
 from dftpy.constants import ENERGY_CONV
+from dftpy.math_utils import get_direction_CG, get_direction_GD, get_direction_LBFGS
 
 
 class AbstractOptimization(ABC):
@@ -86,50 +87,9 @@ class Optimization(AbstractOptimization):
 
         self.optimization_method = optimization_method
 
-    def get_direction_CG(self, resA, dirA=None, method="CG-HS", **kwargs):
-        # https ://en.wikipedia.org/wiki/Conjugate_gradient_method
-        number = 1
-        # HS->DY-CD
-        if len(resA) == 1:
-            beta = 0.0
-        elif method == "CG-HS" and len(dirA) > 0:  # Maybe the best of the CG.
-            beta = np.einsum("ijk->", resA[-1] * (resA[-1] - resA[-2])) / np.einsum(
-                "ijk->", dirA[-1] * (resA[-1] - resA[-2])
-            )
-            # print('beta', beta)
-        elif method == "CG-FR":
-            beta = np.einsum("ijk->", resA[-1] ** 2) / np.einsum("ijk->", resA[-2] ** 2)
-        elif method == "CG-PR":
-            beta = np.einsum("ijk->", resA[-1] * (resA[-1] - resA[-2])) / np.einsum("ijk->", resA[-2] ** 2)
-            beta = max(beta, 0.0)
-        elif method == "CG-DY" and len(dirA) > 0:
-            beta = np.einsum("ijk->", resA[-1] ** 2) / np.einsum("ijk->", dirA[-1] * (resA[-1] - resA[-2]))
-        elif method == "CG-CD" and len(dirA) > 0:
-            beta = -np.einsum("ijk->", resA[-1] ** 2) / np.einsum("ijk->", dirA[-1] * resA[-2])
-        elif method == "CG-LS" and len(dirA) > 0:
-            beta = np.einsum("ijk->", resA[-1] * (resA[-1] - resA[-2])) / np.einsum("ijk->", dirA[-1] * resA[-2])
-        else:
-            beta = np.einsum("ijk->", resA[-1] ** 2) / np.einsum("ijk->", resA[-2] ** 2)
-
-        if dirA is None or len(dirA) == 0:
-            direction = -resA[-1]
-        else:
-            direction = -resA[-1] + beta * dirA[-1]
-
-        return direction, number
-
-    def get_direction_GD(self, resA, dirA=None, method="GD", **kwargs):
-        number = 1
-        direction = -resA[-1]
-        return direction, number
-
     def get_direction_TN(self, resA, phi=None, mu=None, **kwargs):
         direction = np.zeros_like(resA[-1])
         epsi = 1.0e-9
-        rho = phi * phi
-        if mu is None:
-            func = self.EnergyEvaluator(rho, calcType=["V"])
-            mu = (func.potential * rho).integral() / rho.N
         res = -resA[-1]
         p = res.copy()
         r0Norm = np.einsum("ijk, ijk->", res, res)
@@ -182,10 +142,6 @@ class Optimization(AbstractOptimization):
     def get_direction_LBFGS(self, resA, dirA=None, phi=None, method="CG-HS", lbfgs=None, mu=None, **kwargs):
         number = 1
         direction = np.zeros_like(resA[-1])
-        rho = phi * phi
-        if mu is None:
-            func = self.EnergyEvaluator(rho, calcType=["V"])
-            mu = (func.potential * rho).integral() / rho.N
         q = -resA[-1]
         alphaList = np.zeros(len(lbfgs.s))
         for i in range(len(lbfgs.s) - 1, 0, -1):
@@ -215,15 +171,15 @@ class Optimization(AbstractOptimization):
 
     def get_direction(self, resA, dirA=None, phi=None, method="CG-HS", lbfgs=None, mu=None):
         if method[0:2] == "CG":
-            return self.get_direction_CG(resA, dirA=dirA, phi=phi, method=method, lbfgs=lbfgs, mu=mu)
+            return get_direction_CG(resA, dirA=dirA, phi=phi, method=method, lbfgs=lbfgs, mu=mu), 1
         elif method == "TN":
             return self.get_direction_TN(resA, dirA=dirA, phi=phi, method=method, lbfgs=lbfgs, mu=mu)
         elif method == "LBFGS":
-            return self.get_direction_LBFGS(resA, dirA=dirA, phi=phi, method=method, lbfgs=lbfgs, mu=mu)
+            return get_direction_LBFGS(resA, dirA=dirA, phi=phi, method=method, lbfgs=lbfgs, mu=mu), 1
         elif method == "GD":
-            return self.get_direction_GD(resA, dirA=dirA, phi=phi, method=method, lbfgs=lbfgs, mu=mu)
+            return get_direction_GD(resA, dirA=dirA, phi=phi, method=method, lbfgs=lbfgs, mu=mu), 1
         elif method == "DIIS":
-            return self.get_direction_GD(resA, dirA=dirA, phi=phi, method=method, lbfgs=lbfgs, mu=mu)
+            return get_direction_GD(resA, dirA=dirA, phi=phi, method=method, lbfgs=lbfgs, mu=mu), 1
         else:
             raise AttributeError("The %s direction method not implemented." % method)
 
@@ -233,17 +189,29 @@ class Optimization(AbstractOptimization):
                 Ne = (phi * phi).integral()
             N = Ne
             # ptest = p + phi ; # N = (ptest * ptest).integral()
-            p -= (p * phi).integral() / Ne * phi
+            factor = (p * phi).integral() / Ne
+            if self.nspin > 1 :
+                factor = factor[:, None, None, None]
+            p -= factor * phi
             pNorm = (p * p).integral()
             theta = np.sqrt(pNorm / N)
-            p *= np.sqrt(Ne / pNorm)
+
+            factor = np.sqrt(Ne / pNorm)
+            if self.nspin > 1 :
+                factor = factor[:, None, None, None]
+            p *= factor
         else:
             theta = 0.01
+            if self.nspin > 1 :
+                theta = np.ones(self.nspin) * theta
         return p, theta
 
     def ValueAndDerivative(self, phi, p, theta, Ne=None, algorithm="EMM", vector="Orthogonalization", func=None):
         if Ne is None:
             Ne = (phi * phi).integral()
+        if self.nspin > 1 :
+            theta = theta[:, None, None, None]
+
         if vector == "Orthogonalization":
             newphi = phi * np.cos(theta) + p * np.sin(theta)
             newrho = newphi * newphi
@@ -251,10 +219,14 @@ class Optimization(AbstractOptimization):
             newphi = phi + p * theta
             newrho = newphi * newphi
             norm = Ne / newrho.integral()
+            if self.nspin > 1 :
+                norm = norm[:, None, None, None]
             newrho *= norm
             newphi *= np.sqrt(norm)
+
         if func is not None:
             f = func
+
         if algorithm == "EMM":
             if func is None:
                 f = self.EnergyEvaluator(newrho, calcType=["E","V"])
@@ -264,14 +236,21 @@ class Optimization(AbstractOptimization):
                 f = self.EnergyEvaluator(newrho, calcType=["E","V"])
                 # f = self.EnergyEvaluator(newrho, calcType = 'Potential')
             mu = (f.potential * newrho).integral() / Ne
+            if self.nspin > 1 :
+                mu = mu[:, None, None, None]
             residual = (f.potential - mu) * newphi
-            # residual = (f.potential - mu) 
-            resN = np.einsum("ijk, ijk->", residual, residual) * phi.grid.dV
+            resN = np.einsum("..., ...->", residual, residual, optimize = 'optimal') * phi.grid.dV
             value = resN
+
         if vector == "Orthogonalization":
-            grad = 2.0 * np.einsum("ijk, ijk, ijk->", f.potential, newphi, (p * np.cos(theta) - phi * np.sin(theta)))
+            p2 = p * np.cos(theta) - phi * np.sin(theta)
         else:
-            grad = 2.0 * np.einsum("ijk, ijk, ijk->", f.potential, phi, p)
+            p2 = p
+        if self.nspin == 1 :
+            grad = 2.0 * np.einsum("ijk, ijk, ijk->", f.potential, newphi, p2) * phi.grid.dV
+        else :
+            grad = 2.0 * np.einsum("lijk, lijk, lijk->l", f.potential, newphi, p2) * phi.grid.dV
+
         # print('theta', theta, value, grad)
         return [value, grad, newphi, f]
 
@@ -279,23 +258,30 @@ class Optimization(AbstractOptimization):
         TimeData.Begin("Optimize")
         if guess_rho is None and self.rho is None:
             raise AttributeError("Must provide a guess density")
-        elif guess_rho is None:
-            rho = self.rho
-        else:
-            rho = guess_rho
+        elif guess_rho is not None :
+            self.rho = guess_rho
+        rho = self.rho
+        self.nspin = rho.rank
         # -----------------------------------------------------------------------
         xtol = self.optimization_options["xtol"]
         maxls = self.optimization_options["maxls"]
         c1 = self.optimization_options["c1"]
         c2 = self.optimization_options["c2"]
-        theta = 0.5
         lsfun = "dcsrch"
+        theta = 0.5
+        theta = 0.2
+        if self.nspin > 1 :
+            theta = np.ones(self.nspin) * theta
         # -----------------------------------------------------------------------
         EnergyHistory = []
         phi = np.sqrt(rho)
         func = self.EnergyEvaluator(rho)
         mu = (func.potential * rho).integral() / rho.N
-        residual = (func.potential - mu) * phi
+        if self.nspin > 1 :
+            mus = mu[:, None, None, None]
+        else :
+            mus = mu
+        residual = (func.potential - mus) * phi
         residualA = []
         residualA.append(residual)
         directionA = []
@@ -309,7 +295,8 @@ class Optimization(AbstractOptimization):
         )
         print(fmt)
         dE = energy
-        resN = np.einsum("ijk, ijk->", residual, residual) * rho.grid.dV
+        # resN = np.einsum("ijk, ijk->", residual, residual) * rho.grid.dV
+        resN = np.einsum("..., ...->", residual, residual, optimize = 'optimal') * rho.grid.dV
         fmt = "{:<8d}{:<24.12E}{:<16.6E}{:<16.6E}{:<8d}{:<8d}{:<16.6E}".format(0, energy, dE, resN, 1, 1, CostTime)
         print(fmt)
         Bound = self.optimization_options["maxcor"]
@@ -332,13 +319,28 @@ class Optimization(AbstractOptimization):
             )
             p, theta0 = self.OrthogonalNormalization(p, phi, vector=self.optimization_options["vector"])
 
-            thetaDeriv0 = np.einsum("ijk, ijk, ijk->", func.potential, phi, p) * 2.0
-            if thetaDeriv0 > 0:
+            if self.nspin > 1 :
+                lsfun = 'dcsrchV'
+                thetaDeriv0 = np.einsum("lijk, lijk, lijk ->l", func.potential, phi, p) * 2.0
+                if any(thetaDeriv0 > 0) :
+                    gradf = True
+                else :
+                    gradf = False
+            else :
+                thetaDeriv0 = np.einsum("ijk, ijk, ijk->", func.potential, phi, p) * 2.0
+                if thetaDeriv0 > 0 :
+                    gradf = True
+                else :
+                    gradf = False
+            #-----------------------------------------------------------------------
+            if gradf:
                 print("!WARN: Change to steepest decent")
                 p = -residualA[-1]
                 p, theta0 = self.OrthogonalNormalization(p, phi, vector=self.optimization_options["vector"])
 
-            theta = min(theta0, theta)
+            if self.nspin == 1 :
+                theta = min(theta0, theta)
+
             fun_value_deriv = partial(
                 self.ValueAndDerivative,
                 phi,
@@ -350,6 +352,19 @@ class Optimization(AbstractOptimization):
             if lsfun == "dcsrch":
                 func0 = fun_value_deriv(0.0, func=func)
                 theta, _, _, task, NumLineSearch, valuederiv = LineSearchDcsrch2(
+                    fun_value_deriv,
+                    alpha0=theta,
+                    func0=func0,
+                    c1=c1,
+                    c2=c2,
+                    amax=np.pi,
+                    amin=0.0,
+                    xtol=xtol,
+                    maxiter=maxls,
+                )
+            elif lsfun == "dcsrchV":
+                func0 = fun_value_deriv(theta)
+                theta, _, _, task, NumLineSearch, valuederiv = LineSearchDcsrchVector(
                     fun_value_deriv,
                     alpha0=theta,
                     func0=func0,
@@ -399,7 +414,11 @@ class Optimization(AbstractOptimization):
             # func.energy = f.energy
             # func = self.EnergyEvaluator(rho, calcType = 'Both')
             mu = (func.potential * rho).integral() / rho.N
-            residual = (func.potential - mu) * phi
+            if self.nspin > 1 :
+                mus = mu[:, None, None, None]
+            else :
+                mus = mu
+            residual = (func.potential - mus) * phi
             # -----------------------------------------------------------------------
             if self.optimization_method == "DIIS":
                 p = -residual
@@ -410,7 +429,11 @@ class Optimization(AbstractOptimization):
                 phi *= np.sqrt(norm)
                 func = self.EnergyEvaluator(rho, calcType=["E","V"])
                 mu = (func.potential * rho).integral() / rho.N
-                residual = (func.potential - mu) * phi
+                if self.nspin > 1 :
+                    mus = mu[:, None, None, None]
+                else :
+                    mus = mu
+                residual = (func.potential - mus) * phi
 
             residualA.append(residual)
 
@@ -421,7 +444,7 @@ class Optimization(AbstractOptimization):
             EnergyHistory.append(energy)
             CostTime = TimeData.Time("Optimize")
             dE = EnergyHistory[-1] - EnergyHistory[-2]
-            resN = np.einsum("ijk, ijk->", residual, residual) * rho.grid.dV/rho.N
+            resN = np.einsum("..., ...->", residual, residual, optimize = 'optimal') * phi.grid.dV
             fmt = "{:<8d}{:<24.12E}{:<16.6E}{:<16.6E}{:<8d}{:<8d}{:<16.6E}".format(
                 it, energy, dE, resN, NumDirectrion, NumLineSearch, CostTime
             )
@@ -442,9 +465,10 @@ class Optimization(AbstractOptimization):
                 directionA.pop(0)
 
         TimeData.End("Optimize")
-        mu = (func.potential * rho).integral() / rho.N
-        print('Chemical potential (a.u.):', mu)
-        print('Chemical potential (eV)  :', mu * ENERGY_CONV['Hartree']['eV'])
+        # print('Chemical potential (a.u.):', mu)
+        # print('Chemical potential (eV)  :', mu * ENERGY_CONV['Hartree']['eV'])
+        self.mu = mu
+        self.rho = rho
         return rho
 
     def __call__(self, guess_rho=None, calcType=["E","V"]):

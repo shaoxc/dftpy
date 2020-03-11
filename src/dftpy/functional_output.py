@@ -56,11 +56,23 @@ class Functional(object):
         name = self.name
         return Functional(name=name, energy=energy, potential=potential)
 
+    def div(self, x):
+        energy = self.energy/x
+        potential = self.potential/x
+        name = self.name
+        return Functional(name=name, energy=energy, potential=potential)
+
     def __add__(self, other):
         return self.sum(other)
 
     def __mul__(self, x):
         return self.mul(x)
+
+    def __div__(self, x):
+        return self.div(x)
+
+    def __truediv__(self, x):
+        return self.div(x)
 
     def copy(self):
         energy = self.energy
