@@ -61,7 +61,7 @@ def TF(rho, x=1.0, calcType=["E","V"], split=False, **kwargs):
         pot = ThomasFermiPotential(rho)
         OutFunctional.potential = pot * x
     if "V2" in calcType:
-        v2rho = ThomasFermiF(rho)
-        OutFunctional.v2rho = v2rho * x
+        v2rho2 = ThomasFermiF(rho)
+        OutFunctional.v2rho2 = v2rho2 * x
     TimeData.End("TF")
     return OutFunctional

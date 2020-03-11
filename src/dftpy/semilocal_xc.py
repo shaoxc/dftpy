@@ -72,6 +72,8 @@ def Get_LibXC_Output(out, density):
         vsigma_last = prodotto.divergence(flag="standard")
         if hasattr(OutFunctional, 'potential'):
             OutFunctional.potential -= 2 * vsigma_last
+        if hasattr(OutFunctional, 'v2rho2'):
+            raise Exception('2nd and higher order derivative for GGA functionals has not implemented yet.')
 
     if "zk" in out.keys():
         if density.rank > 1 :
@@ -200,7 +202,7 @@ def LDA(rho, polarization="unpolarized", calcType=["E","V"], **kwargs):
         fc[rs2] = gamma[0] / 36.0 * ( 5.0 * tmpa + 7.0 * tmpa * tmpa + 8.0 * tmpb + 16.0 * tmpb * tmpb + 21.0 * tmpa * tmpb) / deno / deno / deno
         fc /= rho
 
-        OutFunctional.v2rho = fx + fc
+        OutFunctional.v2rho2 = fx + fc
 
 
     TimeData.End("LDA")
