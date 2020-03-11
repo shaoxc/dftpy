@@ -88,9 +88,8 @@ class Optimization(AbstractOptimization):
         self.optimization_method = optimization_method
 
     def get_direction_TN(self, res0, phi=None, mu=None, density=None, spin=1, **kwargs):
-        if density is not None :
+        if self.nspin > 1 :
             rho = density.copy()
-        rho = density.copy()
         direction = np.zeros_like(res0)
         epsi = 1.0e-9
         res = -res0.copy()
