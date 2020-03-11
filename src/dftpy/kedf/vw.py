@@ -54,7 +54,7 @@ def vonWeizsackerEnergy(rho, sigma=None):
     return ene
 
 
-def vonWeizsackerStress(rho, y=1.0, energy=None):
+def vonWeizsackerStress(rho, y=1.0, energy=None, **kwargs):
     """
     The von Weizsacker Stress
     """

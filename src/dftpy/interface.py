@@ -450,11 +450,11 @@ def GetStress(
     kelist = KEDF_Stress_L[ke]
 
     if "TF" in kelist :
-        stress["KEDF"]["TF"] = KEDFStress(rho, name="TF", x=ke_options["x"], energy=energy["KEDF"]["TF"])
+        stress["KEDF"]["TF"] = KEDFStress(rho, name="TF", energy=energy["KEDF"]["TF"], **ke_options)
     if "vW" in kelist :
-        stress["KEDF"]["vW"] =KEDFStress(rho, name="vW", y=ke_options["y"], energy=energy["KEDF"]["vW"]) 
+        stress["KEDF"]["vW"] = KEDFStress(rho, name="vW", energy=energy["KEDF"]["vW"], **ke_options)
     if 'NL' in energy["KEDF"] :
-        stress["KEDF"]["NL"] = KEDFStress(rho, name="vW", energy=energy["KEDF"]["NL"], **ke_options)
+        stress["KEDF"]["NL"] = KEDFStress(rho, name=kelist[2], energy=energy["KEDF"]["NL"], **ke_options)
 
     stress["TOTAL"] = stress["XC"] + stress["HARTREE"] + stress["II"] + stress["PSEUDO"]
     for key in stress["KEDF"]:

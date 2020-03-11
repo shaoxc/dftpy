@@ -33,7 +33,7 @@ def ThomasFermiEnergy(rho):
     return ene
 
 
-def ThomasFermiStress(rho, x=1.0, energy=None):
+def ThomasFermiStress(rho, x=1.0, energy=None, **kwargs):
     """
     The Thomas-Fermi Stress
     """

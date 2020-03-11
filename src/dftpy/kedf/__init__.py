@@ -111,7 +111,7 @@ def KEDFunctional(rho, name="WT", calcType=["E","V"], split=False, nspin = 1, **
         return OutFunctional
 
 
-def KEDFStress(rho, name="WT", energy=None, nspin = 1, **kwargs):
+def KEDFStress(rho, name="WT", energy=None, **kwargs):
     """
     KEDF stress interface
     """
@@ -119,11 +119,11 @@ def KEDFStress(rho, name="WT", energy=None, nspin = 1, **kwargs):
         func = KEDF_Stress_Dict[name]
 
     if rho.ndim > 3 :
-        stress = func(rho[0] * nspin, name, energy=energy, nspin = nspin, **kwargs)
+        stress = func(rho[0] * nspin, energy=energy, **kwargs)
         for i in range(1, rho.rank):
-            stress += func(rho[i] * nspin, name, energy=energy, nspin = nspin, **kwargs)
+            stress += func(rho[i] * nspin, name, energy=energy, **kwargs)
         stress /= rho.rank
     else :
-        stress = func(rho, name, energy=energy, nspin = nspin, **kwargs)
+        stress = func(rho, energy=energy, **kwargs)
 
     return stress
