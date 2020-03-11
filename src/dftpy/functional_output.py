@@ -3,6 +3,7 @@ from dftpy.field import DirectField, ReciprocalField
 
 # general python imports
 import numpy as np
+import copy
 
 
 class Functional(object):
@@ -26,41 +27,60 @@ class Functional(object):
         be populated only if the functional is nonlocal
     """
 
-    def __init__(self, name=None, energy=None, potential=None, energydensity=None, kernel=None):
+    def __init__(self, name=None, energy=None, potential=None, energydensity=None, v2rho2=None, v3rho3=None, v4rho4=None, force=None, stress=None):
 
-        if name is not None:
-            self.name = name
-        else:
-            raise AttributeError("Functional name must be specified")
+        args = locals()
 
-        if energy is not None:
-            self.energy = energy
-        if potential is not None:
-            # if isinstance(potential, DirectField):
-            self.potential = potential
-        # if energydensity is not None :
-        # self.energydensity = energydensity
-        if kernel is not None:
-            if isinstance(kernel, (np.ndarray)):
-                self.kernel = kernel
+        for key, value in args.items():
+            if value is not None:
+                setattr(self, key, value)
+            elif key == "name":
+                raise AttributeError("Functional name must be specified")
+
+    def __iter__(self):
+        attr_list = [
+        'energy',
+        'potential',
+        'energydensity',
+        'v2rho2',
+        'v3rho3',
+        'v4rho4',
+        'force',
+        'stress',
+        ]
+        for key in attr_list:
+            if hasattr(self, key):
+                yield key, getattr(self, key)
 
     def sum(self, other):
-        energy = self.energy + other.energy
-        potential = self.potential + other.potential
-        name = self.name + other.name
-        return Functional(name=name, energy=energy, potential=potential)
+        if self.name == other.name:
+            name = self.name
+        else:
+            name = self.name + other.name
+        result = Functional(name=name)
+        for key, value in self:
+            if hasattr(other, key):
+                setattr(result, key, value + getattr(other, key))
+            else:
+                setattr(result, key, value)
+        for key, value in other:
+            if not hasattr(result, key):
+                setattr(result, key, value)
+        return result
 
     def mul(self, x):
-        energy = x * self.energy
-        potential = x * self.potential
-        name = self.name
-        return Functional(name=name, energy=energy, potential=potential)
+        result = self.copy()
+        for key, value in result:
+            setattr(result, key, value*x)
+        return result
 
     def div(self, x):
-        energy = self.energy/x
-        potential = self.potential/x
-        name = self.name
-        return Functional(name=name, energy=energy, potential=potential)
+        if x == 0:
+            raise ValueError("Dividing zero")
+        result = self.copy()
+        for key, value in result:
+            setattr(result, key, value/x)
+        return result
 
     def __add__(self, other):
         return self.sum(other)
@@ -68,14 +88,8 @@ class Functional(object):
     def __mul__(self, x):
         return self.mul(x)
 
-    def __div__(self, x):
-        return self.div(x)
-
     def __truediv__(self, x):
         return self.div(x)
 
     def copy(self):
-        energy = self.energy
-        potential = self.potential.copy()
-        name = self.name
-        return Functional(name=name, energy=energy, potential=potential)
+        return copy.deepcopy(self)

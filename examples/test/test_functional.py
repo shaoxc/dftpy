@@ -22,6 +22,9 @@ class Test(unittest.TestCase):
                                        optional_kwargs=optional_kwargs_gga)
         func = thefuncclass(rho=rho_r)
         self.assertTrue(np.isclose(func.energy, 1.6821337114254904))
+        self.assertTrue(np.isclose((func + func).energy, 1.6821337114254904 * 2))
+        self.assertTrue(np.isclose((func * 2).energy, 1.6821337114254904 * 2))
+        self.assertTrue(np.isclose((func / 2).energy, 1.6821337114254904 / 2))
 
     def test_wt(self):
         dftpy_data_path = os.environ.get('DFTPY_DATA_PATH')
