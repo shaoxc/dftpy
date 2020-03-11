@@ -33,6 +33,11 @@ def ThomasFermiEnergy(rho):
     return ene
 
 
+def ThomasFermiF(rho):
+    ctf = 0.3 * (3.0 * np.pi * np.pi) ** (2.0/3.0)
+    return 10.0/9.0 * ctf / np.cbrt(rho)
+
+
 def ThomasFermiStress(rho, x=1.0, energy=None, **kwargs):
     """
     The Thomas-Fermi Stress
@@ -48,16 +53,15 @@ def ThomasFermiStress(rho, x=1.0, energy=None, **kwargs):
 
 def TF(rho, x=1.0, calcType=["E","V"], split=False, **kwargs):
     TimeData.Begin("TF")
+    OutFunctional = Functional(name="TF")
     if "E" in calcType:
         ene = ThomasFermiEnergy(rho)
-    else:
-        ene = 0.0
+        OutFunctional.energy = ene * x
     if "V" in calcType:
         pot = ThomasFermiPotential(rho)
-    else:
-        pot = np.empty_like(rho)
-    OutFunctional = Functional(name="TF")
-    OutFunctional.potential = pot * x
-    OutFunctional.energy = ene * x
+        OutFunctional.potential = pot * x
+    if "V2" in calcType:
+        v2rho = ThomasFermiF(rho)
+        OutFunctional.v2rho = v2rho * x
     TimeData.End("TF")
     return OutFunctional
