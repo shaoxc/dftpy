@@ -1,12 +1,12 @@
 ### Import fft library
-try:
-    import pyfftw
+# try:
+    # import pyfftw
 
-    FFTLIB = "pyfftw"
-except:
-    FFTLIB = "numpy"
+    # FFTLIB = "pyfftw"
+# except:
+    # FFTLIB = "numpy"
 
-# FFTLIB = 'numpy'
+FFTLIB = 'numpy'
 MATHLIB = "numpy"
 
 print('Use "%s" for Fourier Transform' % (FFTLIB))

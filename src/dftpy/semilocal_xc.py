@@ -18,8 +18,6 @@ def CheckLibXC():
 
 
 def Get_LibXC_Input(density, do_sigma=True):
-    if not isinstance(density, (DirectField)):
-        raise TypeError("density must be a PBCpy DirectField")
     inp = {}
     if density.rank > 1 :
         rhoT = density.reshape((2, -1)).T
@@ -27,13 +25,11 @@ def Get_LibXC_Input(density, do_sigma=True):
     else :
         inp["rho"] = density.ravel()
     if do_sigma:
-        # sigma = density.sigma().ravel()
+        # sigma = density.sigma()
+        sigma = density.sigma("standard")
         if density.rank > 1 :
-            rhoa = np.sum(density, axis = 0)
-        else :
-            rhoa = density
-        sigma = rhoa.sigma("standard").ravel()
-        inp["sigma"] = sigma
+            sigma = sigma.reshape((3, -1)).T
+        inp["sigma"] = sigma.ravel()
     return inp
 
 
@@ -42,13 +38,6 @@ def Get_LibXC_Output(out, density):
         raise TypeError("LibXC output must be a dictionary")
 
     OutFunctional = Functional(name="LibXC")
-
-    do_sigma = False
-    if "vsigma" in out.keys():
-        do_sigma = True
-
-    if do_sigma:
-        sigma = density.sigma(flag="standard").reshape(np.shape(density))
 
     for key in ["vrho", "v2rho2", "v3rho3", "v4rho4"]:
         if key in out.keys():
@@ -63,17 +52,37 @@ def Get_LibXC_Output(out, density):
                 setattr(OutFunctional, key, v)
 
     if "vsigma" in out.keys():
-        vsigma = DirectField(density.grid, griddata_3d=out["vsigma"].reshape(np.shape(density)))
+        if density.rank > 1 :
+            vsigma = out["vsigma"].reshape((-1, 3)).T
+            vsigma = DirectField(density.grid, rank=3, griddata_3d=vsigma)
+        else :
+            vsigma = DirectField(density.grid, griddata_3d=out["vsigma"].reshape(np.shape(density)))
+        do_sigma = True
+    else :
+        do_sigma = False
 
-    if do_sigma:
-        # grho = density.gradient(flag='smooth')
-        grho = density.gradient(flag="standard")
-        prodotto = vsigma * grho
-        vsigma_last = prodotto.divergence(flag="standard")
-        if hasattr(OutFunctional, 'potential'):
+    if hasattr(OutFunctional, 'v2rho2'):
+        raise Exception('2nd and higher order derivative for GGA functionals has not implemented yet.')
+
+    if do_sigma and hasattr(OutFunctional, 'potential'):
+        if density.rank > 1 :
+            grhoU = density[0].gradient(flag="standard")
+            grhoD = density[1].gradient(flag="standard")
+            prodotto = vsigma[0] * grhoU
+            v00=prodotto.divergence(flag="standard")
+            prodotto = vsigma[1] * grhoD
+            v01=prodotto.divergence(flag="standard")
+            prodotto = vsigma[1] * grhoU
+            v10=prodotto.divergence(flag="standard")
+            prodotto = vsigma[2] * grhoD
+            v11=prodotto.divergence(flag="standard")
+            OutFunctional.potential[0] -= 2 * v00+v01
+            OutFunctional.potential[1] -= 2 * v11+v10
+        else :
+            grho = density.gradient(flag="standard")
+            prodotto = vsigma * grho
+            vsigma_last = prodotto.divergence(flag="standard")
             OutFunctional.potential -= 2 * vsigma_last
-        if hasattr(OutFunctional, 'v2rho2'):
-            raise Exception('2nd and higher order derivative for GGA functionals has not implemented yet.')
 
     if "zk" in out.keys():
         if density.rank > 1 :
@@ -136,8 +145,9 @@ def XC(density, x_str='lda_x', c_str='lda_c_pz', polarization='unpolarized', do_
     return Functional_XC
 
 
-# def PBE_XC(density,polarization, calcType = 'Both'):
 def PBE(density, polarization="unpolarized", calcType=["E","V"]):
+    if density.rank > 1 :
+        polarization = 'polarized'
     return XC(
         density=density,
         x_str="gga_x_pbe",
@@ -155,7 +165,7 @@ def LDA_XC(density, polarization="unpolarized", calcType=["E","V"]):
 
 
 def LDA(rho, polarization="unpolarized", calcType=["E","V"], **kwargs):
-    if rho.rank > 2 :
+    if rho.rank > 1 :
         polarization = 'polarized'
     if polarization != 'unpolarized' :
         return LDA_XC(rho,polarization, calcType)

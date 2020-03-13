@@ -64,11 +64,6 @@ class BaseField(np.ndarray):
 
     def __array_finalize__(self, obj):
         # Restore attributes when we are taking a slice
-        if obj is None:
-            return
-        self.grid = getattr(obj, "grid", None)
-        self.span = getattr(obj, "span", None)
-        self.memo = getattr(obj, "memo", None)
         # getting the rank right - or at least trying to do so....
         # self.rank = getattr(obj, 'rank', None)
         a = np.shape(np.shape(self))[0]
@@ -77,6 +72,11 @@ class BaseField(np.ndarray):
         else:
             rank = 1
         self.rank = rank
+        if obj is None:
+            return
+        self.grid = getattr(obj, "grid", None)
+        self.span = getattr(obj, "span", None)
+        self.memo = getattr(obj, "memo", None)
 
     def __array_wrap__(self, obj, context=None):
         """wrap it up"""
@@ -123,11 +123,11 @@ class DirectField(BaseField):
 
     def __array_finalize__(self, obj):
         # Restore attributes when we are taking a slice
+        super().__array_finalize__(obj)
         if obj is None:
             return
-        super().__array_finalize__(obj)
         if isinstance(obj, (DirectField)):
-            self.rank = np.max([self.rank, obj.rank])
+            # self.rank = np.max([self.rank, obj.rank])
             if obj.fft_object is not None:
                 self.fft_object = obj.fft_object
         self.spl_coeffs = None
@@ -216,8 +216,8 @@ class DirectField(BaseField):
     def standard_gradient(self, ipol=None, force_real=True):
         reciprocal_self = self.fft()
         imag = 0 + 1j
-        nr = 3, *reciprocal_self.grid.nr
-        grad_g = np.empty(nr, dtype=complex)
+        # nr = 3, *reciprocal_self.grid.nr
+        # grad_g = np.empty(nr, dtype=complex)
         if ipol is None:
             # FFT(\grad A) = i \vec(G) * FFT(A)
             grad_g = reciprocal_self.grid.g * (reciprocal_self * imag)
@@ -246,7 +246,7 @@ class DirectField(BaseField):
         if flag == "standard":
             return self.standard_gradient(ipol, force_real)
         elif flag == "smooth":
-            if force_real == False:
+            if not force_real:
                 raise Exception("Smooth gradient is not implemented for complex fields")
             return self.numerically_smooth_gradient(ipol)
         elif flag == "supersmooth":
@@ -270,11 +270,22 @@ class DirectField(BaseField):
         """
         \sigma(r) = |\grad rho(r)|^2
         """
-        if self.rank > 1:
-            raise Exception("sigma is only implemented for scalar fields")
-        gradrho = self.gradient(flag=flag)
-        sigma = np.einsum("lijk,lijk->ijk", gradrho, gradrho)
-        return DirectField(grid=self.grid, rank=1, griddata_3d=sigma)
+        if self.rank > 1 :
+            vs = []
+            for i in range(0, self.rank):
+                gradrho = self[i].gradient(flag=flag)
+                vs.append(gradrho)
+            sigma = []
+            for i in range(0, self.rank):
+                for j in range(i, self.rank):
+                    s = np.einsum("lijk,lijk->ijk", vs[i], vs[j])
+                    sigma.append(s)
+            rank = (self.rank * (self.rank + 1))//2
+        else :
+            gradrho = self.gradient(flag=flag)
+            sigma = np.einsum("lijk,lijk->ijk", gradrho, gradrho)
+            rank = 1
+        return DirectField(grid=self.grid, rank=rank, griddata_3d=sigma)
 
     def fft(self):
         TimeData.Begin("FFT")

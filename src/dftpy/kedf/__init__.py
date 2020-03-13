@@ -49,16 +49,22 @@ def KEDFunctional(rho, name="WT", calcType=["E","V"], split=False, nspin = 1, **
             for i in range(1, nspin):
                 ke1 = KEDFunctional(rho[i] * nspin, name, calcType, split, nspin = nspin, **kwargs)
                 for k1 in ke :
-                    ke[k1].energy = ke[k1].energy + ke1[k1].energy
-                    ke[k1].potential = np.vstack((ke[k1].potential, ke1[k1].potential))
+                    if 'E' in calcType :
+                        ke[k1].energy = ke[k1].energy + ke1[k1].energy
+                    if 'V' in calcType :
+                        ke[k1].potential = np.vstack((ke[k1].potential, ke1[k1].potential))
             for k1 in ke :
-                ke[k1].potential = ke[k1].potential.reshape(rho.shape)
+                if 'V' in calcType :
+                    ke[k1].potential = ke[k1].potential.reshape(rho.shape)
         else :
             for i in range(1, nspin):
                 ke1 = KEDFunctional(rho[i] * nspin, name, calcType, split, nspin = nspin, **kwargs)
-                ke.energy = ke.energy + ke1.energy
-                ke.potential = np.vstack((ke.potential, ke1.potential))
-            ke.potential = DirectField(grid=rho.grid, griddata_3d=ke.potential, rank=nspin)
+                if 'E' in calcType :
+                    ke.energy = ke.energy + ke1.energy
+                if 'V' in calcType :
+                    ke.potential = np.vstack((ke.potential, ke1.potential))
+            if 'V' in calcType :
+                ke.potential = DirectField(grid=rho.grid, griddata_3d=ke.potential, rank=nspin)
         return ke
     #-----------------------------------------------------------------------
     if name[:3] == "GGA":
@@ -72,13 +78,13 @@ def KEDFunctional(rho, name="WT", calcType=["E","V"], split=False, nspin = 1, **
     elif name in KEDF_Dict:
         func = KEDF_Dict[name]
         OutFunctional = func(rho, calcType=calcType, **kwargs)
-        if nspin > 1 :
+        if nspin > 1 and 'E' in calcType :
             OutFunctional.energy /= nspin
         OutFunctionalDict = {name: OutFunctional}
     elif name == "x_TF_y_vW" or name == "xTFyvW":
         xTF = TF(rho, calcType=calcType, **kwargs)
         yvW = vW(rho, calcType=calcType, **kwargs)
-        if nspin > 1 :
+        if nspin > 1 and 'E' in calcType :
             xTF.energy /= nspin
             yvW.energy /= nspin
         OutFunctional = xTF + yvW
@@ -96,7 +102,7 @@ def KEDFunctional(rho, name="WT", calcType=["E","V"], split=False, nspin = 1, **
             s = x
         xTF = TF(rho, x=s, calcType=calcType)
         yvW = vW(rho, calcType=calcType, **kwargs)
-        if nspin > 1 :
+        if nspin > 1 and 'E' in calcType :
             xTF.energy /= nspin
             yvW.energy /= nspin
             NL.energy /= nspin

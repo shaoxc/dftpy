@@ -36,9 +36,7 @@ class Functional(object):
                 setattr(self, key, value)
             elif key == "name":
                 raise AttributeError("Functional name must be specified")
-
-    def __iter__(self):
-        attr_list = [
+        self.attr_list = [
         'energy',
         'potential',
         'energydensity',
@@ -48,7 +46,9 @@ class Functional(object):
         'force',
         'stress',
         ]
-        for key in attr_list:
+
+    def __iter__(self):
+        for key in self.attr_list:
             if hasattr(self, key):
                 yield key, getattr(self, key)
 

@@ -111,14 +111,18 @@ def WT(
     else:
         KE_kernel = KE_kernel_saved["Kernel"]
 
-    if "E" in calcType:
-        ene = WTEnergy(rho, rho0, KE_kernel, alpha, beta)
-    else:
-        ene = 0.0
     if "V" in calcType:
         pot = WTPotential(rho, rho0, KE_kernel, alpha, beta)
     else:
         pot = np.empty_like(rho)
+
+    if "E" in calcType:
+        if abs(beta - alpha) < 1e-9 and "V" in calcType:
+            ene = np.einsum("ijk, ijk->", pot, rho) * rho.grid.dV / (2 * alpha)
+        else:
+            ene = WTEnergy(rho, rho0, KE_kernel, alpha, beta)
+    else:
+        ene = 0.0
 
     NL = Functional(name="NL", potential=pot, energy=ene)
     return NL

@@ -341,10 +341,17 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
             if i == 2 and not full:
                 ax.append(np.fft.rfftfreq(self.nrR[i], d=dd))
             else:
-                ax.append(np.fft.fftfreq(self.nrR[i], d=dd))
+                freq = np.fft.fftfreq(self.nrR[i], d=dd)
+                # if freq.size % 2 == 0 :
+                    # freq[freq.size//2] *= -1
+                    # ax.append(freq)
+                # else :
+                    # ax.append(freq)
+                ax.append(freq)
         S0, S1, S2 = np.meshgrid(ax[0], ax[1], ax[2], indexing="ij")
 
         # S_cart = s2r(S, self)
+        # S_cart = np.asarray([S2, S1, S0])
         S_cart = np.asarray([S0, S1, S2])
         S_cart = np.einsum("j...,kj->k...", S_cart, self.lattice)
 
