@@ -10,7 +10,7 @@ from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
 from dftpy.math_utils import TimeData, bestFFTsize, interpolation_3d
 from dftpy.functional_output import Functional
-from dftpy.semilocal_xc import LDAStress
+from dftpy.semilocal_xc import LDAStress, PBEStress, XCStress
 from dftpy.pseudo import LocalPseudo
 from dftpy.kedf import KEDFStress
 from dftpy.hartree import HartreeFunctionalStress
@@ -431,8 +431,12 @@ def GetStress(
     # self.FunctionalTypeList = ["XC", "KEDF", "PSEUDO", "HARTREE"]
     if xc == "LDA":
         stress["XC"] = LDAStress(rho, energy=energy["XC"])
-    else:
-        raise AttributeError("%s exchange-correlation have not implemented for stress" % xc)
+        # stress["XC"] = XCStress(rho, name='LDA')
+    elif xc == "PBE" :
+        stress["XC"] = PBEStress(rho, energy=energy["XC"])
+    else :
+        stress["XC"] = XCStress(rho, x_str='gga_x_pbe', c_str='gga_c_pbe', energy=energy["XC"])
+
     stress["HARTREE"] = HartreeFunctionalStress(rho, energy=energy["HARTREE"])
     stress["II"] = ewaldobj.stress
     stress["PSEUDO"] = EnergyEvaluator.PSEUDO.stress(rho, energy=energy["PSEUDO"])

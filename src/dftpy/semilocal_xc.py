@@ -221,7 +221,7 @@ def LDA(rho, polarization="unpolarized", calcType=["E","V"], **kwargs):
     return OutFunctional
 
 
-def LDAStress(rho, polarization="unpolarized", energy=None):
+def LDAStress(rho, polarization="unpolarized", energy=None, potential=None):
     TimeData.Begin("LDA_Stress")
     if rho.rank > 1 :
         polarization = 'polarized'
@@ -229,7 +229,7 @@ def LDAStress(rho, polarization="unpolarized", energy=None):
         EnergyPotential = LDA(rho, polarization, calcType=["E","V"])
         energy = EnergyPotential.energy
         potential = EnergyPotential.potential
-    else:
+    elif potential is None :
         potential = LDA(rho, polarization, calcType=["V"]).potential
     stress = np.zeros((3, 3))
     Etmp = energy - np.einsum("..., ...-> ", potential, rho, optimize = 'optimal') * rho.grid.dV
@@ -274,3 +274,142 @@ def LIBXC_KEDF(density, polarization="unpolarized", k_str="gga_k_lc94", calcType
     name = k_str[6:]
     Functional_KEDF.name = name.upper()
     return Functional_KEDF
+
+def _LDAStress(density, xc_str='lda_x', polarization='unpolarized', energy=None, flag='standard', **kwargs):
+    if CheckLibXC():
+        from pylibxc.functional import LibXCFunctional
+    if density.rank > 1 :
+        polarization = 'polarized'
+
+    nspin = density.rank
+    func_xc = LibXCFunctional(xc_str, polarization)
+    inp = {}
+    if nspin > 1 :
+        rho = np.sum(density, axis = 0)
+        rhoT = density.reshape((2, -1)).T
+        inp["rho"] = rhoT.ravel()
+    else :
+        rho = density
+        inp["rho"] = density.ravel()
+
+    kargs = {'do_exc': True, 'do_vxc': True}
+    if energy is not None :
+        kargs['do_exc'] = False
+        energy *= 0.5
+    out= func_xc.compute(inp, **kargs)
+
+    if "zk" in out.keys():
+        edens = out["zk"].reshape(np.shape(rho))
+        energy = np.einsum("ijk, ijk->", edens, rho) * density.grid.dV
+
+    if nspin > 1 :
+        v = out['vrho'].reshape((-1, 2)).T
+        v = DirectField(density.grid, rank=density.rank, griddata_3d=v)
+    else :
+        v = DirectField(density.grid, rank=density.rank, griddata_3d=out['vrho'])
+    stress = np.zeros((3, 3))
+    P = energy - np.einsum("..., ...-> ", v, rho, optimize = 'optimal') * rho.grid.dV
+    stress = np.eye(3)*P
+    return stress/ rho.grid.volume
+
+def _GGAStress(density, xc_str='gga_x_pbe', polarization='unpolarized', energy=None, flag='standard', **kwargs):
+    if CheckLibXC():
+        from pylibxc.functional import LibXCFunctional
+
+    if density.rank > 1 :
+        polarization = 'polarized'
+
+    nspin = density.rank
+    func_xc = LibXCFunctional(xc_str, polarization)
+    inp = {}
+    if nspin > 1 :
+        rho = np.sum(density, axis = 0)
+        rhoT = density.reshape((2, -1)).T
+        inp["rho"] = rhoT.ravel()
+        gradDen = []
+        for i in range(0, nspin):
+            gradrho = density[i].gradient(flag=flag)
+            gradDen.append(gradrho)
+        sigma = []
+        for i in range(0, nspin):
+            for j in range(i, nspin):
+                s = np.einsum("lijk,lijk->ijk", gradDen[i], gradDen[j])
+                sigma.append(s)
+        rank = (nspin * (nspin + 1))//2
+        sigmaL = DirectField(grid=density.grid, rank=rank, griddata_3d=sigma)
+        sigma = sigmaL.reshape((3, -1)).T
+    else :
+        rho = density
+        inp["rho"] = density.ravel()
+        gradDen = density.gradient(flag=flag)
+        sigma = np.einsum("lijk,lijk->ijk", gradDen, gradDen)
+        sigma = DirectField(grid=density.grid, rank=1, griddata_3d=sigma)
+    inp["sigma"] = sigma.ravel()
+
+    kargs = {'do_exc': True, 'do_vxc': True}
+    if energy is not None :
+        kargs['do_exc'] = False
+        energy *= 0.5
+    out= func_xc.compute(inp, **kargs)
+
+    if "zk" in out.keys():
+        edens = out["zk"].reshape(np.shape(rho))
+        energy = np.einsum("ijk, ijk->", edens, rho) * density.grid.dV
+
+    if nspin > 1 :
+        v = out['vrho'].reshape((-1, 2)).T
+        v = DirectField(density.grid, rank=density.rank, griddata_3d=v)
+        vsigma = out["vsigma"].reshape((-1, 3)).T
+        vsigma = DirectField(density.grid, rank=3, griddata_3d=vsigma)
+        sigma = sigmaL
+    else :
+        v = DirectField(density.grid, rank=density.rank, griddata_3d=out['vrho'])
+        vsigma = DirectField(density.grid, griddata_3d=out["vsigma"].reshape(np.shape(density)))
+
+    P = energy
+    P -= np.einsum("..., ...-> ", v, density, optimize = 'optimal') * rho.grid.dV
+    P -= 2.0*np.einsum("..., ...-> ", sigma, vsigma, optimize = 'optimal') * rho.grid.dV
+    stress = np.eye(3)*P
+    for i in range(3):
+        for j in range(3):
+            if nspin > 1 :
+                stress[i, j] -= 2.0*np.einsum("ijk, ijk, ijk -> ", gradDen[0][i], gradDen[0][j], vsigma[0]) * rho.grid.dV
+                stress[i, j] -= 2.0*np.einsum("ijk, ijk, ijk -> ", gradDen[0][i], gradDen[1][j], vsigma[1]) * rho.grid.dV
+                stress[i, j] -= 2.0*np.einsum("ijk, ijk, ijk -> ", gradDen[1][i], gradDen[1][j], vsigma[2]) * rho.grid.dV
+            else :
+                stress[i, j] -= 2.0*np.einsum("ijk, ijk, ijk -> ", gradDen[i], gradDen[j], vsigma) * rho.grid.dV
+    return stress/ rho.grid.volume
+
+
+def GGAStress(density, x_str='gga_x_pbe', c_str='gga_c_pbe', polarization='unpolarized', energy=None, flag='standard', **kwargs):
+    stress=_GGAStress(density, xc_str=x_str, polarization=polarization, energy=energy, flag=flag, **kwargs)
+    stress+=_GGAStress(density, xc_str=c_str, polarization=polarization, energy=energy, flag=flag, **kwargs)
+    return stress
+
+
+def PBEStress(density, polarization='unpolarized', energy=None, flag='standard', **kwargs):
+    stress=GGAStress(density, x_str='gga_x_pbe', c_str='gga_c_pbe', polarization=polarization, energy=energy, flag=flag, **kwargs)
+    return stress
+
+
+def XCStress(density, name=None, x_str='gga_x_pbe', c_str='gga_c_pbe', polarization='unpolarized', energy=None, flag='standard', **kwargs):
+    if name == 'LDA' :
+        x_str = 'lda_x'
+        c_str = 'lda_c_pz'
+        stress=_LDAStress(density, xc_str=x_str, polarization=polarization, energy=energy, flag=flag, **kwargs)
+        stress+=_LDAStress(density, xc_str=c_str, polarization=polarization, energy=energy, flag=flag, **kwargs)
+    elif name == 'PBE' :
+        x_str = 'gga_x_pbe'
+        c_str = 'gga_c_pbe'
+        stress=_GGAStress(density, xc_str=x_str, polarization=polarization, energy=energy, flag=flag, **kwargs)
+        stress+=_GGAStress(density, xc_str=c_str, polarization=polarization, energy=energy, flag=flag, **kwargs)
+    elif x_str[:3] == c_str[:3] == 'lda' :
+        stress=_LDAStress(density, xc_str=x_str, polarization=polarization, energy=energy, flag=flag, **kwargs)
+        stress+=_LDAStress(density, xc_str=c_str, polarization=polarization, energy=energy, flag=flag, **kwargs)
+    elif x_str[:3] == c_str[:3] == 'gga' :
+        stress=_LDAStress(density, xc_str=x_str, polarization=polarization, energy=energy, flag=flag, **kwargs)
+        stress+=_LDAStress(density, xc_str=c_str, polarization=polarization, energy=energy, flag=flag, **kwargs)
+    else :
+        raise AttributeError("'x_str' %s and 'c_str' %s must be same type" %(x_str, c_str))
+
+    return stress
