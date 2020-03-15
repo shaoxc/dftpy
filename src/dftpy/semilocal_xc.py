@@ -216,12 +216,11 @@ def LDA(rho, polarization="unpolarized", calcType=["E","V"], **kwargs):
 
         OutFunctional.v2rho2 = fx + fc
 
-
     TimeData.End("LDA")
     return OutFunctional
 
 
-def LDAStress(rho, polarization="unpolarized", energy=None, potential=None):
+def LDAStress(rho, polarization="unpolarized", energy=None, potential=None, **kwargs):
     TimeData.Begin("LDA_Stress")
     if rho.rank > 1 :
         polarization = 'polarized'
@@ -393,6 +392,7 @@ def PBEStress(density, polarization='unpolarized', energy=None, flag='standard',
 
 
 def XCStress(density, name=None, x_str='gga_x_pbe', c_str='gga_c_pbe', polarization='unpolarized', energy=None, flag='standard', **kwargs):
+    TimeData.Begin("XCStress")
     if name == 'LDA' :
         x_str = 'lda_x'
         c_str = 'lda_c_pz'
@@ -412,4 +412,5 @@ def XCStress(density, name=None, x_str='gga_x_pbe', c_str='gga_c_pbe', polarizat
     else :
         raise AttributeError("'x_str' %s and 'c_str' %s must be same type" %(x_str, c_str))
 
+    TimeData.End("XCStress")
     return stress
