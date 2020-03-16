@@ -128,7 +128,7 @@ def LibXC(density, k_str=None, x_str=None, c_str=None, calcType=["E","V"], **kwa
         raise AttributeError("At least one of the k_str, x_str, c_str must not be None.")
 
     if not isinstance(density, (DirectField)):
-        raise AttributeError("density must be a rank-1 or -2 PBCpy DirectField")
+        raise TypeError("density must be a rank-1 or -2 PBCpy DirectField")
     if density.rank == 1:
         polarization = "unpolarized"
     elif density.rank == 2:

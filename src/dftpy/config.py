@@ -139,7 +139,7 @@ def DefaultOption():
 
 def OptionFormat(config):
     if not isinstance(config, dict):
-        raise AttributeError("config must be dict")
+        raise TypeError("config must be dict")
     conf = copy.deepcopy(config)
     for section in conf:
         for key in conf[section]:
@@ -266,7 +266,7 @@ def OptionFormat(config):
 
 def PrintConf(conf):
     if not isinstance(conf, dict):
-        raise AttributeError("conf must be dict")
+        raise TypeError("conf must be dict")
     try:
         import json
         print(json.dumps(conf, indent=4, sort_keys=True))

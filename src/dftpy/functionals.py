@@ -163,7 +163,7 @@ class FunctionalClass(AbstractFunctional):
             self.name = name
 
         if not isinstance(self.optional_kwargs, dict):
-            raise AttributeError("optional_kwargs must be dict")
+            raise TypeError("optional_kwargs must be dict")
 
         if not self.CheckFunctional():
             raise Exception("Functional check failed")
@@ -216,7 +216,7 @@ class TotalEnergyAndPotential(AbstractFunctional):
     """
      Object handling energy evaluation for the 
      purposes of optimizing the electron density
-     
+
      Attributes
      ----------
 
@@ -227,18 +227,30 @@ class TotalEnergyAndPotential(AbstractFunctional):
      Example
      -------
 
-     XC = FunctionalClass(type='XC',name='LDA')
      KE = FunctionalClass(type='KEDF',name='TF')
-     HARTREE = FunctionalClass(type='HARTREE')
+     XC = FunctionalClass(type='XC',name='LDA')
      PSEUDO = FunctionalClass(type='PSEUDO', kwargs)
+     HARTREE = FunctionalClass(type='HARTREE')
 
-     EnergyEvaluator = TotalEnergyAndPotential(KEDF,XC,PSEUDO,HARTREE)
+     EnergyEvaluator = TotalEnergyAndPotential(
+         KineticEnergyFunctional = KE,
+         XCFunctional = XC,
+         PSEUDO = PSEUDO,
+         HARTREE = HARTREE
+     )
+
      or given a dict
-     EnergyEvaluator = TotalEnergyAndPotential()
+     funcdict = {
+         "KineticEnegyFunctional": KE,
+         "XCFunctional": XC,
+         "PSEUDO": PSEUDO,
+         "HARTREE": HARTREE
+     }
+     EnergyEvaluator = TotalEnergyAndPotential(**funcdict)
 
      [the energy:]
      E = EnergyEvaluator.Energy(rho,ions)
-     
+
      [total energy and potential:]
      out = EnergyEvaluator.ComputeEnergyPotential(rho)
 
@@ -246,21 +258,14 @@ class TotalEnergyAndPotential(AbstractFunctional):
      in_for_scipy_minimize = EnergyEvaluator(phi)
     """
 
-    def __init__(self, KineticEnergyFunctional=None, XCFunctional=None, PSEUDO=None, HARTREE=None, **kwargs):
+    def __init__(self, **kwargs):
 
-        funcDict = {}
-        funcDict['KineticEnergyFunctional'] = KineticEnergyFunctional
-        funcDict['XCFunctional'] = XCFunctional
-        funcDict['PSEUDO'] = PSEUDO
-        funcDict['HARTREE'] = HARTREE
-        funcDict.update(kwargs)
+        self.funcDict = {}
+        self.funcDict.update(kwargs)
         # remove useless key
-        keys = list(funcDict.keys())
-        for key in keys :
-            if funcDict[key] is None :
-                del funcDict[key]
-
-        self.funcDict = funcDict
+        for key, evalfunctional in self.funcDict.items():
+            if evalfunctional is None:
+                del self.funcDict[key]
 
         self.UpdateNameType()
 
@@ -280,7 +285,7 @@ class TotalEnergyAndPotential(AbstractFunctional):
             elif isinstance(evalfunctional, ExternalPotential):
                 pass
             elif not isinstance(evalfunctional, FunctionalClass):
-                raise AttributeError("{} must be FunctionalClass".format(key))
+                raise TypeError("{} must be FunctionalClass".format(key))
             setattr(self, key, evalfunctional)
             self.name += getattr(evalfunctional, 'name') + " "
             self.type += getattr(evalfunctional, 'type') + " "
