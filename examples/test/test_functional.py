@@ -5,7 +5,6 @@ import numpy as np
 
 from dftpy.functionals import FunctionalClass
 from dftpy.constants import LEN_CONV
-from dftpy.semilocal_xc import XC, PBE
 from dftpy.formats.qepp import PP
 
 

@@ -4,7 +4,7 @@
 # local imports
 from dftpy.field import DirectField
 from dftpy.functional_output import Functional
-from dftpy.semilocal_xc import PBE, LDA, XC, LIBXC_KEDF
+from dftpy.semilocal_xc import PBE, LDA, LibXC
 from dftpy.hartree import HartreeFunctional
 from dftpy.kedf import KEDFunctional
 from dftpy.pseudo import LocalPseudo
@@ -182,21 +182,17 @@ class FunctionalClass(AbstractFunctional):
             if self.name != "LIBXC_KEDF":
                 return KEDFunctional(rho, self.name, calcType=calcType, **self.optional_kwargs)
             else:
-                polarization = self.optional_kwargs.get("polarization", "unpolarized")
                 k_str = self.optional_kwargs.get("k_str", "gga_k_lc94")
-                return LIBXC_KEDF(density=rho, k_str=k_str, polarization=polarization, calcType=calcType)
+                return LibXC(density=rho, k_str=k_str, calcType=calcType)
         elif self.type == "XC":
-            polarization = self.optional_kwargs.get("polarization", "unpolarized")
-            if rho.ndim > 3 and rho.shape[0] > 1 :
-                polarization = "polarized"
             if self.name == "LDA":
-                return LDA(rho, polarization=polarization, calcType=calcType)
+                return LDA(rho, calcType=calcType)
             elif self.name == "PBE":
-                return PBE(density=rho, polarization=polarization, calcType=calcType)
+                return PBE(rho, calcType=calcType)
             elif self.name == "LIBXC_XC":
                 x_str = self.optional_kwargs.get("x_str", "gga_x_pbe")
                 c_str = self.optional_kwargs.get("c_str", "gga_c_pbe")
-                return XC(density=rho, x_str=x_str, c_str=c_str, polarization=polarization, calcType=calcType)
+                return LibXC(density=rho, x_str=x_str, c_str=c_str, calcType=calcType)
         elif self.type == "HARTREE":
             return HartreeFunctional(density=rho, calcType=calcType)
         elif self.type == "PSEUDO":

@@ -98,30 +98,44 @@ def Get_LibXC_Output(out, density):
     return OutFunctional
 
 
-def XC(density, x_str='lda_x', c_str='lda_c_pz', polarization='unpolarized', do_sigma=False, calcType=["E","V"], **kwargs):
-    TimeData.Begin("XC")
-    if CheckLibXC():
-        from pylibxc.functional import LibXCFunctional
+def LibXC(density, k_str=None, x_str=None, c_str=None, calcType=["E","V"], **kwargs):
     """
      Output: 
-        - Functional_XC: a XC functional evaluated with LibXC
+        - out_functional: a functional evaluated with LibXC
      Input:
         - density: a DirectField (rank=1)
-        - x_str,c_str: strings like "gga_x_pbe" and "gga_c_pbe"
-        - polarization: string like "polarized" or "unpolarized"
+        - k_str, x_str,c_str: strings like "gga_k_lc94", "gga_x_pbe" and "gga_c_pbe"
     """
-    if not isinstance(x_str, str):
-        raise AttributeError(
-            "x_str and c_str must be LibXC functionals. Check pylibxc.util.xc_available_functional_names()"
-        )
-    if not isinstance(c_str, str):
-        raise AttributeError(
-            "x_str and c_str must be LibXC functionals. Check pylibxc.util.xc_available_functional_names()"
-        )
-    if not isinstance(polarization, str):
-        raise AttributeError("polarization must be a ``polarized`` or ``unpolarized``")
+    TimeData.Begin("LibXC")
+    if CheckLibXC():
+        from pylibxc.functional import LibXCFunctional
+
+    args = locals()
+    do_sigma = False
+    func_str = {}
+    for key, value in args.items():
+        if key in ["k_str", "x_str", "c_str"] and not value is None:
+            if not isinstance(value, str):
+                raise AttributeError(
+                    key + " must be LibXC functionals. Check pylibxc.util.xc_available_functional_names()"
+                )
+            if value.startswith('hyb') or value.startswith('mgga'):
+                raise AttributeError('Hybrid and Meta-GGA functionals have not been implemented yet')
+            if value.startswith('gga'):
+                do_sigma = True
+            func_str[key] = value
+    if not func_str:
+        raise AttributeError("At least one of the k_str, x_str, c_str must not be None.")
+
     if not isinstance(density, (DirectField)):
-        raise AttributeError("density must be a rank-1 PBCpy DirectField")
+        raise AttributeError("density must be a rank-1 or -2 PBCpy DirectField")
+    if density.rank == 1:
+        polarization = "unpolarized"
+    elif density.rank == 2:
+        polarization = "polarized"
+    else:
+        raise AttributeError("density must be a rank-1 or -2 PBCpy DirectField")
+
     func_x = LibXCFunctional(x_str, polarization)
     func_c = LibXCFunctional(c_str, polarization)
     inp = Get_LibXC_Input(density, do_sigma=do_sigma)
@@ -136,33 +150,34 @@ def XC(density, x_str='lda_x', c_str='lda_c_pz', polarization='unpolarized', do_
         kargs.update({'do_kxc': True})
     if 'V4' in calcType:
         kargs.update({'do_lxc': True})
-    out_x = func_x.compute(inp, **kargs)
-    out_c = func_c.compute(inp, **kargs)
-    Functional_X = Get_LibXC_Output(out_x, density)
-    Functional_C = Get_LibXC_Output(out_c, density)
-    Functional_XC = Functional_X.sum(Functional_C)
-    name = x_str[6:] + "_" + c_str[6:]
-    Functional_XC.name = name.upper()
-    TimeData.End("XC")
-    return Functional_XC
+
+    for key, value in func_str.items():
+        func = LibXCFunctional(value, polarization)
+        out = func.compute(inp, **kargs)
+        if 'out_functional' in locals():
+            out_functional += Get_LibXC_Output(out, density)
+            out_functional.name += "_" + value
+        else:
+            out_functional = Get_LibXC_Output(out, density)
+            out_functional.name = value
+    TimeData.End("LibXC")
+    return out_functional
 
 
-def PBE(density, polarization="unpolarized", calcType=["E","V"]):
+def PBE(density, calcType=["E","V"]):
     if density.rank > 1 :
         polarization = 'polarized'
-    return XC(
+    return LibXC(
         density=density,
         x_str="gga_x_pbe",
         c_str="gga_c_pbe",
-        polarization=polarization,
-        do_sigma=True,
-        calcType=calcType,
+        calcType=calcType
     )
 
 
-def LDA_XC(density, polarization="unpolarized", calcType=["E","V"]):
-    return XC(
-        density=density, x_str="lda_x", c_str="lda_c_pz", polarization=polarization, do_sigma=False, calcType=calcType
+def LDA_XC(density, calcType=["E","V"]):
+    return LibXC(
+        density=density, x_str="lda_x", c_str="lda_c_pz", calcType=calcType
     )
 
 
@@ -239,42 +254,6 @@ def LDAStress(rho, polarization="unpolarized", energy=None, potential=None, **kw
     TimeData.End("LDA_Stress")
     return stress
 
-
-def LIBXC_KEDF(density, polarization="unpolarized", k_str="gga_k_lc94", calcType=["E","V"], **kwargs):
-    if CheckLibXC():
-        from pylibxc.functional import LibXCFunctional
-    """
-     Output: 
-        - Functional_KEDF: a KEDF functional evaluated with LibXC
-     Input:
-        - density: a DirectField (rank=1)
-        - k_str: strings like "gga_k_lc94"
-        - polarization: string like "polarized" or "unpolarized"
-    """
-    if not isinstance(k_str, str):
-        raise AttributeError("k_str must be a LibXC functional. Check pylibxc.util.xc_available_functional_names()")
-    if not isinstance(polarization, str):
-        raise AttributeError("polarization must be a ``polarized`` or ``unpolarized``")
-    if not isinstance(density, (DirectField)):
-        raise AttributeError("density must be a rank-1 PBCpy DirectField")
-    func_k = LibXCFunctional(k_str, polarization)
-    inp = Get_LibXC_Input(density)
-    kargs = {'do_exc': False, 'do_vxc': False}
-    if 'E' in calcType:
-        kargs.update({'do_exc': True})
-    if 'V' in calcType:
-        kargs.update({'do_vxc': True})
-    if 'V2' in calcType:
-        kargs.update({'do_fxc': True})
-    if 'V3' in calcType:
-        kargs.update({'do_kxc': True})
-    if 'V4' in calcType:
-        kargs.update({'do_lxc': True})
-    out_k = func_k.compute(inp, **kargs)
-    Functional_KEDF = Get_LibXC_Output(out_k, density)
-    name = k_str[6:]
-    Functional_KEDF.name = name.upper()
-    return Functional_KEDF
 
 def _LDAStress(density, xc_str='lda_x', polarization='unpolarized', energy=None, flag='standard', **kwargs):
     if CheckLibXC():
