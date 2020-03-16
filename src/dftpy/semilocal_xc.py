@@ -61,28 +61,30 @@ def Get_LibXC_Output(out, density):
     else :
         do_sigma = False
 
-    if hasattr(OutFunctional, 'v2rho2'):
-        raise Exception('2nd and higher order derivative for GGA functionals has not implemented yet.')
+    if do_sigma:
 
-    if do_sigma and hasattr(OutFunctional, 'potential'):
-        if density.rank > 1 :
-            grhoU = density[0].gradient(flag="standard")
-            grhoD = density[1].gradient(flag="standard")
-            prodotto = vsigma[0] * grhoU
-            v00=prodotto.divergence(flag="standard")
-            prodotto = vsigma[1] * grhoD
-            v01=prodotto.divergence(flag="standard")
-            prodotto = vsigma[1] * grhoU
-            v10=prodotto.divergence(flag="standard")
-            prodotto = vsigma[2] * grhoD
-            v11=prodotto.divergence(flag="standard")
-            OutFunctional.potential[0] -= 2 * v00+v01
-            OutFunctional.potential[1] -= 2 * v11+v10
-        else :
-            grho = density.gradient(flag="standard")
-            prodotto = vsigma * grho
-            vsigma_last = prodotto.divergence(flag="standard")
-            OutFunctional.potential -= 2 * vsigma_last
+        if hasattr(OutFunctional, 'potential'):
+            if density.rank > 1 :
+                grhoU = density[0].gradient(flag="standard")
+                grhoD = density[1].gradient(flag="standard")
+                prodotto = vsigma[0] * grhoU
+                v00=prodotto.divergence(flag="standard")
+                prodotto = vsigma[1] * grhoD
+                v01=prodotto.divergence(flag="standard")
+                prodotto = vsigma[1] * grhoU
+                v10=prodotto.divergence(flag="standard")
+                prodotto = vsigma[2] * grhoD
+                v11=prodotto.divergence(flag="standard")
+                OutFunctional.potential[0] -= 2 * v00+v01
+                OutFunctional.potential[1] -= 2 * v11+v10
+            else :
+                grho = density.gradient(flag="standard")
+                prodotto = vsigma * grho
+                vsigma_last = prodotto.divergence(flag="standard")
+                OutFunctional.potential -= 2 * vsigma_last
+
+        if hasattr(OutFunctional, 'v2rho2') or hasattr(OutFunctional, 'v3rho3') or hasattr(OutFunctional, 'v4rho4'):
+            raise Exception('2nd and higher order derivative for GGA functionals has not implemented yet.')
 
     if "zk" in out.keys():
         if density.rank > 1 :
