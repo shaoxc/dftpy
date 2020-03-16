@@ -39,13 +39,20 @@ def Get_LibXC_Output(out, density):
 
     OutFunctional = Functional(name="LibXC")
 
+    rank_dict = {
+        "vrho": 2,
+        "v2rho2": 3,
+        "v3rho3": 4,
+        "v4rho4": 5,
+    }
+
     for key in ["vrho", "v2rho2", "v3rho3", "v4rho4"]:
         if key in out.keys():
             if density.rank > 1 :
-                v = out[key].reshape((-1, 2)).T
-                v = DirectField(density.grid, rank=density.rank, griddata_3d=v)
+                v = out[key].reshape((-1, rank_dict[key])).T
+                v = DirectField(density.grid, rank=rank_dict[key], griddata_3d=v)
             else :
-                v = DirectField(density.grid, rank=density.rank, griddata_3d=out[key])
+                v = DirectField(density.grid, rank=1, griddata_3d=out[key])
             if key == "vrho":
                 OutFunctional.potential = v
             else:
@@ -117,7 +124,7 @@ def LibXC(density, k_str=None, x_str=None, c_str=None, calcType=["E","V"], **kwa
         if key in ["k_str", "x_str", "c_str"] and not value is None:
             if not isinstance(value, str):
                 raise AttributeError(
-                    key + " must be LibXC functionals. Check pylibxc.util.xc_available_functional_names()"
+                    "{} must be LibXC functionals. Check pylibxc.util.xc_available_functional_names()".format(key)
                 )
             if value.startswith('hyb') or value.startswith('mgga'):
                 raise AttributeError('Hybrid and Meta-GGA functionals have not been implemented yet')
@@ -136,8 +143,6 @@ def LibXC(density, k_str=None, x_str=None, c_str=None, calcType=["E","V"], **kwa
     else:
         raise AttributeError("density must be a rank-1 or -2 PBCpy DirectField")
 
-    func_x = LibXCFunctional(x_str, polarization)
-    func_c = LibXCFunctional(c_str, polarization)
     inp = Get_LibXC_Input(density, do_sigma=do_sigma)
     kargs = {'do_exc': False, 'do_vxc': False}
     if 'E' in calcType:
