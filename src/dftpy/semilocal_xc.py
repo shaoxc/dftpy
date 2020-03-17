@@ -186,11 +186,9 @@ def LDA_XC(density, calcType=["E","V"]):
     )
 
 
-def LDA(rho, polarization="unpolarized", calcType=["E","V"], **kwargs):
+def LDA(rho, calcType=["E","V"], **kwargs):
     if rho.rank > 1 :
-        polarization = 'polarized'
-    if polarization != 'unpolarized' :
-        return LDA_XC(rho,polarization, calcType)
+        return LDA_XC(rho, calcType)
     TimeData.Begin("LDA")
     OutFunctional = Functional(name="XC")
     a = (0.0311, 0.01555)
