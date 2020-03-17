@@ -426,43 +426,56 @@ def GetStress(
             else :
                 energy[func.type] = None
 
-    ewaldobj = ewald(rho=rho, ions=ions, verbose=False, PME=linearii)
     stress = {}
-    # self.FunctionalTypeList = ["XC", "KEDF", "PSEUDO", "HARTREE"]
-    if xc == "LDA":
-        stress["XC"] = LDAStress(rho, energy=energy["XC"])
-        # stress["XC"] = XCStress(rho, name='LDA')
-    elif xc == "PBE" :
-        stress["XC"] = PBEStress(rho, energy=energy["XC"])
-    else :
-        stress["XC"] = XCStress(rho, x_str='gga_x_pbe', c_str='gga_c_pbe', energy=energy["XC"])
-
-    stress["HARTREE"] = HartreeFunctionalStress(rho, energy=energy["HARTREE"])
+    ewaldobj = ewald(rho=rho, ions=ions, verbose=False, PME=linearii)
     stress["II"] = ewaldobj.stress
-    stress["PSEUDO"] = EnergyEvaluator.PSEUDO.stress(rho, energy=energy["PSEUDO"])
-    ############################## KE ##############################
-    stress["KEDF"] = {}
-    KEDF_Stress_L= {
-            "TF" : ["TF"], 
-            "vW": ["TF"], 
-            "x_TF_y_vW": ["TF", "vW"], 
-            "TFvW": ["TF", "vW"], 
-            "WT": ["TF", "vW", "WT"], 
-            }
-    if ke not in KEDF_Stress_L :
-        raise AttributeError("%s KEDF have not implemented for stress" % ke)
-    kelist = KEDF_Stress_L[ke]
+    stress['TOTAL'] = stress['II'].copy()
 
-    if "TF" in kelist :
-        stress["KEDF"]["TF"] = KEDFStress(rho, name="TF", energy=energy["KEDF"]["TF"], **ke_options)
-    if "vW" in kelist :
-        stress["KEDF"]["vW"] = KEDFStress(rho, name="vW", energy=energy["KEDF"]["vW"], **ke_options)
-    if 'NL' in energy["KEDF"] :
-        stress["KEDF"]["NL"] = KEDFStress(rho, name=kelist[2], energy=energy["KEDF"]["NL"], **ke_options)
+    funcDict = EnergyEvaluator.funcDict
+    for key in funcDict :
+        func = getattr(EnergyEvaluator, key)
+        key1 = func.type
+        if key1 == "XC" :
+            if xc == "LDA":
+                stress[key1] = LDAStress(rho, energy=energy[key1])
+                # stress[key1] = XCStress(rho, name='LDA')
+            elif xc == "PBE" :
+                stress[key1] = PBEStress(rho, energy=energy[key1])
+            else :
+                stress[key1] = XCStress(rho, x_str='gga_x_pbe', c_str='gga_c_pbe', energy=energy[key1])
+        elif key1 == 'HARTREE' :
+            stress[key1] = HartreeFunctionalStress(rho, energy=energy[key1])
+        elif key1 == 'PSEUDO' :
+            stress[key1] = EnergyEvaluator.PSEUDO.stress(rho, energy=energy[key1])
+        elif key1 == 'KEDF' :
+            ############################## KE ##############################
+            stress["KEDF"] = {}
+            KEDF_Stress_L= {
+                    "TF" : ["TF"], 
+                    "vW": ["TF"], 
+                    "x_TF_y_vW": ["TF", "vW"], 
+                    "TFvW": ["TF", "vW"], 
+                    "WT": ["TF", "vW", "WT"], 
+                    }
+            if ke not in KEDF_Stress_L :
+                raise AttributeError("%s KEDF have not implemented for stress" % ke)
+            kelist = KEDF_Stress_L[ke]
 
-    stress["TOTAL"] = stress["XC"] + stress["HARTREE"] + stress["II"] + stress["PSEUDO"]
-    for key in stress["KEDF"]:
-        stress["TOTAL"] += stress["KEDF"][key]
+            if "TF" in kelist :
+                stress["KEDF"]["TF"] = KEDFStress(rho, name="TF", energy=energy["KEDF"]["TF"], **ke_options)
+            if "vW" in kelist :
+                stress["KEDF"]["vW"] = KEDFStress(rho, name="vW", energy=energy["KEDF"]["vW"], **ke_options)
+            if 'NL' in energy["KEDF"] :
+                stress["KEDF"]["NL"] = KEDFStress(rho, name=kelist[2], energy=energy["KEDF"]["NL"], **ke_options)
+            #-----------------------------------------------------------------------
+        else :
+            raise AttributeError("%s have not implemented for stress" % key)
+        if key1 == 'KEDF' :
+            for key2 in stress["KEDF"]:
+                stress["TOTAL"] += stress["KEDF"][key2]
+        else :
+            stress['TOTAL'] += stress[key1]
+
     for i in range(1, 3):
         for j in range(i - 1, -1, -1):
             stress["TOTAL"][i, j] = stress["TOTAL"][j, i]
