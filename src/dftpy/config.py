@@ -48,7 +48,6 @@ def DefaultOption():
         "xc": "LDA",
         "x_str": "lda_x",
         "c_str": "lda_c_pz",
-        "polarization": "unpolarized",
     }
 
     KEDF = {
