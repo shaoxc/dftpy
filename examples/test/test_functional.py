@@ -15,10 +15,9 @@ class Test(unittest.TestCase):
         rho_r = mol.field
         optional_kwargs_gga = {}
         optional_kwargs_gga['k_str'] = 'lc94'
-        optional_kwargs_gga['polarization'] = 'unpolarized'
         thefuncclass = FunctionalClass(type='KEDF',
                                        name='GGA',
-                                       optional_kwargs=optional_kwargs_gga)
+                                       **optional_kwargs_gga)
         func = thefuncclass(rho=rho_r)
         self.assertTrue(np.isclose(func.energy, 1.6821337114254904))
         self.assertTrue(np.isclose((func + func).energy, 1.6821337114254904 * 2))

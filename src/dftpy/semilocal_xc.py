@@ -240,16 +240,14 @@ def LDA(rho, calcType=["E","V"], **kwargs):
     return OutFunctional
 
 
-def LDAStress(rho, polarization="unpolarized", energy=None, potential=None, **kwargs):
+def LDAStress(rho, energy=None, potential=None, **kwargs):
     TimeData.Begin("LDA_Stress")
-    if rho.rank > 1 :
-        polarization = 'polarized'
     if energy is None:
-        EnergyPotential = LDA(rho, polarization, calcType=["E","V"])
+        EnergyPotential = LDA(rho, calcType=["E","V"])
         energy = EnergyPotential.energy
         potential = EnergyPotential.potential
     elif potential is None :
-        potential = LDA(rho, polarization, calcType=["V"]).potential
+        potential = LDA(rho, calcType=["V"]).potential
     stress = np.zeros((3, 3))
     Etmp = energy - np.einsum("..., ...-> ", potential, rho, optimize = 'optimal') * rho.grid.dV
     for i in range(3):
@@ -258,11 +256,13 @@ def LDAStress(rho, polarization="unpolarized", energy=None, potential=None, **kw
     return stress
 
 
-def _LDAStress(density, xc_str='lda_x', polarization='unpolarized', energy=None, flag='standard', **kwargs):
+def _LDAStress(density, xc_str='lda_x', energy=None, flag='standard', **kwargs):
     if CheckLibXC():
         from pylibxc.functional import LibXCFunctional
     if density.rank > 1 :
         polarization = 'polarized'
+    else:
+        polarization = 'unpolarized'
 
     nspin = density.rank
     func_xc = LibXCFunctional(xc_str, polarization)
@@ -295,12 +295,14 @@ def _LDAStress(density, xc_str='lda_x', polarization='unpolarized', energy=None,
     stress = np.eye(3)*P
     return stress/ rho.grid.volume
 
-def _GGAStress(density, xc_str='gga_x_pbe', polarization='unpolarized', energy=None, flag='standard', **kwargs):
+def _GGAStress(density, xc_str='gga_x_pbe', energy=None, flag='standard', **kwargs):
     if CheckLibXC():
         from pylibxc.functional import LibXCFunctional
 
     if density.rank > 1 :
         polarization = 'polarized'
+    else:
+        polarization = 'unpolarized'
 
     nspin = density.rank
     func_xc = LibXCFunctional(xc_str, polarization)
@@ -364,35 +366,35 @@ def _GGAStress(density, xc_str='gga_x_pbe', polarization='unpolarized', energy=N
     return stress/ rho.grid.volume
 
 
-def GGAStress(density, x_str='gga_x_pbe', c_str='gga_c_pbe', polarization='unpolarized', energy=None, flag='standard', **kwargs):
-    stress=_GGAStress(density, xc_str=x_str, polarization=polarization, energy=energy, flag=flag, **kwargs)
-    stress+=_GGAStress(density, xc_str=c_str, polarization=polarization, energy=energy, flag=flag, **kwargs)
+def GGAStress(density, x_str='gga_x_pbe', c_str='gga_c_pbe', energy=None, flag='standard', **kwargs):
+    stress=_GGAStress(density, xc_str=x_str, energy=energy, flag=flag, **kwargs)
+    stress+=_GGAStress(density, xc_str=c_str, energy=energy, flag=flag, **kwargs)
     return stress
 
 
-def PBEStress(density, polarization='unpolarized', energy=None, flag='standard', **kwargs):
-    stress=GGAStress(density, x_str='gga_x_pbe', c_str='gga_c_pbe', polarization=polarization, energy=energy, flag=flag, **kwargs)
+def PBEStress(density, energy=None, flag='standard', **kwargs):
+    stress=GGAStress(density, x_str='gga_x_pbe', c_str='gga_c_pbe', energy=energy, flag=flag, **kwargs)
     return stress
 
 
-def XCStress(density, name=None, x_str='gga_x_pbe', c_str='gga_c_pbe', polarization='unpolarized', energy=None, flag='standard', **kwargs):
+def XCStress(density, name=None, x_str='gga_x_pbe', c_str='gga_c_pbe', energy=None, flag='standard', **kwargs):
     TimeData.Begin("XCStress")
     if name == 'LDA' :
         x_str = 'lda_x'
         c_str = 'lda_c_pz'
-        stress=_LDAStress(density, xc_str=x_str, polarization=polarization, energy=energy, flag=flag, **kwargs)
-        stress+=_LDAStress(density, xc_str=c_str, polarization=polarization, energy=energy, flag=flag, **kwargs)
+        stress=_LDAStress(density, xc_str=x_str, energy=energy, flag=flag, **kwargs)
+        stress+=_LDAStress(density, xc_str=c_str, energy=energy, flag=flag, **kwargs)
     elif name == 'PBE' :
         x_str = 'gga_x_pbe'
         c_str = 'gga_c_pbe'
-        stress=_GGAStress(density, xc_str=x_str, polarization=polarization, energy=energy, flag=flag, **kwargs)
-        stress+=_GGAStress(density, xc_str=c_str, polarization=polarization, energy=energy, flag=flag, **kwargs)
+        stress=_GGAStress(density, xc_str=x_str, energy=energy, flag=flag, **kwargs)
+        stress+=_GGAStress(density, xc_str=c_str, energy=energy, flag=flag, **kwargs)
     elif x_str[:3] == c_str[:3] == 'lda' :
-        stress=_LDAStress(density, xc_str=x_str, polarization=polarization, energy=energy, flag=flag, **kwargs)
-        stress+=_LDAStress(density, xc_str=c_str, polarization=polarization, energy=energy, flag=flag, **kwargs)
+        stress=_LDAStress(density, xc_str=x_str, energy=energy, flag=flag, **kwargs)
+        stress+=_LDAStress(density, xc_str=c_str, energy=energy, flag=flag, **kwargs)
     elif x_str[:3] == c_str[:3] == 'gga' :
-        stress=_LDAStress(density, xc_str=x_str, polarization=polarization, energy=energy, flag=flag, **kwargs)
-        stress+=_LDAStress(density, xc_str=c_str, polarization=polarization, energy=energy, flag=flag, **kwargs)
+        stress=_LDAStress(density, xc_str=x_str, energy=energy, flag=flag, **kwargs)
+        stress+=_LDAStress(density, xc_str=c_str, energy=energy, flag=flag, **kwargs)
     else :
         raise AttributeError("'x_str' %s and 'c_str' %s must be same type" %(x_str, c_str))
 
