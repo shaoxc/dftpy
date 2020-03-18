@@ -1,7 +1,7 @@
 import numpy as np
 from dftpy.functionals import TotalEnergyAndPotential
 from dftpy.td.propagator import Propagator
-from dftpy.td.hamiltonian import Hamitonian
+from dftpy.td.hamiltonian import Hamiltonian
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.grid import DirectGrid, ReciprocalGrid
 from dftpy.system import System
