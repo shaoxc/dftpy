@@ -2,6 +2,7 @@ import numpy as np
 from dftpy.functionals import TotalEnergyAndPotential
 from dftpy.td.propagator import Propagator
 from dftpy.td.hamiltonian import Hamiltonian
+from dftpy.td.casida import Casida
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.grid import DirectGrid, ReciprocalGrid
 from dftpy.system import System
@@ -35,11 +36,11 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     j_int = j.integral()
 
     eps = 1e-8
-    with open("./" + outfile + "_mu", "w") as fmu:
+    with open(outfile + "_mu", "w") as fmu:
         fmu.write("{0:17.10e} {1:17.10e} {2:17.10e}\n".format(delta_mu[0], delta_mu[1], delta_mu[2]))
-    with open("./" + outfile + "_j", "w") as fj:
+    with open(outfile + "_j", "w") as fj:
         fj.write("{0:17.10e} {1:17.10e} {2:17.10e}\n".format(j_int[0], j_int[1], j_int[2]))
-    with open("./" + outfile + "_E", "w") as fE:
+    with open(outfile + "_E", "w") as fE:
         pass
 
     for i_t in range(num_t):
@@ -73,12 +74,41 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
         delta_mu = (delta_rho * delta_rho.grid.r).integral()
         j_int = j.integral()
 
-        with open("./" + outfile + "_mu", "a") as fmu:
+        with open(outfile + "_mu", "a") as fmu:
             fmu.write("{0:17.10e} {1:17.10e} {2:17.10e}\n".format(delta_mu[0], delta_mu[1], delta_mu[2]))
-        with open("./" + outfile + "_j", "a") as fj:
+        with open(outfile + "_j", "a") as fj:
             fj.write("{0:17.10e} {1:17.10e} {2:17.10e}\n".format(j_int[0], j_int[1], j_int[2]))
-        with open("./" + outfile + "_E", "a") as fE:
+        with open(outfile + "_E", "a") as fE:
             fE.write("{0:17.10e}\n".format(E))
 
         if info:
             break
+
+
+def CasidaRunner(config, rho0, E_v_Evaluator):
+
+    numeig = config["CASIDA"]["numeig"]
+    outfile = config["TD"]["outfile"]
+    diagonize = config["CASIDA"]["diagonize"]
+
+    if diagonize:
+        potential = E_v_Evaluator(rho0, calcType=['V']).potential
+        hamiltonian = Hamiltonian(potential)
+        eigs, psi_list = hamiltonian.diagonize(numeig)
+    else:
+        raise Exception("diagonize must be true.")
+
+    E_v_Evaluator.UpdateFunctional(keysToRemove = ['HARTREE', 'PSEUDO'])
+    casida = Casida(rho0, E_v_Evaluator)
+
+    print('Starting Buildling Matrix')
+    begin_t = time.time()
+    casida.build_matrix(numeig, eigs, psi_list)
+    end_t = time.time()
+    print('Building Matrix done, costing {0:f} s'.format(end_t - begin_t))
+
+    omega, f = casida()
+
+    with open(outfile, 'w') as fw:
+        for i in range(len(omega)):
+            fw.write('{0:15.8e} {1:15.8e}\n'.format(omega[i], f[i]))

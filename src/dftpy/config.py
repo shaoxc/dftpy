@@ -113,6 +113,11 @@ def DefaultOption():
         "strength": 1.0e-3,
     }
 
+    CASIDA = {
+        "numeig": None,
+        "diagonize": True,
+    }
+
     conf = {
         "JOB": JOB,
         "PATH": PATH,
@@ -128,6 +133,7 @@ def DefaultOption():
         "OUTPUT": OUTPUT,
         "PROPAGATOR": PROPAGATOR,
         "TD": TD,
+        "CASIDA": CASIDA,
     }
 
     for section in conf:
@@ -236,6 +242,8 @@ def OptionFormat(config):
             conf['TD']['direc'] = 2
         else:
             conf['TD']['direc'] = int(conf['TD']['direc'])
+    conf['CASIDA']['numeig'] = int(conf['CASIDA']['numeig'])
+    conf['CASIDA']['diagonize'] = bools(conf['CASIDA']['diagonize'])
 
     ############################## Conversion of units  ##############################
     """

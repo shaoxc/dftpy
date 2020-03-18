@@ -5,7 +5,7 @@ from dftpy.functionals import FunctionalClass, TotalEnergyAndPotential
 
 class Casida(object):
 
-    def __init__(self, rho0, KE, XC):
+    def __init__(self, rho0, E_v_Evaluator):
         if not isinstance(rho0, DirectField):
             raise TypeError("rho0 must be an rank-1 or -2 DFTpy DirectField.")
         if rho0.rank == 2:
@@ -18,7 +18,7 @@ class Casida(object):
             raise AttributeError("rho0 must be an rank-1 or -2 DFTpy DirectField.")
         self.N = rho0.integral()
         self.grid = rho0.grid
-        self.functional = TotalEnergyAndPotential(KineticEnergyFunctional = KE, XCFunctional = XC)
+        self.functional = E_v_Evaluator
         self.fkxc = self.functional(self.rho0, calcType=['V2']).v2rho2
 
     def calc_k(self, psi_i, psi_j, vh):

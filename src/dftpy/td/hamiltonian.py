@@ -24,7 +24,11 @@ class Hamiltonian(object):
 
     def __call__(self, psi):
         if isinstance(psi, DirectField):
-            return -0.5 * psi.laplacian() + self.v * psi
+            if np.isrealobj(psi):
+                force_real = True
+            else:
+                force_real = False
+            return -0.5 * psi.laplacian(force_real = force_real) + self.v * psi
         elif isinstance(psi, ReciprocalField):
             return 0.5 * psi.grid.gg * psi + (self.v * psi.ifft()).fft
         else:
