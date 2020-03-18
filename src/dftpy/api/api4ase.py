@@ -2,7 +2,7 @@ import numpy as np
 from dftpy.atom import Atom
 from dftpy.base import DirectCell
 from dftpy.constants import LEN_CONV, ENERGY_CONV, FORCE_CONV, STRESS_CONV
-from dftpy.interface import OptimizeDensityConf
+from dftpy.interface import ConfigParser, OptimizeDensityConf
 
 
 class DFTpyCalculator(object):
@@ -49,9 +49,11 @@ class DFTpyCalculator(object):
             ions = Atom(Z=Z, pos=pos, cell=cell, basis="Crystal")
             # ions.restart()
             if self.results is not None and self.config["MATH"]["reuse"]:
-                results = OptimizeDensityConf(self.config, ions=ions, rhoini=self.results["density"], pseudo=pseudo, grid=grid)
+                config, others = ConfigParser(self.config, ions=ions, rhoini=self.results["density"], pseudo=pseudo, grid=grid)
+                results = OptimizeDensityConf(config, others["struct"], others["E_v_Evaluator"], others["nr2"])
             else:
-                results = OptimizeDensityConf(self.config, ions=ions, pseudo=pseudo, grid=grid)
+                config, others = ConfigParser(self.config, ions=ions, pseudo=pseudo, grid=grid)
+                results = OptimizeDensityConf(config, others["struct"], others["E_v_Evaluator"], others["nr2"])
             self.results = results
         return self.results["energypotential"]["TOTAL"].energy * ENERGY_CONV["Hartree"]["eV"]
 

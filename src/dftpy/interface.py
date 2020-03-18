@@ -26,7 +26,7 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None):
         # config is a file
         conf = ReadConf(config)
         config = OptionFormat(conf)
-    PrintConf(config)
+        PrintConf(config)
 
     # check the input
     if grid is not None and config["MATH"]["multistep"] > 1:
@@ -154,7 +154,7 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None):
     return config, others
 
 
-def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2, ions=None, rhoini=None, pseudo=None, grid=None):
+def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2):
     print("Begin on :", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
     print("#" * 80)
     TimeData.Begin("TOTAL")
