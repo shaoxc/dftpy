@@ -242,7 +242,8 @@ def OptionFormat(config):
             conf['TD']['direc'] = 2
         else:
             conf['TD']['direc'] = int(conf['TD']['direc'])
-    conf['CASIDA']['numeig'] = int(conf['CASIDA']['numeig'])
+    if conf['CASIDA']['numeig'] is not None:
+        conf['CASIDA']['numeig'] = int(conf['CASIDA']['numeig'])
     conf['CASIDA']['diagonize'] = bools(conf['CASIDA']['diagonize'])
 
     ############################## Conversion of units  ##############################
