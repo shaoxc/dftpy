@@ -2,7 +2,7 @@
 import configparser
 import argparse
 from dftpy.interface import ConfigParser, OptimizeDensityConf
-from dftpy.td.interface import RealTimeRunner
+from dftpy.td.interface import RealTimeRunner, CasidaRunner
 
 
 def RunJob():
@@ -15,6 +15,8 @@ def RunJob():
     config, others = ConfigParser(args.input)
     if "Propagate" in config["JOB"]["task"]:
         RealTimeRunner(config, others["struct"].field, others["E_v_Evaluator"])
+    elif "Casida" in config["JOB"]["task"]:
+        CasidaRunner(config, others["struct"].field, others["E_v_Evaluator"])
     else:
         results = OptimizeDensityConf(config, others["struct"], others["E_v_Evaluator"], others["nr2"])
         # results = OptimizeDensityConf(args.input)
