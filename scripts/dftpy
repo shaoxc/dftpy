@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 import configparser
 import argparse
-from dftpy.interface import OptimizeDensityConf
-from dftpy.config import OptionFormat, PrintConf, ReadConf
+from dftpy.interface import ConfigParser, OptimizeDensityConf
+from dftpy.td.interface import RealTimeRunner
 
 
 def RunJob():
@@ -12,11 +12,12 @@ def RunJob():
             default='config.ini', help='input file (default: config.ini)')
 
     args = parser.parse_args()
-    conf = ReadConf(args.input)
-    config = OptionFormat(conf)
-    PrintConf(config)
-    results = OptimizeDensityConf(config)
-    # results = OptimizeDensityConf(args.input)
+    config, others = ConfigParser(args.input)
+    if "Propagate" in config["JOB"]["task"]:
+        RealTimeRunner(config, others["struct"].field, others["E_v_Evaluator"])
+    else:
+        results = OptimizeDensityConf(config, others["struct"], others["E_v_Evaluator"], others["nr2"])
+        # results = OptimizeDensityConf(args.input)
 
 
 if __name__ == "__main__":

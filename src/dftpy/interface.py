@@ -14,7 +14,6 @@ from dftpy.semilocal_xc import LDAStress, PBEStress, XCStress
 from dftpy.pseudo import LocalPseudo
 from dftpy.kedf import KEDFStress
 from dftpy.hartree import HartreeFunctionalStress
-from dftpy.td.tdrunner import tdrunner
 from dftpy.config import OptionFormat, PrintConf, ReadConf
 from dftpy.system import System
 from functools import reduce
@@ -27,6 +26,7 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None):
         # config is a file
         conf = ReadConf(config)
         config = OptionFormat(conf)
+    PrintConf(config)
 
     # check the input
     if grid is not None and config["MATH"]["multistep"] > 1:
@@ -145,19 +145,21 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None):
     #-----------------------------------------------------------------------
     struct = System(ions, grid, name='density', field=rho_ini)
     E_v_Evaluator = TotalEnergyAndPotential(KineticEnergyFunctional=KE, XCFunctional=XC, HARTREE=HARTREE, PSEUDO=PSEUDO)
-    # The last is a list, which return some properties are used for different situations.
-    return struct, E_v_Evaluator, [config, nr2]
+    # The last is a dictionary, which return some properties are used for different situations.
+    others = {
+        "struct": struct,
+        "E_v_Evaluator": E_v_Evaluator,
+        "nr2": nr2,
+    }
+    return config, others
 
 
-def OptimizeDensityConf(config, ions=None, rhoini=None, pseudo=None, grid=None):
+def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2, ions=None, rhoini=None, pseudo=None, grid=None):
     print("Begin on :", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
     print("#" * 80)
     TimeData.Begin("TOTAL")
-    struct, E_v_Evaluator, others = ConfigParser(config, ions, rhoini, pseudo, grid)
     ions = struct.ions
     rho_ini = struct.field
-    config = others[0]
-    nr2 = others[1]
     charge_total = 0.0
     PSEUDO=E_v_Evaluator.PSEUDO
     for i in range(ions.nat):

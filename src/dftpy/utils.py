@@ -1,5 +1,6 @@
 import warnings
 import numpy as np
+from dftpy.field import DirectField
 
 
 def dipole_moment(rho, ions = None, center = [0.0, 0.0, 0.0]):
@@ -30,14 +31,6 @@ def dipole_correction(rho, axis=2, ions=None, center = [0.0, 0.0, 0.0], coef=10.
     factor = -dm/dm_add
     rho_add *= factor
     return rho_add
-
-
-def hamiltonian(psi, v):
-    return -0.5 * psi.laplacian() + v * psi
-
-
-def hamiltonian_fft(psi_fft, v):
-    return 0.5 * psi_fft.grid.gg * psi_fft + (v * psi_fft.ifft()).fft()
 
 
 def calc_rho(psi, N=1):

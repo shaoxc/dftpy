@@ -9,7 +9,7 @@ from dftpy.utils import calc_rho, calc_j
 import time
 
 
-def tdrunner(rho0, E_v_Evaluator, config):
+def RealTimeRunner(config, rho0, E_v_Evaluator):
 
     outfile = config["TD"]["outfile"]
     int_t = config["PROPAGATOR"]["int_t"]
@@ -47,7 +47,7 @@ def tdrunner(rho0, E_v_Evaluator, config):
         print("iter: {0:d} time: {1:f}".format(i_t, cost_t))
         t = int_t * i_t
         func = E_v_Evaluator.ComputeEnergyPotential(rho, calcType=["V"])
-        prop.hamitonian.v = func.potential
+        prop.hamiltonian.v = func.potential
         E = np.real(np.conj(psi) * prop.hamiltonian(psi)).integral()
 
         for i_cn in range(order):
