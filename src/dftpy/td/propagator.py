@@ -16,8 +16,8 @@ class Propagator(object):
     type: function
         The type of propagator
 
-    optional_kwargs: dict
-        set of optional kwargs
+    kwargs:
+        Optional kwargs
     """
 
     def __init__(self, hamiltonian, interval=1.0e-3, type="taylor", **kwargs):
