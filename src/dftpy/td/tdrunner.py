@@ -1,13 +1,12 @@
 import numpy as np
 from dftpy.functionals import TotalEnergyAndPotential
-from dftpy.propagator import Propagator, hamiltonian
+from dftpy.td.propagator import Propagator
+from dftpy.td.hamiltonian import Hamitonian
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.grid import DirectGrid, ReciprocalGrid
 from dftpy.system import System
 from dftpy.utils import calc_rho, calc_j
 import time
-
-
 
 
 def tdrunner(rho0, E_v_Evaluator, config):
@@ -20,7 +19,8 @@ def tdrunner(rho0, E_v_Evaluator, config):
     k = config["TD"]["strength"]
     num_t = int(t_max / int_t)
 
-    prop = Propagator(interval=int_t, type=config["PROPAGATOR"]["type"], optional_kwargs=config["PROPAGATOR"])
+    hamiltonian = Hamiltonian()
+    prop = Propagator(hamiltonian, interval=int_t, type=config["PROPAGATOR"]["type"], optional_kwargs=config["PROPAGATOR"])
 
     begin_t = time.time()
     x = rho0.grid.r[direc]
@@ -47,14 +47,14 @@ def tdrunner(rho0, E_v_Evaluator, config):
         print("iter: {0:d} time: {1:f}".format(i_t, cost_t))
         t = int_t * i_t
         func = E_v_Evaluator.ComputeEnergyPotential(rho, calcType=["V"])
-        potential = func.potential
-        E = np.real(np.conj(psi) * hamiltonian(psi, potential)).integral()
+        prop.hamitonian.v = func.potential
+        E = np.real(np.conj(psi) * prop.hamiltonian(psi)).integral()
 
         for i_cn in range(order):
             if i_cn > 0:
                 old_rho1 = rho1
                 old_j1 = j1
-            psi1, info = prop(psi, potential)
+            psi1, info = prop(psi)
             rho1 = calc_rho(psi1)
             j1 = calc_j(psi1)
             if i_cn > 0 and np.max(np.abs(old_rho1 - rho1)) < eps and np.max(np.abs(old_j1 - j1)) < eps:
@@ -63,7 +63,7 @@ def tdrunner(rho0, E_v_Evaluator, config):
 
             rho_half = (rho + rho1) * 0.5
             func = E_v_Evaluator.ComputeEnergyPotential(rho_half, calcType=["V"])
-            potential = func.potential
+            prop.hamiltonian.v = func.potential
 
         psi = psi1
         rho = rho1

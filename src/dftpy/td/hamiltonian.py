@@ -16,6 +16,9 @@ class Hamiltonian(object):
         if isinstance(new_v, DirectField):
             self._v = new_v
             self.grid = new_v.grid
+        elif new_v is None:
+            self._v = None
+            self.grid = None
         else:
             raise TypeError("v must be a DFTpy DirectField.")
 

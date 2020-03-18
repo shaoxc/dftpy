@@ -14,7 +14,7 @@ from dftpy.semilocal_xc import LDAStress, PBEStress, XCStress
 from dftpy.pseudo import LocalPseudo
 from dftpy.kedf import KEDFStress
 from dftpy.hartree import HartreeFunctionalStress
-from dftpy.tdrunner import tdrunner
+from dftpy.td.tdrunner import tdrunner
 from dftpy.config import OptionFormat, PrintConf, ReadConf
 from dftpy.system import System
 from functools import reduce
