@@ -14,7 +14,7 @@ from dftpy.semilocal_xc import LDAStress, PBEStress, XCStress
 from dftpy.pseudo import LocalPseudo
 from dftpy.kedf import KEDFStress
 from dftpy.hartree import HartreeFunctionalStress
-from dftpy.config import OptionFormat, PrintConf, ReadConf
+from dftpy.config.config import PrintConf, ReadConf
 from dftpy.system import System
 from functools import reduce
 
@@ -24,8 +24,7 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None):
         pass
     elif isinstance(config, str):
         # config is a file
-        conf = ReadConf(config)
-        config = OptionFormat(conf)
+        config = ReadConf(config)
         PrintConf(config)
 
     # check the input

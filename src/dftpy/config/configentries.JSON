@@ -1,0 +1,116 @@
+{
+"JOB": {
+    "task": {"type": "cstr", "default": "Optdensity", "comment": "The task to be performed.", "options": "Optdensity, Calculation"},
+    "calctype": {"type": "cstrlist", "default": "Energy", "comment": "The property to be calculated.", "options": "Energy, Potential, Both, Force, Stress"}
+},
+
+"PATH": {
+    "pppath": {"type": "str", "default": "./"},
+    "cellpath": {"type": "str", "default": "./"}
+},
+
+"MATH": {
+    "linearii": {"type": "bool", "default": true},
+    "linearie": {"type": "bool", "default": true},
+    "twostep": {"type": "bool", "default": false},
+    "multistep": {"type": "int", "default": 1},
+    "reuse": {"type": "bool", "default": true}
+},
+
+"PP": {},
+
+"CELL": {
+    "cellfile": {"type": "str", "default": "POSCAR"},
+    "elename": {"type": "cstrlist", "default": "Al"},
+    "zval": {"type": "floatlist", "default": null},
+    "format": {"type": "str", "default": null}
+},
+
+"GRID": {
+    "ecut": {"type": "float", "default": 600},
+    "spacing": {"type": "float", "default": null},
+    "gfull": {"type": "bool", "default": false},
+    "nr": {"type": "intlist", "default": null}
+},
+
+"DENSITY": {
+    "nspin": {"type": "int", "default": 1},
+    "magmom": {"type": "float", "default": 0.0},
+    "densityini": {"type": "str", "default": "HEG"},
+    "densityfile": {"type": "str", "default": null},
+    "densityoutput": {"type": "str", "default": null}
+},
+
+"EXC": {
+    "xc": {"type": "str", "default": "LDA"},
+    "x_str": {"type": "str", "default": "lda_x"},
+    "c_str": {"type": "str", "default": "lda_c_pz"}
+},
+
+"KEDF": {
+    "kedf": {"type": "str", "default": "WT"},
+    "x": {"type": "float", "default": 1.0},
+    "y": {"type": "float", "default": 1.0},
+    "alpha": {"type": "float", "default": 0.8333333333333333},
+    "beta": {"type": "float", "default": 0.8333333333333333},
+    "sigma": {"type": "float", "default": null},
+    "nsp": {"type": "int", "default": null},
+    "interp": {"type": "str", "default": "hermite"},
+    "kerneltype": {"type": "str", "default": "WT"},
+    "symmetrization": {"type": "str", "default": null},
+    "lumpfactor": {"type": "floatlist", "default": null},
+    "neta": {"type": "int", "default": 50000},
+    "etamax": {"type": "float", "default": 50.0},
+    "order": {"type": "int", "default": 3},
+    "ratio": {"type": "float", "default": 1.2},
+    "maxpoints": {"type": "int", "default": 1000},
+    "delta": {"type": "float", "default": null, "comment": "The gap of spline"},
+    "fd": {"type": "int", "default": 0},
+    "kdd": {"type": "int", "default": 3, "comment": "kernel density denpendent"},
+    "rho0": {"type": "float", "default": null},
+    "k_str": {"type": "str", "default": "gga_k_revapbe"},
+    "kfmin": {"type": "float", "default": null},
+    "kfmax": {"type": "float", "default": null}
+},
+
+"OUTPUT": {
+    "time": {"type": "bool", "default": true},
+    "stress": {"type": "bool", "default": true}
+},
+
+"OPT": {
+    "method": {"type": "str", "default": "CG-HS"},
+    "algorithm": {"type": "str", "default": "EMM", "comment": "Residual minimization method or Energy minimization method"},
+    "vector": {"type": "str", "default": "Orthogonalization", "comment": "or Scaling"},
+    "c1": {"type": "float", "default": 1e-4},
+    "c2": {"type": "float", "default": 2e-1},
+    "maxls": {"type": "int", "default": 10},
+    "econv": {"type": "float", "default": 1e-6, "comment": "Energy Convergence (a.u./atom)"},
+    "maxfun": {"type": "int", "default": 50, "comment": "For TN method, it's the max steps for searching direction"},
+    "maxiter": {"type": "int", "default": 100, "comment": "The max steps for optimization"},
+    "xtol": {"type": "float", "default": 1e-12},
+    "h0": {"type": "float", "default": 1.0, "comment": "for LBFGS"}
+},
+
+"PROPAGATOR": {
+    "type": {"type": "str", "default": "crank-nicolson"},
+    "int_t": {"type": "float", "default": 1e-3},
+    "order": {"type": "int", "default": 20},
+    "linearsolver": {"type": "str", "default": "bicgstab"},
+    "tol": {"type": "float", "default": 1e-10},
+    "maxiter": {"type": "int", "default": 100}
+},
+
+"TD": {
+    "outfile": {"type": "str", "default": "td_out"},
+    "tmax": {"type": "float", "default": 1.0},
+    "order": {"type": "int", "default": 1},
+    "direc": {"type": "direction", "default": 0},
+    "strength": {"type": "float", "default": 1.0e-3}
+},
+
+"CASIDA": {
+    "numeig": {"type": "int", "default": null},
+    "diagonize": {"type": "bool", "default": true}
+}
+}

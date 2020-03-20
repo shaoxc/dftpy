@@ -7,7 +7,7 @@ from ase.io.trajectory import Trajectory
 from ase import units
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 
-from dftpy.config import DefaultOption, OptionFormat, PrintConf
+from dftpy.config.config import DefaultOption, ConfSpecialFormat, PrintConf
 from dftpy.interface import OptimizeDensityConf
 from dftpy.api.api4ase import DFTpyCalculator
 
@@ -19,9 +19,9 @@ conf["JOB"]["calctype"] = "Energy Force Stress"
 conf["OPT"]["method"] = "TN"
 conf["KEDF"]["kedf"] = "WT"
 # conf['KEDF']['kedf'] = 'x_TF_y_vW'
-conf["OUTPUT"]["time"] = "False"
-conf["OUTPUT"]["stress"] = "False"
-conf = OptionFormat(conf)
+conf["OUTPUT"]["time"] = False
+conf["OUTPUT"]["stress"] = False
+conf = ConfSpecialFormat(conf)
 PrintConf(conf)
 # -----------------------------------------------------------------------
 """

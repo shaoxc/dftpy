@@ -9,7 +9,7 @@ from ase.io.trajectory import Trajectory
 from ase import units
 import ase.io
 
-from dftpy.config import DefaultOption, OptionFormat, PrintConf
+from dftpy.config.config import DefaultOption, ConfSpecialFormat, PrintConf
 from dftpy.interface import OptimizeDensityConf
 from dftpy.api.api4ase import DFTpyCalculator
 
@@ -24,10 +24,10 @@ conf['JOB']['calctype'] = 'Energy Force Stress'
 # conf['JOB']['calctype'] = 'Energy Force'
 conf['OPT']['method'] = 'TN'
 # conf['KEDF']['kedf'] = 'x_TF_y_vW'
-# conf['OUTPUT']['time'] = 'False'
-conf['OUTPUT']['stress'] = 'False'
-# conf['MATH']['reuse'] = 'False'
-conf = OptionFormat(conf)
+# conf['OUTPUT']['time'] = False
+conf['OUTPUT']['stress'] = False
+# conf['MATH']['reuse'] = False
+conf = ConfSpecialFormat(conf)
 PrintConf(conf)
 #-----------------------------------------------------------------------
 path = os.environ.get('DFTPY_DATA_PATH') 

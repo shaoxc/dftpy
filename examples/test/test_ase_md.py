@@ -10,7 +10,7 @@ from ase.io.trajectory import Trajectory
 from ase import units
 from ase.io import write, read
 
-from dftpy.config import DefaultOption, OptionFormat
+from dftpy.config.config import DefaultOption, ConfSpecialFormat
 from dftpy.interface import OptimizeDensityConf
 from dftpy.api.api4ase import DFTpyCalculator
 
@@ -24,8 +24,8 @@ class Test(unittest.TestCase):
         conf['OPT']['method'] = 'TN'
         conf['KEDF']['kedf'] = 'WT'
         conf['JOB']['calctype'] = 'Energy Force'
-        conf['OUTPUT']['time'] = 'False'
-        conf = OptionFormat(conf)
+        conf['OUTPUT']['time'] = False
+        conf = ConfSpecialFormat(conf)
         calc = DFTpyCalculator(config=conf)
         atoms = read(filename=dftpy_data_path + '/initial_atoms_md.traj',
                      format='traj',

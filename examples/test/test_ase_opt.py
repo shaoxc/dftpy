@@ -11,7 +11,7 @@ from ase.io.trajectory import Trajectory
 from ase import units
 from ase.io import read, write
 
-from dftpy.config import DefaultOption, OptionFormat
+from dftpy.config.config import DefaultOption, ConfSpecialFormat
 from dftpy.interface import OptimizeDensityConf
 from dftpy.api.api4ase import DFTpyCalculator
 
@@ -23,8 +23,8 @@ class Test(unittest.TestCase):
         conf['PP']['Al'] = 'al.lda.recpot'
         conf['JOB']['calctype'] = 'Energy Force Stress'
         conf['OPT']['method'] = 'TN'
-        conf['OUTPUT']['stress'] = 'False'
-        conf = OptionFormat(conf)
+        conf['OUTPUT']['stress'] = False
+        conf = ConfSpecialFormat(conf)
         path = os.environ.get('DFTPY_DATA_PATH')
         atoms = read(path+'/'+'fcc.vasp')
         calc = DFTpyCalculator(config = conf)
