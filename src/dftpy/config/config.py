@@ -35,7 +35,7 @@ def DefaultOptionFromEntries(conf):
 
 def DefaultOption():
     import os
-    fileJSON = os.path.join(os.path.dirname(__file__), 'configentries.JSON')
+    fileJSON = os.path.join(os.path.dirname(__file__), 'configentries.json')
     configentries = readJSON(fileJSON)
     return DefaultOptionFromEntries(configentries)
 
@@ -88,7 +88,7 @@ def ReadConf(infile):
     config.read(infile)
 
     import os
-    fileJSON = os.path.join(os.path.dirname(__file__), 'configentries.JSON')
+    fileJSON = os.path.join(os.path.dirname(__file__), 'configentries.json')
     configentries = readJSON(fileJSON)
     pp_entry = ConfigEntry(type='str')
     conf = DefaultOptionFromEntries(configentries)
