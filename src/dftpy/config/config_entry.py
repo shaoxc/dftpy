@@ -28,7 +28,7 @@ def format_strlist(expression):
     return expression.split()
 
 def format_cstrlist(expression):
-    return expression.capitalize().split()
+    return expression.title().split()
 
 def format_direction(expression):
     direct_dict = {
