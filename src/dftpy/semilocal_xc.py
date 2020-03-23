@@ -44,6 +44,9 @@ def Get_LibXC_Output(out, density):
         "v2rho2": 3,
         "v3rho3": 4,
         "v4rho4": 5,
+        "vsigma": 3,
+        "v2rhosigma": 6,
+        "v2sigma2": 6,
     }
 
     for key in ["vrho", "v2rho2", "v3rho3", "v4rho4"]:
@@ -58,40 +61,90 @@ def Get_LibXC_Output(out, density):
             else:
                 setattr(OutFunctional, key, v)
 
-    if "vsigma" in out.keys():
-        if density.rank > 1 :
-            vsigma = out["vsigma"].reshape((-1, 3)).T
-            vsigma = DirectField(density.grid, rank=3, griddata_3d=vsigma)
-        else :
-            vsigma = DirectField(density.grid, griddata_3d=out["vsigma"].reshape(np.shape(density)))
-        do_sigma = True
-    else :
-        do_sigma = False
+    vsigmas = {}
+    for key in ["vsigma", "v2rhosigma", "v2sigma2"]:
+        if key in out.keys():
+            if density.rank > 1 :
+                vsigmas[key] = out[key].reshape((-1, rank_dict[key])).T
+                vsigmas[key] = DirectField(density.grid, rank=3, griddata_3d=vsigmas[key])
+            else :
+                vsigmas[key] = DirectField(density.grid, griddata_3d=out[key].reshape(np.shape(density)))
 
-    if do_sigma:
+    if vsigmas:
+        if density.rank > 1:
+            grhoU = density[0].gradient(flag="standard")
+            grhoD = density[1].gradient(flag="standard")
+        else:
+            grho = density.gradient(flag="standard")
+
 
         if hasattr(OutFunctional, 'potential'):
             if density.rank > 1 :
-                grhoU = density[0].gradient(flag="standard")
-                grhoD = density[1].gradient(flag="standard")
-                prodotto = vsigma[0] * grhoU
+                prodotto = vsigmas['vsigma'][0] * grhoU
                 v00=prodotto.divergence(flag="standard")
-                prodotto = vsigma[1] * grhoD
+                prodotto = vsigmas['vsigma'][1] * grhoD
                 v01=prodotto.divergence(flag="standard")
-                prodotto = vsigma[1] * grhoU
+                prodotto = vsigmas['vsigma'][1] * grhoU
                 v10=prodotto.divergence(flag="standard")
-                prodotto = vsigma[2] * grhoD
+                prodotto = vsigmas['vsigma'][2] * grhoD
                 v11=prodotto.divergence(flag="standard")
                 OutFunctional.potential[0] -= 2 * v00+v01
                 OutFunctional.potential[1] -= 2 * v11+v10
             else :
-                grho = density.gradient(flag="standard")
-                prodotto = vsigma * grho
+                prodotto = vsigmas['vsigma'] * grho
                 vsigma_last = prodotto.divergence(flag="standard")
                 OutFunctional.potential -= 2 * vsigma_last
 
-        if hasattr(OutFunctional, 'v2rho2') or hasattr(OutFunctional, 'v3rho3') or hasattr(OutFunctional, 'v4rho4'):
-            raise Exception('2nd and higher order derivative for GGA functionals has not implemented yet.')
+        if hasattr(OutFunctional, 'v2rho2'):
+            if density.rank > 1:
+                prodotto = - vsigmas['v2rhosigma'][0] * grhoU
+                v2rhosigma00 = prodotto.divergence(flag="standard")
+                prodotto = - vsigmas['v2rhosigma'][1] * grhoD * 0.5
+                v2rhosigma01 = prodotto.divergence(flag="standard")
+                prodotto = - vsigmas['v2rhosigma'][1] * grhoU * 0.5
+                v2rhosigma11 = prodotto.divergence(flag="standard")
+                prodotto = - vsigmas['v2rhosigma'][2] * grhoD
+                v2rhosigma12 = prodotto.divergence(flag="standard")
+                prodotto = - vsigmas['v2rhosigma'][3] * grhoU
+                v2rhosigma13 = prodotto.divergence(flag="standard")
+                prodotto = - vsigmas['v2rhosigma'][4] * grhoD * 0.5
+                v2rhosigma14 = prodotto.divergence(flag="standard")
+                prodotto = - vsigmas['v2rhosigma'][4] * grhoU * 0.5
+                v2rhosigma24 = prodotto.divergence(flag="standard")
+                prodotto = - vsigmas['v2rhosigma'][5] * grhoD
+                v2rhosigma25 = prodotto.divergence(flag="standard")
+                prolapto = vsigmas['v2sigma2'][0] * grhoU * grhoU * 2.0
+                v2sigma200 = prolapto.laplacian(force_real = True)
+                prolapto = vsigmas['v2sigma2'][1] * grhoU * grhoD
+                v2sigma201 = prolapto.laplacian(force_real = True)
+                prolapto = vsigmas['v2sigma2'][1] * grhoU * grhoU
+                v2sigma211 = prolapto.laplacian(force_real = True)
+                prolapto = vsigmas['v2sigma2'][2] * grhoU * grhoD * 2.0
+                v2sigma212 = prolapto.laplacian(force_real = True)
+                prolapto = vsigmas['v2sigma2'][3] * grhoD * grhoD * 0.5
+                v2sigma203 = prolapto.laplacian(force_real = True)
+                prolapto = vsigmas['v2sigma2'][3] * grhoU * grhoD
+                v2sigma213 = prolapto.laplacian(force_real = True)
+                prolapto = vsigmas['v2sigma2'][3] * grhoU * grhoU * 0.5
+                v2sigma223 = prolapto.laplacian(force_real = True)
+                prolapto = vsigmas['v2sigma2'][4] * grhoD * grhoD
+                v2sigma214 = prolapto.laplacian(force_real = True)
+                prolapto = vsigmas['v2sigma2'][4] * grhoU * grhoD
+                v2sigma224 = prolapto.laplacian(force_real = True)
+                prolapto = vsigmas['v2sigma2'][5] * grhoD * grhoD * 2.0
+                v2sigma225 = prolapto.laplacian(force_real = True)
+                OutFunctional.v2rho2[0] = OutFunctional.v2rho2[0] + v2rhosigma00 + v2rhosigma01 + v2sigma200 + v2sigma201 + v2sigma203
+                OutFunctional.v2rho2[1] = OutFunctional.v2rho2[1] + v2rhosigma11 + v2rhosigma12 + v2rhosigma13 + v2rhosigma14 + v2sigma211 + v2sigma212 + v2sigma213 + v2sigma214
+                OutFunctional.v2rho2[2] = OutFunctional.v2rho2[2] + v2rhosigma20 + v2rhosigma21 + v2sigma220 + v2sigma221 + v2sigma223
+            else:
+                prodotto = - vsigmas['v2rhosigma'] * grho
+                v2rhosigma = prodotto.divergence(flag="standard")
+                prolapto = vsigmas['v2sigma2'] * grho * grho * 2.0
+                v2sigma2 = prolapto.laplacian(force_real = True)
+                OutFunctional.v2rho2 = OutFunctional.v2rho2 + v2rhosigma + v2sigma2
+
+        if hasattr(OutFunctional, 'v3rho3') or hasattr(OutFunctional, 'v4rho4'):
+            raise Exception('3rd and higher order derivative for GGA functionals has not implemented yet.')
 
     if "zk" in out.keys():
         if density.rank > 1 :
