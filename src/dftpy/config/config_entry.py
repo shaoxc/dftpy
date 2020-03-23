@@ -52,22 +52,6 @@ class ConfigEntry(object):
         if self.type == 'bool' and self.options == '':
             self.options = 'True, False'
 
-    @classmethod
-    def fromdict(cls, datadict):
-        type = datadict['type']
-        if 'default' in datadict:
-            default = datadict['default']
-        else:
-            default = None
-        if 'comment' in datadict:
-            comment = datadict['comment']
-        else:
-            comment = ''
-        if 'options' in datadict:
-            options = datadict['options']
-        else:
-            options = ''
-        return cls(**datadict)
 
     def format(self, string):
         format_dict = {
@@ -84,7 +68,6 @@ class ConfigEntry(object):
         }
         expression = re.split('#|!', string)[0]
         return format_dict[self.type](expression)
-
 
 
 class ConfigEntryEncoder(JSONEncoder):
