@@ -30,7 +30,10 @@ def DefaultOptionFromEntries(conf):
     def map_ConfigEntry_default(config_entry):
         return config_entry.default
 
-    return config_map(map_ConfigEntry_default, conf)
+    results = config_map(map_ConfigEntry_default, conf)
+    results['CONFDICT'] = copy.deepcopy(conf)
+    return results
+    # return config_map(map_ConfigEntry_default, conf)
 
 
 def DefaultOption():
@@ -44,7 +47,7 @@ def ConfSpecialFormat(conf):
     ############################## Conversion of units  ##############################
     """
     Ecut = pi^2/(2 * h^2)
-    Ref : Briggs, E. L., D. J. Sullivan, and J. Bernholc. "Real-space multigrid-based approach to large-scale electronic structure calculations." Physical Review B 54.20 (1996): 14362.
+    Ref : Briggs, E. L., D. J. Sullivan, and J. Bernholc. Physical Review B 54.20 (1996): 14362.
     """
     if conf["GRID"]["spacing"]:  # Here units are : spacing (Angstrom),  ecut (eV), same as input.
         conf["GRID"]["ecut"] = (
@@ -83,7 +86,7 @@ def PrintConf(conf):
         return pretty_dict_str
 
 
-def ReadConf(infile):
+def ReadConfbak(infile):
     config = configparser.ConfigParser()
     config.read(infile)
 
@@ -100,5 +103,41 @@ def ReadConf(infile):
                 conf['PP'][key.capitalize()] = pp_entry.format(config.get(section, key))
             else:
                 conf[section][key] = configentries[section][key].format(config.get(section, key))
+    conf = ConfSpecialFormat(conf)
+    return conf
+
+
+def ReadConf(infile):
+    config = configparser.ConfigParser()
+    config.read(infile)
+
+    conf = DefaultOption()
+    for section in config.sections():
+        for key in config.options(section):
+            if section != 'PP' and key not in conf[section]:
+                print('!WARN : "%s.%s" not in the dictionary' % (section, key))
+            elif section == 'PP':
+                conf['PP'][key.capitalize()] = config.get(section, key) 
+            else:
+                conf[section][key] = config.get(section, key)
+    conf = OptionFormat(conf)
+    return conf
+
+
+def OptionFormat(config):
+    conf = {}
+    for section in config :
+        if section == 'CONFDICT':
+            continue
+        else :
+            conf[section] = {}
+        for key in config[section] :
+            if section == 'PP':
+                conf["PP"][key.capitalize()] = config["PP"][key]
+            elif config[section][key] :
+                conf[section][key] = config['CONFDICT'][section][key].format(str(config[section][key]))
+            else :
+                conf[section][key] = config[section][key]
+
     conf = ConfSpecialFormat(conf)
     return conf

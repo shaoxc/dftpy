@@ -1,6 +1,11 @@
 from json import JSONEncoder
-from numexpr import evaluate
 import re
+
+try:
+    from numexpr import evaluate
+    is_numexpr = True
+except Exception :
+    is_numexpr = False
 
 def format_bool(expression):
     s = expression.lower()[0]
@@ -10,7 +15,10 @@ def format_bool(expression):
         return True
 
 def format_float(expression):
-    return evaluate(expression).item()
+    if is_numexpr :
+        return evaluate(expression).item()
+    else :
+        return eval(expression)
 
 def format_str(expression):
     return expression
@@ -28,7 +36,7 @@ def format_strlist(expression):
     return expression.split()
 
 def format_cstrlist(expression):
-    return expression.capitalize().split()
+    return expression.title().split()
 
 def format_direction(expression):
     direct_dict = {

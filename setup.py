@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-from setuptools import setup, find_packages
+try:
+    from setuptools import setup, find_packages
+except ImportError:
+    from distutils.core import setup, find_packages
+
 import re
 import sys
 import os
@@ -34,7 +38,8 @@ setup(name='dftpy',
           'Topic :: Scientific/Engineering :: Chemistry',
           'Topic :: Scientific/Engineering :: Physics'
       ],
-      packages=find_packages(),
+      packages=find_packages('src'),
+      package_dir={'':'src'},
       scripts=scripts,
       include_package_data=True,
       install_requires=['numpy>=1.8.0', 'scipy>=0.10.0'])
