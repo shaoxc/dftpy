@@ -66,7 +66,7 @@ def Get_LibXC_Output(out, density):
         if key in out.keys():
             if density.rank > 1 :
                 vsigmas[key] = out[key].reshape((-1, rank_dict[key])).T
-                vsigmas[key] = DirectField(density.grid, rank=3, griddata_3d=vsigmas[key])
+                vsigmas[key] = DirectField(density.grid, rank=rank_dict[key], griddata_3d=vsigmas[key])
             else :
                 vsigmas[key] = DirectField(density.grid, griddata_3d=out[key].reshape(np.shape(density)))
 
@@ -113,33 +113,33 @@ def Get_LibXC_Output(out, density):
                 v2rhosigma24 = prodotto.divergence(flag="standard")
                 prodotto = - vsigmas['v2rhosigma'][5] * grhoD
                 v2rhosigma25 = prodotto.divergence(flag="standard")
-                prolapto = vsigmas['v2sigma2'][0] * grhoU * grhoU * 2.0
+                prolapto = vsigmas['v2sigma2'][0] * grhoU.dot(grhoU) * 2.0
                 v2sigma200 = prolapto.laplacian(force_real = True)
-                prolapto = vsigmas['v2sigma2'][1] * grhoU * grhoD
+                prolapto = vsigmas['v2sigma2'][1] * grhoU.dot(grhoD)
                 v2sigma201 = prolapto.laplacian(force_real = True)
-                prolapto = vsigmas['v2sigma2'][1] * grhoU * grhoU
+                prolapto = vsigmas['v2sigma2'][1] * grhoU.dot(grhoU)
                 v2sigma211 = prolapto.laplacian(force_real = True)
-                prolapto = vsigmas['v2sigma2'][2] * grhoU * grhoD * 2.0
+                prolapto = vsigmas['v2sigma2'][2] * grhoU.dot(grhoD) * 2.0
                 v2sigma212 = prolapto.laplacian(force_real = True)
-                prolapto = vsigmas['v2sigma2'][3] * grhoD * grhoD * 0.5
+                prolapto = vsigmas['v2sigma2'][3] * grhoD.dot(grhoD) * 0.5
                 v2sigma203 = prolapto.laplacian(force_real = True)
-                prolapto = vsigmas['v2sigma2'][3] * grhoU * grhoD
+                prolapto = vsigmas['v2sigma2'][3] * grhoU.dot(grhoD)
                 v2sigma213 = prolapto.laplacian(force_real = True)
-                prolapto = vsigmas['v2sigma2'][3] * grhoU * grhoU * 0.5
+                prolapto = vsigmas['v2sigma2'][3] * grhoU.dot(grhoU) * 0.5
                 v2sigma223 = prolapto.laplacian(force_real = True)
-                prolapto = vsigmas['v2sigma2'][4] * grhoD * grhoD
+                prolapto = vsigmas['v2sigma2'][4] * grhoD.dot(grhoD)
                 v2sigma214 = prolapto.laplacian(force_real = True)
-                prolapto = vsigmas['v2sigma2'][4] * grhoU * grhoD
+                prolapto = vsigmas['v2sigma2'][4] * grhoU.dot(grhoD)
                 v2sigma224 = prolapto.laplacian(force_real = True)
-                prolapto = vsigmas['v2sigma2'][5] * grhoD * grhoD * 2.0
+                prolapto = vsigmas['v2sigma2'][5] * grhoD.dot(grhoD) * 2.0
                 v2sigma225 = prolapto.laplacian(force_real = True)
                 OutFunctional.v2rho2[0] = OutFunctional.v2rho2[0] + v2rhosigma00 + v2rhosigma01 + v2sigma200 + v2sigma201 + v2sigma203
                 OutFunctional.v2rho2[1] = OutFunctional.v2rho2[1] + v2rhosigma11 + v2rhosigma12 + v2rhosigma13 + v2rhosigma14 + v2sigma211 + v2sigma212 + v2sigma213 + v2sigma214
-                OutFunctional.v2rho2[2] = OutFunctional.v2rho2[2] + v2rhosigma20 + v2rhosigma21 + v2sigma220 + v2sigma221 + v2sigma223
+                OutFunctional.v2rho2[2] = OutFunctional.v2rho2[2] + v2rhosigma24 + v2rhosigma25 + v2sigma223 + v2sigma224 + v2sigma225
             else:
                 prodotto = - vsigmas['v2rhosigma'] * grho
                 v2rhosigma = prodotto.divergence(flag="standard")
-                prolapto = vsigmas['v2sigma2'] * grho * grho * 2.0
+                prolapto = vsigmas['v2sigma2'] * grho.dot(grho) * 2.0
                 v2sigma2 = prolapto.laplacian(force_real = True)
                 OutFunctional.v2rho2 = OutFunctional.v2rho2 + v2rhosigma + v2sigma2
 
