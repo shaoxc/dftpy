@@ -4,7 +4,6 @@ try:
 except ImportError:
     from distutils.core import setup, find_packages
 
-import re
 import sys
 import os
 

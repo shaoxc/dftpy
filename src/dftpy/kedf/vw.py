@@ -21,7 +21,6 @@ def vonWeizsackerPotentialCplx(wav, grid, sigma=0.025):
     a = potG.ifft(force_real=True)
     np.multiply(0.5, a, out=a)
     return DirectField(grid=grid, griddata_3d=a)
-    # return DirectField(grid=rho.grid,griddata_3d=np.divide(a,sq_dens,out=np.zeros_like(a), where=sq_dens!=0))
 
 
 def vonWeizsackerPotential(rho, sigma=None):
@@ -37,8 +36,8 @@ def vonWeizsackerPotential(rho, sigma=None):
         n2_sq_dens = sq_dens.fft()*np.exp(-gg*(sigma)**2/4.0)*gg
     a = n2_sq_dens.ifft(force_real=True)
     np.multiply(0.5, a, out=a)
+    sq_dens[sq_dens < 1E-30] = 1E-30 # for safe
     return DirectField(grid=rho.grid, griddata_3d=np.divide(a, sq_dens, out=a))
-    # return DirectField(grid=rho.grid,griddata_3d=np.divide(a,sq_dens,out=np.zeros_like(a), where=sq_dens!=0))
 
 
 def vonWeizsackerEnergy(rho, sigma=None):

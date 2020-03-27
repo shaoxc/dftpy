@@ -127,12 +127,16 @@ def LWTPotentialEnergy(
     # pot4 = np.zeros_like(rho)
     rhoAlpha = rho ** alpha
     rhoAlpha1 = rhoAlpha / rho
+    mask = rho < 1E-30
+    rhoAlpha1[mask] = 1E-30
     if abs(alpha - beta) < 1e-8:
         rhoBeta = rhoAlpha
         rhoBeta1 = rhoAlpha1
     else:
         rhoBeta = rho ** beta
         rhoBeta1 = rhoBeta / rho
+        mask = rho < 1E-30
+        rhoBeta1[mask] = 1E-30
     rhoBetaG = rhoBeta.fft()
     if abs(alpha - beta) < 1e-8:
         rhoAlphaG = rhoBetaG

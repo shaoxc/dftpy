@@ -3,7 +3,6 @@
 import numpy as np
 from dftpy.field import DirectField
 from dftpy.functional_output import Functional
-from dftpy.constants import MATHLIB
 from dftpy.math_utils import TimeData
 
 
@@ -76,7 +75,6 @@ def Get_LibXC_Output(out, density):
             grhoD = density[1].gradient(flag="standard")
         else:
             grho = density.gradient(flag="standard")
-
 
         if hasattr(OutFunctional, 'potential'):
             if density.rank > 1 :
@@ -174,7 +172,7 @@ def LibXC(density, k_str=None, x_str=None, c_str=None, calcType=["E","V"], **kwa
     do_sigma = False
     func_str = {}
     for key, value in args.items():
-        if key in ["k_str", "x_str", "c_str"] and not value is None:
+        if key in ["k_str", "x_str", "c_str"] and value is not None:
             if not isinstance(value, str):
                 raise AttributeError(
                     "{} must be LibXC functionals. Check pylibxc.util.xc_available_functional_names()".format(key)
@@ -223,8 +221,6 @@ def LibXC(density, k_str=None, x_str=None, c_str=None, calcType=["E","V"], **kwa
 
 
 def PBE(density, calcType=["E","V"]):
-    if density.rank > 1 :
-        polarization = 'polarized'
     return LibXC(
         density=density,
         x_str="gga_x_pbe",
@@ -253,6 +249,7 @@ def LDA(rho, calcType=["E","V"], **kwargs):
     beta2 = (0.3334, 0.2611)
 
     rho_cbrt = np.cbrt(rho)
+    rho_cbrt[rho_cbrt < 1E-30] = 1E-30 # for safe
     Rs = np.cbrt(3.0 / (4.0 * np.pi)) / rho_cbrt
     rs1 = Rs < 1
     rs2 = Rs >= 1

@@ -68,6 +68,15 @@ class Functional(object):
                 setattr(result, key, value)
         return result
 
+    def sub(self, other):
+        result = self.copy()
+        for key, value in self:
+            if hasattr(other, key):
+                setattr(result, key, value - getattr(other, key))
+            else:
+                setattr(result, key, value)
+        return result
+
     def mul(self, x):
         result = self.copy()
         for key, value in result:
@@ -84,6 +93,9 @@ class Functional(object):
 
     def __add__(self, other):
         return self.sum(other)
+
+    def __sub__(self, other):
+        return self.sub(other)
 
     def __mul__(self, x):
         return self.mul(x)

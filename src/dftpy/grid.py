@@ -228,7 +228,7 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
         gg : square of each g vector
     """
 
-    def __init__(self, lattice, nr, units=None, full=False, uppergrid = None, **kwargs):
+    def __init__(self, lattice, nr, units=None, origin=np.array([0.0, 0.0, 0.0]), full=False, uppergrid = None, **kwargs):
         """
         Parameters
         ----------
@@ -246,7 +246,7 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
         else:
             nrG = nr.copy()
             nrG[-1] = nrG[-1] // 2 + 1
-        super().__init__(lattice=lattice, nr=nrG, origin=np.array([0.0, 0.0, 0.0]), units=units, **kwargs)
+        super().__init__(lattice=lattice, nr=nrG, origin=origin, units=units, **kwargs)
         self._g = None
         self._gg = None
         self.Dgrid = uppergrid

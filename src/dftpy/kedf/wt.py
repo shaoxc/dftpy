@@ -20,7 +20,9 @@ def WTPotential(rho, rho0, Kernel, alpha, beta):
     betaMinus1 = beta - 1.0
     if abs(beta - alpha) < 1e-9:
         rhoBeta = rho ** beta
+        mask = rho < 1E-30
         rhoAlpha1 = rhoBeta / rho
+        rhoAlpha1[mask] = 1E-30
         fac = 2.0 * alpha
         pot = fac * rhoAlpha1 * (rhoBeta.fft() * Kernel).ifft(force_real=True)
     else:

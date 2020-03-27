@@ -487,6 +487,7 @@ class Optimization(AbstractOptimization):
         # print('Chemical potential (eV)  :', mu * ENERGY_CONV['Hartree']['eV'])
         self.mu = mu
         self.rho = rho
+        self.functional = func
         return rho
 
     def __call__(self, guess_rho=None, calcType=["E","V"]):
