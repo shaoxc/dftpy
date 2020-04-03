@@ -297,6 +297,10 @@ class TotalEnergyAndPotential(AbstractFunctional):
         self.funcDict.update(newFuncDict)
         self.UpdateNameType()
 
+    def Subset(self, keys):
+        subdict = dict((key, self.funcDict[key]) for key in keys)
+        return TotalEnergyAndPotential(**subdict)
+
     def ComputeEnergyPotential(self, rho, calcType=["E","V"]):
         Obj = None
         for key, evalfunctional in self.funcDict.items():

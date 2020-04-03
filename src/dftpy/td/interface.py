@@ -3,6 +3,7 @@ from dftpy.functionals import TotalEnergyAndPotential
 from dftpy.td.propagator import Propagator
 from dftpy.td.hamiltonian import Hamiltonian
 from dftpy.td.casida import Casida
+from dftpy.td.sternheimer import Sternheimer
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.grid import DirectGrid, ReciprocalGrid
 from dftpy.system import System
@@ -108,6 +109,23 @@ def CasidaRunner(config, rho0, E_v_Evaluator):
     print('Building Matrix done, costing {0:f} s'.format(end_t - begin_t))
 
     omega, f = casida()
+
+    with open(outfile, 'w') as fw:
+        for i in range(len(omega)):
+            fw.write('{0:15.8e} {1:15.8e}\n'.format(omega[i], f[i]))
+
+
+def SternheimerRunner(config, rho0, E_v_Evaluator):
+
+    outfile = config["TD"]["outfile"]
+
+    sternheimer = Sternheimer(rho0, E_v_Evaluator)
+    eigs, psi_list = sternheimer.hamiltonian.diagonize(2)
+    sternheimer.grid.full = True
+    omega = np.linspace(0.02, 0.5, 25)
+    f = sternheimer(psi_list[1], omega, 0.01)
+    #f = omega
+    #sternheimer(psi_list[1], 1e-4, 0.01)
 
     with open(outfile, 'w') as fw:
         for i in range(len(omega)):

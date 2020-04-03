@@ -105,6 +105,12 @@ class BaseField(np.ndarray):
 
         return type(self)(self.grid, rank=1, griddata_3d=prod)
 
+    def norm(self):
+        return np.sqrt((np.real(np.conj(self) * self)).integral())
+
+    def normalize(self, N=1.0):
+        """ Normalize the field to N """
+        return self / self.norm() * np.sqrt(N)
 
 class DirectField(BaseField):
     spl_order = 3
