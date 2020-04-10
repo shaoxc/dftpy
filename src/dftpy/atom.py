@@ -22,24 +22,25 @@ class Atom(object):
         # self.pos = Coord(pos, cell, basis='Cartesian')
         self.pos = Coord(pos, cell, basis=basis).to_cart()
         self.nat = len(pos)
-        self.labels = label
         self.Z = Z
 
         # check label
-        if self.labels:
+        if label is not None:
+            self.labels = label
             for i in range(len(self.labels)):
                 if self.labels[i].isdigit():
                     self.labels[i] = z2lab[int(self.labels[i])]
-
-        if self.Z is None:
-            self.Z = []
-            for item in self.labels:
-                self.Z.append(z2lab.index(item))
-
-        if self.labels is None:
+            if self.Z is None:
+                self.Z = []
+                for item in self.labels:
+                    self.Z.append(z2lab.index(item))
+        else :
             self.labels = []
             for item in self.Z:
                 self.labels.append(z2lab[item])
+
+        self.labels = np.asarray(self.labels)
+        self.Z = np.asarray(self.Z)
 
     def set_Zval(self, labels=None):
         if self.Zval is None:
@@ -55,6 +56,21 @@ class Atom(object):
     def istrf(self, reciprocal_grid, iatom):
         a = np.exp(1j * np.einsum("lijk,l->ijk", reciprocal_grid.g, self.pos[iatom]))
         return a
+
+    def __getitem__(self, i):
+        atoms = self.__class__(Z=self.Z[i].copy(), Zval=self.Zval, label=self.labels[i].copy(), pos=self.pos[i].copy(), cell = self.pos.cell, basis = self.pos.basis)
+        return atoms
+
+    def __delitem__(self, i):
+        mask = np.ones_like(self.labels, dtype = bool)
+        mask[i] = False
+        self.labels = self.labels[mask]
+        self.pos = self.pos[mask]
+        self.Z = self.Z[mask]
+        self.nat = len(self.pos)
+
+    def __str__(self): 
+        return '\n'.join(['%20s : %s' % item for item in self.__dict__.items()]) 
 
 
 z2lab = [
