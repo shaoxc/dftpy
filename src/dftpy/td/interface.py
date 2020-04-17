@@ -91,6 +91,7 @@ def CasidaRunner(config, rho0, E_v_Evaluator):
     numeig = config["CASIDA"]["numeig"]
     outfile = config["TD"]["outfile"]
     diagonize = config["CASIDA"]["diagonize"]
+    tda = config["CASIDA"]["tda"]
 
     if diagonize:
         potential = E_v_Evaluator(rho0, calcType=['V']).potential
@@ -104,11 +105,14 @@ def CasidaRunner(config, rho0, E_v_Evaluator):
 
     print('Starting Buildling Matrix')
     begin_t = time.time()
-    casida.build_matrix(numeig, eigs, psi_list)
+    casida.build_matrix(numeig, eigs, psi_list, build_ab = tda)
     end_t = time.time()
     print('Building Matrix done, costing {0:f} s'.format(end_t - begin_t))
 
-    omega, f = casida()
+    if tda:
+        omega, f = casida.tda()
+    else:
+        omega, f = casida()
 
     with open(outfile, 'w') as fw:
         for i in range(len(omega)):
@@ -122,8 +126,8 @@ def SternheimerRunner(config, rho0, E_v_Evaluator):
     sternheimer = Sternheimer(rho0, E_v_Evaluator)
     eigs, psi_list = sternheimer.hamiltonian.diagonize(2)
     sternheimer.grid.full = True
-    omega = np.linspace(0.02, 0.5, 25)
-    f = sternheimer(psi_list[1], omega, 0.01)
+    omega = np.linspace(0.0, 0.5, 26)
+    f = sternheimer(psi_list[1], omega, 0)
     #f = omega
     #sternheimer(psi_list[1], 1e-4, 0.01)
 

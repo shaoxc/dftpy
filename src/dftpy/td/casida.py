@@ -40,28 +40,52 @@ class Casida(object):
         mu = (psi_1*x*psi_2).integral()
         return mu
 
-    def build_matrix(self, num_psi, eigs, psi_list, calc_triplet=False):
+    def build_matrix(self, num_psi, eigs, psi_list, calc_triplet=False, build_ab = False):
         hartree = FunctionalClass(type='HARTREE')
         self.c = np.empty([num_psi-1, num_psi-1], dtype = np.float64)
+        if build_ab:
+            self.a = np.empty([num_psi-1, num_psi-1], dtype = np.float64)
+            self.b = np.empty([num_psi-1, num_psi-1], dtype = np.float64)
         if calc_triplet:
             self.c_tri = np.empty([num_psi-1, num_psi-1], dtype = np.float64)
+            if build_ab:
+                self.a_tri = np.empty([num_psi-1, num_psi-1], dtype = np.float64)
+                self.b_tri = np.empty([num_psi-1, num_psi-1], dtype = np.float64)
         omega = eigs[1:]-eigs[0]
         for j in range(1, num_psi):
             psi_j = psi_list[0] * psi_list[j]
             vh = hartree(psi_j, calcType = ['V']).potential
             for i in range(j, num_psi):
                 psi_i = psi_list[0] * psi_list[i]
-                self.c[i-1,j-1] = self.calc_k(psi_i, psi_j, vh) * self.N * 2.0 * np.sqrt(omega[i-1]*omega[j-1])
+                k = self.calc_k(psi_i, psi_j, vh)
+                self.c[i-1,j-1] = k * self.N * 2.0 * np.sqrt(omega[i-1]*omega[j-1])
+                if build_ab:
+                    self.a[i-1,j-1] = k * self.N
+                    self.b[i-1,j-1] = k * self.N
                 if calc_triplet:
-                    self.c_tri[i-1,j-1] = self.calc_k_tri(psi_i, psi_j) * self.N * 2.0 * np.sqrt(omega[i-1]*omega[j-1])
+                    k_tri = self.calc_k_tri(psi_i, psi_j)
+                    self.c_tri[i-1,j-1] = k_tri * self.N * 2.0 * np.sqrt(omega[i-1]*omega[j-1])
+                    if build_ab:
+                        self.a_tri[i-1,j-1] = k_tri * self.N
+                        self.b_tri[i-1,j-1] = k_tri * self.N
                 if not i == j:
                     self.c[j-1, i-1] = self.c[i-1, j-1]
+                    if build_ab:
+                        self.a[j-1, i-1] = self.a[i-1, j-1]
+                        self.b[j-1, i-1] = self.b[i-1, j-1]
                     if calc_triplet:
                         self.c_tri[j-1, i-1] = self.c_tri[i-1, j-1]
+                        if build_ab:
+                            self.a_tri[j-1, i-1] = self.a_tri[i-1, j-1]
+                            self.b_tri[j-1, i-1] = self.b_tri[i-1, j-1]
 
         self.c +=  np.identity(num_psi-1) * (omega * omega)
+        if build_ab:
+            self.a +=  np.identity(num_psi-1) * omega
         if calc_triplet:
             self.c_tri +=  np.identity(num_psi-1) * (omega * omega)
+            if build_ab:
+                self.a_tri +=  np.identity(num_psi-1) * omega
         self.sqrtomega = np.sqrt(omega)
         #print(self.sqrtomega)
         #print(self.c)
@@ -95,7 +119,7 @@ class Casida(object):
             tmp = np.sum(self.z * self.sqrtomega * z_list[:,i])
             f[i] += tmp * tmp
 
-            f[i] = f[i] * 2.0 / 3.0
+            f[i] = f[i] * 2.0 / 3.0 * self.N
 
         if calc_triplet:
             omega2, z_list = eigh(self.c_tri)
@@ -111,10 +135,51 @@ class Casida(object):
                 tmp = np.sum(self.z * self.sqrtomega * z_list[:,i])
                 f_tri[i] += tmp * tmp
 
-                f_tri[i] = f_tri[i] * 2.0 / 3.0
+                f_tri[i] = f_tri[i] * 2.0 / 3.0 * self.N
 
             omega = np.real(np.concatenate((omega, omega_tri)))
             f = np.concatenate((f, f_tri))
 
         return omega, f
 
+    def tda(self, calc_triplet=False):
+        if not hasattr(self, 'a'):
+            raise Exception("Matrix is not built yet. Run build_matrix first.")
+        if calc_triplet and not hasattr(self, 'a_tri'):
+            raise Exception("Matrix for triplet is not built yet. Run build_matrix with calc_triplet=True first.")
+        num_modes = np.shape(self.a)[0]
+
+        omega, x_list = eigh(self.a)
+
+        f = np.empty(num_modes, dtype = np.float64)
+        for i in range(num_modes):
+            #tmp = np.sum(self.x * self.sqrtomega * self.sqrtomega * x_list[:,i])
+            tmp = np.sum(self.x * np.matmul(self.a, x_list[:,i]))
+            f[i] = tmp * tmp
+            #tmp = np.sum(self.y * self.sqrtomega * self.sqrtomega * x_list[:,i])
+            tmp = np.sum(self.y * np.matmul(self.a, x_list[:,i]))
+            f[i] += tmp * tmp
+            #tmp = np.sum(self.z * self.sqrtomega * self.sqrtomega * x_list[:,i])
+            tmp = np.sum(self.z * np.matmul(self.a, x_list[:,i]))
+            f[i] += tmp * tmp
+
+            f[i] = f[i] * 2.0 / 3.0 * self.N
+
+        if calc_triplet:
+            omega, x_list = eigh(self.a_tri)
+
+            f_tri = np.empty(num_modes, dtype = np.float64)
+            for i in range(num_modes):
+                tmp = np.sum(self.x * self.sqrtomega * self.sqrtomega * x_list[:,i])
+                f_tri[i] = tmp * tmp
+                tmp = np.sum(self.y * self.sqrtomega * self.sqrtomega * y_list[:,i])
+                f_tri[i] += tmp * tmp
+                tmp = np.sum(self.z * self.sqrtomega * self.sqrtomega * z_list[:,i])
+                f_tri[i] += tmp * tmp
+
+                f_tri[i] = f_tri[i] * 2.0 / 3.0 * self.N
+
+            omega = np.real(np.concatenate((omega, omega_tri)))
+            f = np.concatenate((f, f_tri))
+
+        return omega, f
