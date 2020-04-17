@@ -69,7 +69,7 @@ class Sternheimer(object):
         #print((psi1*psi1).integral())
         #dpsi = psi1 - self.psi*(self.psi*psi1).integral()
         #print((dpsi*dpsi).integral())
-        beta = 0.05
+        beta = 0.5
         dpsip = dpsi_ini
         #dpsim = dpsip
         iter = 0
@@ -94,7 +94,7 @@ class Sternheimer(object):
             drho = calc_drho(self.psi0, dpsip, self.N)
             print("drho:", drho.integral())
             norm = dpsip.norm()
-            #dpsip = dpsip.normalize()
+            dpsip = dpsip.normalize(0.01)
             #if norm > 10:
             #    dpsip = dpsip.normalize()
             dpsip = beta * dpsip + (1.0 - beta) * dpsip_old
@@ -116,6 +116,7 @@ class Sternheimer(object):
 
     def __call__(self, dpsi_ini, omega_list, eta):
 
+        dpsi_ini *= 0.01
         print(self.N * (self.psi0 * self.hamiltonian(self.psi0)).integral())
         f = np.zeros(np.shape(omega_list))
         for i, omega in enumerate(omega_list):
