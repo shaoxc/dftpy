@@ -335,6 +335,10 @@
     "diagonize": {
       "type": "bool",
       "default": true
+    },
+    "tda": {
+      "type": "bool",
+      "default": false
     }
   }
 }

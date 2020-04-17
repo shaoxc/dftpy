@@ -12,6 +12,10 @@ def HartreeFunctional(density, calcType=["E","V"]):
         rho = np.sum(density, axis = 0)
     else :
         rho = density
+    if np.isrealobj(rho):
+        force_real = True
+    else:
+        force_real = False
     rho_of_g = rho.fft()
     # v_h = rho_of_g.copy()
     # mask = gg != 0
@@ -20,7 +24,7 @@ def HartreeFunctional(density, calcType=["E","V"]):
     v_h = rho_of_g / gg * 4 * np.pi
     gg[0, 0, 0] = 0.0
     v_h[0, 0, 0] = 0.0
-    v_h_of_r = v_h.ifft(force_real=True)
+    v_h_of_r = v_h.ifft(force_real=force_real)
     if 'E' in calcType:
         e_h = np.einsum("ijk, ijk->", v_h_of_r, rho) * density.grid.dV / 2.0
     else:

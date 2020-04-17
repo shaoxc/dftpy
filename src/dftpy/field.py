@@ -105,6 +105,10 @@ class BaseField(np.ndarray):
 
         return type(self)(self.grid, rank=1, griddata_3d=prod)
 
+    def project(self, obj):
+        """ Returns the field that self projects on obj """
+        return obj*(np.conj(obj.normalize())*self).integral()
+
     def norm(self):
         return np.sqrt((np.real(np.conj(self) * self)).integral())
 

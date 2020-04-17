@@ -26,15 +26,20 @@ class BaseGrid(BaseCell):
         self._nr = np.asarray(nr, dtype=np.int32)
         self._nnr = self._nr[0] * self._nr[1] * self._nr[2]
         self._dV = np.abs(self._volume) / self._nnr
+        metric = np.dot(lattice.T, lattice)
+        latparas = np.zeros(3)
+        for i in range(3):
+            latparas[i] = np.sqrt(metric[i, i])
+        self._spacings = latparas / self._nr
         # self._r = None # initialize them on request
         # self._s = None # initialize them on request
 
     def __eq__(self, other):
         if not super().__eq__(other):
-            return false
+            return False
         for ilat in range(3):
             if self._nr[ilat] != other._nr[ilat]:
-                return false
+                return False
 
         return True
 
@@ -53,6 +58,10 @@ class BaseGrid(BaseCell):
     @property
     def Volume(self):
         return self._volume
+
+    @property
+    def spacings(self):
+        return self._spacings
 
 
 class DirectGrid(BaseGrid, DirectCell):

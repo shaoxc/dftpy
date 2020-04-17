@@ -75,6 +75,7 @@ class Optimization(AbstractOptimization):
             "c2": 0.2,
             "algorithm": "EMM",
             "vector": "Orthogonalization",
+            "ncheck": 2,
         }
         for key in default_options:
             if key not in self.optimization_options:
@@ -467,14 +468,9 @@ class Optimization(AbstractOptimization):
                 it, energy, dE, resN, NumDirectrion, NumLineSearch, CostTime
             )
             print(fmt)
-            if abs(dE) < self.optimization_options["econv"]:
-                # if True :
-                if (
-                    len(EnergyHistory) > 2
-                    and abs(EnergyHistory[-1] - EnergyHistory[-3]) < self.optimization_options["econv"]
-                ):
-                    print("#### Density Optimization Converged ####")
-                    break
+            if self.check_converge(EnergyHistory):
+                print("#### Density Optimization Converged ####")
+                break
 
             directionA.append(p)
             if len(residualA) > 2:
@@ -483,12 +479,27 @@ class Optimization(AbstractOptimization):
                 directionA.pop(0)
 
         TimeData.End("Optimize")
-        # print('Chemical potential (a.u.):', mu)
-        # print('Chemical potential (eV)  :', mu * ENERGY_CONV['Hartree']['eV'])
+        print('Chemical potential (a.u.):', mu)
+        print('Chemical potential (eV)  :', mu * ENERGY_CONV['Hartree']['eV'])
         self.mu = mu
         self.rho = rho
         self.functional = func
         return rho
+
+    def check_converge(self, EnergyHistory, **kwargs):
+        flag = False
+        econv = self.optimization_options["econv"]
+        ncheck = self.optimization_options["ncheck"]
+        E = EnergyHistory[-1]
+        if econv is not None :
+            if len(EnergyHistory) - 1 < ncheck :
+                return flag
+            for i in range(ncheck):
+                dE = abs(EnergyHistory[-2-i] - E)
+                if abs(dE) > econv :
+                    return flag
+        flag = True
+        return flag
 
     def __call__(self, guess_rho=None, calcType=["E","V"]):
         return self.optimize_rho(guess_rho=guess_rho)
