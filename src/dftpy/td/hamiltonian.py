@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.sparse.linalg import LinearOperator, eigsh
 from dftpy.field import DirectField, ReciprocalField
+from dftpy.time_data import TimeData
 
 class Hamiltonian(object):
 
@@ -48,6 +49,7 @@ class Hamiltonian(object):
         return matvec
 
     def diagonize(self, numeig, return_eigenvectors = True, reciprocal = False):
+        TimeData.Begin('Diagonize')
 
         if reciprocal:
             reci_grid = self.grid.get_reciprocal()
@@ -69,7 +71,9 @@ class Hamiltonian(object):
                     psi = DirectField(self.grid, rank=1, griddata_3d=np.reshape(psis[:,i], self.grid.nr))
                 psi = psi / np.sqrt((np.real(psi) * np.real(psi) + np.imag(psi) * np.imag(psi)).integral())
                 psi_list.append(psi)
+            TimeData.End('Diagonize')
             return Es, psi_list
         else:
             Es, psis = eigsh(A, k=numeig, which='SA', return_eigenvectors=return_eigenvectors)
+            TimeData.End('Diagonize')
             return Es

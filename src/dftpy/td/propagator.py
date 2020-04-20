@@ -3,6 +3,7 @@ from scipy.sparse.linalg import LinearOperator
 import scipy.sparse.linalg as linalg
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.td.hamiltonian import Hamiltonian
+from dftpy.time_data import TimeData
 
 class Propagator(object):
     """
@@ -19,6 +20,16 @@ class Propagator(object):
     kwargs:
         Optional kwargs
     """
+    LinearSolverDict = {
+        "bicg": linalg.bicg,
+        "bicgstab": linalg.bicgstab,
+        "cg": linalg.cg,
+        "cgs": linalg.cgs,
+        "gmres": linalg.gmres,
+        "lgmres": linalg.lgmres,
+        "minres": linalg.minres,
+        "qmr": linalg.qmr,
+    }
 
     def __init__(self, hamiltonian, interval=1.0e-3, type="taylor", **kwargs):
         # init the class
@@ -58,6 +69,9 @@ class Propagator(object):
 
 
     def Taylor(self, psi0, interval, order=1):
+
+        TimeData.Begin('Taylor')
+
         N0 = (psi0 * np.conj(psi0)).integral()
         psi1 = psi0
 
@@ -72,6 +86,8 @@ class Propagator(object):
 
         N1 = (psi1 * np.conj(psi1)).integral()
         psi1 = psi1 * np.sqrt(N0 / N1)
+
+        TimeData.End('Taylor')
 
         return psi1, 0
 
@@ -97,28 +113,21 @@ class Propagator(object):
 
     def CrankNicolson(self, psi0, interval, linearsolver="bicgstab", tol=1e-8, maxiter=100):
 
-        LinearSolverDict = {
-            "bicg": linalg.bicg,
-            "bicgstab": linalg.bicgstab,
-            "cg": linalg.cg,
-            "cgs": linalg.cgs,
-            "gmres": linalg.gmres,
-            "lgmres": linalg.lgmres,
-            "minres": linalg.minres,
-            "qmr": linalg.qmr,
-        }
+        TimeData.Begin('Crank-Nicolson')
 
         size = self.hamiltonian.grid.nnr
         b = (psi0 + 1j * self.hamiltonian(psi0) * interval / 2.0).ravel()
         A = LinearOperator((size, size), dtype=psi0.dtype, matvec=self.cnMatvecUtil(interval))
         try:
-            psi1_, info = LinearSolverDict[linearsolver](A, b, x0=psi0.ravel(), tol=tol, maxiter=maxiter, atol=0)
+            psi1_, info = self.LinearSolverDict[linearsolver](A, b, x0=psi0.ravel(), tol=tol, maxiter=maxiter, atol=0)
         except KeyError:
             raise AttributeError("{0:s} is not a linear solver".format(linearsolver))
 
         if info:
-            print(info)
+            print("Linear solver did not converge. Info: {0:d}".format(info))
         psi1 = DirectField(grid=self.hamiltonian.grid, rank=1, griddata_3d=np.reshape(psi1_, self.hamiltonian.grid.nr), cplx=True)
+
+        TimeData.End('Crank-Nicolson')
 
         return psi1, info
 

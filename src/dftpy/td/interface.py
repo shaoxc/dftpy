@@ -7,6 +7,7 @@ from dftpy.field import DirectField, ReciprocalField
 from dftpy.grid import DirectGrid, ReciprocalGrid
 from dftpy.system import System
 from dftpy.utils import calc_rho, calc_j
+from dftpy.time_data import TimeData
 import time
 
 
@@ -23,7 +24,6 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     hamiltonian = Hamiltonian()
     prop = Propagator(hamiltonian, interval=int_t, type=config["PROPAGATOR"]["type"], optional_kwargs=config["PROPAGATOR"])
 
-    begin_t = time.time()
     x = rho0.grid.r[direc]
     psi = np.sqrt(rho0) * np.exp(1j * k * x)
     psi.cplx = True
@@ -43,9 +43,9 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     with open(outfile + "_E", "w") as fE:
         pass
 
+    print("{:20s}{:30s}{:24s}".format('Iter', 'Num. of Predictor-corrector', 'Total Cost(s)'))
+    begin_t = time.time()
     for i_t in range(num_t):
-        cost_t = time.time() - begin_t
-        print("iter: {0:d} time: {1:f}".format(i_t, cost_t))
         t = int_t * i_t
         func = E_v_Evaluator.ComputeEnergyPotential(rho, calcType=["V"])
         prop.hamiltonian.v = func.potential
@@ -59,7 +59,6 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
             rho1 = calc_rho(psi1)
             j1 = calc_j(psi1)
             if i_cn > 0 and np.max(np.abs(old_rho1 - rho1)) < eps and np.max(np.abs(old_j1 - j1)) < eps:
-                print(i_cn)
                 break
 
             rho_half = (rho + rho1) * 0.5
@@ -81,6 +80,8 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
         with open(outfile + "_E", "a") as fE:
             fE.write("{0:17.10e}\n".format(E))
 
+        cost_t = time.time() - begin_t
+        print("{:<20d}{:<30d}{:<24.4f}".format(i_t, i_cn, cost_t))
         if info:
             break
 
@@ -95,18 +96,18 @@ def CasidaRunner(config, rho0, E_v_Evaluator):
     if diagonize:
         potential = E_v_Evaluator(rho0, calcType=['V']).potential
         hamiltonian = Hamiltonian(potential)
+        print('Start diagonizing Hamlitonian.')
         eigs, psi_list = hamiltonian.diagonize(numeig)
+        print('Diagonizing Hamlitonian done.')
     else:
         raise Exception("diagonize must be true.")
 
     E_v_Evaluator.UpdateFunctional(keysToRemove = ['HARTREE', 'PSEUDO'])
     casida = Casida(rho0, E_v_Evaluator)
 
-    print('Starting Buildling Matrix')
-    begin_t = time.time()
+    print('Start buildling matrix.')
     casida.build_matrix(numeig, eigs, psi_list, build_ab = tda)
-    end_t = time.time()
-    print('Building Matrix done, costing {0:f} s'.format(end_t - begin_t))
+    print('Building matrix done.')
 
     if tda:
         omega, f = casida.tda()

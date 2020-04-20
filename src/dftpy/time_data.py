@@ -40,15 +40,15 @@ class TimeObj(object):
             self.cost[label] += t
         return t
 
-    def output(self, config):
+    def output(self, config=None):
         print(format("Time information", "-^80"))
-        print("{:28s}{:24s}{:20s}".format("Label", "Cost(s)", "Number"))
-        if config["OUTPUT"]["time"]:
+        print("{:28s}{:24s}{:16s}{:24s}".format("Label", "Cost(s)", "Number", "Avg. Cost(s)"))
+        if config and config["OUTPUT"]["time"]:
             for key, cost in sorted(self.cost.items(), key=lambda d: d[1]):
-                print("{:28s}{:<24.4f}{:<20d}".format(key, cost, self.number[key]))
+                print("{:28s}{:<24.4f}{:<16d}{:<24.4f}".format(key, cost, self.number[key], cost/self.number[key]))
         else:
             key = "TOTAL"
-            print("{:28s}{:<24.4f}{:<20d}".format(key, self.cost[key], self.number[key]))
+            print("{:28s}{:<24.4f}{:<16d}{:<24.4f}".format(key, self.cost[key], self.number[key], cost/self.number[key]))
 
 
 TimeData = TimeObj()
