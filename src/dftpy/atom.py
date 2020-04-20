@@ -6,7 +6,6 @@ from dftpy.field import ReciprocalField, DirectField
 from dftpy.functional_output import Functional
 from dftpy.constants import LEN_CONV, ENERGY_CONV
 from dftpy.ewald import CBspline
-from dftpy.math_utils import TimeData
 
 
 class Atom(object):

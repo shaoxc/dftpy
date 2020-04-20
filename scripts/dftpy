@@ -3,6 +3,8 @@ import configparser
 import argparse
 from dftpy.interface import ConfigParser, OptimizeDensityConf
 from dftpy.td.interface import RealTimeRunner, CasidaRunner
+import time
+from dftpy.time_data import TimeData
 
 
 def RunJob():
@@ -13,6 +15,11 @@ def RunJob():
 
     args = parser.parse_args()
     config, others = ConfigParser(args.input)
+
+    print("Begin on :", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+    print("#" * 80)
+    TimeData.Begin("TOTAL")
+
     if "Propagate" in config["JOB"]["task"]:
         RealTimeRunner(config, others["struct"].field, others["E_v_Evaluator"])
     elif "Casida" in config["JOB"]["task"]:
@@ -20,6 +27,11 @@ def RunJob():
     else:
         results = OptimizeDensityConf(config, others["struct"], others["E_v_Evaluator"], others["nr2"])
         # results = OptimizeDensityConf(args.input)
+
+    TimeData.End("TOTAL")
+    TimeData.output(config)
+    print("#" * 80)
+    print("Finished on :", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ from dftpy.field import ReciprocalField, DirectField
 from dftpy.functional_output import Functional
 from dftpy.constants import LEN_CONV, ENERGY_CONV
 from dftpy.ewald import CBspline
-from dftpy.math_utils import TimeData
+from dftpy.time_data import TimeData
 from dftpy.atom import Atom
 from abc import ABC, abstractmethod
 from dftpy.grid import DirectGrid, ReciprocalGrid

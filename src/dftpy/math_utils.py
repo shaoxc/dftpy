@@ -3,7 +3,6 @@ import scipy.special as sp
 from scipy import ndimage
 from scipy.optimize import minpack2
 from scipy import optimize as sopt
-import time
 from dftpy.constants import FFTLIB
 
 if FFTLIB == "pyfftw":
@@ -152,50 +151,6 @@ def Brent(func, alpha0=None, brack=(0.0, 1.0), tol=1e-8, full_output=1):
     f = partial_return(func, 0)
     alpha1, x1, _, i = sopt.brent(f, alpha0, brack=brack, tol=tol, full_output=full_output)
     return alpha1, x1, None, "CONV", i, func(alpha1)
-
-
-class TimeObj(object):
-    """
-    """
-
-    def __init__(self, **kwargs):
-        self.reset(**kwargs)
-
-    def reset(self, **kwargs):
-        self.labels = []
-        self.tic = {}
-        self.toc = {}
-        self.cost = {}
-        self.number = {}
-
-    def Begin(self, label):
-        if label in self.tic:
-            self.number[label] += 1
-        else:
-            self.labels.append(label)
-            self.number[label] = 1
-            self.cost[label] = 0.0
-
-        self.tic[label] = time.time()
-
-    def Time(self, label):
-        if label not in self.tic:
-            print(' !!! ERROR : You should add "Begin" before this')
-        else:
-            t = time.time() - self.tic[label]
-        return t
-
-    def End(self, label):
-        if label not in self.tic:
-            print(' !!! ERROR : You should add "Begin" before this')
-        else:
-            self.toc[label] = time.time()
-            t = time.time() - self.tic[label]
-            self.cost[label] += t
-        return t
-
-
-TimeData = TimeObj()
 
 
 def PYfft(grid, cplx=False, threads=1):

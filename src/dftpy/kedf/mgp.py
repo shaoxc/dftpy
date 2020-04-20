@@ -7,7 +7,7 @@ from dftpy.kedf.tf import TF
 from dftpy.kedf.vw import vW
 from dftpy.kedf.wt import WTPotential, WTEnergy
 from dftpy.kedf.kernel import MGPKernel, MGPOmegaE, LindhardDerivative
-from dftpy.math_utils import TimeData
+from dftpy.time_data import TimeData
 
 __all__ = ["MGP", "MGPStress", "MGPA", "MGPG"]
 

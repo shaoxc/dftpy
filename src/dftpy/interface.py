@@ -8,7 +8,8 @@ from dftpy.formats.io import read
 from dftpy.ewald import ewald
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
-from dftpy.math_utils import TimeData, bestFFTsize, interpolation_3d
+from dftpy.math_utils import bestFFTsize, interpolation_3d
+from dftpy.time_data import TimeData
 from dftpy.functional_output import Functional
 from dftpy.semilocal_xc import LDAStress, PBEStress, XCStress
 from dftpy.pseudo import LocalPseudo
@@ -154,9 +155,6 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None):
 
 
 def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2):
-    print("Begin on :", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-    print("#" * 80)
-    TimeData.Begin("TOTAL")
     ions = struct.ions
     rho_ini = struct.field
     charge_total = 0.0
@@ -347,17 +345,6 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2):
     results["stress"] = stress
     results["pseudo"] = PSEUDO
     # print('-' * 31, 'Time information', '-' * 31)
-    TimeData.End("TOTAL")
-    print(format("Time information", "-^80"))
-    print("{:28s}{:24s}{:20s}".format("Label", "Cost(s)", "Number"))
-    if config["OUTPUT"]["time"]:
-        for key, cost in sorted(TimeData.cost.items(), key=lambda d: d[1]):
-            print("{:28s}{:<24.4f}{:<20d}".format(key, cost, TimeData.number[key]))
-    else:
-        key = "TOTAL"
-        print("{:28s}{:<24.4f}{:<20d}".format(key, TimeData.cost[key], TimeData.number[key]))
-    print("#" * 80)
-    print("Finished on :", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
     # TimeData.reset() #Cleanup the data in TimeData
     # -----------------------------------------------------------------------
     return results

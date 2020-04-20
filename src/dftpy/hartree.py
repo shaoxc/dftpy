@@ -2,7 +2,7 @@
 
 import numpy as np
 from dftpy.functional_output import Functional
-from dftpy.math_utils import TimeData
+from dftpy.time_data import TimeData
 
 
 def HartreeFunctional(density, calcType=["E","V"]):

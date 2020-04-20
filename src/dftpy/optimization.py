@@ -4,8 +4,9 @@ from scipy import optimize as sopt
 import scipy.special as sp
 from functools import partial
 from dftpy.field import DirectField
-from dftpy.math_utils import LineSearchDcsrchVector, LineSearchDcsrch2, Brent, TimeData
+from dftpy.math_utils import LineSearchDcsrchVector, LineSearchDcsrch2, Brent
 from dftpy.math_utils import LBFGS
+from dftpy.time_data import TimeData
 from abc import ABC, abstractmethod
 from dftpy.constants import ENERGY_CONV
 from dftpy.math_utils import get_direction_CG, get_direction_GD, get_direction_LBFGS

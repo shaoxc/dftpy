@@ -3,7 +3,8 @@
 import numpy as np
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.functional_output import Functional
-from dftpy.math_utils import TimeData, PowerInt
+from dftpy.math_utils import PowerInt
+from dftpy.time_data import TimeData
 
 
 def ThomasFermiPotential(rho):

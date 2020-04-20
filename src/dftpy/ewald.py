@@ -5,7 +5,7 @@ from scipy.spatial.distance import cdist
 from itertools import product
 
 from dftpy.field import DirectField, ReciprocalField
-from dftpy.math_utils import TimeData
+from dftpy.time_data import TimeData
 
 
 class CBspline(object):

@@ -7,7 +7,7 @@ from dftpy.kedf.tf import TF
 from dftpy.kedf.vw import vW
 from dftpy.kedf.kernel import WTKernelTable, WTKernelDerivTable, LWTKernel, LWTKernelKf
 from dftpy.kedf.kernel import MGPKernelTable, MGPOmegaE
-from dftpy.math_utils import TimeData
+from dftpy.time_data import TimeData
 
 __all__ = ["LWT", "LWTStress", "LMGP", "LMGPA", "LMGPG"]
 

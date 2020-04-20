@@ -10,7 +10,8 @@ from dftpy.grid import DirectGrid, ReciprocalGrid
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
-from dftpy.math_utils import TimeData, bestFFTsize
+from dftpy.math_utils import bestFFTsize
+from dftpy.time_data import TimeData
 from dftpy.pseudo import LocalPseudo
 
 def test_optim():

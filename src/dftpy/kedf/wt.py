@@ -7,7 +7,7 @@ from dftpy.kedf.tf import TF
 from dftpy.kedf.vw import vW
 from dftpy.kedf.kernel import WTKernel, LindhardDerivative
 from dftpy.kedf.kernel import MGPKernel
-from dftpy.math_utils import TimeData
+from dftpy.time_data import TimeData
 from dftpy.kedf.gga import GGA
 
 __all__ = ["WT", "WTStress"]

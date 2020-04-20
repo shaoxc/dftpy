@@ -7,7 +7,7 @@ from dftpy.field import DirectField
 from dftpy.kedf.tf import TF
 from dftpy.kedf.vw import vW
 from dftpy.kedf.kernel import SMKernel, LindhardDerivative, WTKernel
-from dftpy.math_utils import TimeData
+from dftpy.time_data import TimeData
 
 """
 F. Perrot : Hydrogen-hydrogen interaction in an electron gas.

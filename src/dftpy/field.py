@@ -4,7 +4,8 @@ from scipy import ndimage
 from scipy import signal
 from dftpy.grid import DirectGrid, ReciprocalGrid
 from dftpy.constants import FFTLIB
-from dftpy.math_utils import PYfft, PYifft, TimeData
+from dftpy.math_utils import PYfft, PYifft
+from dftpy.time_data import TimeData
 from dftpy.base import Coord
 
 
