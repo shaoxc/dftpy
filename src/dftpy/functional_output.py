@@ -75,6 +75,9 @@ class Functional(object):
                 setattr(result, key, value - getattr(other, key))
             else:
                 setattr(result, key, value)
+        for key, value in other:
+            if not hasattr(result, key):
+                setattr(result, key, -value)
         return result
 
     def mul(self, x):

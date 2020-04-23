@@ -299,7 +299,10 @@ def LDAStress(rho, energy=None, potential=None, **kwargs):
     elif potential is None :
         potential = LDA(rho, calcType=["V"]).potential
     stress = np.zeros((3, 3))
-    Etmp = energy - np.einsum("..., ...-> ", potential, rho, optimize = 'optimal') * rho.grid.dV
+    try:
+        Etmp = energy - np.einsum("..., ...-> ", potential, rho, optimize = 'optimal') * rho.grid.dV
+    except Exception :
+        Etmp = energy - np.sum(potential * rho) * rho.grid.dV
     for i in range(3):
         stress[i, i] = Etmp / rho.grid.volume
     TimeData.End("LDA_Stress")
@@ -341,7 +344,10 @@ def _LDAStress(density, xc_str='lda_x', energy=None, flag='standard', **kwargs):
     else :
         v = DirectField(density.grid, rank=density.rank, griddata_3d=out['vrho'])
     stress = np.zeros((3, 3))
-    P = energy - np.einsum("..., ...-> ", v, rho, optimize = 'optimal') * rho.grid.dV
+    try :
+        P = energy - np.einsum("..., ...-> ", v, rho, optimize = 'optimal') * rho.grid.dV
+    except Exception :
+        P = energy - np.sum(v*rho) * rho.grid.dV
     stress = np.eye(3)*P
     return stress/ rho.grid.volume
 
@@ -402,8 +408,12 @@ def _GGAStress(density, xc_str='gga_x_pbe', energy=None, flag='standard', **kwar
         vsigma = DirectField(density.grid, griddata_3d=out["vsigma"].reshape(np.shape(density)))
 
     P = energy
-    P -= np.einsum("..., ...-> ", v, density, optimize = 'optimal') * rho.grid.dV
-    P -= 2.0*np.einsum("..., ...-> ", sigma, vsigma, optimize = 'optimal') * rho.grid.dV
+    try :
+        P -= np.einsum("..., ...-> ", v, density, optimize = 'optimal') * rho.grid.dV
+        P -= 2.0*np.einsum("..., ...-> ", sigma, vsigma, optimize = 'optimal') * rho.grid.dV
+    except Exception :
+        P -= np.sum(v*density) * rho.grid.dV
+        P -= 2.0*np.sum(sigma*vsigma) * rho.grid.dV
     stress = np.eye(3)*P
     for i in range(3):
         for j in range(3):

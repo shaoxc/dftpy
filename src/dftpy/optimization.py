@@ -258,7 +258,10 @@ class Optimization(AbstractOptimization):
             if self.nspin > 1 :
                 mu = mu[:, None, None, None]
             residual = (f.potential - mu) * newphi
-            resN = np.einsum("..., ...->", residual, residual, optimize = 'optimal') * phi.grid.dV
+            try:
+                resN = np.einsum("..., ...->", residual, residual, optimize = 'optimal') * phi.grid.dV
+            except Exception :
+                resN = np.sum(residual*residual) * phi.grid.dV
             value = resN
 
         if vector == "Orthogonalization":
@@ -313,8 +316,10 @@ class Optimization(AbstractOptimization):
         )
         print(fmt)
         dE = energy
-        # resN = np.einsum("ijk, ijk->", residual, residual) * rho.grid.dV
-        resN = np.einsum("..., ...->", residual, residual, optimize = 'optimal') * rho.grid.dV
+        try:
+            resN = np.einsum("..., ...->", residual, residual, optimize = 'optimal') * rho.grid.dV
+        except Exception :
+            resN = float(np.sum(residual*residual) * rho.grid.dV)
         fmt = "{:<8d}{:<24.12E}{:<16.6E}{:<16.6E}{:<8d}{:<8d}{:<16.6E}".format(0, energy, dE, resN, 1, 1, CostTime)
         print(fmt)
         Bound = self.optimization_options["maxcor"]
@@ -464,7 +469,10 @@ class Optimization(AbstractOptimization):
             EnergyHistory.append(energy)
             CostTime = TimeData.Time("Optimize")
             dE = EnergyHistory[-1] - EnergyHistory[-2]
-            resN = np.einsum("..., ...->", residual, residual, optimize = 'optimal') * phi.grid.dV
+            try:
+                resN = np.einsum("..., ...->", residual, residual, optimize = 'optimal') * phi.grid.dV
+            except Exception :
+                resN = float(np.sum(residual*residual) * phi.grid.dV)
             fmt = "{:<8d}{:<24.12E}{:<16.6E}{:<16.6E}{:<8d}{:<8d}{:<16.6E}".format(
                 it, energy, dE, resN, NumDirectrion, NumLineSearch, CostTime
             )

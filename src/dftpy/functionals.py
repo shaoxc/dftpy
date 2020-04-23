@@ -311,6 +311,8 @@ class TotalEnergyAndPotential(AbstractFunctional):
                 Obj += evalfunctional(rho, calcType)
                 # sss = evalfunctional(rho, calcType)
                 # print('key', key, sss.energy)
+        if Obj is None :
+            Obj = Functional(name = 'NONE')
         return Obj
 
     def Energy(self, rho, ions, usePME=False, calcType=["E"]):

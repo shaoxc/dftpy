@@ -23,14 +23,14 @@ class Hamiltonian(object):
         else:
             raise TypeError("v must be a DFTpy DirectField.")
 
-    def __call__(self, psi, force_real=None):
+    def __call__(self, psi, force_real=None, sigma = 0.025):
         if isinstance(psi, DirectField):
             if force_real is None:
                 if np.isrealobj(psi):
                     force_real = True
                 else:
                     force_real = False
-            return -0.5 * psi.laplacian(force_real = force_real) + self.v * psi
+            return -0.5 * psi.laplacian(force_real = force_real, sigma=sigma) + self.v * psi
         elif isinstance(psi, ReciprocalField):
             return 0.5 * psi.grid.gg * psi + (self.v * psi.ifft()).fft
         else:

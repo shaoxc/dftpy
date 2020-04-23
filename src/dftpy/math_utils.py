@@ -359,7 +359,11 @@ class LBFGS(object):
             self.rho.pop(0)
         self.s.append(dx)
         self.y.append(dg)
-        rho = 1.0 / np.einsum("..., ...->", dg, dx, optimize = 'optimal')
+        try :
+            rho = 1.0 / np.einsum("..., ...->", dg, dx, optimize = 'optimal')
+        except Exception :
+            rho = 1.0 / np.sum(dg * dx)
+
         self.rho.append(rho)
 
 

@@ -88,6 +88,7 @@ class LocalPseudo(AbstractLocalPseudo):
         self._vloc_interp = readPP.vloc_interp
         self._gp = readPP.gp
         self._vp = readPP.vp
+        self.zval = {}
 
     def restart(self, grid=None, ions=None, full=False):
         """
@@ -220,11 +221,15 @@ class LocalPseudo(AbstractLocalPseudo):
         if not self._vlines:
             reciprocal_grid = self.grid.get_reciprocal()
             q = reciprocal_grid.q
+            gg = reciprocal_grid.gg
             vloc = np.empty_like(q)
             for key in self._vloc_interp.keys():
                 vloc_interp = self._vloc_interp[key]
                 vloc[:] = 0.0
-                vloc[q < np.max(self._gp[key])] = splev(q[q < np.max(self._gp[key])], vloc_interp, der=0)
+                mask = q < np.max(self._gp[key])
+                vloc[mask] = splev(q[mask], vloc_interp, der=0)
+                # mask[0, 0, 0] = False
+                # vloc[mask] = splev(q[mask], vloc_interp, der=0)-self.zval[key]/gg[mask]
                 self._vlines[key] = vloc.copy()
         return self._vlines
 
@@ -498,6 +503,7 @@ class ReadPseudo(object):
                 val = (vp[0] - vp[1]) * (gp[1] ** 2) / (4.0 * np.pi)
                 # val = (vp[0] - vp[1]) * (gp[-1] / (gp.size - 1)) ** 2 / (4.0 * np.pi)
                 ions.Zval[key] = round(val)
+        self.zval = ions.Zval.copy()
 
     def _init_PP_recpot(self):
         """

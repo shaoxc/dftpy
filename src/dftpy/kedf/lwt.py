@@ -56,7 +56,7 @@ def LWTPotentialEnergy(
     calcType=["E","V"],
     kfmin = None, 
     kfmax = None, 
-    **kwargs, 
+    **kwargs 
 ):
 
     savetol = 1e-18
@@ -284,7 +284,7 @@ def LWTLineIntegral(
     nt = 500,
     interp="linear",
     calcType=["E","V"],
-    **kwargs,
+    **kwargs
 ):
 
     q = rho.grid.get_reciprocal().q
