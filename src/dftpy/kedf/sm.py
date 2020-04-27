@@ -17,9 +17,6 @@ Tips : In the SM paper, $\Delta\rho = \rho - \rho_{0}$, but $\Delta\rho^{\alpha}
 
 __all__ = ["SM", "SMStress"]
 
-KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None, "KernelTable": None, "etaMax": None, "KernelDeriv": None}
-
-
 def SMPotential2(rho, rho0, Kernel, alpha=0.5, beta=0.5):
     # alpha equal beta
     tol = 1e-10
@@ -87,17 +84,19 @@ def SMStress(rho, energy=None):
     pass
 
 
-def SM(rho, x=1.0, y=1.0, sigma=None, alpha=0.5, beta=0.5, rho0=None, calcType=["E","V"], split=False, **kwargs):
+def SM(rho, x=1.0, y=1.0, sigma=None, alpha=0.5, beta=0.5, rho0=None, calcType=["E","V"], split=False, ke_kernel_saved = None, **kwargs):
     TimeData.Begin("SM")
     # alpha = beta = 5.0/6.0
-    global KE_kernel_saved
-    # Only performed once for each grid
     q = rho.grid.get_reciprocal().q
     if rho0 is None:
         rho0 = np.mean(rho)
     rho1 = 0.5 * (np.max(rho) + np.min(rho))
     # print(rho0, rho1, rho1 / rho0)
     # rho0 = rho1
+    if ke_kernel_saved is None :
+        KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
+    else :
+        KE_kernel_saved = ke_kernel_saved
     if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
         print("Re-calculate KE_kernel")
         KE_kernel = SMKernel(q, rho0, alpha=alpha, beta=beta)

@@ -10,7 +10,7 @@ from dftpy.kedf.sm import *
 from dftpy.kedf.mgp import *
 from dftpy.kedf.gga import *
 
-__all__ = ["KEDFunctional"]
+__all__ = ["KEDF", "KEDFunctional", "KEDFStress"]
 
 KEDF_Dict = {
     "TF": TF,
@@ -37,6 +37,43 @@ KEDF_Stress_Dict = {
     "WT": WTStress, 
 }
 
+class KEDF:
+    def __init__(self, name = "WT", **kwargs):
+        self.name = name
+        self.kwargs = kwargs
+        self.ke_kernel_saved = {
+                "Kernel": None,
+                "rho0": 0.0,
+                "shape": None,
+                "KernelTable": None,
+                "etamax": None,
+                "KernelDeriv": None,
+                "MGPKernelE": None,
+                }
+
+    def __call__(self, density, calcType=["E","V"], name=None, **kwargs):
+        if name is None :
+            name = self.name
+        self.kwargs.update(kwargs)
+        kwargs = self.kwargs
+        return self.compute(density, name=name, calcType=calcType, **kwargs)
+
+    def compute(self, density, calcType=["E","V"], name=None, split = False, **kwargs):
+        if name is None :
+            name = self.name
+        self.kwargs.update(kwargs)
+        kwargs = self.kwargs
+        functional = None
+        for item in name.split('+'):
+            out = KEDFunctional(density, name = item, calcType = calcType, ke_kernel_saved = self.ke_kernel_saved, **kwargs)
+            if functional is None :
+                functional = out
+            else :
+                if split :
+                    functional.update(out)
+                else :
+                    functional += out
+        return functional
 
 def KEDFunctional(rho, name="WT", calcType=["E","V"], split=False, nspin = 1, **kwargs):
     """
@@ -73,7 +110,7 @@ def KEDFunctional(rho, name="WT", calcType=["E","V"], split=False, nspin = 1, **
         if k_str not in GGA_KEDF_list:
             raise AttributeError("%s GGA KEDF to be implemented" % k_str)
         else:
-            OutFunctional = GGA(rho, functional=k_str, calcType=calcType, **kwargs)
+            OutFunctional = func(rho, functional=k_str, calcType=calcType, **kwargs)
             OutFunctionalDict = {"GGA": OutFunctional}
     elif name in KEDF_Dict:
         func = KEDF_Dict[name]
@@ -81,7 +118,7 @@ def KEDFunctional(rho, name="WT", calcType=["E","V"], split=False, nspin = 1, **
         if nspin > 1 and 'E' in calcType :
             OutFunctional.energy /= nspin
         OutFunctionalDict = {name: OutFunctional}
-    elif name == "x_TF_y_vW" or name == "xTFyvW":
+    elif name == "x_TF_y_vW" or name == "TFvW":
         xTF = TF(rho, calcType=calcType, **kwargs)
         yvW = vW(rho, calcType=calcType, **kwargs)
         if nspin > 1 and 'E' in calcType :
@@ -109,6 +146,20 @@ def KEDFunctional(rho, name="WT", calcType=["E","V"], split=False, nspin = 1, **
         OutFunctional = NL + xTF + yvW
         OutFunctional.name = name
         OutFunctionalDict = {"TF": xTF, "vW": yvW, "NL": NL}
+    elif name[:5] == 'NLGGA' and name[6:] in NLKEDF_Dict:
+        func = NLKEDF_Dict[name[6:]]
+        NL = func(rho, calcType=calcType, **kwargs)
+        k_str = kwargs["k_str"].upper()
+        if k_str in GGA_KEDF_list:
+            gga = GGA(rho, functional=k_str, calcType=calcType, **kwargs)
+        else :
+            raise AttributeError("%s GGA KEDF to be implemented" % k_str)
+        if nspin > 1 and 'E' in calcType :
+            gga.energy /= nspin
+            NL.energy /= nspin
+        OutFunctional = NL + gga
+        OutFunctional.name = name
+        OutFunctionalDict = {"GGA": gga, "NL": NL}
     else:
         raise AttributeError("%s KEDF to be implemented" % name)
 

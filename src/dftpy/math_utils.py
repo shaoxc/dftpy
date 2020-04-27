@@ -326,15 +326,15 @@ def prolongation(arr, scheme="bilinear"):
     return new_values
 
 
-def spacing2ecut(spacing, ecut):
+def spacing2ecut(spacing):
     """
     Ecut = pi^2/(2 * h^2)
-    Ref : Briggs, E. L., D. J. Sullivan, and J. Bernholc. "Real-space multigrid-based approach to large-scale electronic structure calculations." Physical Review B 54.20 (1996): 14362.
+    Ref : Briggs, E. L., D. J. Sullivan, and J. Bernholc. Physical Review B 54.20 (1996): 14362.
     """
     return np.pi ** 2 / (2 * spacing ** 2)
 
 
-def ecut2spacing(ecut, spacing):
+def ecut2spacing(ecut):
     return np.sqrt(np.pi ** 2 / ecut * 0.5)
 
 

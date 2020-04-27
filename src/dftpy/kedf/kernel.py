@@ -3,10 +3,6 @@ import scipy.special as sp
 from scipy.interpolate import interp1d, splrep, splev
 from dftpy.time_data import TimeData
 
-# KE_kernel_saved ={'Kernel':None, 'rho0':0.0, 'shape':None, \
-# 'KernelTable':None, 'etamax':None, 'KernelDeriv':None, \
-# 'MGPKernelE' :None}
-
 
 # def LindhardFunctionSeries(eta,lbda,mu):
 def LindhardFunction(eta, lbda, mu):

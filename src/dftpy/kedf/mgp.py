@@ -11,16 +11,6 @@ from dftpy.time_data import TimeData
 
 __all__ = ["MGP", "MGPStress", "MGPA", "MGPG"]
 
-KE_kernel_saved = {
-    "Kernel": None,
-    "rho0": 0.0,
-    "shape": None,
-    "KernelTable": None,
-    "etaMax": None,
-    "KernelDeriv": None,
-    "MGPKernelE": None,
-}
-
 
 def MGPStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, calcType=["E","V"]):
     pass
@@ -38,13 +28,16 @@ def MGP(
     symmetrization=None,
     calcType=["E","V"],
     split=False,
+    ke_kernel_saved = None,
     **kwargs
 ):
     TimeData.Begin("MGP")
-    global KE_kernel_saved
-    # Only performed once for each grid
     q = rho.grid.get_reciprocal().q
     rho0 = np.mean(rho)
+    if ke_kernel_saved is None :
+        KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
+    else :
+        KE_kernel_saved = ke_kernel_saved
     # if abs(KE_kernel_saved['rho0']-rho0) > 1E-6 or np.shape(rho) != KE_kernel_saved['shape'] :
     if abs(KE_kernel_saved["rho0"] - rho0) > 1e-2 or np.shape(rho) != KE_kernel_saved["shape"]:
         print("Re-calculate KE_kernel")

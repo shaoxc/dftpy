@@ -12,9 +12,6 @@ from dftpy.kedf.gga import GGA
 
 __all__ = ["WT", "WTStress"]
 
-KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None, "KernelTable": None, "etaMax": None, "KernelDeriv": None}
-
-
 def WTPotential(rho, rho0, Kernel, alpha, beta):
     alphaMinus1 = alpha - 1.0
     betaMinus1 = beta - 1.0
@@ -51,13 +48,17 @@ def WTEnergy(rho, rho0, Kernel, alpha, beta):
     return ene
 
 
-def WTStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, energy=None, **kwargs):
+def WTStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, energy=None, 
+        ke_kernel_saved = None, **kwargs):
     rho0 = np.mean(rho)
     g = rho.grid.get_reciprocal().g
     gg = rho.grid.get_reciprocal().gg
     q = rho.grid.get_reciprocal().q
     if energy is None:
-        global KE_kernel_saved
+        if ke_kernel_saved is None :
+            KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
+        else :
+            KE_kernel_saved = ke_kernel_saved
         if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
             # print('Re-calculate KE_kernel')
             KE_kernel = WTkernel(q, rho0, alpha=alpha, beta=beta)
@@ -68,7 +69,7 @@ def WTStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, ene
             KE_kernel = KE_kernel_saved["Kernel"]
         energy = WTEnergy(rho, rho0, KE_kernel, alpha, beta)
     mask = rho.grid.get_reciprocal().mask
-    factor = 5.0 / (9.0 * alpha * beta * rho0 ** (alpha + beta - 5.0 / 3.0))
+    # factor = 5.0 / (9.0 * alpha * beta * rho0 ** (alpha + beta - 5.0 / 3.0))
     tkf = 2.0 * (3.0 * rho0 * np.pi ** 2) ** (1.0 / 3.0)
     tkf = float(tkf)
     rhoG_A = (rho ** alpha).fft() / rho.grid.volume
@@ -93,19 +94,19 @@ def WTStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, ene
     return stress
 
 
-def WT(
-    rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, rho0=None, calcType=["E","V"], split=False, **kwargs
-):
+def WT(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, rho0=None, calcType=["E","V"], split=False, 
+    ke_kernel_saved = None, **kwargs):
     TimeData.Begin("WT")
-    global KE_kernel_saved
-    # Only performed once for each grid
     q = rho.grid.get_reciprocal().q
     if rho0 is None:
         rho0 = np.mean(rho)
-    # print('rho0', rho0)
 
+    if ke_kernel_saved is None :
+        KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
+    else :
+        KE_kernel_saved = ke_kernel_saved
     if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
-        # print('Re-calculate KE_kernel')
+        # print("Re-calculate KE_kernel", np.shape(rho))
         KE_kernel = WTKernel(q, rho0, x=x, y=y, alpha=alpha, beta=beta)
         KE_kernel_saved["Kernel"] = KE_kernel
         KE_kernel_saved["rho0"] = rho0

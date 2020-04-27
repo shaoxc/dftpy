@@ -28,6 +28,7 @@ def vonWeizsackerPotential(rho, sigma=None):
     """
     The von Weizsacker Potential
     """
+    sigma = 0.025
 
     gg = rho.grid.get_reciprocal().gg
     sq_dens = np.sqrt(rho)
@@ -41,15 +42,14 @@ def vonWeizsackerPotential(rho, sigma=None):
     return DirectField(grid=rho.grid, griddata_3d=np.divide(a, sq_dens, out=a))
 
 
-def vonWeizsackerEnergy(rho, sigma=None):
+def vonWeizsackerEnergy(rho, potential=None, sigma=None):
     """
     The von Weizsacker Energy Density
     """
-    # sq_dens = np.sqrt(rho)
-    # edens = 0.5*np.real(sq_dens.gradient()**2)
-    # edens = rho*vonWeizsackerPotential(rho)
-    edens = vonWeizsackerPotential(rho, sigma = sigma)
-    # print(edens.shape)
+    if potential is None :
+        edens = vonWeizsackerPotential(rho, sigma = sigma)
+    else :
+        edens = potential
     ene = np.einsum("ijk, ijk->", rho, edens) * rho.grid.dV
     return ene
 
@@ -73,14 +73,11 @@ def vonWeizsackerStress(rho, y=1.0, energy=None, **kwargs):
 
 def vW(rho, y=1.0, sigma=None, calcType=["E","V"], split=False, **kwargs):
     TimeData.Begin("vW")
+    pot = vonWeizsackerPotential(rho, sigma)
     if "E" in calcType:
-        ene = vonWeizsackerEnergy(rho)
+        ene = vonWeizsackerEnergy(rho, pot)
     else:
         ene = 0.0
-    if "V" in calcType:
-        pot = vonWeizsackerPotential(rho, sigma)
-    else:
-        pot = np.empty_like(rho)
 
     OutFunctional = Functional(name="vW")
     OutFunctional.potential = pot * y
