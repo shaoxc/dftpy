@@ -28,7 +28,6 @@ def vonWeizsackerPotential(rho, sigma=None):
     """
     The von Weizsacker Potential
     """
-    sigma = 0.025
 
     gg = rho.grid.get_reciprocal().gg
     sq_dens = np.sqrt(rho)
