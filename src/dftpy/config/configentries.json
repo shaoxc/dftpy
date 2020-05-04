@@ -207,11 +207,19 @@
       "type": "str",
       "default": "gga_k_revapbe"
     },
+    "params": {
+      "type": "floatlist",
+      "default": null
+    },
     "kfmin": {
       "type": "float",
       "default": null
     },
     "kfmax": {
+      "type": "float",
+      "default": null
+    },
+    "ldw": {
       "type": "float",
       "default": null
     }

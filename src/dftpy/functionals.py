@@ -6,7 +6,8 @@ from dftpy.field import DirectField
 from dftpy.functional_output import Functional
 from dftpy.semilocal_xc import PBE, LDA, LibXC
 from dftpy.hartree import HartreeFunctional
-from dftpy.kedf import KEDFunctional
+# from dftpy.kedf import KEDFunctional
+from dftpy.kedf import KEDF
 from dftpy.pseudo import LocalPseudo
 from dftpy.external_potential import ExternalPotential
 
@@ -49,11 +50,13 @@ class AbstractFunctional(ABC):
             print("Valid Functional types are:")
             print(self.FunctionalTypeList)
             return False
-        if self.name not in self.FunctionalNameList:
-            print(self.name, " is not a valid Functional name")
-            print("Valid Functional names are:")
-            print(self.FunctionalNameList)
-            return False
+        # if self.name not in self.FunctionalNameList:
+        for name in self.name.split('+'):
+            if name not in self.FunctionalNameList:
+                print(name, " is not a valid Functional name")
+                print("Valid Functional names are:")
+                print(self.FunctionalNameList)
+                return False
         return True
 
 
@@ -143,6 +146,8 @@ class FunctionalClass(AbstractFunctional):
             "LMGPG",
             "GGA",
         ]
+        NLGGAList = ['NLGGA-' + item for item in KEDFNLNameList]
+        KEDFNLNameList.extend(NLGGAList)
         HNameList = ["HARTREE"]
         PPNameList = ["PSEUDO"]
         EXTNameList = ["EXT"]
@@ -176,11 +181,15 @@ class FunctionalClass(AbstractFunctional):
         elif self.name == 'EXT':
             self.EXT = ExternalPotential(**kwargs)
 
+        if self.type == 'KEDF' :
+            self.KEDF = KEDF(self.name, **kwargs)
+
     def ComputeEnergyPotential(self, rho, calcType=["E","V"], **kwargs):
         self.optional_kwargs.update(kwargs)
         if self.type == "KEDF":
             if self.name != "LIBXC_KEDF":
-                return KEDFunctional(rho, self.name, calcType=calcType, **self.optional_kwargs)
+                return self.KEDF(rho, calcType=calcType, **self.optional_kwargs)
+                # return KEDFunctional(rho, self.name, calcType=calcType, **self.optional_kwargs)
             else:
                 k_str = self.optional_kwargs.get("k_str", "gga_k_lc94")
                 return LibXC(density=rho, k_str=k_str, calcType=calcType)
@@ -311,6 +320,8 @@ class TotalEnergyAndPotential(AbstractFunctional):
                 Obj += evalfunctional(rho, calcType)
                 # sss = evalfunctional(rho, calcType)
                 # print('key', key, sss.energy)
+        if Obj is None :
+            Obj = Functional(name = 'NONE')
         return Obj
 
     def Energy(self, rho, ions, usePME=False, calcType=["E"]):

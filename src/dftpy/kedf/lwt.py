@@ -11,16 +11,6 @@ from dftpy.time_data import TimeData
 
 __all__ = ["LWT", "LWTStress", "LMGP", "LMGPA", "LMGPG"]
 
-KE_kernel_saved = {
-    "Kernel": None,
-    "rho0": 0.0,
-    "shape": None,
-    "KernelTable": None,
-    "etamax": None,
-    "KernelDeriv": None,
-    "MGPKernelE": None,
-}
-
 
 def LWTStress(
     rho,
@@ -38,6 +28,7 @@ def LWTStress(
     order=3,
     calcType=["E","V"],
     energy=None,
+    ke_kernel_saved = None,
     **kwargs
 ):
     pass
@@ -56,9 +47,15 @@ def LWTPotentialEnergy(
     calcType=["E","V"],
     kfmin = None, 
     kfmax = None, 
-    **kwargs, 
+    ldw = None, 
+    ke_kernel_saved = None,
+    **kwargs 
 ):
+    """
+    ldw : local density weight
+    """
 
+    KE_kernel_saved = ke_kernel_saved
     savetol = 1e-18
     q = rho.grid.get_reciprocal().q
     rho0 = np.mean(rho)
@@ -250,18 +247,14 @@ def LWTPotentialEnergy(
             pot2 += mgpe
     else:
         pot2 = pot1.copy()
-    # -----------------------------------------------------------------------
+    #-----------------------------------------------------------------------
+    if ldw is not None :
+        factor = rho ** ldw /(np.max(rho) ** ldw)
+        pot1 *= factor
+        pot2 *= factor
+    #-----------------------------------------------------------------------
     ene = np.einsum("ijk, ijk ->", rhoAlpha, pot1) * rho.grid.dV
-    # -----------------------------------------------------------------------
-    # save = True
-    # if save :
-    # pot3S = pot3 * (kf/(3.0 * alpha))
-    # # pot4S = pot4 * (kf/(3.0 * alpha))
-    # # np.savetxt('pot.dat', np.c_[pot1.ravel(), pot3S.ravel(), pot4S.ravel(), rho.ravel()])
-    # np.savetxt('pot.dat', np.c_[pot1.ravel(), pot2.ravel(), pot3S.ravel(), rho.ravel()])
-    # header = '%10d %10d %10d'%(tuple(rho.grid.nr[:3]))
-    # # np.savetxt('rho.dat', rho.ravel(), header = header)
-    # -----------------------------------------------------------------------
+    #-----------------------------------------------------------------------
 
     pot1 *= alpha * rhoAlpha1
     pot2 *= beta * rhoBeta1
@@ -284,9 +277,13 @@ def LWTLineIntegral(
     nt = 500,
     interp="linear",
     calcType=["E","V"],
-    **kwargs,
+    kfmin = None, 
+    kfmax = None, 
+    ke_kernel_saved = None,
+    **kwargs 
 ):
 
+    KE_kernel_saved = ke_kernel_saved
     q = rho.grid.get_reciprocal().q
 
     dt = 1.0/nt
@@ -298,17 +295,26 @@ def LWTLineIntegral(
 
     trhoAlpha1 = trho ** (alpha - 1)
 
-    kfBound = [1e-3, 100.0]
+    if kfmin is None or kfmax is None :
+        kfBound = [1e-3, 100.0]
+    else :
+        kfBound = [kfmin, kfmax]
     mask2 = kfLI > kfBound[1]
     kfLI[mask2] = kfBound[1]
-    kfMax = np.max(kfLI)
-    # kfMin = np.min(kf)
-    kfMin = max(np.min(kfLI), kfBound[0])
+
+    if kfmin is None :
+        kfMin = max(np.min(kfLI), kfBound[0])
+    else :
+        kfMin = kfmin
+
+    if kfmax is None :
+        kfMax = np.max(kfLI)
+    else :
+        kfMax = kfmax
+
     ### HEG
     if abs(kfMax - kfMin) < 1e-8:
         return np.zeros_like(rho), 0.0
-
-    kfMin = 1E-6; kfMax = 3.0
 
     if nsp is None:
         nsp = int(np.ceil(np.log(kfMax / kfMin) / np.log(ratio))) + 1
@@ -431,16 +437,20 @@ def LWT(
     order=3,
     calcType=["E","V"],
     split=False,
+    ke_kernel_saved = None,
     **kwargs
 ):
     TimeData.Begin("LWT")
-    global KE_kernel_saved
     # Only performed once for each grid
     q = rho.grid.get_reciprocal().q
     rho0 = np.mean(rho)
+    if ke_kernel_saved is None :
+        KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
+    else :
+        KE_kernel_saved = ke_kernel_saved
     # if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
     if np.shape(rho) != KE_kernel_saved["shape"]:
-        print('Re-calculate %s KernelTable ' %kerneltype)
+        print('Re-calculate %s KernelTable ' %kerneltype, np.shape(rho))
         eta = np.linspace(0, etamax, neta)
         if kerneltype == "WT":
             KernelTable = WTKernelTable(eta, x, y, alpha, beta)
@@ -469,8 +479,8 @@ def LWT(
         KE_kernel_saved["etamax"] = etamax
         KE_kernel_saved["shape"] = np.shape(rho)
         KE_kernel_saved["rho0"] = rho0
-    pot, ene = LWTPotentialEnergy(rho, alpha=alpha, beta=beta, etamax=etamax, ratio=ratio, nsp=nsp, kdd=kdd, delta=delta, interp=interp, calcType=calcType, **kwargs)
-    # pot, ene = LWTLineIntegral(rho, alpha=alpha, beta=beta, etamax=etamax, ratio=ratio, nsp=nsp, kdd=kdd, delta=delta, interp=interp, calcType=calcType, **kwargs)
+    pot, ene = LWTPotentialEnergy(rho, alpha=alpha, beta=beta, etamax=etamax, ratio=ratio, nsp=nsp, kdd=kdd, delta=delta, interp=interp, calcType=calcType, ke_kernel_saved = KE_kernel_saved, **kwargs)
+    # pot, ene = LWTLineIntegral(rho, alpha=alpha, beta=beta, etamax=etamax, ratio=ratio, nsp=nsp, kdd=kdd, delta=delta, interp=interp, calcType=calcType, ke_kernel_saved = KE_kernel_saved, **kwargs)
     NL = Functional(name="NL", potential=pot, energy=ene)
     return NL
 

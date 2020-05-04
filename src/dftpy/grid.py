@@ -220,7 +220,7 @@ class DirectGrid(BaseGrid, DirectCell):
             mgrid[2] /= self.nr[2]
             gridpos = mgrid.astype(np.float)
             array = np.einsum("jklm,ij->iklm", gridpos, self.lattice)
-            dists = np.einsum("ijkl,ijkl->jkl", array, array)
+            dists = np.sqrt(np.einsum("ijkl,ijkl->jkl", array, array))
             self._Rtable["Nmax"] = Nmax
             self._Rtable["table"] = dists
         return self._Rtable

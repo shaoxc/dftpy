@@ -18,7 +18,7 @@ class BaseCell(object):
 
     """
 
-    def __init__(self, lattice, origin=np.array([0.0, 0.0, 0.0]), units=None, **kwargs):
+    def __init__(self, lattice, origin=np.array([0.0, 0.0, 0.0]), units=None, pbc = [1, 1, 1], **kwargs):
         """
         Parameters
         ----------
@@ -37,6 +37,8 @@ class BaseCell(object):
             warnings.warn(units_warning, DeprecationWarning)
         self._units = None
         self._volume = np.abs(np.dot(lattice[:, 0], np.cross(lattice[:, 1], lattice[:, 2])))
+        self._pbc = np.ones(3, dtype = 'int32')
+        self._pbc[:] = pbc
         super().__init__(**kwargs)
 
     def __eq__(self, other):
@@ -115,6 +117,11 @@ class BaseCell(object):
         #    return self
         # else:
         #    return Cell(at=self.at*LEN_CONV[self.units][units], units=units)
+
+    @property
+    def pbc(self):
+        return self._pbc
+
 
 
 class DirectCell(BaseCell):
