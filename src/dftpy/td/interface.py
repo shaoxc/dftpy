@@ -119,6 +119,29 @@ def CasidaRunner(config, rho0, E_v_Evaluator):
             fw.write('{0:15.8e} {1:15.8e}\n'.format(omega[i], f[i]))
 
 
+def DiagonizeRunner(config, struct, E_v_Evaluator):
+
+    numeig = config["CASIDA"]["numeig"]
+    outfile = config["TD"]["outfile"]
+    direct_to_psi = './xsf'
+
+    potential = E_v_Evaluator(struct.field, calcType=['V']).potential
+    hamiltonian = Hamiltonian(potential)
+    print('Start diagonizing Hamlitonian.')
+    eigs, psi_list = hamiltonian.diagonize(numeig)
+    print('Diagonizing Hamlitonian done.')
+
+    np.savetxt(eigfile, eigs, fmt='%15.8e')
+
+    if not os.path.isdir(direct_to_psi):
+        os.mkdir(direct_to_psi)
+    for i in range(len(eigs)):
+        XSF(filexsf='{0:s}/psi{0:d}.xsf'.format(direct_to_psi, i)).write(system=struct, field=psi_list[i])
+
+
+
+
+
 def SternheimerRunner(config, rho0, E_v_Evaluator):
 
     outfile = config["TD"]["outfile"]
