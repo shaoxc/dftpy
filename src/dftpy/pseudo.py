@@ -438,21 +438,23 @@ class ReadPseudo(object):
         self._info= {}
 
         self.PP_list = PP_list
-        key = list(self.PP_list.keys())[0]
-        if PP_list[key][-6:].lower() == "recpot":
-            self.PP_type = "recpot"
-        elif PP_list[key][-3:].lower() == "upf":
-            self.PP_type = "upf"
-        elif PP_list[key][-3:].lower() == "psp" or PP_list[key][-4:].lower() == "psp8":
-            self.PP_type = "psp"
-        else:
-            raise Exception("Pseudopotential not supported")
-        if self.PP_type == "recpot":
-            self._init_PP_recpot()
-        elif self.PP_type == "upf":
-            self._init_PP_upf(MaxPoints, Gmax)
-        elif self.PP_type == "psp":
-            self._init_PP_psp(MaxPoints, Gmax)
+        self.PP_type = {}
+
+        for key in self.PP_list:
+            print("setting key: " + key)
+            if not os.path.isfile(self.PP_list[key]):
+                raise Exception("PP file for atom type " + str(key) + " not found")
+            if PP_list[key][-6:].lower() == "recpot":
+                self.PP_type[key] = "recpot"
+                self._init_PP_recpot(key)
+            elif PP_list[key][-3:].lower() == "upf":
+                self.PP_type[key] = "upf"
+                self._init_PP_upf(key, MaxPoints, Gmax)
+            elif PP_list[key][-3:].lower() == "psp" or PP_list[key][-4:].lower() == "psp8":
+                self.PP_type[key] = "psp"
+                self._init_PP_psp(key, MaxPoints, Gmax)
+            else:
+                raise Exception("Pseudopotential not supported")
 
     def _real2recip(self, r, v, zval, MaxPoints=15000, Gmax=30):
         gp = np.linspace(start=0, stop=Gmax, num=MaxPoints)
@@ -490,14 +492,12 @@ class ReadPseudo(object):
         return rhop
 
     def get_Zval(self, ions):
-        if self.PP_type == "upf":
-            for key in self._gp.keys():
+        for key in self._gp.keys():
+            if self.PP_type[key] == "upf":
                 ions.Zval[key] = self._upf[key]["pseudo_potential"]["header"]["z_valence"]
-        elif self.PP_type == "psp":
-            for key in self._gp.keys():
+            elif self.PP_type[key] == "psp":
                 ions.Zval[key] = self._info[key]["Zval"]
-        elif self.PP_type == "recpot":
-            for key in self._gp.keys():
+            elif self.PP_type[key] == "recpot":
                 gp = self._gp[key]
                 vp = self._vp[key]
                 val = (vp[0] - vp[1]) * (gp[1] ** 2) / (4.0 * np.pi)
@@ -505,7 +505,7 @@ class ReadPseudo(object):
                 ions.Zval[key] = round(val)
         self.zval = ions.Zval.copy()
 
-    def _init_PP_recpot(self):
+    def _init_PP_recpot(self, key):
         """
         This is a private method used only in this specific class. 
         """
@@ -524,12 +524,12 @@ class ReadPseudo(object):
                 line = lines[i]
                 if "END COMMENT" in line:
                     ibegin = i + 3
-                elif line.strip() == "1000":
-                    # if '  1000' in line:
+                elif line.strip() == "1000" or len(line.strip()) == 1 :
                     iend = i
+                    break
             line = " ".join([line.strip() for line in lines[ibegin:iend]])
 
-            if "1000" in lines[iend]:
+            if "1000" in lines[iend] or len(lines[iend].strip()) == 1 :
                 print("Recpot pseudopotential " + Single_PP_file + " loaded")
             else:
                 return Exception
@@ -539,18 +539,13 @@ class ReadPseudo(object):
             # self._recip2real(g, v, 3.0)
             return g, v
 
-        for key in self.PP_list:
-            print("setting key: " + key)
-            if not os.path.isfile(self.PP_list[key]):
-                raise Exception("PP file for atom type " + str(key) + " not found")
-            else:
-                gp, vp = set_PP(self.PP_list[key])
-                self._gp[key] = gp
-                self._vp[key] = vp
-                vloc_interp = splrep(gp, vp)
-                self._vloc_interp[key] = vloc_interp
+        gp, vp = set_PP(self.PP_list[key])
+        self._gp[key] = gp
+        self._vp[key] = vp
+        vloc_interp = splrep(gp, vp)
+        self._vloc_interp[key] = vloc_interp
 
-    def _init_PP_upf(self, MaxPoints=15000, Gmax=30):
+    def _init_PP_upf(self, key, MaxPoints=15000, Gmax=30):
         """
         This is a private method used only in this specific class. 
         """
@@ -572,18 +567,13 @@ class ReadPseudo(object):
             v = np.array(upf["pseudo_potential"]["local_potential"], dtype=np.float64)
             return r, v, upf
 
-        for key in self.PP_list:
-            print("setting key: " + key)
-            if not os.path.isfile(self.PP_list[key]):
-                raise Exception("PP file for atom type " + str(key) + " not found")
-            else:
-                r, vr, self._upf[key] = set_PP(self.PP_list[key])
-                zval = self._upf[key]["pseudo_potential"]["header"]["z_valence"]
-                gp, vp = self._real2recip(r, vr, zval, MaxPoints, Gmax)
-                self._gp[key] = gp
-                self._vp[key] = vp
-                vloc_interp = splrep(gp, vp)
-                self._vloc_interp[key] = vloc_interp
+        r, vr, self._upf[key] = set_PP(self.PP_list[key])
+        zval = self._upf[key]["pseudo_potential"]["header"]["z_valence"]
+        gp, vp = self._real2recip(r, vr, zval, MaxPoints, Gmax)
+        self._gp[key] = gp
+        self._vp[key] = vp
+        vloc_interp = splrep(gp, vp)
+        self._vloc_interp[key] = vloc_interp
 
     def _self_energy(self, r, vr, rhop):
         dr = np.empty_like(r)
@@ -594,7 +584,7 @@ class ReadPseudo(object):
         return ene
 
     # def _init_PP_psp(self, MaxPoints=15000, Gmax=30):
-    def _init_PP_psp(self, MaxPoints=200000, Gmax=30):
+    def _init_PP_psp(self, key, MaxPoints=200000, Gmax=30):
         """
         """
 
@@ -637,18 +627,13 @@ class ReadPseudo(object):
             print("psp pseudopotential " + Single_PP_file + " loaded")
             return r, v, info
 
-        for key in self.PP_list:
-            print("setting key: " + key)
-            if not os.path.isfile(self.PP_list[key]):
-                raise Exception("PP file for atom type " + str(key) + " not found")
-            else:
-                r, v, self._info[key] = set_PP(self.PP_list[key])
-                zval = self._info[key]['Zval']
-                gp, vp = self._real2recip(r, v, zval, MaxPoints, Gmax)
-                self._gp[key] = gp
-                self._vp[key] = vp
-                vloc_interp = splrep(gp, vp)
-                self._vloc_interp[key] = vloc_interp
+        r, v, self._info[key] = set_PP(self.PP_list[key])
+        zval = self._info[key]['Zval']
+        gp, vp = self._real2recip(r, v, zval, MaxPoints, Gmax)
+        self._gp[key] = gp
+        self._vp[key] = vp
+        vloc_interp = splrep(gp, vp)
+        self._vloc_interp[key] = vloc_interp
 
     @property
     def vloc_interp(self):
