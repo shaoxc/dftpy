@@ -12,7 +12,7 @@ class PP(object):
         self.cutoffvars = {}
         # self.readpp()
 
-    def read(self, full=True):
+    def read(self, full=True, **kwargs):
 
         with open(self.filepp) as filepp:
             # title
@@ -105,7 +105,7 @@ class PP(object):
 
             return System(atoms, grid, name=self.title, field=plot)
 
-    def writepp(self, system):
+    def writepp(self, system, **kwargs):
 
         with open(self.filepp, "w") as filepp:
             val_per_line = 5

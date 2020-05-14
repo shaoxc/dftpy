@@ -69,6 +69,9 @@ def ConfSpecialFormat(conf):
     for key in conf["PP"]:
         conf["PP"][key.capitalize()] = conf["PP"][key]
 
+    if conf["MATH"]["twostep"] and conf["MATH"]["multistep"] == 1 :
+        conf["MATH"]["multistep"] = 2
+
     return conf
 
 
