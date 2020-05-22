@@ -103,7 +103,6 @@ def read_data_den(infile, order="F", **kwargs):
 def write_data_den(outfile, density, order = "F", **kwargs):
     with open(outfile, "w") as fw:
         nr = density.shape
-        print('nr', nr)
         if len(nr) == 3 :
             fw.write("{0[0]:10d} {0[1]:10d} {0[2]:10d}\n".format(nr))
         elif len(nr) == 4 :

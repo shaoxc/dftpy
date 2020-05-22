@@ -430,3 +430,15 @@ def get_direction_LBFGS(resA, lbfgs=None, **kwargs):
         direction += lbfgs.s[i] * (alphaList[i] - beta)
 
     return direction
+
+def quartic_interpolation(f, dx):
+    if len(f) == 5 :
+        t0 = f[2]
+        t1 = 2.0 * f[0] - 16.0 * f[1] + 16.0 * f[3] - 2.0 * f[4]
+        t2 = -f[0] + 16.0 * f[1] - 30.0 * f[2] + 16.0 * f[3] - f[4]
+        t3 = -2.0 * f[0] + 4.0 * f[1] - 4.0 * f[3] + 2.0 * f[4]
+        t4 = f[0] - 4.0 * f[1] + 6.0 * f[2] - 4.0 * f[3] + f[4]
+        results = t0 + dx * (t1 + dx * (t2 + dx * (t3 + dx * t4)))/24.0
+    else :
+        raise AttributeError("Error : Not implemented yet")
+    return results

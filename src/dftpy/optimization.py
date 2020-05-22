@@ -253,16 +253,18 @@ class Optimization(AbstractOptimization):
         else:  # RMM
             if func is None:
                 f = self.EnergyEvaluator(newrho, calcType=["E","V"])
-                # f = self.EnergyEvaluator(newrho, calcType = 'Potential')
             mu = (f.potential * newrho).integral() / Ne
             if self.nspin > 1 :
                 mu = mu[:, None, None, None]
-            residual = (f.potential - mu) * newphi
-            try:
-                resN = np.einsum("..., ...->", residual, residual, optimize = 'optimal') * phi.grid.dV
-            except Exception :
-                resN = np.sum(residual*residual) * phi.grid.dV
-            value = resN
+            if algorithm == "RMM":
+                residual = (f.potential - mu) * newphi
+                try:
+                    resN = np.einsum("..., ...->", residual, residual, optimize = 'optimal') * phi.grid.dV
+                except Exception :
+                    resN = np.sum(residual*residual) * phi.grid.dV
+                value = resN
+            elif algorithm == "CMM":
+                value = mu
 
         if vector == "Orthogonalization":
             p2 = p * np.cos(theta) - phi * np.sin(theta)
@@ -417,6 +419,7 @@ class Optimization(AbstractOptimization):
                 newphi *= np.sqrt(norm)
                 newfunc = self.EnergyEvaluator(newrho, calcType=["V"])
                 NumLineSearch = 1
+                valuederiv = [0, 0, newphi, newfunc]
 
             if theta is None:
                 print("!!!ERROR : Line-Search Failed!!!")
