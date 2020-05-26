@@ -31,6 +31,7 @@ class BaseGrid(BaseCell):
         for i in range(3):
             latparas[i] = np.sqrt(metric[i, i])
         self._spacings = latparas / self._nr
+        self._latparas= latparas
         # self._r = None # initialize them on request
         # self._s = None # initialize them on request
 
@@ -62,6 +63,10 @@ class BaseGrid(BaseCell):
     @property
     def spacings(self):
         return self._spacings
+
+    @property
+    def latparas(self):
+        return self._latparas
 
 
 class DirectGrid(BaseGrid, DirectCell):

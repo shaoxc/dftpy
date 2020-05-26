@@ -17,6 +17,7 @@ from dftpy.kedf import KEDFStress
 from dftpy.hartree import HartreeFunctionalStress
 from dftpy.config.config import PrintConf, ReadConf
 from dftpy.system import System
+from dftpy.functional_output import Functional
 from functools import reduce
 
 
@@ -143,12 +144,13 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None):
     return config, others
 
 
-def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2):
+def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2 = None):
     ions = struct.ions
     rho_ini = struct.field
     grid = rho_ini.grid
     charge_total = 0.0
-    PSEUDO=E_v_Evaluator.PSEUDO
+    if hasattr(E_v_Evaluator, 'PSEUDO'):
+        PSEUDO=E_v_Evaluator.PSEUDO
     nr = grid.nr
     for i in range(ions.nat):
         charge_total += ions.Zval[ions.labels[i]]
@@ -167,6 +169,8 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2):
         # -----------------------------------------------------------------------
         for istep in range(2, config["MATH"]["multistep"] + 1):
             if istep == config["MATH"]["multistep"]:
+                if nr2 is None :
+                    nr2 = nr * 2
                 nr = nr2
             else:
                 nr = nr * 2
@@ -179,12 +183,13 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2):
             rho_ini = DirectField(grid=grid2, griddata_3d=rho_ini, rank=1)
             rho_ini *= charge_total / (np.sum(rho_ini) * rho_ini.grid.dV)
             # ions.restart()
-            pseudo=E_v_Evaluator.PSEUDO
-            if isinstance(pseudo, FunctionalClass):
-                PSEUDO = pseudo.PSEUDO
-            else :
-                PSEUDO = pseudo
-            PSEUDO.restart(full=False, ions=PSEUDO.ions, grid=grid2)
+            if hasattr(E_v_Evaluator, 'PSEUDO'):
+                pseudo=E_v_Evaluator.PSEUDO
+                if isinstance(pseudo, FunctionalClass):
+                    PSEUDO = pseudo.PSEUDO
+                else :
+                    PSEUDO = pseudo
+                PSEUDO.restart(full=False, ions=PSEUDO.ions, grid=grid2)
             opt = Optimization(
                 EnergyEvaluator=E_v_Evaluator,
                 optimization_options=optimization_options,
@@ -211,7 +216,9 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2):
         energypotential = GetEnergyPotential(
             ions, rho, E_v_Evaluator, calcType=["V"], linearii=linearii, linearie=linearie
         )
-    # elif 'Energy' in config['JOB']['calctype'] :
+    elif "Density" in config["JOB"]["calctype"]:
+        print("Only return density...")
+        energypotential = {'TOTAL' : Functional(name = 'TOTAL', energy = 0.0)}
     else:
         print("Calculate Energy...")
         energypotential = GetEnergyPotential(
@@ -306,13 +313,6 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2):
             print(fstr_s.format(stress["TOTAL"][i] * STRESS_CONV["Ha/Bohr3"]["GPa"]))
         print("-" * 80)
     ############################## Output Density ##############################
-    # print('N', np.sum(rho) * rho.grid.dV)
-    # nr2 = (rho.grid.nr + 1)/2
-    # nr2 = nr2.astype(np.int32)
-    # newrho  = interpolation_3d(rho[..., 0], nr2)
-    # rho2 = interpolation_3d(newrho, rho.grid.nr)
-    # np.savetxt('lll', np.c_[rho[..., 0].ravel(), rho2.ravel(), (rho[..., 0] - rho2).ravel()])
-    # -----------------------------------------------------------------------
     if config["DENSITY"]["densityoutput"]:
         print("Write Density...")
         outfile = config["DENSITY"]["densityoutput"]
@@ -323,7 +323,8 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2):
     results["energypotential"] = energypotential
     results["forces"] = forces
     results["stress"] = stress
-    results["pseudo"] = PSEUDO
+    if hasattr(E_v_Evaluator, 'PSEUDO'):
+        results["pseudo"] = PSEUDO
     # print('-' * 31, 'Time information', '-' * 31)
     # TimeData.reset() #Cleanup the data in TimeData
     # -----------------------------------------------------------------------
