@@ -7,7 +7,7 @@ from dftpy.time_data import TimeData
 
 
 def CheckLibXC():
-    import importlib
+    import importlib.util
 
     islibxc = importlib.util.find_spec("pylibxc")
     found = islibxc is not None

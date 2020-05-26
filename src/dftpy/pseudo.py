@@ -622,7 +622,7 @@ class ReadPseudo(object):
 
         def set_PP(Single_PP_file):
             """Reads QE UPF type PP"""
-            import importlib
+            import importlib.util
 
             upf2json = importlib.util.find_spec("upf_to_json")
             found = upf2json is not None
