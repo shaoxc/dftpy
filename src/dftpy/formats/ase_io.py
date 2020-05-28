@@ -36,7 +36,7 @@ def ase2ions(ase_atoms):
     return ions
 
 def ions2ase(ions):
-    cell = ions.pos.cell.lattice * BOHR2ANG
+    cell = ions.pos.cell.lattice.T * BOHR2ANG
     numbers = ions.Z
     pos = ions.pos[:] * BOHR2ANG
     struct = ase.Atoms(positions=pos, numbers=numbers, cell=cell)

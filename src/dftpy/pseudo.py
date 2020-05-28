@@ -459,6 +459,9 @@ class ReadPseudo(object):
             elif PP_list[key].lower().endswith("usp"):
                 self.PP_type[key] = "usp"
                 self._init_PP_usp(key)
+            elif PP_list[key].lower().endswith("uspcc"):
+                self.PP_type[key] = "usp"
+                self._init_PP_usp(key)
             elif PP_list[key].lower().endswith("uspso"):
                 self.PP_type[key] = "uspso"
                 self._init_PP_usp(key, 'uspso')
@@ -603,10 +606,33 @@ class ReadPseudo(object):
             else:
                 raise AttributeError("Error : Check the PP file")
             gmax = np.float(lines[ibegin - 1].split()[0]) * BOHR2ANG
+                
             # v = np.array(line.split()).astype(np.float) / (HARTREE2EV*BOHR2ANG ** 3 * 4.0 * np.pi)
             v = np.array(line.split()).astype(np.float) / (HARTREE2EV*BOHR2ANG ** 3)
             g = np.linspace(0, gmax, num=len(v))
             v[1:] -= Zval * 4.0 * np.pi / g[1:] ** 2
+            #-----------------------------------------------------------------------
+            nlcc = int(lines[ibegin - 1].split()[1])
+            if nlcc == 2 and ext == 'usp' :
+                #num_projectors
+                for i in range(iend, len(lines)):
+                    l = lines[i].split()
+                    if len(l) == 2 and all([item.isdigit() for item in l]):
+                        ibegin = i + 1
+                        ngrid = int(l[1])
+                        break
+                core_grid = []
+                for i in range(ibegin, len(lines)):
+                    l = list(map(float, lines[i].split()))
+                    core_grid.extend(l)
+                    if len(core_grid) >= ngrid :
+                        core_grid = core_grid[:ngrid]
+                        break
+                info['core_grid'] = np.asarray(core_grid) * BOHR2ANG
+                line = " ".join([line.strip() for line in lines[ibegin:]])
+                data = np.array(line.split()).astype(np.float)
+                info['core_value'] = data[-ngrid:]
+            #-----------------------------------------------------------------------
             return g, v, info
 
         gp, vp, self._info[key] = set_PP(self.PP_list[key])
