@@ -4,7 +4,7 @@ import os
 from dftpy.optimization import Optimization
 from dftpy.functionals import FunctionalClass, TotalEnergyAndPotential
 from dftpy.constants import LEN_CONV, ENERGY_CONV, FORCE_CONV, STRESS_CONV
-from dftpy.formats.io import read
+from dftpy.formats.io import read, read_density, write
 from dftpy.ewald import ewald
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
@@ -17,6 +17,7 @@ from dftpy.kedf import KEDFStress
 from dftpy.hartree import HartreeFunctionalStress
 from dftpy.config.config import PrintConf, ReadConf
 from dftpy.system import System
+from dftpy.functional_output import Functional
 from functools import reduce
 
 
@@ -110,18 +111,7 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None):
         # rho_ini *= (charge_total / (np.sum(rho_ini) * rho_ini.grid.dV ))
         # -----------------------------------------------------------------------
     elif config["DENSITY"]["densityini"] == "Read":
-        with open(config["DENSITY"]["densityfile"], "r") as fr:
-            line = fr.readline()
-            nr0 = list(map(int, line.split()))
-            blocksize = 1024 * 8
-            strings = ""
-            while True:
-                line = fr.read(blocksize)
-                if not line:
-                    break
-                strings += line
-        density = np.fromstring(strings, dtype=float, sep=" ")
-        density = density.reshape(nr0, order="F")
+        density = read_density(config["DENSITY"]["densityfile"])
     # normalization
     if density is not None:
         if not np.all(rho_ini.shape[:3] == density.shape[:3]):
@@ -154,11 +144,14 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None):
     return config, others
 
 
-def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2):
+def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2 = None):
     ions = struct.ions
     rho_ini = struct.field
+    grid = rho_ini.grid
     charge_total = 0.0
-    PSEUDO=E_v_Evaluator.PSEUDO
+    if hasattr(E_v_Evaluator, 'PSEUDO'):
+        PSEUDO=E_v_Evaluator.PSEUDO
+    nr = grid.nr
     for i in range(ions.nat):
         charge_total += ions.Zval[ions.labels[i]]
     if "Optdensity" in config["JOB"]["task"]:
@@ -176,6 +169,8 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2):
         # -----------------------------------------------------------------------
         for istep in range(2, config["MATH"]["multistep"] + 1):
             if istep == config["MATH"]["multistep"]:
+                if nr2 is None :
+                    nr2 = nr * 2
                 nr = nr2
             else:
                 nr = nr * 2
@@ -188,12 +183,13 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2):
             rho_ini = DirectField(grid=grid2, griddata_3d=rho_ini, rank=1)
             rho_ini *= charge_total / (np.sum(rho_ini) * rho_ini.grid.dV)
             # ions.restart()
-            pseudo=E_v_Evaluator.PSEUDO
-            if isinstance(pseudo, FunctionalClass):
-                PSEUDO = pseudo.PSEUDO
-            else :
-                PSEUDO = pseudo
-            PSEUDO.restart(full=False, ions=PSEUDO.ions, grid=grid2)
+            if hasattr(E_v_Evaluator, 'PSEUDO'):
+                pseudo=E_v_Evaluator.PSEUDO
+                if isinstance(pseudo, FunctionalClass):
+                    PSEUDO = pseudo.PSEUDO
+                else :
+                    PSEUDO = pseudo
+                PSEUDO.restart(full=False, ions=PSEUDO.ions, grid=grid2)
             opt = Optimization(
                 EnergyEvaluator=E_v_Evaluator,
                 optimization_options=optimization_options,
@@ -201,9 +197,6 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2):
             )
             rho = opt.optimize_rho(guess_rho=rho_ini)
         optimization_options["econv"] /= ions.nat  # reset the value
-    elif "Propagate" in config["JOB"]["task"]:
-        tdrunner(rho_ini, E_v_Evaluator, config)
-        return 0
     else:
         rho = rho_ini
     ############################## calctype  ##############################
@@ -223,7 +216,9 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2):
         energypotential = GetEnergyPotential(
             ions, rho, E_v_Evaluator, calcType=["V"], linearii=linearii, linearie=linearie
         )
-    # elif 'Energy' in config['JOB']['calctype'] :
+    elif "Density" in config["JOB"]["calctype"]:
+        print("Only return density...")
+        energypotential = {'TOTAL' : Functional(name = 'TOTAL', energy = 0.0)}
     else:
         print("Calculate Energy...")
         energypotential = GetEnergyPotential(
@@ -318,32 +313,18 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2):
             print(fstr_s.format(stress["TOTAL"][i] * STRESS_CONV["Ha/Bohr3"]["GPa"]))
         print("-" * 80)
     ############################## Output Density ##############################
-    # print('N', np.sum(rho) * rho.grid.dV)
-    # nr2 = (rho.grid.nr + 1)/2
-    # nr2 = nr2.astype(np.int32)
-    # newrho  = interpolation_3d(rho[..., 0], nr2)
-    # rho2 = interpolation_3d(newrho, rho.grid.nr)
-    # np.savetxt('lll', np.c_[rho[..., 0].ravel(), rho2.ravel(), (rho[..., 0] - rho2).ravel()])
-    # -----------------------------------------------------------------------
     if config["DENSITY"]["densityoutput"]:
         print("Write Density...")
         outfile = config["DENSITY"]["densityoutput"]
-        with open(outfile, "w") as fw:
-            fw.write("{0[0]:10d} {0[1]:10d} {0[2]:10d}\n".format(rho.grid.nr))
-            size = np.size(rho)
-            nl = size // 3
-            outrho = rho.ravel(order="F")
-            for line in outrho[: nl * 3].reshape(-1, 3):
-                fw.write("{0[0]:22.15E} {0[1]:22.15E} {0[2]:22.15E}\n".format(line))
-            for line in outrho[nl * 3 :]:
-                fw.write("{0:22.15E}".format(line))
+        write(outfile, rho, ions = ions)
     ############################## Output ##############################
     results = {}
     results["density"] = rho
     results["energypotential"] = energypotential
     results["forces"] = forces
     results["stress"] = stress
-    results["pseudo"] = PSEUDO
+    if hasattr(E_v_Evaluator, 'PSEUDO'):
+        results["pseudo"] = PSEUDO
     # print('-' * 31, 'Time information', '-' * 31)
     # TimeData.reset() #Cleanup the data in TimeData
     # -----------------------------------------------------------------------

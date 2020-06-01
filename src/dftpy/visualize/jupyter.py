@@ -1,6 +1,6 @@
 import numpy as np
 from dftpy.system import System
-import importlib
+import importlib.util
 try:
     import dftpy.visualize.ipv_viewer as ipvv
 except Exception:

@@ -115,7 +115,7 @@ class XSF(object):
         self.title = ""
         self.cutoffvars = {}
 
-    def write(self, system, field=None):
+    def write(self, system, field=None, **kwargs):
         """
         Write a system object into an xsf file.
         Not all specifications of the xsf file format are implemented, they will

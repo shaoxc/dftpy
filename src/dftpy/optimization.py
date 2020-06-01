@@ -253,16 +253,18 @@ class Optimization(AbstractOptimization):
         else:  # RMM
             if func is None:
                 f = self.EnergyEvaluator(newrho, calcType=["E","V"])
-                # f = self.EnergyEvaluator(newrho, calcType = 'Potential')
             mu = (f.potential * newrho).integral() / Ne
             if self.nspin > 1 :
                 mu = mu[:, None, None, None]
-            residual = (f.potential - mu) * newphi
-            try:
-                resN = np.einsum("..., ...->", residual, residual, optimize = 'optimal') * phi.grid.dV
-            except Exception :
-                resN = np.sum(residual*residual) * phi.grid.dV
-            value = resN
+            if algorithm == "RMM":
+                residual = (f.potential - mu) * newphi
+                try:
+                    resN = np.einsum("..., ...->", residual, residual, optimize = 'optimal') * phi.grid.dV
+                except Exception :
+                    resN = np.sum(residual*residual) * phi.grid.dV
+                value = resN
+            elif algorithm == "CMM":
+                value = mu
 
         if vector == "Orthogonalization":
             p2 = p * np.cos(theta) - phi * np.sin(theta)
@@ -276,7 +278,7 @@ class Optimization(AbstractOptimization):
         # print('theta', theta, value, grad)
         return [value, grad, newphi, f]
 
-    def optimize_rho(self, guess_rho=None):
+    def optimize_rho(self, guess_rho=None, guess_phi = None):
         TimeData.Begin("Optimize")
         if guess_rho is None and self.rho is None:
             raise AttributeError("Must provide a guess density")
@@ -284,6 +286,7 @@ class Optimization(AbstractOptimization):
             self.rho = guess_rho
         rho = self.rho
         self.nspin = rho.rank
+        converged = 1  # if >0 means not converged
         # -----------------------------------------------------------------------
         xtol = self.optimization_options["xtol"]
         maxls = self.optimization_options["maxls"]
@@ -295,7 +298,10 @@ class Optimization(AbstractOptimization):
             theta = np.ones(self.nspin) * theta
         # -----------------------------------------------------------------------
         EnergyHistory = []
-        phi = np.sqrt(rho)
+        if guess_phi is None :
+            phi = np.sqrt(rho)
+        else :
+            phi = guess_phi.copy()
         func = self.EnergyEvaluator(rho)
         mu = (func.potential * rho).integral() / rho.N
         if self.nspin > 1 :
@@ -417,8 +423,10 @@ class Optimization(AbstractOptimization):
                 newphi *= np.sqrt(norm)
                 newfunc = self.EnergyEvaluator(newrho, calcType=["V"])
                 NumLineSearch = 1
+                valuederiv = [0, 0, newphi, newfunc]
 
             if theta is None:
+                converged = 1
                 print("!!!ERROR : Line-Search Failed!!!")
                 print("!!!ERROR : Density Optimization NOT Converged  !!!")
                 break
@@ -478,6 +486,7 @@ class Optimization(AbstractOptimization):
             )
             print(fmt)
             if self.check_converge(EnergyHistory):
+                converged = 0
                 print("#### Density Optimization Converged ####")
                 break
 
@@ -493,6 +502,8 @@ class Optimization(AbstractOptimization):
         self.mu = mu
         self.rho = rho
         self.functional = func
+        self.phi = phi
+        self.converged = converged
         return rho
 
     def check_converge(self, EnergyHistory, **kwargs):

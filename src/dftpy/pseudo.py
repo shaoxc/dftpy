@@ -12,6 +12,7 @@ from dftpy.atom import Atom
 from abc import ABC, abstractmethod
 from dftpy.grid import DirectGrid, ReciprocalGrid
 import warnings
+from dftpy.math_utils import quartic_interpolation
 
 
 # NEVER TOUCH THIS CLASS
@@ -68,7 +69,7 @@ class LocalPseudo(AbstractLocalPseudo):
     This is a template class and should never be touched.
     """
 
-    def __init__(self, grid=None, ions=None, PP_list=None, PME=True,  **kwargs):
+    def __init__(self, grid=None, ions=None, PP_list=None, PME=True, **kwargs):
 
         if PP_list is not None:
             self.PP_list = PP_list
@@ -226,8 +227,17 @@ class LocalPseudo(AbstractLocalPseudo):
             for key in self._vloc_interp.keys():
                 vloc_interp = self._vloc_interp[key]
                 vloc[:] = 0.0
-                mask = q < np.max(self._gp[key])
+                mask = q < self._gp[key][-1]
                 vloc[mask] = splev(q[mask], vloc_interp, der=0)
+                # quartic interpolation for small q
+                #-----------------------------------------------------------------------
+                mask = q < self._gp[key][1]
+                vp = self._vp[key]
+                dp = vp[1]-vp[0]
+                f = [vp[2], vp[1], vp[0], vp[1], vp[2]]
+                dx = q[mask]/dp
+                vloc[mask] = quartic_interpolation(f, dx)
+                #-----------------------------------------------------------------------
                 # mask[0, 0, 0] = False
                 # vloc[mask] = splev(q[mask], vloc_interp, der=0)-self.zval[key]/gg[mask]
                 self._vlines[key] = vloc.copy()
@@ -434,25 +444,35 @@ class ReadPseudo(object):
         self._gp = {}  # 1D PP grid g-space
         self._vp = {}  # PP on 1D PP grid
         self._vloc_interp = {}  # Interpolates recpot PP
-        self._upf = {}
-        self._info= {}
+        self._info = {}
 
         self.PP_list = PP_list
-        key = list(self.PP_list.keys())[0]
-        if PP_list[key][-6:].lower() == "recpot":
-            self.PP_type = "recpot"
-        elif PP_list[key][-3:].lower() == "upf":
-            self.PP_type = "upf"
-        elif PP_list[key][-3:].lower() == "psp" or PP_list[key][-4:].lower() == "psp8":
-            self.PP_type = "psp"
-        else:
-            raise Exception("Pseudopotential not supported")
-        if self.PP_type == "recpot":
-            self._init_PP_recpot()
-        elif self.PP_type == "upf":
-            self._init_PP_upf(MaxPoints, Gmax)
-        elif self.PP_type == "psp":
-            self._init_PP_psp(MaxPoints, Gmax)
+        self.PP_type = {}
+
+        for key in self.PP_list:
+            print("setting key: " + key)
+            if not os.path.isfile(self.PP_list[key]):
+                raise Exception("PP file for atom type " + str(key) + " not found")
+            if PP_list[key].lower().endswith("recpot"):
+                self.PP_type[key] = "recpot"
+                self._init_PP_recpot(key)
+            elif PP_list[key].lower().endswith("usp"):
+                self.PP_type[key] = "usp"
+                self._init_PP_usp(key)
+            elif PP_list[key].lower().endswith("uspcc"):
+                self.PP_type[key] = "usp"
+                self._init_PP_usp(key)
+            elif PP_list[key].lower().endswith("uspso"):
+                self.PP_type[key] = "uspso"
+                self._init_PP_usp(key, 'uspso')
+            elif PP_list[key].lower().endswith("upf"):
+                self.PP_type[key] = "upf"
+                self._init_PP_upf(key, MaxPoints, Gmax)
+            elif PP_list[key].lower().endswith(("psp", "psp8")):
+                self.PP_type[key] = "psp"
+                self._init_PP_psp(key, MaxPoints, Gmax)
+            else:
+                raise Exception("Pseudopotential not supported")
 
     def _real2recip(self, r, v, zval, MaxPoints=15000, Gmax=30):
         gp = np.linspace(start=0, stop=Gmax, num=MaxPoints)
@@ -467,7 +487,7 @@ class ReadPseudo(object):
         vp[0] = (4.0 * np.pi) * np.sum(vr)
         return gp, vp
 
-    def _recip2real(self, gp, vp, zval, MaxPoints=1001, Rmax=10, r=None):
+    def _recip2real(self, gp, vp, MaxPoints=1001, Rmax=10, r=None):
         if r is None :
             r = np.linspace(0, Rmax, MaxPoints)
         v = np.empty_like(r)
@@ -490,14 +510,12 @@ class ReadPseudo(object):
         return rhop
 
     def get_Zval(self, ions):
-        if self.PP_type == "upf":
-            for key in self._gp.keys():
-                ions.Zval[key] = self._upf[key]["pseudo_potential"]["header"]["z_valence"]
-        elif self.PP_type == "psp":
-            for key in self._gp.keys():
+        for key in self._gp.keys():
+            if self.PP_type[key] == "upf":
+                ions.Zval[key] = self._info[key]["pseudo_potential"]["header"]["z_valence"]
+            elif self.PP_type[key] == "psp":
                 ions.Zval[key] = self._info[key]["Zval"]
-        elif self.PP_type == "recpot":
-            for key in self._gp.keys():
+            elif self.PP_type[key] in ["recpot", "usp", "uspso"] :
                 gp = self._gp[key]
                 vp = self._vp[key]
                 val = (vp[0] - vp[1]) * (gp[1] ** 2) / (4.0 * np.pi)
@@ -505,7 +523,7 @@ class ReadPseudo(object):
                 ions.Zval[key] = round(val)
         self.zval = ions.Zval.copy()
 
-    def _init_PP_recpot(self):
+    def _init_PP_recpot(self, key):
         """
         This is a private method used only in this specific class. 
         """
@@ -520,44 +538,117 @@ class ReadPseudo(object):
             with open(Single_PP_file, "r") as outfil:
                 lines = outfil.readlines()
 
+            ibegin = 0
             for i in range(0, len(lines)):
                 line = lines[i]
                 if "END COMMENT" in line:
                     ibegin = i + 3
-                elif line.strip() == "1000":
-                    # if '  1000' in line:
+                elif ibegin > 1 and (line.strip() == "1000" or len(line.strip()) == 1) :
                     iend = i
+                    break
+
             line = " ".join([line.strip() for line in lines[ibegin:iend]])
 
-            if "1000" in lines[iend]:
+            if "1000" in lines[iend] or len(lines[iend].strip()) == 1 :
                 print("Recpot pseudopotential " + Single_PP_file + " loaded")
             else:
                 return Exception
             gmax = np.float(lines[ibegin - 1].strip()) * BOHR2ANG
             v = np.array(line.split()).astype(np.float) / HARTREE2EV / BOHR2ANG ** 3
             g = np.linspace(0, gmax, num=len(v))
-            # self._recip2real(g, v, 3.0)
+            # self._recip2real(g, v)
             return g, v
 
-        for key in self.PP_list:
-            print("setting key: " + key)
-            if not os.path.isfile(self.PP_list[key]):
-                raise Exception("PP file for atom type " + str(key) + " not found")
-            else:
-                gp, vp = set_PP(self.PP_list[key])
-                self._gp[key] = gp
-                self._vp[key] = vp
-                vloc_interp = splrep(gp, vp)
-                self._vloc_interp[key] = vloc_interp
+        gp, vp = set_PP(self.PP_list[key])
+        self._gp[key] = gp
+        self._vp[key] = vp
+        vloc_interp = splrep(gp, vp)
+        self._vloc_interp[key] = vloc_interp
 
-    def _init_PP_upf(self, MaxPoints=15000, Gmax=30):
+    def _init_PP_usp(self, key, ext = 'usp'):
+        """
+        !!! NOT FULL TEST !!! 
+        This is a private method used only in this specific class. 
+        """
+
+        def set_PP(Single_PP_file):
+            """Reads CASTEP-like usp PP file
+            Returns tuple (g, v)"""
+            HARTREE2EV = ENERGY_CONV["Hartree"]["eV"]
+            BOHR2ANG = LEN_CONV["Bohr"]["Angstrom"]
+            with open(Single_PP_file, "r") as outfil:
+                lines = outfil.readlines()
+
+            ibegin = 0
+            for i in range(0, len(lines)):
+                line = lines[i]
+                if ext == 'usp' :
+                    if "END COMMENT" in line:
+                        ibegin = i + 4
+                    elif ibegin > 1 and (line.strip() == "1000" or len(line.strip()) == 1) and i - ibegin > 4:
+                        iend = i
+                        break
+                elif ext == 'uspso' :
+                    if "END COMMENT" in line:
+                        ibegin = i + 5
+                    elif ibegin > 1 and (line.strip() == "1000" or len(line.strip()) == 5) and i - ibegin > 4:
+                        iend = i
+                        break
+
+            line = " ".join([line.strip() for line in lines[ibegin:iend]])
+            info = {}
+
+            Zval = np.float(lines[ibegin - 2].strip())
+            info['Zval'] = Zval
+
+            if "1000" in lines[iend] or len(lines[iend].strip()) == 1 or len(lines[iend].strip()) == 5 :
+                print("Recpot pseudopotential " + Single_PP_file + " loaded")
+            else:
+                raise AttributeError("Error : Check the PP file")
+            gmax = np.float(lines[ibegin - 1].split()[0]) * BOHR2ANG
+                
+            # v = np.array(line.split()).astype(np.float) / (HARTREE2EV*BOHR2ANG ** 3 * 4.0 * np.pi)
+            v = np.array(line.split()).astype(np.float) / (HARTREE2EV*BOHR2ANG ** 3)
+            g = np.linspace(0, gmax, num=len(v))
+            v[1:] -= Zval * 4.0 * np.pi / g[1:] ** 2
+            #-----------------------------------------------------------------------
+            nlcc = int(lines[ibegin - 1].split()[1])
+            if nlcc == 2 and ext == 'usp' :
+                #num_projectors
+                for i in range(iend, len(lines)):
+                    l = lines[i].split()
+                    if len(l) == 2 and all([item.isdigit() for item in l]):
+                        ibegin = i + 1
+                        ngrid = int(l[1])
+                        break
+                core_grid = []
+                for i in range(ibegin, len(lines)):
+                    l = list(map(float, lines[i].split()))
+                    core_grid.extend(l)
+                    if len(core_grid) >= ngrid :
+                        core_grid = core_grid[:ngrid]
+                        break
+                info['core_grid'] = np.asarray(core_grid) * BOHR2ANG
+                line = " ".join([line.strip() for line in lines[ibegin:]])
+                data = np.array(line.split()).astype(np.float)
+                info['core_value'] = data[-ngrid:]
+            #-----------------------------------------------------------------------
+            return g, v, info
+
+        gp, vp, self._info[key] = set_PP(self.PP_list[key])
+        self._gp[key] = gp
+        self._vp[key] = vp
+        vloc_interp = splrep(gp, vp)
+        self._vloc_interp[key] = vloc_interp
+
+    def _init_PP_upf(self, key, MaxPoints=15000, Gmax=30):
         """
         This is a private method used only in this specific class. 
         """
 
         def set_PP(Single_PP_file):
             """Reads QE UPF type PP"""
-            import importlib
+            import importlib.util
 
             upf2json = importlib.util.find_spec("upf_to_json")
             found = upf2json is not None
@@ -572,18 +663,13 @@ class ReadPseudo(object):
             v = np.array(upf["pseudo_potential"]["local_potential"], dtype=np.float64)
             return r, v, upf
 
-        for key in self.PP_list:
-            print("setting key: " + key)
-            if not os.path.isfile(self.PP_list[key]):
-                raise Exception("PP file for atom type " + str(key) + " not found")
-            else:
-                r, vr, self._upf[key] = set_PP(self.PP_list[key])
-                zval = self._upf[key]["pseudo_potential"]["header"]["z_valence"]
-                gp, vp = self._real2recip(r, vr, zval, MaxPoints, Gmax)
-                self._gp[key] = gp
-                self._vp[key] = vp
-                vloc_interp = splrep(gp, vp)
-                self._vloc_interp[key] = vloc_interp
+        r, vr, self._info[key] = set_PP(self.PP_list[key])
+        zval = self._info[key]["pseudo_potential"]["header"]["z_valence"]
+        gp, vp = self._real2recip(r, vr, zval, MaxPoints, Gmax)
+        self._gp[key] = gp
+        self._vp[key] = vp
+        vloc_interp = splrep(gp, vp)
+        self._vloc_interp[key] = vloc_interp
 
     def _self_energy(self, r, vr, rhop):
         dr = np.empty_like(r)
@@ -594,7 +680,7 @@ class ReadPseudo(object):
         return ene
 
     # def _init_PP_psp(self, MaxPoints=15000, Gmax=30):
-    def _init_PP_psp(self, MaxPoints=200000, Gmax=30):
+    def _init_PP_psp(self, key, MaxPoints=200000, Gmax=30):
         """
         """
 
@@ -637,18 +723,13 @@ class ReadPseudo(object):
             print("psp pseudopotential " + Single_PP_file + " loaded")
             return r, v, info
 
-        for key in self.PP_list:
-            print("setting key: " + key)
-            if not os.path.isfile(self.PP_list[key]):
-                raise Exception("PP file for atom type " + str(key) + " not found")
-            else:
-                r, v, self._info[key] = set_PP(self.PP_list[key])
-                zval = self._info[key]['Zval']
-                gp, vp = self._real2recip(r, v, zval, MaxPoints, Gmax)
-                self._gp[key] = gp
-                self._vp[key] = vp
-                vloc_interp = splrep(gp, vp)
-                self._vloc_interp[key] = vloc_interp
+        r, v, self._info[key] = set_PP(self.PP_list[key])
+        zval = self._info[key]['Zval']
+        gp, vp = self._real2recip(r, v, zval, MaxPoints, Gmax)
+        self._gp[key] = gp
+        self._vp[key] = vp
+        vloc_interp = splrep(gp, vp)
+        self._vloc_interp[key] = vloc_interp
 
     @property
     def vloc_interp(self):
