@@ -278,7 +278,7 @@ class Optimization(AbstractOptimization):
         # print('theta', theta, value, grad)
         return [value, grad, newphi, f]
 
-    def optimize_rho(self, guess_rho=None):
+    def optimize_rho(self, guess_rho=None, guess_phi = None):
         TimeData.Begin("Optimize")
         if guess_rho is None and self.rho is None:
             raise AttributeError("Must provide a guess density")
@@ -297,7 +297,10 @@ class Optimization(AbstractOptimization):
             theta = np.ones(self.nspin) * theta
         # -----------------------------------------------------------------------
         EnergyHistory = []
-        phi = np.sqrt(rho)
+        if guess_phi is None :
+            phi = np.sqrt(rho)
+        else :
+            phi = guess_phi.copy()
         func = self.EnergyEvaluator(rho)
         mu = (func.potential * rho).integral() / rho.N
         if self.nspin > 1 :
@@ -496,6 +499,7 @@ class Optimization(AbstractOptimization):
         self.mu = mu
         self.rho = rho
         self.functional = func
+        self.phi = phi
         return rho
 
     def check_converge(self, EnergyHistory, **kwargs):
