@@ -286,6 +286,7 @@ class Optimization(AbstractOptimization):
             self.rho = guess_rho
         rho = self.rho
         self.nspin = rho.rank
+        converged = 1  # if >0 means not converged
         # -----------------------------------------------------------------------
         xtol = self.optimization_options["xtol"]
         maxls = self.optimization_options["maxls"]
@@ -425,6 +426,7 @@ class Optimization(AbstractOptimization):
                 valuederiv = [0, 0, newphi, newfunc]
 
             if theta is None:
+                converged = 1
                 print("!!!ERROR : Line-Search Failed!!!")
                 print("!!!ERROR : Density Optimization NOT Converged  !!!")
                 break
@@ -484,6 +486,7 @@ class Optimization(AbstractOptimization):
             )
             print(fmt)
             if self.check_converge(EnergyHistory):
+                converged = 0
                 print("#### Density Optimization Converged ####")
                 break
 
@@ -500,6 +503,7 @@ class Optimization(AbstractOptimization):
         self.rho = rho
         self.functional = func
         self.phi = phi
+        self.converged = converged
         return rho
 
     def check_converge(self, EnergyHistory, **kwargs):
