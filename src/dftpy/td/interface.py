@@ -8,6 +8,7 @@ from dftpy.field import DirectField, ReciprocalField
 from dftpy.grid import DirectGrid, ReciprocalGrid
 from dftpy.system import System
 from dftpy.utils import calc_rho, calc_j
+from dftpy.dynamic_functionals_utils import DynamicPotential
 from dftpy.time_data import TimeData
 import time
 
@@ -20,6 +21,7 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     order = config["TD"]["order"]
     direc = config["TD"]["direc"]
     k = config["TD"]["strength"]
+    dynamic = config["TD"]["dynamic_potential"]
     num_t = int(t_max / int_t)
 
     hamiltonian = Hamiltonian()
@@ -50,6 +52,8 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
         t = int_t * i_t
         func = E_v_Evaluator.ComputeEnergyPotential(rho, calcType=["V"])
         prop.hamiltonian.v = func.potential
+        if dynamic:
+            prop.hamiltonian.v += DynamicPotential(rho, j)
         E = np.real(np.conj(psi) * prop.hamiltonian(psi)).integral()
 
         for i_cn in range(order):
@@ -65,6 +69,9 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
             rho_half = (rho + rho1) * 0.5
             func = E_v_Evaluator.ComputeEnergyPotential(rho_half, calcType=["V"])
             prop.hamiltonian.v = func.potential
+            if dynamic:
+                j_half = (j + j1) * 0.5
+                prop.hamiltonian.v += DynamicPotential(rho_half, j_half)
 
         psi = psi1
         rho = rho1
