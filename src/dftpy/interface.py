@@ -18,6 +18,9 @@ from dftpy.hartree import HartreeFunctionalStress
 from dftpy.config.config import PrintConf, ReadConf
 from dftpy.system import System
 from dftpy.functional_output import Functional
+from dftpy.inverter import Inverter
+from dftpy.formats.xsf import XSF
+from dftpy.formats.qepp import PP
 from functools import reduce
 
 
@@ -451,3 +454,19 @@ def GetStress(
 
     return stress
 
+def InvertRunner(config, struct, EnergyEvaluater):
+    file_rho_in = config["INVERSION"]["rho_in"]
+    file_v_out = config["INVERSION"]["v_out"]
+    rho_in_struct = PP(file_rho_in).read()
+
+    if struct.cell != rho_in_struct.cell:
+        raise ValueError('The grid of the input density does not match the grid of the system')
+
+    inv = Inverter()
+    ext, rho = inv(rho_in_struct.field, EnergyEvaluater)
+    xsf = XSF(file_v_out)
+    xsf.write(struct, field=ext.v)
+    #xsf = XSF('./rho.xsf')
+    #xsf.write(struct, field=rho)
+
+    return ext

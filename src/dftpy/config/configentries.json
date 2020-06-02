@@ -333,6 +333,10 @@
     "strength": {
       "type": "float",
       "default": 0.001
+    },
+    "dynamic_potential": {
+      "type": "bool",
+      "default": false
     }
   },
   "CASIDA": {
@@ -347,6 +351,16 @@
     "tda": {
       "type": "bool",
       "default": false
+    }
+  },
+  "INVERSION": {
+    "rho_in": {
+      "type": "str",
+      "default": null
+    },
+    "v_out": {
+      "type": "str",
+      "default": null
     }
   }
 }
