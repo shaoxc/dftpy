@@ -88,6 +88,7 @@ class Optimization(AbstractOptimization):
             self.EnergyEvaluator = EnergyEvaluator
 
         self.optimization_method = optimization_method
+        self.lphi = False
 
     def get_direction_TN(self, res0, phi=None, mu=None, density=None, spin=1, **kwargs):
         if self.nspin > 1 :
@@ -107,10 +108,10 @@ class Optimization(AbstractOptimization):
             rho1 = phi1 * phi1
             if self.nspin > 1 :
                 rho[spin] = rho1
-                func = self.EnergyEvaluator(rho, calcType=["V"])
+                func = self.EnergyEvaluator(rho, calcType=["V"], phi = phi1, lphi = self.lphi)
                 Ap = ((func.potential[spin] - mu) * phi1 - res0) / epsi
             else :
-                func = self.EnergyEvaluator(rho1, calcType=["V"])
+                func = self.EnergyEvaluator(rho1, calcType=["V"], phi = phi1, lphi = self.lphi)
                 Ap = ((func.potential - mu) * phi1 - res0) / epsi
             pAp = np.einsum("ijk, ijk->", p, Ap)
             if pAp < 0.0:
@@ -248,11 +249,11 @@ class Optimization(AbstractOptimization):
 
         if algorithm == "EMM":
             if func is None:
-                f = self.EnergyEvaluator(newrho, calcType=["E","V"])
+                f = self.EnergyEvaluator(newrho, calcType=["E","V"], phi = newphi, lphi = self.lphi)
             value = f.energy
         else:  # RMM
             if func is None:
-                f = self.EnergyEvaluator(newrho, calcType=["E","V"])
+                f = self.EnergyEvaluator(newrho, calcType=["E","V"], phi = newphi, lphi = self.lphi)
             mu = (f.potential * newrho).integral() / Ne
             if self.nspin > 1 :
                 mu = mu[:, None, None, None]
@@ -278,7 +279,7 @@ class Optimization(AbstractOptimization):
         # print('theta', theta, value, grad)
         return [value, grad, newphi, f]
 
-    def optimize_rho(self, guess_rho=None, guess_phi = None):
+    def optimize_rho(self, guess_rho=None, guess_phi = None, lphi = False):
         TimeData.Begin("Optimize")
         if guess_rho is None and self.rho is None:
             raise AttributeError("Must provide a guess density")
@@ -287,6 +288,7 @@ class Optimization(AbstractOptimization):
         rho = self.rho
         self.nspin = rho.rank
         converged = 1  # if >0 means not converged
+        self.lphi = lphi
         # -----------------------------------------------------------------------
         xtol = self.optimization_options["xtol"]
         maxls = self.optimization_options["maxls"]
@@ -302,7 +304,7 @@ class Optimization(AbstractOptimization):
             phi = np.sqrt(rho)
         else :
             phi = guess_phi.copy()
-        func = self.EnergyEvaluator(rho)
+        func = self.EnergyEvaluator(rho, calcType = ['E', 'V'], phi = phi, lphi = self.lphi)
         mu = (func.potential * rho).integral() / rho.N
         if self.nspin > 1 :
             mus = mu[:, None, None, None]
@@ -421,7 +423,7 @@ class Optimization(AbstractOptimization):
                 norm = rho.N / newrho.integral()
                 newrho *= norm
                 newphi *= np.sqrt(norm)
-                newfunc = self.EnergyEvaluator(newrho, calcType=["V"])
+                newfunc = self.EnergyEvaluator(newrho, calcType=["V"], phi = newphi, lphi = self.lphi)
                 NumLineSearch = 1
                 valuederiv = [0, 0, newphi, newfunc]
 
@@ -443,9 +445,9 @@ class Optimization(AbstractOptimization):
             # phi = np.sqrt(rho)
             #-----------------------------------------------------------------------
             # if self.optimization_options["algorithm"] == 'RMM' :
-            # f = self.EnergyEvaluator(rho, calcType = 'Energy')
+            # f = self.EnergyEvaluator(rho, calcType = ['E'], phi = phi, lphi = self.lphi)
             # func.energy = f.energy
-            # func = self.EnergyEvaluator(rho, calcType = 'Both')
+            # func = self.EnergyEvaluator(rho, calcType = ['E', 'V'], phi = phi, lphi = self.lphi)
             mu = (func.potential * rho).integral() / rho.N
             if self.nspin > 1 :
                 mus = mu[:, None, None, None]
@@ -460,7 +462,7 @@ class Optimization(AbstractOptimization):
                 norm = rho.N / rho.integral()
                 rho *= norm
                 phi *= np.sqrt(norm)
-                func = self.EnergyEvaluator(rho, calcType=["E","V"])
+                func = self.EnergyEvaluator(rho, calcType=["E","V"], phi = phi, lphi = self.lphi)
                 mu = (func.potential * rho).integral() / rho.N
                 if self.nspin > 1 :
                     mus = mu[:, None, None, None]
@@ -502,8 +504,9 @@ class Optimization(AbstractOptimization):
         self.mu = mu
         self.rho = rho
         self.functional = func
-        self.phi = phi
         self.converged = converged
+        if self.converged == 0 :
+            self.phi = phi
         return rho
 
     def check_converge(self, EnergyHistory, **kwargs):
@@ -521,5 +524,5 @@ class Optimization(AbstractOptimization):
         flag = True
         return flag
 
-    def __call__(self, guess_rho=None, calcType=["E","V"]):
-        return self.optimize_rho(guess_rho=guess_rho)
+    def __call__(self, guess_rho=None, calcType=["E","V"], guess_phi = None, lphi = False):
+        return self.optimize_rho(guess_rho=guess_rho, guess_phi=guess_phi, lphi=lphi)

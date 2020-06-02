@@ -310,7 +310,7 @@ class TotalEnergyAndPotential(AbstractFunctional):
         subdict = dict((key, self.funcDict[key]) for key in keys)
         return TotalEnergyAndPotential(**subdict)
 
-    def ComputeEnergyPotential(self, rho, calcType=["E","V"]):
+    def ComputeEnergyPotential(self, rho, calcType=["E","V"], **kwargs):
         Obj = None
         for key, evalfunctional in self.funcDict.items():
             if Obj is None :

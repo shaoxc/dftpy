@@ -24,29 +24,32 @@ def vonWeizsackerPotentialCplx(wav, grid, sigma=0.025):
     return DirectField(grid=grid, griddata_3d=a)
 
 
-def vonWeizsackerPotential(rho, sigma=None):
+def vonWeizsackerPotential(rho, sigma=None, phi = None, lphi = False, **kwargs):
     """
     The von Weizsacker Potential
     """
 
     gg = rho.grid.get_reciprocal().gg
-    sq_dens = np.sqrt(rho)
+    if lphi and phi is not None :
+        sq_dens = phi
+    else :
+        sq_dens = np.sqrt(rho)
     if sigma is None :
         n2_sq_dens = sq_dens.fft() * gg
     else :
         n2_sq_dens = sq_dens.fft()*np.exp(-gg*(sigma)**2/4.0)*gg
     a = n2_sq_dens.ifft(force_real=True)
-    np.multiply(0.5, a, out=a)
-    sq_dens[sq_dens < 1E-30] = 1E-30 # for safe
+    a *= 0.5
+    sq_dens[np.abs(sq_dens) < 1E-300] = 1E-300 # for safe
     return DirectField(grid=rho.grid, griddata_3d=np.divide(a, sq_dens, out=a))
 
 
-def vonWeizsackerEnergy(rho, potential=None, sigma=None):
+def vonWeizsackerEnergy(rho, potential=None, sigma=None, **kwargs):
     """
     The von Weizsacker Energy Density
     """
     if potential is None :
-        edens = vonWeizsackerPotential(rho, sigma = sigma)
+        edens = vonWeizsackerPotential(rho, sigma = sigma, **kwargs)
     else :
         edens = potential
     ene = np.einsum("ijk, ijk->", rho, edens) * rho.grid.dV
@@ -72,9 +75,9 @@ def vonWeizsackerStress(rho, y=1.0, energy=None, **kwargs):
 
 def vW(rho, y=1.0, sigma=None, calcType=["E","V"], split=False, **kwargs):
     TimeData.Begin("vW")
-    pot = vonWeizsackerPotential(rho, sigma)
+    pot = vonWeizsackerPotential(rho, sigma, **kwargs)
     if "E" in calcType:
-        ene = vonWeizsackerEnergy(rho, pot)
+        ene = vonWeizsackerEnergy(rho, pot, **kwargs)
     else:
         ene = 0.0
 
@@ -90,7 +93,7 @@ def vW(rho, y=1.0, sigma=None, calcType=["E","V"], split=False, **kwargs):
 
 def x_TF_y_vW(rho, x=1.0, y=1.0, sigma=None, calcType=["E","V"], split=False, **kwargs):
     xTF = TF(rho, x=x, calcType=calcType)
-    yvW = vW(rho, y=y, sigma=sigma, calcType=calcType)
+    yvW = vW(rho, y=y, sigma=sigma, calcType=calcType, **kwargs)
     pot = xTF.potential + yvW.potential
     ene = xTF.energy + yvW.energy
     OutFunctional = Functional(name=str(x) + "_TF_" + str(y) + "_vW")
