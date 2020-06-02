@@ -9,8 +9,10 @@ from dftpy.grid import DirectGrid, ReciprocalGrid
 from dftpy.system import System
 from dftpy.utils import calc_rho, calc_j
 from dftpy.dynamic_functionals_utils import DynamicPotential
+from dftpy.formats.xsf import XSF
 from dftpy.time_data import TimeData
 import time
+import os
 
 
 def RealTimeRunner(config, rho0, E_v_Evaluator):
@@ -130,7 +132,7 @@ def CasidaRunner(config, rho0, E_v_Evaluator):
 def DiagonizeRunner(config, struct, E_v_Evaluator):
 
     numeig = config["CASIDA"]["numeig"]
-    outfile = config["TD"]["outfile"]
+    eigfile = config["TD"]["outfile"]
     direct_to_psi = './xsf'
 
     potential = E_v_Evaluator(struct.field, calcType=['V']).potential
@@ -144,7 +146,7 @@ def DiagonizeRunner(config, struct, E_v_Evaluator):
     if not os.path.isdir(direct_to_psi):
         os.mkdir(direct_to_psi)
     for i in range(len(eigs)):
-        XSF(filexsf='{0:s}/psi{0:d}.xsf'.format(direct_to_psi, i)).write(system=struct, field=psi_list[i])
+        XSF(filexsf='{0:s}/psi{1:d}.xsf'.format(direct_to_psi, i)).write(system=struct, field=psi_list[i])
 
 
 
