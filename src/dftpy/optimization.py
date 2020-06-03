@@ -497,6 +497,9 @@ class Optimization(AbstractOptimization):
                 residualA.pop(0)
             if len(directionA) > 2:
                 directionA.pop(0)
+        else :
+            converged = 2
+            print("!WARN: Not converged, but reached max steps")
 
         TimeData.End("Optimize")
         print('Chemical potential (a.u.):', mu)
@@ -505,8 +508,7 @@ class Optimization(AbstractOptimization):
         self.rho = rho
         self.functional = func
         self.converged = converged
-        if self.converged == 0 :
-            self.phi = phi
+        self.phi = phi
         return rho
 
     def check_converge(self, EnergyHistory, **kwargs):
