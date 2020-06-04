@@ -128,24 +128,26 @@ def GGAFs(s, functional="LKT", calcType=["E","V"], params=None, **kwargs):
 
     if functional == "LKT":  # \cite{luo2018simple}
         if not params:
-            params = [1.3]
+            params = [1.3, 1.0]
+        elif len(params) == 1 :
+            params.append(1.0)
         ss = s / tkf0
         s2 = ss * ss
         mask1 = ss > 100.0
         mask2 = ss < 1e-5
         mask = np.invert(np.logical_or(mask1, mask2))
-        F[mask] = 1.0 / np.cosh(params[0] * ss[mask]) + 5.0 / 3.0 * (s2[mask])
-        F[mask1] = 5.0 / 3.0 * (s2[mask1])
+        F[mask] = 1.0 / np.cosh(params[0] * ss[mask]) + 5.0 / 3.0 * (s2[mask]) * params[1]
+        F[mask1] = 5.0 / 3.0 * (s2[mask1]) * params[1]
         F[mask2] = (
-            1.0 + (5.0 / 3.0 - 0.5 * params[0] ** 2) * s2[mask2] + 5.0 / 24.0 * params[0] ** 4 * s2[mask2] ** 2
+            1.0 + (5.0 / 3.0 * params[1] - 0.5 * params[0] ** 2) * s2[mask2] + 5.0 / 24.0 * params[0] ** 4 * s2[mask2] ** 2
         )  # - 61.0/720.0 * params[0] ** 6 * s2[mask2] ** 3
         if "V" in calcType:
             dFds2[mask] = (
-                10.0 / 3.0 - params[0] * np.sinh(params[0] * ss[mask]) / np.cosh(params[0] * ss[mask]) ** 2 / ss[mask]
+                10.0 / 3.0 * params[1] - params[0] * np.sinh(params[0] * ss[mask]) / np.cosh(params[0] * ss[mask]) ** 2 / ss[mask]
             )
-            dFds2[mask1] = 10.0 / 3.0
+            dFds2[mask1] = 10.0 / 3.0 * params[1]
             dFds2[mask2] = (
-                10.0 / 3.0
+                10.0 / 3.0 * params[1]
                 - params[0] ** 2
                 + 5.0 / 6.0 * params[0] ** 4 * s2[mask2]
                 - 61.0 / 120.0 * params[0] ** 6 * s2[mask2] ** 2

@@ -110,7 +110,7 @@ def LWTPotentialEnergy(
         kflists = np.asarray(kflists)
     kflists[0] -= 1e-16  # for numerical safe
     kflists[-1] += 1e-16  # for numerical safe
-    # print('nsp', nsp, kfMax, kfMin, kf0, np.max(kflists))
+    print('nsp', nsp, kfMax, kfMin, kf0, np.max(kflists))
     # -----------------------------------------------------------------------
     kernel0 = np.empty_like(q)
     kernel1 = np.empty_like(q)
@@ -122,23 +122,28 @@ def LWTPotentialEnergy(
     pot2G = None
     pot3 = np.zeros_like(rho)
     # pot4 = np.zeros_like(rho)
+    #-----------------------------------------------------------------------
+    mask = rho > 0
+    mask2 = np.invert(mask)
+    rho_saved = rho[mask2]
+    rho[mask2] = 1E-30
+
     rhoAlpha = rho ** alpha
     rhoAlpha1 = rhoAlpha / rho
-    mask = rho < 1E-30
-    rhoAlpha1[mask] = 1E-30
     if abs(alpha - beta) < 1e-8:
         rhoBeta = rhoAlpha
         rhoBeta1 = rhoAlpha1
     else:
         rhoBeta = rho ** beta
         rhoBeta1 = rhoBeta / rho
-        mask = rho < 1E-30
-        rhoBeta1[mask] = 1E-30
     rhoBetaG = rhoBeta.fft()
     if abs(alpha - beta) < 1e-8:
         rhoAlphaG = rhoBetaG
     else:
         rhoAlphaG = rhoAlpha.fft()
+
+    rho[mask2] = rho_saved
+    #-----------------------------------------------------------------------
 
     KernelTable = KE_kernel_saved["KernelTable"]
     KernelDeriv = KE_kernel_saved["KernelDeriv"]

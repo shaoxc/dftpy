@@ -301,7 +301,12 @@ class Optimization(AbstractOptimization):
         # -----------------------------------------------------------------------
         EnergyHistory = []
         if guess_phi is None :
-            phi = np.sqrt(rho)
+            # phi = np.sqrt(rho)
+            phi = rho.copy()
+            mask = rho > 0
+            mask2 = np.invert(mask)
+            phi[mask] = np.sqrt(rho[mask])
+            phi[mask2] = 1E-300
         else :
             phi = guess_phi.copy()
         func = self.EnergyEvaluator(rho, calcType = ['E', 'V'], phi = phi, lphi = self.lphi)
@@ -441,9 +446,6 @@ class Optimization(AbstractOptimization):
 
             rho = phi * phi
             func = newfunc
-            #-----------------------------------------------------------------------
-            # phi = np.sqrt(rho)
-            #-----------------------------------------------------------------------
             # if self.optimization_options["algorithm"] == 'RMM' :
             # f = self.EnergyEvaluator(rho, calcType = ['E'], phi = phi, lphi = self.lphi)
             # func.energy = f.energy
