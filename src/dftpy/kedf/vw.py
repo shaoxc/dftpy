@@ -28,7 +28,13 @@ def vonWeizsackerPotential(rho, sigma=None, phi = None, lphi = False, **kwargs):
     """
     The von Weizsacker Potential
     """
-
+    #-----------------------------------------------------------------------
+    tol = 1E-30
+    mask = rho > 0
+    mask2 = np.invert(mask)
+    rho_saved = rho[mask2]
+    rho[mask2] = tol
+    #-----------------------------------------------------------------------
     gg = rho.grid.get_reciprocal().gg
     if lphi and phi is not None :
         sq_dens = phi
@@ -40,8 +46,12 @@ def vonWeizsackerPotential(rho, sigma=None, phi = None, lphi = False, **kwargs):
         n2_sq_dens = sq_dens.fft()*np.exp(-gg*(sigma)**2/4.0)*gg
     a = n2_sq_dens.ifft(force_real=True)
     a *= 0.5
-    sq_dens[np.abs(sq_dens) < 1E-300] = 1E-300 # for safe
-    return DirectField(grid=rho.grid, griddata_3d=np.divide(a, sq_dens, out=a))
+    sq_dens[np.abs(sq_dens) < tol] = tol # for safe
+    pot = DirectField(grid=rho.grid, griddata_3d=np.divide(a, sq_dens, out=a))
+    #-----------------------------------------------------------------------
+    rho[mask2] = rho_saved
+    #-----------------------------------------------------------------------
+    return pot
 
 
 def vonWeizsackerEnergy(rho, potential=None, sigma=None, **kwargs):

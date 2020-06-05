@@ -254,7 +254,8 @@ class Optimization(AbstractOptimization):
         else:  # RMM
             if func is None:
                 f = self.EnergyEvaluator(newrho, calcType=["E","V"], phi = newphi, lphi = self.lphi)
-            mu = (f.potential * newrho).integral() / Ne
+            # mu = (f.potential * newrho).integral() / Ne
+            mu = self.get_chemical_potential(f.potential, newrho, phi = newphi, lphi = self.lphi)
             if self.nspin > 1 :
                 mu = mu[:, None, None, None]
             if algorithm == "RMM":
@@ -309,8 +310,10 @@ class Optimization(AbstractOptimization):
             phi[mask2] = 1E-300
         else :
             phi = guess_phi.copy()
+            rho[:] = phi * phi
         func = self.EnergyEvaluator(rho, calcType = ['E', 'V'], phi = phi, lphi = self.lphi)
-        mu = (func.potential * rho).integral() / rho.N
+        # mu = (func.potential * rho).integral() / rho.N
+        mu = self.get_chemical_potential(func.potential, rho, phi = phi, lphi = self.lphi)
         if self.nspin > 1 :
             mus = mu[:, None, None, None]
         else :
@@ -450,7 +453,8 @@ class Optimization(AbstractOptimization):
             # f = self.EnergyEvaluator(rho, calcType = ['E'], phi = phi, lphi = self.lphi)
             # func.energy = f.energy
             # func = self.EnergyEvaluator(rho, calcType = ['E', 'V'], phi = phi, lphi = self.lphi)
-            mu = (func.potential * rho).integral() / rho.N
+            # mu = (func.potential * rho).integral() / rho.N
+            mu = self.get_chemical_potential(func.potential, rho, phi = phi, lphi = self.lphi)
             if self.nspin > 1 :
                 mus = mu[:, None, None, None]
             else :
@@ -465,7 +469,8 @@ class Optimization(AbstractOptimization):
                 rho *= norm
                 phi *= np.sqrt(norm)
                 func = self.EnergyEvaluator(rho, calcType=["E","V"], phi = phi, lphi = self.lphi)
-                mu = (func.potential * rho).integral() / rho.N
+                # mu = (func.potential * rho).integral() / rho.N
+                mu = self.get_chemical_potential(func.potential, rho, phi = phi, lphi = self.lphi)
                 if self.nspin > 1 :
                     mus = mu[:, None, None, None]
                 else :
@@ -527,6 +532,10 @@ class Optimization(AbstractOptimization):
                     return flag
         flag = True
         return flag
+
+    def get_chemical_potential(self, potential, rho, phi = None, lphi = False):
+        mu = (potential * rho).integral() / rho.N
+        return mu
 
     def __call__(self, guess_rho=None, calcType=["E","V"], guess_phi = None, lphi = False):
         return self.optimize_rho(guess_rho=guess_rho, guess_phi=guess_phi, lphi=lphi)

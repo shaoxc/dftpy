@@ -12,12 +12,11 @@ def ThomasFermiPotential(rho):
     The Thomas-Fermi Potential
     """
     factor = (3.0 / 10.0) * (5.0 / 3.0) * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
-    # pot = np.cbrt(rho*rho)
-    # pot = factor * np.cbrt(rho * rho)
+    pot = factor * np.cbrt(rho * rho)
     # pot = rho * rho
     # pot = np.cbrt(pot, out = pot)
     # pot = np.multiply(factor, pot, out = pot)
-    pot = rho ** (2.0 / 3.0) * factor
+    # pot = rho ** (2.0 / 3.0) * factor
     # return (3.0/10.0)*(5.0/3.0)*(3.0*np.pi**2)**(2.0/3.0)*np.abs(rho)**(2.0/3.0)
     return pot
 

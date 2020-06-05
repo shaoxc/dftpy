@@ -64,12 +64,6 @@ class KEDF:
         self.kwargs.update(kwargs)
         kwargs = self.kwargs
         functional = None
-        #-----------------------------------------------------------------------
-        tol = 1E-100
-        mask = density < tol
-        saved = density[mask].copy()
-        density[mask] = tol
-        #-----------------------------------------------------------------------
         for item in name.split('+'):
             out = KEDFunctional(density, name = item, calcType = calcType, ke_kernel_saved = self.ke_kernel_saved, **kwargs)
             if functional is None :
@@ -79,9 +73,6 @@ class KEDF:
                     functional.update(out)
                 else :
                     functional += out
-        #-----------------------------------------------------------------------
-        density[mask] = saved
-        #-----------------------------------------------------------------------
         return functional
 
 def KEDFunctional(rho, name="WT", calcType=["E","V"], split=False, nspin = 1, **kwargs):
