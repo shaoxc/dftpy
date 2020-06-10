@@ -56,11 +56,11 @@ def LWTPotentialEnergy(
     """
 
     KE_kernel_saved = ke_kernel_saved
-    savetol = 1e-18
+    savetol = 1e-16
     q = rho.grid.get_reciprocal().q
     rho0 = np.mean(rho)
-    kf0 = 2.0 * (3.0 * np.pi ** 2 * rho0) ** (1.0 / 3.0)
-    kf = 2.0 * (3.0 * np.pi ** 2 * rho) ** (1.0 / 3.0)
+    kf0 = 2.0 * np.cbrt(3.0 * np.pi ** 2 * rho0)
+    kf = 2.0 * np.cbrt(3.0 * np.pi ** 2 * rho)
     # gamma = 1.0
     # rhomod = (0.5 * (rho **gamma + rho0 ** gamma)) ** (1.0/gamma) 
     # kf = 2.0 * (3.0 * np.pi ** 2 * rhomod) ** (1.0 / 3.0)
@@ -108,8 +108,8 @@ def LWTPotentialEnergy(
         else:
             kflists = kfMin + (kfMax - kfMin) / (nsp - 1) * np.arange(nsp)
         kflists = np.asarray(kflists)
-    kflists[0] -= 1e-16  # for numerical safe
-    kflists[-1] += 1e-16  # for numerical safe
+    kflists[0] -= savetol  # for numerical safe
+    kflists[-1] += savetol  # for numerical safe
     print('nsp', nsp, kfMax, kfMin, kf0, np.max(kflists))
     # -----------------------------------------------------------------------
     kernel0 = np.empty_like(q)
@@ -254,7 +254,8 @@ def LWTPotentialEnergy(
         pot2 = pot1.copy()
     #-----------------------------------------------------------------------
     if ldw is not None :
-        factor = rho ** ldw /(np.max(rho) ** ldw)
+        factor = np.abs(rho)** ldw /(np.max(rho) ** ldw)
+        factor[rho < 0] = 0.0
         pot1 *= factor
         pot2 *= factor
     #-----------------------------------------------------------------------

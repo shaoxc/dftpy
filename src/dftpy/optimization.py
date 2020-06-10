@@ -286,7 +286,7 @@ class Optimization(AbstractOptimization):
             raise AttributeError("Must provide a guess density")
         elif guess_rho is not None :
             self.rho = guess_rho
-        rho = self.rho
+        rho = self.rho.copy()
         self.nspin = rho.rank
         converged = 1  # if >0 means not converged
         self.lphi = lphi
@@ -310,7 +310,7 @@ class Optimization(AbstractOptimization):
             phi[mask2] = 1E-300
         else :
             phi = guess_phi.copy()
-            rho[:] = phi * phi
+        rho[:] = phi * phi
         func = self.EnergyEvaluator(rho, calcType = ['E', 'V'], phi = phi, lphi = self.lphi)
         # mu = (func.potential * rho).integral() / rho.N
         mu = self.get_chemical_potential(func.potential, rho, phi = phi, lphi = self.lphi)

@@ -50,6 +50,7 @@ def vonWeizsackerPotential(rho, sigma=None, phi = None, lphi = False, **kwargs):
     pot = DirectField(grid=rho.grid, griddata_3d=np.divide(a, sq_dens, out=a))
     #-----------------------------------------------------------------------
     rho[mask2] = rho_saved
+    print(np.max(a), np.min(a), rho_saved)
     #-----------------------------------------------------------------------
     return pot
 
@@ -62,7 +63,8 @@ def vonWeizsackerEnergy(rho, potential=None, sigma=None, **kwargs):
         edens = vonWeizsackerPotential(rho, sigma = sigma, **kwargs)
     else :
         edens = potential
-    ene = np.einsum("ijk, ijk->", rho, edens) * rho.grid.dV
+    # ene = np.einsum("ijk, ijk->", rho, edens) * rho.grid.dV
+    ene = np.einsum("i, i->", rho[rho > 0], edens[rho > 0]) * rho.grid.dV
     return ene
 
 
