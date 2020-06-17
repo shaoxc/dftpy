@@ -41,15 +41,20 @@ def guess_kf_bound(kf, kfmin = None, kfmax = None, kftol = 1E-3, ke_kernel_saved
         kfmin_prev = None
         kfmax_prev = None
 
-    if kfmin_prev is None :
-        kfmin_prev = 10
-    if kfmax_prev is None :
-        kfmax_prev = 1.0
-
     kf_l = np.min(kf)
     kf_r = np.max(kf)
-    if kfmin is None or kfmin > kfmin_prev:
-        kfmin = kfmin_prev
+
+    if kfmin_prev is None :
+        kfmin_prev = 10
+        if kfmin is None : kfmin = kf_l
+
+    if kfmax_prev is None :
+        kfmax_prev = 1.0
+        if kfmax is None : kfmax = kf_r
+
+    if kfmin > kfmin_prev : kfmin = kfmin_prev
+    if kfmax < kfmax_prev : kfmax = kfmax_prev
+
     if kfmin > kf_l :
         kfl = [1E-5, 1E-4, 5E-3, 1E-3, 5E-3, 1E-2, 5E-2, 0.1, 0.5, 1.0]
         ratio = kf_l/kfmin
@@ -59,9 +64,7 @@ def guess_kf_bound(kf, kfmin = None, kfmax = None, kftol = 1E-3, ke_kernel_saved
                 break
     if kfmin < kftol : kfmin = kftol
 
-    if kfmax is None :
-        kfmax = kfmax_prev
-    if kfmax < kf_r and kf_r > kfmax_prev :
+    if kfmax < kf_r :
         dk = kf_r - kfmax
         kfmax += (np.round(dk/0.5)+1) * 0.5
 
