@@ -52,8 +52,8 @@ def guess_kf_bound(kf, kfmin = None, kfmax = None, kftol = 1E-3, ke_kernel_saved
         kfmax_prev = 1.0
         if kfmax is None : kfmax = kf_r
 
-    if kfmin > kfmin_prev : kfmin = kfmin_prev
-    if kfmax < kfmax_prev : kfmax = kfmax_prev
+    if kfmin is None or kfmin > kfmin_prev : kfmin = kfmin_prev
+    if kfmax is None or kfmax < kfmax_prev : kfmax = kfmax_prev
 
     if kfmin > kf_l :
         kfl = [1E-5, 1E-4, 5E-3, 1E-3, 5E-3, 1E-2, 5E-2, 0.1, 0.5, 1.0]
