@@ -700,6 +700,7 @@ class ReadPseudo(object):
             values = lines[2].split()
             if int(values[0]) != 8 :
                 raise AttributeError("Only support psp8 format pseudopotential with psp")
+            info['info'] = lines[:6]
             info['atomicnum'] = atomicnum
             info['Zval'] = Zval
             info['pspcod'] = 8
@@ -721,6 +722,8 @@ class ReadPseudo(object):
             r = data[:, 0] 
             v = data[:, 1] 
             print("psp pseudopotential " + Single_PP_file + " loaded")
+            info['grid'] = r
+            info['local_potential'] = v
             return r, v, info
 
         r, v, self._info[key] = set_PP(self.PP_list[key])

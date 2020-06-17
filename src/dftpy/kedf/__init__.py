@@ -9,6 +9,7 @@ from dftpy.kedf.fp import *
 from dftpy.kedf.sm import *
 from dftpy.kedf.mgp import *
 from dftpy.kedf.gga import *
+from dftpy.functional_output import Functional
 
 __all__ = ["KEDF", "KEDFunctional", "KEDFStress"]
 
@@ -49,6 +50,8 @@ class KEDF:
                 "etamax": None,
                 "KernelDeriv": None,
                 "MGPKernelE": None,
+                "kfmin" :None, 
+                "kfmax" :None, 
                 }
 
     def __call__(self, density, calcType=["E","V"], name=None, **kwargs):
@@ -131,14 +134,22 @@ def KEDFunctional(rho, name="WT", calcType=["E","V"], split=False, nspin = 1, **
         func = NLKEDF_Dict[name]
         NL = func(rho, calcType=calcType, **kwargs)
         x = kwargs.get("x", 1.0)
+        y = kwargs.get("y", 1.0)
         alpha = kwargs.get("alpha", 5.0 / 6.0)
         beta = kwargs.get("beta", 5.0 / 6.0)
         if abs(alpha + beta - 5.0 / 3.0) < 1e-8:
             s = 1.0 + (x - 1) * 20 / (25 - (abs(beta - alpha) * 3) ** 2)  # only works when \alpha+\beta=5/3
         else:
             s = x
-        xTF = TF(rho, x=s, calcType=calcType)
-        yvW = vW(rho, calcType=calcType, **kwargs)
+        if abs(s) > 1e-8 :
+            xTF = TF(rho, x=s, calcType=calcType)
+        else :
+            xTF = Functional(name="ZERO", energy = 0.0)
+
+        if abs(y) > 1e-8 :
+            yvW = vW(rho, calcType=calcType, **kwargs)
+        else :
+            yvW = Functional(name="ZERO", energy = 0.0)
         if nspin > 1 and 'E' in calcType :
             xTF.energy /= nspin
             yvW.energy /= nspin
@@ -162,6 +173,11 @@ def KEDFunctional(rho, name="WT", calcType=["E","V"], split=False, nspin = 1, **
         OutFunctionalDict = {"GGA": gga, "NL": NL}
     else:
         raise AttributeError("%s KEDF to be implemented" % name)
+    #-----------------------------------------------------------------------
+    # rho_min = kwargs.get("rho_min", None)
+    # if rho_min is not None and 'V' in calcType :
+        # OutFunctional.potential[rho < rho_min] = 0.0
+    #-----------------------------------------------------------------------
 
     if split:
         return OutFunctionalDict

@@ -33,6 +33,44 @@ def LWTStress(
 ):
     pass
 
+def guess_kf_bound(kf, kfmin = None, kfmax = None, kftol = 1E-3, ke_kernel_saved = None):
+    if ke_kernel_saved is not None :
+        kfmin_prev = ke_kernel_saved['kfmin']
+        kfmax_prev = ke_kernel_saved['kfmax']
+    else :
+        kfmin_prev = None
+        kfmax_prev = None
+
+    if kfmin_prev is None :
+        kfmin_prev = 10
+    if kfmax_prev is None :
+        kfmax_prev = 1.0
+
+    kf_l = np.min(kf)
+    kf_r = np.max(kf)
+    if kfmin is None or kfmin > kfmin_prev:
+        kfmin = kfmin_prev
+    if kfmin > kf_l :
+        kfl = [1E-5, 1E-4, 5E-3, 1E-3, 5E-3, 1E-2, 5E-2, 0.1, 0.5, 1.0]
+        ratio = kf_l/kfmin
+        for i in range(len(kfl)-1, 0, -1):
+            if ratio > kfl[i] :
+                kfmin *= kfl[i]
+                break
+    if kfmin < kftol : kfmin = kftol
+
+    if kfmax is None :
+        kfmax = kfmax_prev
+    if kfmax < kf_r and kf_r > kfmax_prev :
+        dk = kf_r - kfmax
+        kfmax += (np.round(dk/0.5)+1) * 0.5
+
+    if ke_kernel_saved is not None :
+        ke_kernel_saved['kfmin'] = kfmin
+        ke_kernel_saved['kfmax'] = kfmax
+
+    kfBound = [kfmin, kfmax]
+    return kfBound
 
 def LWTPotentialEnergy(
     rho,
@@ -64,10 +102,13 @@ def LWTPotentialEnergy(
     # gamma = 1.0
     # rhomod = (0.5 * (rho **gamma + rho0 ** gamma)) ** (1.0/gamma) 
     # kf = 2.0 * (3.0 * np.pi ** 2 * rhomod) ** (1.0 / 3.0)
-    if kfmin is None or kfmax is None :
-        kfBound = [1e-3, 100.0]
-    else :
-        kfBound = [kfmin, kfmax]
+
+    ### HEG
+    if abs(np.max(kf) - np.min(kf)) < 1e-8:
+        return np.zeros_like(rho), 0.0
+
+    kfmin, kfmax = guess_kf_bound(kf, kfmin, kfmax, ke_kernel_saved = ke_kernel_saved)
+    kfBound = [kfmin, kfmax]
 
     # ----------------Test WT------------------------------------------------
     # kfBound = [kf0, kf0]
@@ -88,9 +129,6 @@ def LWTPotentialEnergy(
         kfMax = np.max(kf)
     else :
         kfMax = kfmax
-    ### HEG
-    if abs(kfMax - kfMin) < 1e-8:
-        return np.zeros_like(rho), 0.0
 
     if nsp is None:
         nsp = int(np.ceil(np.log(kfMax / kfMin) / np.log(ratio))) + 1
@@ -110,7 +148,7 @@ def LWTPotentialEnergy(
         kflists = np.asarray(kflists)
     kflists[0] -= savetol  # for numerical safe
     kflists[-1] += savetol  # for numerical safe
-    print('nsp', nsp, kfMax, kfMin, kf0, np.max(kflists))
+    print('nsp', nsp, kfMax, kfMin, kf0, np.max(kflists), np.min(kflists))
     # -----------------------------------------------------------------------
     kernel0 = np.empty_like(q)
     kernel1 = np.empty_like(q)
@@ -258,6 +296,7 @@ def LWTPotentialEnergy(
         factor[rho < 0] = 0.0
         pot1 *= factor
         pot2 *= factor
+    # print('ldw', ldw)
     #-----------------------------------------------------------------------
     ene = np.einsum("ijk, ijk ->", rhoAlpha, pot1) * rho.grid.dV
     #-----------------------------------------------------------------------

@@ -53,6 +53,32 @@ def vonWeizsackerPotential(rho, sigma=None, phi = None, lphi = False, **kwargs):
     #-----------------------------------------------------------------------
     return pot
 
+def vonWeizsackerPotentialDensity(rho, sigma=None, phi = None, lphi = False, **kwargs):
+    """
+    The von Weizsacker Potential (not finish)
+    """
+    #-----------------------------------------------------------------------
+    gg = rho.grid.get_reciprocal().gg
+    g = rho.grid.get_reciprocal().g
+    q = rho.grid.get_reciprocal().q
+    rho_g = rho.fft()
+    rho_grad = []
+    for i in range(3):
+        if sigma is None :
+            grho_g = g[i] * rho_g * 1j
+        else :
+            grho_g = g[i] * rho_g * np.exp(-q*(sigma)**2/4.0) * 1j
+        item = (grho_g).ifft(force_real=True)
+        rho_grad.append(item)
+    grad = (rho_grad[0] ** 2 + rho_grad[1] ** 2 + rho_grad[2] ** 2) / (rho * rho)
+    if sigma is None :
+        lapl_g = rho_g * gg
+    else :
+        lapl_g = rho_g *np.exp(-gg*(sigma)**2/4.0)*gg
+    lapl = lapl_g.ifft(force_real=True)/rho
+    results = grad * 0.125 - lapl * 0.25
+    pot = DirectField(grid=rho.grid, griddata_3d=results)
+    return pot
 
 def vonWeizsackerEnergy(rho, potential=None, sigma=None, **kwargs):
     """
