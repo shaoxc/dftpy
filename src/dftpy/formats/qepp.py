@@ -78,7 +78,12 @@ class PP(object):
                 # atoms.append(Atom(Zval=zv[ity], label=atm[
                 # ity], pos=tau, cell=grid, basis = 'Crystal'))
                 # ity], pos=tau * celldm[0], cell=grid))
-            atoms = Atom(Zval=Zval, label=label, pos=pos, cell=grid, basis="Crystal")
+            pos = np.asarray(pos)
+            if ibrav == 0 :
+                pos *= celldm[0]
+                atoms = Atom(Zval=Zval, label=label, pos=pos, cell=grid, basis="Cartesian")
+            else :
+                atoms = Atom(Zval=Zval, label=label, pos=pos, cell=grid, basis="Crystal")
 
             # self.atoms = Ions( nat, ntyp, atm, zv, tau*celldm[0], ityp, self.grid)
 
