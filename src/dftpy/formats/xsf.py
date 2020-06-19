@@ -7,8 +7,15 @@ from dftpy.system import System
 from dftpy.atom import Atom
 
 
-def read_xsf(infile, kind="All", full=False, pbc=True, **kwargs):
+def read_xsf(infile, kind="All", full=False, pbc=True, units='Angstrom', **kwargs):
     # http ://www.xcrysden.org/doc/XSF.html
+    if isinstance(units, str):
+        xsf_units = [units, units]
+    elif isinstance(units, list):
+        xsf_units = units
+    else :
+        raise AttributeError("!!!ERROR : Wrong type of the `units`")
+
     with open(infile, "r") as fr:
 
         def readline():
@@ -26,7 +33,7 @@ def read_xsf(infile, kind="All", full=False, pbc=True, **kwargs):
             for i in range(3):
                 l = list(map(float, fr.readline().split()))
                 lattice.append(l)
-            lattice = np.asarray(lattice) / LEN_CONV["Bohr"]["Angstrom"]
+            lattice = np.asarray(lattice) / LEN_CONV["Bohr"][xsf_units[0]]
             lattice = lattice.T  # cell = [a, b, c]
             line = readline()
 
@@ -43,7 +50,7 @@ def read_xsf(infile, kind="All", full=False, pbc=True, **kwargs):
                 label.append(line[0])
                 p = list(map(float, line[1:4]))
                 pos.append(p)
-            pos = np.asarray(pos) / LEN_CONV["Bohr"]["Angstrom"]
+            pos = np.asarray(pos) / LEN_CONV["Bohr"][xsf_units[0]]
             line = readline()
 
         if len(lattice) > 0 :
@@ -99,6 +106,7 @@ def read_xsf(infile, kind="All", full=False, pbc=True, **kwargs):
                     bound[i] = nrx[i]
             data = data[: bound[0], : bound[1], : bound[2]]
             nrx = bound.copy()
+        data *= LEN_CONV["Bohr"][xsf_units[1]] ** 3
 
         grid = DirectGrid(lattice=lattice, nr=nrx, units=None, full=full)
         plot = DirectField(grid=grid, griddata_3d=data, rank=1)
@@ -168,7 +176,7 @@ class XSF(object):
         if ndim < 2:
             return  # XSF format doesn't support one data grids
         val_per_line = 5
-        values = plot.get_values_flatarray(pad=1, order="F")
+        values = plot.get_values_flatarray(pad=1, order="F") / LEN_CONV["Bohr"][self.xsf_units] ** 3
 
         mywrite(fileout, "BEGIN_BLOCK_DATAGRID_{}D".format(ndim), True)
         mywrite(fileout, "{}d_datagrid_from_pbcpy".format(ndim), True)

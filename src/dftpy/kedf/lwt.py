@@ -40,6 +40,8 @@ def guess_kf_bound(kf, kfmin = None, kfmax = None, kftol = 1E-3, ke_kernel_saved
     else :
         kfmin_prev = None
         kfmax_prev = None
+    # if kfmin is not None and kfmax is not None :
+        # return [kfmin, kfmax]
 
     kf_l = np.min(kf)
     kf_r = np.max(kf)

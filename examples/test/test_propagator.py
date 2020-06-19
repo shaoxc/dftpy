@@ -12,6 +12,9 @@ from dftpy.field import DirectField, ReciprocalField
 from dftpy.grid import DirectGrid, ReciprocalGrid
 from dftpy.system import System
 from dftpy.formats.xsf import read_xsf
+from dftpy.constants import LEN_CONV
+ang2bohr = LEN_CONV["Angstrom"]["Bohr"]
+
 
 class TestPropagator(unittest.TestCase):
 
@@ -31,6 +34,7 @@ class TestPropagator(unittest.TestCase):
     def test_call(self):
         dftpy_data_path = os.environ.get('DFTPY_DATA_PATH')
         sys = read_xsf(dftpy_data_path+'/GaAs_random.xsf',full=True)
+        sys.field *= ang2bohr ** 3
 
         KE = FunctionalClass(type='KEDF', name='TF')
         XC = FunctionalClass(type='XC', name='LDA')
