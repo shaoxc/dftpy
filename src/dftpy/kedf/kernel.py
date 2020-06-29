@@ -367,25 +367,29 @@ def MGPOmegaE(q, Ne=1, lumpfactor=0.2):
     """
     if isinstance(lumpfactor, list):
         a = lumpfactor[0]
-        b = lumpfactor[1]
-        c = lumpfactor[2]
+        if len(lumpfactor) > 1 :
+            b = lumpfactor[1]
+        else :
+            b = a
+        if len(lumpfactor) > 2 :
+            c = lumpfactor[2]
+        else :
+            c = 1.0
     else:
         a = float(lumpfactor / Ne ** (2.0 / 3.0))
         b = a
         c = 1.0
     q[0, 0, 0] = 1.0
     gg = q ** 2
-    # corr = 4 * np.pi * sp.erf(q) ** 2 * a * np.exp(-gg * b) / gg
-    # corr = 4 * np.pi * sp.erf(c * q) ** 2* a * np.exp(-gg * b) / gg
-    corr = 4 * np.pi * sp.erf(c * q) ** 2* a * np.exp(-gg * b) / gg + 0.001*np.exp(-0.1*(gg-1.5)**2)
+    # corr = 4 * np.pi * sp.erf(c * q) ** 4 * a * np.exp(-gg * b) / gg
+    corr = 4 * np.pi * sp.erf(c * gg) ** 2 * a * np.exp(-gg * b) / gg
+    # corr = 4 * np.pi * sp.erf(c * q) ** 2* a * np.exp(-gg * b) / gg + 0.001*np.exp(-0.1*(gg-1.5)**2)
     q[0, 0, 0] = 0.0
     corr[0, 0, 0] = 0.0
     # Same as the formular in MGP
     corr /= 1.2
     return corr
 
-
-# -----------------------------------------------------------------------
 def SmoothKernel(q, rho0, x=1.0, y=1.0, alpha=5.0 / 6.0, beta=5.0 / 6.0):
     """ 
     The WT Kernel

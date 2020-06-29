@@ -474,7 +474,8 @@ class ReadPseudo(object):
             else:
                 raise Exception("Pseudopotential not supported")
 
-    def _real2recip(self, r, v, zval, MaxPoints=15000, Gmax=30):
+    @staticmethod
+    def _real2recip(r, v, zval, MaxPoints=15000, Gmax=30):
         gp = np.linspace(start=0, stop=Gmax, num=MaxPoints)
         vp = np.empty_like(gp)
         dr = np.empty_like(r)
@@ -487,7 +488,8 @@ class ReadPseudo(object):
         vp[0] = (4.0 * np.pi) * np.sum(vr)
         return gp, vp
 
-    def _recip2real(self, gp, vp, MaxPoints=1001, Rmax=10, r=None):
+    @staticmethod
+    def _recip2real(gp, vp, MaxPoints=1001, Rmax=10, r=None):
         if r is None :
             r = np.linspace(0, Rmax, MaxPoints)
         v = np.empty_like(r)
@@ -499,7 +501,8 @@ class ReadPseudo(object):
             v[i] = (0.5 / np.pi ** 2) * np.sum(sp.spherical_jn(0, r[i] * gp) * vr)
         return r, v
 
-    def _vloc2rho(self, r, v, r2 = None):
+    @staticmethod
+    def _vloc2rho(r, v, r2 = None):
         if r2 is None : r2 = r
         tck = splrep(r, v)
         dv1 = splev(r2[1:], tck, der = 1)

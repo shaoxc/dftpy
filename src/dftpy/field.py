@@ -539,6 +539,8 @@ class ReciprocalField(BaseField):
     def __new__(cls, grid, memo="", rank=1, griddata_F=None, griddata_C=None, griddata_3d=None, cplx=False):
         if not isinstance(grid, ReciprocalGrid):
             raise TypeError("the grid argument is not an instance of ReciprocalGrid")
+        if griddata_F is None and griddata_C is None and griddata_3d is None :
+            griddata_3d = np.zeros(grid.nr, dtype=np.complex128)
         obj = super().__new__(
             cls, grid, memo="", rank=rank, griddata_F=griddata_F, griddata_C=griddata_C, griddata_3d=griddata_3d
         )

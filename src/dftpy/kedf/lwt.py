@@ -297,11 +297,18 @@ def LWTPotentialEnergy(
         pot2 = pot1.copy()
     #-----------------------------------------------------------------------
     if ldw is not None :
-        factor = np.abs(rho)** ldw /(np.max(rho) ** ldw)
+        rhov = np.max(rho)
+        factor = np.abs(rho)** ldw /(rhov ** ldw)
+        #-----------------------------------------------------------------------
+        mask = rho < 1E-6
+        ld = max(0.1, ldw)
+        factor[mask] = np.abs(rho[mask])** ld /(rhov ** ld)
         factor[rho < 0] = 0.0
+        #-----------------------------------------------------------------------
         pot1 *= factor
         pot2 *= factor
-    # print('ldw', ldw)
+        pot3 *= factor
+    print('ldw', ldw)
     #-----------------------------------------------------------------------
     ene = np.einsum("ijk, ijk ->", rhoAlpha, pot1) * rho.grid.dV
     #-----------------------------------------------------------------------
@@ -311,6 +318,7 @@ def LWTPotentialEnergy(
     pot3 *= (kf / 3.0) * rhoAlpha1
     pot1 += pot2 + pot3
     pot = pot1
+    print('lwt', ene)
 
     return pot, ene
 

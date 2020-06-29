@@ -337,6 +337,22 @@ def spacing2ecut(spacing):
 def ecut2spacing(ecut):
     return np.sqrt(np.pi ** 2 / ecut * 0.5)
 
+def ecut2nr(ecut, lattice, optfft = True, spacing = None):
+    spacings = np.ones(3)
+    optffts = np.ones(3, dtype = 'bool')
+    optffts[:] = optfft
+    nr = np.zeros(3, dtype = 'int32')
+    if spacing is None :
+        spacings[:] = ecut2spacing(ecut)
+    else :
+        spacings[:] = spacing
+    metric = np.dot(lattice.T, lattice)
+    for i in range(3):
+        nr[i] = int(np.sqrt(metric[i, i])/spacings[i])
+        if optffts[i] :
+            nr[i] = bestFFTsize(nr[i])
+    return nr
+
 
 class FDcoef(object):
     def __init__(self, deriv=2, order=4, **kwargs):
@@ -442,3 +458,4 @@ def quartic_interpolation(f, dx):
     else :
         raise AttributeError("Error : Not implemented yet")
     return results
+

@@ -86,7 +86,7 @@ def GGAStress(rho, functional="LKT", energy=None, potential=None, **kwargs):
             stress[j, i] = stress[i, j]
 
 
-def GGAFs(s, functional="LKT", calcType=["E","V"], params=None, **kwargs):
+def GGAFs(s, functional="LKT", calcType=["E","V"], params=None, gga_remove_vw = None, **kwargs):
     """
     ckf = (3\pi^2)^{1/3}
     cTF = (3/10) * (3\pi^2)^{2/3} = (3/10) * ckf^2
@@ -655,7 +655,18 @@ def GGAFs(s, functional="LKT", calcType=["E","V"], params=None, **kwargs):
         if "V" in calcType :
             dFds2[:] = 5.0 / 3.0 * params[1] * (2.0/Fb - 2.0 * s2 * params[2]/(Fb * Fb))
             dFds2 /= tkf0 ** 2
-    
+    #-----------------------------------------------------------------------
+    if gga_remove_vw is not None and gga_remove_vw :
+        if isinstance(gga_remove_vw, (int, float)):
+            pa = float(gga_remove_vw)
+        else :
+            pa = 1.0
+        ss = s / tkf0
+        s2 = ss * ss
+        F -= 5.0 / 3.0 * s2 * pa
+        if "V" in calcType:
+            dFds2 -= 10.0 / 3.0 / tkf0 ** 2 * pa
+
     return F, dFds2
 
 

@@ -1,5 +1,6 @@
 # Collection of Kinetic Energy Density Functionals
 import numpy as np
+import copy
 from dftpy.field import DirectField
 from dftpy.kedf.tf import *
 from dftpy.kedf.vw import *
@@ -57,18 +58,16 @@ class KEDF:
     def __call__(self, density, calcType=["E","V"], name=None, **kwargs):
         if name is None :
             name = self.name
-        self.kwargs.update(kwargs)
-        kwargs = self.kwargs
         return self.compute(density, name=name, calcType=calcType, **kwargs)
 
     def compute(self, density, calcType=["E","V"], name=None, split = False, **kwargs):
         if name is None :
             name = self.name
-        self.kwargs.update(kwargs)
-        kwargs = self.kwargs
+        ke_kwargs = copy.deepcopy(self.kwargs)
+        ke_kwargs.update(kwargs)
         functional = None
         for item in name.split('+'):
-            out = KEDFunctional(density, name = item, calcType = calcType, ke_kernel_saved = self.ke_kernel_saved, **kwargs)
+            out = KEDFunctional(density, name = item, calcType = calcType, split = split, ke_kernel_saved = self.ke_kernel_saved, **ke_kwargs)
             if functional is None :
                 functional = out
             else :
