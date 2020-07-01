@@ -48,12 +48,20 @@ def calc_j(psi, N=1):
 def grid_map_index(nr, nr2, full = False):
     nr_coarse = np.array(nr, dtype = int)
     nr_fine = np.array(nr2, dtype = int)
+    lfine = True
     if np.all(nr_fine < nr_coarse):
         nr_coarse, nr_fine = nr_fine, nr_coarse
+        lfine = False
     elif np.all(nr_fine > nr_coarse):
         pass
+    elif np.prod(nr_fine) > np.prod(nr_coarse):
+        pass
+        # print('!WARN : grid {} and {} are similar, here set the second grid as fine grid'.format(nr, nr2))
     else :
-        print('!WARN : Two grids are similar, here set the second grid as fine grid')
+        lfine = False
+        nr_coarse, nr_fine = nr_fine, nr_coarse
+        # print('!WARN : grid {} and {} are similar, here set the first grid as fine grid'.format(nr, nr2))
+    nr_coarse = np.minimum(nr_fine, nr_coarse)
     dnr = np.ones(3, dtype = int)
     dnr[:] = nr_coarse[:3]
     if full :
@@ -64,28 +72,45 @@ def grid_map_index(nr, nr2, full = False):
     for i in range(3):
         mask = index[i] > dnr[i]
         index[i][mask] += nr_fine[i]-nr_coarse[i]
-    return index
+    return index, lfine
 
-def grid_map_data(data, nr2, direct = True, index = None):
+def grid_map_data(data, nr = None, direct = True, index = None, grid = None):
     if hasattr(data, 'fft'):
         value = data.fft()
     else :
         value = data
-    nr = np.array(value.shape, dtype = int)
-    nr2_g = np.array(nr2, dtype = int)
-    nr2_g[2] = nr2_g[2]//2+1
-    if index is None :
-        index = grid_map_index(nr, nr2_g)
-    grid = ReciprocalGrid(value.grid.lattice, nr2)
-    value2= ReciprocalField(grid)
-    if np.all(nr2_g < nr):
-        value2[:] = value[index[0], index[1], index[2]].reshape(nr2_g)
+    nr1_g = np.array(value.shape, dtype = int)
+    if grid is not None :
+        if not isinstance(grid, ReciprocalGrid):
+            grid2 = grid.get_reciprocal()
+        else :
+            grid2 = grid
+        nr2_g = grid2.nr
     else :
-        value2[index[0], index[1], index[2]] = value.ravel()
+        nr2_g = np.array(nr, dtype = int)
+        nr2_g[2] = nr2_g[2]//2+1
+        grid2 = ReciprocalGrid(value.grid.lattice, nr)
+
+    value2= ReciprocalField(grid2)
+
+    index, lfine = grid_map_index(nr1_g, nr2_g)
+
+    bd = np.minimum(nr1_g, nr2_g)
+    if lfine :
+        value2[index[0], index[1], index[2]] = value[:bd[0], :bd[1], :bd[2]].ravel()
+    else :
+        value2[:bd[0], :bd[1], :bd[2]] = value[index[0], index[1], index[2]].reshape(nr2_g)
+
     if direct :
         results = value2.ifft(force_real=True)
     else :
         results = value2
+
+    if grid is not None :
+        if isinstance(grid, ReciprocalGrid) and not direct :
+            results.grid = grid
+        elif not isinstance(grid, ReciprocalGrid) and direct :
+            results.grid = grid
     return results
 
 

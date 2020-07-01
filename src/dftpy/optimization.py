@@ -302,12 +302,13 @@ class Optimization(AbstractOptimization):
         # -----------------------------------------------------------------------
         EnergyHistory = []
         if guess_phi is None :
-            # phi = np.sqrt(rho)
             phi = rho.copy()
             mask = rho > 0
             mask2 = np.invert(mask)
             phi[mask] = np.sqrt(rho[mask])
             phi[mask2] = 1E-300
+            factor = np.sqrt(np.sum(rho)/np.sum(phi * phi))
+            phi *= factor
         else :
             phi = guess_phi.copy()
         rho[:] = phi * phi
