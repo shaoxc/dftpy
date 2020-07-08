@@ -1,6 +1,6 @@
 import numpy as np
 import scipy.special as sp
-from scipy import ndimage
+from scipy import ndimage, interpolate
 from scipy.optimize import minpack2
 from scipy import optimize as sopt
 from dftpy.constants import FFTLIB
@@ -215,32 +215,69 @@ def PowerInt(x, numerator, denominator=1):
     return y
 
 
-def bestFFTsize(N):
+def bestFFTsize(N, max_prime = 13, scale = 0.99, even = True, prime_factors = None):
     """
     http ://www.fftw.org/fftw3_doc/Complex-DFTs.html#Complex-DFTs
     "FFTW is best at handling sizes of the form 2^a 3^b 5^c 7^d 11^e 13^f,  where e+f is either 0 or 1,  and the other exponents are arbitrary."
     """
-    a = int(np.log2(N)) + 2
-    b = int(np.log(N) / np.log(3)) + 2
-    c = int(np.log(N) / np.log(5)) + 2
-    d = int(np.log(N) / np.log(7)) + 2
-    even = True
+    prime_factors_multi = [2, 3, 5, 7]
+    prime_factors_one = [11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97]
+
+    if prime_factors is None :
+        prime_factors = prime_factors_multi
+    else :
+        for item in prime_factors :
+            if item not in prime_factors_multi :
+                prime_factors_one.insert(0, item)
+
+    a = int(np.ceil(np.log2(N))) + 1
+    b = int(np.ceil(np.log(N) / np.log(3))) + 1
+    c = int(np.ceil(np.log(N) / np.log(5))) + 1
+    d = int(np.ceil(np.log(N) / np.log(7))) + 1
+
+    if 3 not in prime_factors :
+        b = 1
+    if 5 not in prime_factors :
+        c = 1
+    if 7 not in prime_factors :
+        d = 1
+
     if even:
-        mgrid = np.mgrid[1:a, :b, :c, :d].reshape(4, -1)
+        istart = 1
     else:
-        mgrid = np.mgrid[:a, :b, :c, :d].reshape(4, -1)
-    arr0 = 2 ** mgrid[0] * 3 ** mgrid[1] * 5 ** mgrid[2] * 7 ** mgrid[3]
+        istart = 0
+
+    if max_prime == 2 :
+        mgrid = np.arange(istart, a).reshape(1, -1)
+        arr0 = 2 ** mgrid[0]
+    elif max_prime == 3 :
+        mgrid = np.mgrid[istart:a, :b].reshape(2, -1)
+        arr0 = 2 ** mgrid[0] * 3 ** mgrid[1]
+    elif max_prime == 5 :
+        mgrid = np.mgrid[istart:a, :b, :c].reshape(3, -1)
+        arr0 = 2 ** mgrid[0] * 3 ** mgrid[1] * 5 ** mgrid[2]
+    elif max_prime > 5 :
+        mgrid = np.mgrid[istart:a, :b, :c, :d].reshape(4, -1)
+        arr0 = 2 ** mgrid[0] * 3 ** mgrid[1] * 5 ** mgrid[2] * 7 ** mgrid[3]
+
     if N < 100:
-        arr1 = arr0[np.logical_and(arr0 > N / 14, arr0 < 2 * N)]
+        arr1 = arr0[np.logical_and(arr0 > N / (max_prime + 1), arr0 < 2 * N)]
     else:
-        arr1 = arr0[np.logical_and(arr0 > N / 14, arr0 < 1.2 * N)]
+        arr1 = arr0[np.logical_and(arr0 > N / (max_prime + 1), arr0 < 1.2 * N)]
+
     arrAll = []
     arrAll.extend(arr1)
-    arrAll.extend(arr1 * 11)
-    arrAll.extend(arr1 * 13)
+    for item in prime_factors_one :
+        if max_prime < item :
+            continue
+        else :
+            arrAll.extend(arr1 * item)
+
     arrAll = np.asarray(arrAll)
-    # bestN = np.min(arrAll[arrAll > N-1])
-    bestN = np.min(arrAll[arrAll > 0.99 * N])
+    if scale is None :
+        bestN = np.min(arrAll[arrAll > N-1])
+    else :
+        bestN = np.min(arrAll[arrAll > np.ceil(scale * N) - 1])
     return bestN
 
 
@@ -257,9 +294,9 @@ def interpolation_3d(arr, nr_new, interp="map"):
         new_values[np.isnan(new_values)] = 0.0
     else:
         values = np.pad(arr, ((0, 1), (0, 1), (0, 1)), mode="wrap")
-        x0 = np.linspace(0, 1, self.grid.nr[0] + 1, endpoint=True)
-        y0 = np.linspace(0, 1, self.grid.nr[1] + 1, endpoint=True)
-        z0 = np.linspace(0, 1, self.grid.nr[2] + 1, endpoint=True)
+        x0 = np.linspace(0, 1, nr[0] + 1, endpoint=True)
+        y0 = np.linspace(0, 1, nr[1] + 1, endpoint=True)
+        z0 = np.linspace(0, 1, nr[2] + 1, endpoint=True)
         X0, Y0, Z0 = np.meshgrid(x0, y0, z0, indexing="ij")
         points = np.c_[X0.ravel(), Y0.ravel(), Z0.ravel()]
         new_values = interpolate.griddata(points, values.ravel(), (X, Y, Z), method="linear")
@@ -337,7 +374,7 @@ def spacing2ecut(spacing):
 def ecut2spacing(ecut):
     return np.sqrt(np.pi ** 2 / ecut * 0.5)
 
-def ecut2nr(ecut, lattice, optfft = True, spacing = None):
+def ecut2nr(ecut, lattice, optfft = True, spacing = None, **kwargs):
     spacings = np.ones(3)
     optffts = np.ones(3, dtype = 'bool')
     optffts[:] = optfft
@@ -348,9 +385,9 @@ def ecut2nr(ecut, lattice, optfft = True, spacing = None):
         spacings[:] = spacing
     metric = np.dot(lattice.T, lattice)
     for i in range(3):
-        nr[i] = int(np.sqrt(metric[i, i])/spacings[i])
+        nr[i] = np.ceil(np.sqrt(metric[i, i])/spacings[i])
         if optffts[i] :
-            nr[i] = bestFFTsize(nr[i])
+            nr[i] = bestFFTsize(nr[i], **kwargs)
     return nr
 
 

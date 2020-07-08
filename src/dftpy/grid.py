@@ -173,7 +173,7 @@ class DirectGrid(BaseGrid, DirectCell):
                 self._nrG = self.nr.copy()
                 self._nrG[-1] = self._nrG[-1] // 2 + 1
 
-    def get_reciprocal(self, scale=[1.0, 1.0, 1.0], convention="physics"):
+    def get_reciprocal(self, scale=None, convention="physics"):
         """
             Returns a new ReciprocalCell, the reciprocal cell of self
             The ReciprocalCell is scaled properly to include
@@ -190,7 +190,9 @@ class DirectGrid(BaseGrid, DirectCell):
             Note2: We have to use 'Bohr' units to avoid changing hbar value
         """
         # TODO define in constants module hbar value for all units allowed
-        if self.RPgrid is None:
+        if self.RPgrid is None or scale is None:
+            if scale is None :
+                scale=[1.0, 1.0, 1.0]
             scale = np.array(scale)
             fac = 1.0
             if convention == "physics" or convention == "p":
@@ -201,7 +203,7 @@ class DirectGrid(BaseGrid, DirectCell):
             # bg = bg/LEN_CONV["Bohr"][self.units]
             reciprocal_lat = np.einsum("ij,j->ij", bg, scale)
 
-            self.RPgrid = ReciprocalGrid(lattice=reciprocal_lat, nr=self.nr, units=self.units, full=self.full)
+            self.RPgrid = ReciprocalGrid(lattice=reciprocal_lat, nr=self.nr, units=self.units, full=self.full, uppergrid=self)
         return self.RPgrid
 
     def get_Rtable(self, rcut=10):
@@ -303,7 +305,7 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
             self._gg = gg
         return self._gg
 
-    def get_direct(self, scale=[1.0, 1.0, 1.0], convention="physics"):
+    def get_direct(self, scale= None, convention="physics"):
         """
             Returns a new DirectCell, the direct cell of self
             The DirectCell is scaled properly to include
@@ -320,7 +322,9 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
             Note2: We have to use 'Bohr' units to avoid changing hbar value
         """
         # TODO define in constants module hbar value for all units allowed
-        if self.Dgrid is None:
+        if self.Dgrid is None or scale is None:
+            if scale is None :
+                scale=[1.0, 1.0, 1.0]
             scale = np.array(scale)
             fac = 1.0
             if convention == "physics" or convention == "p":
@@ -328,7 +332,7 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
             at = np.linalg.inv(self.lattice.T * fac)
             # at = at*LEN_CONV["Bohr"][self.units]
             direct_lat = np.einsum("ij,j->ij", at, 1.0 / scale)
-            self.Dgrid = DirectGrid(lattice=direct_lat, nr=self.nrR, units=self.units, full=self.full)
+            self.Dgrid = DirectGrid(lattice=direct_lat, nr=self.nrR, units=self.units, full=self.full, uppergrid=self)
         return self.Dgrid
 
     def _calc_grid_points(self, full=None):
