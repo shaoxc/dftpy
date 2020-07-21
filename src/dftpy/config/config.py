@@ -6,11 +6,7 @@ from dftpy.config.config_entry import ConfigEntry
 
 
 def config_map(mapping_function, premap_conf):
-
-    def section_map(sectiondict):
-        return dict(zip(sectiondict, map(mapping_function, sectiondict.values())))
-
-    return dict(zip(premap_conf, map(section_map, premap_conf.values())))
+    return dict(zip(premap_conf, map(mapping_function, premap_conf.values())))
 
 
 def readJSON(JSON_file):
@@ -20,21 +16,34 @@ def readJSON(JSON_file):
         conf_JSON = json.load(f)
 
     def map_JSON_ConfigEntry(value):
-        return ConfigEntry(**value)
+        if 'type' in value and 'default' in value :
+            return ConfigEntry(**value)
+        else :
+            return config_map(map_JSON_ConfigEntry, value)
 
-    return config_map(map_JSON_ConfigEntry, conf_JSON)
+    conf = config_map(map_JSON_ConfigEntry, conf_JSON)
+    return conf
 
 
 def DefaultOptionFromEntries(conf):
 
     def map_ConfigEntry_default(config_entry):
-        return config_entry.default
+        if isinstance(config_entry, ConfigEntry):
+            return config_entry.default
+        else :
+            return config_map(map_ConfigEntry_default, config_entry)
 
     results = config_map(map_ConfigEntry_default, conf)
     results['CONFDICT'] = copy.deepcopy(conf)
     return results
     # return config_map(map_ConfigEntry_default, conf)
 
+
+def default_json():
+    import os
+    fileJSON = os.path.join(os.path.dirname(__file__), 'configentries.json')
+    configentries = readJSON(fileJSON)
+    return configentries
 
 def DefaultOption():
     import os
@@ -66,8 +75,8 @@ def ConfSpecialFormat(conf):
         if len(conf["KEDF"]["lumpfactor"]) == 1:
             conf["KEDF"]["lumpfactor"] = conf["KEDF"]["lumpfactor"][0]
 
-    for key in conf["PP"]:
-        conf["PP"][key.capitalize()] = conf["PP"][key]
+    # for key in conf["PP"]:
+        # conf["PP"][key.capitalize()] = conf["PP"][key]
 
     if conf["MATH"]["twostep"] and conf["MATH"]["multistep"] == 1 :
         conf["MATH"]["multistep"] = 2
@@ -120,7 +129,7 @@ def ReadConf(infile):
             if section != 'PP' and key not in conf[section]:
                 print('!WARN : "%s.%s" not in the dictionary' % (section, key))
             elif section == 'PP':
-                conf['PP'][key.capitalize()] = config.get(section, key) 
+                conf['PP'][key.capitalize()] = config.get(section, key)
             else:
                 conf[section][key] = config.get(section, key)
     conf = OptionFormat(conf)

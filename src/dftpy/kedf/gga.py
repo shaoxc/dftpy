@@ -647,7 +647,7 @@ def GGAFs(s, functional="LKT", calcType=["E","V"], params=None, gga_remove_vw = 
 
     elif functional == "STV" :
         if not params:
-            params = [1.0, 1.0, 0.1]
+            params = [1.0, 1.0, 0.01]
         ss = s / tkf0
         s2 = ss * ss
         Fb = 1 + params[2] * s2

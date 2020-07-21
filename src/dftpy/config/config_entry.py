@@ -1,5 +1,7 @@
 from json import JSONEncoder
 import re
+import numpy as np
+import ast
 
 try:
     from numexpr import evaluate
@@ -27,7 +29,11 @@ def format_cstr(expression):
     return expression.capitalize()
 
 def format_intlist(expression):
-    return list(map(int, expression.split()))
+    if ':' in expression :
+        l = map(int,expression.split(':'))
+        return np.arange(*l)
+    else :
+        return list(map(int, expression.split()))
 
 def format_floatlist(expression):
     return list(map(format_float, expression.split()))
@@ -49,8 +55,11 @@ def format_direction(expression):
     else:
         return int(expression)
 
-class ConfigEntry(object):
+def format_cdict(expression):
+    vk = ast.literal_eval(expression)
+    return {v.capitalize():k for v, k in vk.items()}
 
+class ConfigEntry(object):
 
     def __init__(self, type, default=None, comment='', options='', **kwargs):
         self.type = type
@@ -59,7 +68,6 @@ class ConfigEntry(object):
         self.options = options
         if self.type == 'bool' and self.options == '':
             self.options = 'True, False'
-
 
     def format(self, string):
         format_dict = {
@@ -73,6 +81,7 @@ class ConfigEntry(object):
             "strlist": format_strlist,
             "cstrlist": format_cstrlist,
             "direction": format_direction,
+            "cdict": format_cdict,
         }
         expression = re.split('#|!', string)[0]
         return format_dict[self.type](expression)
