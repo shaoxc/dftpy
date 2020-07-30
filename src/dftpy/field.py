@@ -84,14 +84,16 @@ class BaseField(np.ndarray):
             #clean saved fft_data
             self._fft_data = None
         else :
-            self._fft_data = getattr(obj, "fft_data", None)
+            self._fft_data = getattr(obj, "_fft_data", None)
 
     @property
     def fft_data(self):
         if self._fft_data is None :
             return None
         else :
-            return self._fft_data.copy()
+            result = self._fft_data.copy()
+            result._fft_data = self
+            return result
 
     def __array_wrap__(self, obj, context=None):
         """wrap it up"""
@@ -219,7 +221,7 @@ class DirectField(BaseField):
         reciprocal_self = self.fft()
         imag = 0 + 1j
         nr = 3, *reciprocal_self.grid.nr
-        grad_g = np.empty(nr, dtype=complex)
+        grad_g = np.empty(nr, dtype='complex128')
         if ipol is None:
             # FFT(\grad A) = i \vec(G) * FFT(A)
             grad_g = (
@@ -249,7 +251,7 @@ class DirectField(BaseField):
         reciprocal_self = self.fft()
         imag = 0 + 1j
         # nr = 3, *reciprocal_self.grid.nr
-        # grad_g = np.empty(nr, dtype=complex)
+        # grad_g = np.empty(nr, dtype='complex128')
         if ipol is None:
             # FFT(\grad A) = i \vec(G) * FFT(A)
             grad_g = reciprocal_self.grid.g * (reciprocal_self * imag)
@@ -321,6 +323,7 @@ class DirectField(BaseField):
 
     def fft(self):
         if self.fft_data is not None :
+            # print('Use saved fft_data', id(self))
             return self.fft_data
         TimeData.Begin("FFT")
         """ Implements the Discrete Fourier Transform
@@ -346,7 +349,7 @@ class DirectField(BaseField):
         if self.rank == 1:
             griddata_3d = self.fft_object(self) * self.grid.dV
         else:
-            griddata_3d = np.empty(nr, dtype=complex)
+            griddata_3d = np.empty(nr, dtype='complex128')
             for i in range(self.rank):
                 griddata_3d[i] = self.fft_object(self[i]) * self.grid.dV
         TimeData.End("FFT")
@@ -637,8 +640,8 @@ class ReciprocalField(BaseField):
         """
         Implements the Inverse Discrete Fourier Transform
         """
-        if self.fft_data is not None :
-            return self.fft_data
+        # if self.fft_data is not None :
+            # return self.fft_data
         TimeData.Begin("InvFFT")
         if not self.cplx and np.all(self.grid.nr == self.grid.nrR):  # Can only use numpy.fft
             self.ifft_object = np.fft.ifftn
@@ -666,10 +669,13 @@ class ReciprocalField(BaseField):
             if FFTLIB == "numpy":
                 griddata_3d = self.ifft_object(self, s=self.grid.nrR) / direct_grid.dV
             else:
+                # print('summmifft1', self[0, 0, 0])
                 griddata_3d = self.ifft_object(self) / direct_grid.dV
+                # print('summmifft2', self[0, 0, 0])
+            # stop
         else:
             if self.cplx or np.all(self.grid.nr == self.grid.nrR):  # Can only use numpy.fft
-                griddata_3d = np.empty(nr, dtype="complex")
+                griddata_3d = np.empty(nr, dtype="complex128")
             else:
                 griddata_3d = np.empty(nr)
             for i in range(self.rank):
@@ -686,9 +692,11 @@ class ReciprocalField(BaseField):
         if force_real:
             griddata_3d = np.real(griddata_3d)
         TimeData.End("InvFFT")
-        fft_data=DirectField(grid=direct_grid, memo=self.memo, rank=self.rank, griddata_3d=griddata_3d, cplx=self.cplx)
-        self._fft_data = fft_data
-        return self.fft_data
+        fft_data=DirectField(grid=direct_grid, memo=self.memo, rank=self.rank, griddata_3d=griddata_3d, cplx=self.cplx, fft_data=self)
+        # fft_data=DirectField(grid=direct_grid, memo=self.memo, rank=self.rank, griddata_3d=griddata_3d, cplx=self.cplx)
+        # self._fft_data = fft_data
+        # return self.fft_data
+        return fft_data
 
     @property
     def cplx(self):

@@ -11,6 +11,9 @@ if FFTLIB == "pyfftw":
     print('threads', pyfftw.config.NUM_THREADS)
     """
     import pyfftw
+    FFTWObj = pyfftw.FFTW
+else :
+    FFTWObj = object
 
 
 # Global variables
@@ -152,6 +155,25 @@ def Brent(func, alpha0=None, brack=(0.0, 1.0), tol=1e-8, full_output=1):
     alpha1, x1, _, i = sopt.brent(f, alpha0, brack=brack, tol=tol, full_output=full_output)
     return alpha1, x1, None, "CONV", i, func(alpha1)
 
+class pyfftwFFTW(FFTWObj):
+    '''
+    https://github.com/pyFFTW/pyFFTW/issues/139
+    '''
+    def __new__(cls, arr, out, *args, **kwargs):
+        obj = super().__new__(cls, arr, out, *args, **kwargs)
+        obj.arr = arr
+        obj.out = out
+        return obj
+
+    def __call__(self, input_array, *args, **kwargs):
+        '''
+        Here, copy the array into the input_array of FFTW instance. It takes some time, but safe.
+        There may be a better way.
+        '''
+        value = self.arr
+        value[:] = input_array
+        results = super().__call__(value, *args, **kwargs)
+        return results
 
 def PYfft(grid, cplx=False, threads=1):
     global FFT_SAVE
@@ -167,7 +189,7 @@ def PYfft(grid, cplx=False, threads=1):
                 nrc = grid.nrG
                 rA = pyfftw.empty_aligned(tuple(nr), dtype="float64")
                 cA = pyfftw.empty_aligned(tuple(nrc), dtype="complex128")
-            fft_object = pyfftw.FFTW(
+            fft_object = pyfftwFFTW(
                 rA, cA, axes=(0, 1, 2), flags=("FFTW_MEASURE",), direction="FFTW_FORWARD", threads=threads
             )
             FFT_SAVE["FFT_Grid"][cplx] = nr
@@ -189,7 +211,7 @@ def PYifft(grid, cplx=False, threads=1):
                 nrc = grid.nr
                 rA = pyfftw.empty_aligned(tuple(nr), dtype="float64")
                 cA = pyfftw.empty_aligned(tuple(nrc), dtype="complex128")
-            fft_object = pyfftw.FFTW(
+            fft_object = pyfftwFFTW(
                 cA, rA, axes=(0, 1, 2), flags=("FFTW_MEASURE",), direction="FFTW_BACKWARD", threads=threads
             )
             FFT_SAVE["IFFT_Grid"][cplx] = nr

@@ -161,7 +161,7 @@ def LWTPotentialEnergy(
     kernelDeriv1 = np.empty_like(q)
     Rmask = np.empty_like(rho)
     pot1 = np.zeros_like(rho)
-    # pot2G = np.zeros_like(q, dtype = 'complex')
+    # pot2G = np.zeros_like(q, dtype = 'complex128')
     pot2G = None
     pot3 = np.zeros_like(rho)
     # pot4 = np.zeros_like(rho)

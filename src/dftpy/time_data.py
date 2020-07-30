@@ -43,7 +43,14 @@ class TimeObj(object):
     def output(self, config=None):
         print(format("Time information", "-^80"))
         print("{:28s}{:24s}{:16s}{:24s}".format("Label", "Cost(s)", "Number", "Avg. Cost(s)"))
-        if config and config["OUTPUT"]["time"]:
+        lprint = False
+        if config :
+            if isinstance(config, dict):
+                if not config["OUTPUT"]["time"]:
+                    lprint = False
+            else :
+                lprint = True
+        if lprint :
             for key, cost in sorted(self.cost.items(), key=lambda d: d[1]):
                 print("{:28s}{:<24.4f}{:<16d}{:<24.4f}".format(key, cost, self.number[key], cost/self.number[key]))
         else:
