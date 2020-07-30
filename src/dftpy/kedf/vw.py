@@ -30,16 +30,17 @@ def vonWeizsackerPotential(rho, sigma=None, phi = None, lphi = False, **kwargs):
     """
     #-----------------------------------------------------------------------
     tol = 1E-30
-    mask = rho > 0
-    mask2 = np.invert(mask)
-    rho_saved = rho[mask2]
-    rho[mask2] = tol
+    # mask = rho > 0
+    # mask2 = np.invert(mask)
+    # rho_saved = rho[mask2]
+    # rho[mask2] = tol
+    rhom = np.abs(rho)
     #-----------------------------------------------------------------------
     gg = rho.grid.get_reciprocal().gg
     if lphi and phi is not None :
         sq_dens = phi
     else :
-        sq_dens = np.sqrt(rho)
+        sq_dens = np.sqrt(rhom)
     if sigma is None :
         n2_sq_dens = sq_dens.fft() * gg
     else :
@@ -48,9 +49,6 @@ def vonWeizsackerPotential(rho, sigma=None, phi = None, lphi = False, **kwargs):
     a *= 0.5
     sq_dens[np.abs(sq_dens) < tol] = tol # for safe
     pot = DirectField(grid=rho.grid, griddata_3d=np.divide(a, sq_dens, out=a))
-    #-----------------------------------------------------------------------
-    rho[mask2] = rho_saved
-    #-----------------------------------------------------------------------
     return pot
 
 def vonWeizsackerPotentialDensity(rho, sigma=None, phi = None, lphi = False, **kwargs):

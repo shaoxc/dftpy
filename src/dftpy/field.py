@@ -31,7 +31,7 @@ class BaseField(np.ndarray):
 
     """
 
-    def __new__(cls, grid, memo="", rank=1, griddata_F=None, griddata_C=None, griddata_3d=None):
+    def __new__(cls, grid, memo="", rank=1, griddata_F=None, griddata_C=None, griddata_3d=None, fft_data = None):
         # Input array is an already formed ndarray instance
         # We first cast to be our class type
 
@@ -60,6 +60,8 @@ class BaseField(np.ndarray):
         obj.span = (grid.nr > 1).sum()
         obj.rank = rank
         obj.memo = str(memo)
+        # add fft data
+        obj._fft_data = fft_data
         # Finally, we must return the newly created object:
         return obj
 
@@ -78,6 +80,18 @@ class BaseField(np.ndarray):
         self.grid = getattr(obj, "grid", None)
         self.span = getattr(obj, "span", None)
         self.memo = getattr(obj, "memo", None)
+        if np.prod(self.shape) != np.prod(obj.shape):
+            #clean saved fft_data
+            self._fft_data = None
+        else :
+            self._fft_data = getattr(obj, "fft_data", None)
+
+    @property
+    def fft_data(self):
+        if self._fft_data is None :
+            return None
+        else :
+            return self._fft_data.copy()
 
     def __array_wrap__(self, obj, context=None):
         """wrap it up"""
@@ -94,7 +108,14 @@ class BaseField(np.ndarray):
         # b = np.reshape(b, self.grid.nr)
         # b = np.reshape(b,nr)
         b.rank = rank
+        #clean saved fft_data
+        b._fft_data = None
         return b
+
+    def __setitem__(self,*args,**kwargs):
+        #clean saved fft_data
+        self._fft_data = None
+        return super().__setitem__(*args,**kwargs)
 
     def dot(self, obj):
         """ Returns the dot product of vector fields self and obj """
@@ -120,11 +141,11 @@ class BaseField(np.ndarray):
 class DirectField(BaseField):
     spl_order = 3
 
-    def __new__(cls, grid, memo="", rank=1, griddata_F=None, griddata_C=None, griddata_3d=None, cplx=False):
+    def __new__(cls, grid, memo="", rank=1, griddata_F=None, griddata_C=None, griddata_3d=None, cplx=False, fft_data = None):
         if not isinstance(grid, DirectGrid):
             raise TypeError("the grid argument is not an instance of DirectGrid")
         obj = super().__new__(
-            cls, grid, memo="", rank=rank, griddata_F=griddata_F, griddata_C=griddata_C, griddata_3d=griddata_3d
+            cls, grid, memo="", rank=rank, griddata_F=griddata_F, griddata_C=griddata_C, griddata_3d=griddata_3d, fft_data = fft_data
         )
         obj._N = None
         obj.spl_coeffs = None
@@ -299,6 +320,8 @@ class DirectField(BaseField):
         return DirectField(grid=self.grid, rank=rank, griddata_3d=sigma)
 
     def fft(self):
+        if self.fft_data is not None :
+            return self.fft_data
         TimeData.Begin("FFT")
         """ Implements the Discrete Fourier Transform
         Tips : If you use pyfft to perform fft, you should copy the input_array sometime. Becuase 
@@ -327,9 +350,11 @@ class DirectField(BaseField):
             for i in range(self.rank):
                 griddata_3d[i] = self.fft_object(self[i]) * self.grid.dV
         TimeData.End("FFT")
-        return ReciprocalField(
+        fft_data=ReciprocalField(
             grid=reciprocal_grid, memo=self.memo, rank=self.rank, griddata_3d=griddata_3d, cplx=self.cplx
         )
+        self._fft_data = fft_data
+        return self.fft_data
 
     def get_value_at_points(self, points):
         """points is in crystal coordinates"""
@@ -536,13 +561,13 @@ class DirectField(BaseField):
 
 
 class ReciprocalField(BaseField):
-    def __new__(cls, grid, memo="", rank=1, griddata_F=None, griddata_C=None, griddata_3d=None, cplx=False):
+    def __new__(cls, grid, memo="", rank=1, griddata_F=None, griddata_C=None, griddata_3d=None, cplx=False, fft_data = None):
         if not isinstance(grid, ReciprocalGrid):
             raise TypeError("the grid argument is not an instance of ReciprocalGrid")
         if griddata_F is None and griddata_C is None and griddata_3d is None :
             griddata_3d = np.zeros(grid.nr, dtype=np.complex128)
         obj = super().__new__(
-            cls, grid, memo="", rank=rank, griddata_F=griddata_F, griddata_C=griddata_C, griddata_3d=griddata_3d
+            cls, grid, memo="", rank=rank, griddata_F=griddata_F, griddata_C=griddata_C, griddata_3d=griddata_3d, fft_data = fft_data
         )
         obj.spl_coeffs = None
         cls._cplx = cplx
@@ -612,6 +637,8 @@ class ReciprocalField(BaseField):
         """
         Implements the Inverse Discrete Fourier Transform
         """
+        if self.fft_data is not None :
+            return self.fft_data
         TimeData.Begin("InvFFT")
         if not self.cplx and np.all(self.grid.nr == self.grid.nrR):  # Can only use numpy.fft
             self.ifft_object = np.fft.ifftn
@@ -659,7 +686,9 @@ class ReciprocalField(BaseField):
         if force_real:
             griddata_3d = np.real(griddata_3d)
         TimeData.End("InvFFT")
-        return DirectField(grid=direct_grid, memo=self.memo, rank=self.rank, griddata_3d=griddata_3d, cplx=self.cplx)
+        fft_data=DirectField(grid=direct_grid, memo=self.memo, rank=self.rank, griddata_3d=griddata_3d, cplx=self.cplx)
+        self._fft_data = fft_data
+        return self.fft_data
 
     @property
     def cplx(self):
