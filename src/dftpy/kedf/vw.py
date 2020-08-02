@@ -30,11 +30,10 @@ def vonWeizsackerPotential(rho, sigma=None, phi = None, lphi = False, **kwargs):
     """
     #-----------------------------------------------------------------------
     tol = 1E-30
-    # mask = rho > 0
-    # mask2 = np.invert(mask)
-    # rho_saved = rho[mask2]
-    # rho[mask2] = tol
-    rhom = np.abs(rho)
+    rhom = rho.copy()
+    mask = rho > 0
+    mask2 = np.invert(mask)
+    rhom[mask2] = tol
     #-----------------------------------------------------------------------
     gg = rho.grid.get_reciprocal().gg
     if lphi and phi is not None :

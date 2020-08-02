@@ -706,10 +706,12 @@ def GGA(rho, functional="LKT", calcType=["E","V"], split=False, params = None, *
         rhoGrad.append(item)
     s = np.sqrt(rhoGrad[0] ** 2 + rhoGrad[1] ** 2 + rhoGrad[2] ** 2) / rho43
     F, dFds2 = GGAFs(s, functional=functional, calcType=calcType, params = params, **kwargs)
+    OutFunctional = Functional(name="GGA-" + str(functional))
+
     if 'E' in calcType:
         ene = np.einsum("ijk, ijk -> ", tf, F) * rhom.grid.dV
-    else:
-        ene = 0.0
+        OutFunctional.energy = ene
+
     if 'V' in calcType:
         pot = 5.0 / 3.0 * cTF * rho23 * F
         pot += -4.0 / 3.0 * tf * dFds2 * s * s / rhom
@@ -720,11 +722,7 @@ def GGA(rho, functional="LKT", calcType=["E","V"], split=False, params = None, *
             p3.append(item.fft())
         pot3G = g[0] * p3[0] + g[1] * p3[1] + g[2] * p3[2]
         pot -= (1j * pot3G).ifft(force_real=True)
-    else:
-        pot = np.empty_like(rho)
+        OutFunctional.potential = pot
     # np.savetxt('gga.dat', np.c_[rho.ravel(), pot.ravel(), s.ravel(), F.ravel(), dFds2.ravel()])
 
-    OutFunctional = Functional(name="GGA-" + str(functional))
-    OutFunctional.potential = pot
-    OutFunctional.energy = ene
     return OutFunctional
