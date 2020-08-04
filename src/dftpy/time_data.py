@@ -45,9 +45,8 @@ class TimeObj(object):
         print("{:28s}{:24s}{:16s}{:24s}".format("Label", "Cost(s)", "Number", "Avg. Cost(s)"))
         lprint = False
         if config :
-            if isinstance(config, dict):
-                if not config["OUTPUT"]["time"]:
-                    lprint = False
+            if isinstance(config, dict) and not config["OUTPUT"]["time"]:
+                lprint = False
             else :
                 lprint = True
         if lprint :
@@ -55,7 +54,7 @@ class TimeObj(object):
                 print("{:28s}{:<24.4f}{:<16d}{:<24.4f}".format(key, cost, self.number[key], cost/self.number[key]))
         else:
             key = "TOTAL"
-            print("{:28s}{:<24.4f}{:<16d}{:<24.4f}".format(key, self.cost[key], self.number[key], cost/self.number[key]))
+            print("{:28s}{:<24.4f}{:<16d}{:<24.4f}".format(key, self.cost[key], self.number[key], self.cost[key]/self.number[key]))
 
 
 TimeData = TimeObj()

@@ -1,14 +1,17 @@
+import os
 ### Import fft library
 try:
     import pyfftw
     FFTLIB = "pyfftw"
-except:
+except Exception:
     FFTLIB = "numpy"
 
-# FFTLIB = 'numpy'
-MATHLIB = "numpy"
+FFTLIB = os.environ.get('DFTPY_FFTLIB', FFTLIB)
 
 print('Use "%s" for Fourier Transform' % (FFTLIB))
+
+SAVEFFT = os.environ.get('DFTPY_SAVEFFT', False)
+
 LEN_UNITS = ["Bohr", "Angstrom", "nm", "m"]
 
 LEN_CONV = {}
