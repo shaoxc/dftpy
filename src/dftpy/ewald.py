@@ -187,6 +187,9 @@ class ewald(object):
                 self.Bspline = CBspline(ions=self.ions, grid=self.rho.grid, order=self.order)
             else:
                 self.Bspline = Bspline
+        self._energy = None
+        self._forces= None
+        self._stress= None
 
     def Get_Gmax(self, grid):
         gg = grid.get_reciprocal().gg
@@ -546,53 +549,59 @@ class ewald(object):
 
     @property
     def energy(self):
-        TimeData.Begin("Ewald_Energy")
-        # gmax = self.Get_Gmax(self.rho.grid)
-        # eta = self.Get_Best_eta(self.precision, gmax, self.ions)
-        # self.eta = eta
-        # Ewald_Energy = self.Ediv1(self.ions,self.rho)+self.Ediv2(self.precision,eta,self.ions,self.rho)
-        # Ewald_Energy = self.Ediv2(self.precision,self.eta,self.ions,self.rho)
-        if self.usePME:
-            # Ewald_Energy= self.Energy_real() + self.Energy_corr() + self.Energy_rec_PME()
-            # Ewald_Energy= self.Energy_real_fast() + self.Energy_corr() + self.Energy_rec_PME()
-            Ewald_Energy = self.Energy_real_fast2() + self.Energy_corr() + self.Energy_rec_PME()
-            # print('fast',self.Energy_real(),self.Energy_real_fast(), self.Energy_real_fast2() )
-        else:
-            Ewald_Energy = self.Energy_real() + self.Energy_corr() + self.Energy_rec()
+        if self._energy is None :
+            TimeData.Begin("Ewald_Energy")
+            # gmax = self.Get_Gmax(self.rho.grid)
+            # eta = self.Get_Best_eta(self.precision, gmax, self.ions)
+            # self.eta = eta
+            # Ewald_Energy = self.Ediv1(self.ions,self.rho)+self.Ediv2(self.precision,eta,self.ions,self.rho)
+            # Ewald_Energy = self.Ediv2(self.precision,self.eta,self.ions,self.rho)
+            if self.usePME:
+                # Ewald_Energy= self.Energy_real() + self.Energy_corr() + self.Energy_rec_PME()
+                # Ewald_Energy= self.Energy_real_fast() + self.Energy_corr() + self.Energy_rec_PME()
+                Ewald_Energy = self.Energy_real_fast2() + self.Energy_corr() + self.Energy_rec_PME()
+                # print('fast',self.Energy_real(),self.Energy_real_fast(), self.Energy_real_fast2() )
+            else:
+                Ewald_Energy = self.Energy_real() + self.Energy_corr() + self.Energy_rec()
 
-        if self.verbose:
-            print("Ewald sum & divergent terms in the Energy:")
-            print("eta used = ", self.eta)
-            print("precision used = ", self.precision)
-            print("Ewald Energy = ", Ewald_Energy)
-        T = TimeData.End("Ewald_Energy")
-        # print('Ewald_Energy time (s)', T)
-        return Ewald_Energy
+            if self.verbose:
+                print("Ewald sum & divergent terms in the Energy:")
+                print("eta used = ", self.eta)
+                print("precision used = ", self.precision)
+                print("Ewald Energy = ", Ewald_Energy)
+            TimeData.End("Ewald_Energy")
+            # print('Ewald_Energy time (s)', T)
+            self._energy = Ewald_Energy
+        return self._energy
 
     @property
     def forces(self):
-        TimeData.Begin("Ewald_Force")
-        if self.usePME:
-            Ewald_Forces = self.Forces_real() + self.Forces_rec_PME()
-        else:
-            Ewald_Forces = self.Forces_real() + self.Forces_rec()
-        return Ewald_Forces
-        TimeData.End("Ewald_Force")
+        if self._forces is None :
+            TimeData.Begin("Ewald_Force")
+            if self.usePME:
+                Ewald_Forces = self.Forces_real() + self.Forces_rec_PME()
+            else:
+                Ewald_Forces = self.Forces_real() + self.Forces_rec()
+            TimeData.End("Ewald_Force")
+            self._forces = Ewald_Forces
+        return self._forces
 
     @property
     def stress(self):
-        TimeData.Begin("Ewald_Stress")
+        if self._stress is None :
+            TimeData.Begin("Ewald_Stress")
 
-        if self.usePME:
-            Ewald_Stress = self.Stress_real() + self.Stress_rec_PME()
-        else:
-            Ewald_Stress = self.Stress_real() + self.Stress_rec()
+            if self.usePME:
+                Ewald_Stress = self.Stress_real() + self.Stress_rec_PME()
+            else:
+                Ewald_Stress = self.Stress_real() + self.Stress_rec()
 
-        if self.verbose:
-            print("Ewald_Stress\n", Ewald_Stress)
+            if self.verbose:
+                print("Ewald_Stress\n", Ewald_Stress)
 
-        TimeData.End("Ewald_Stress")
-        return Ewald_Stress
+            TimeData.End("Ewald_Stress")
+            self._stress = Ewald_Stress
+        return self._stress
 
     def Forces_real(self):
         TimeData.Begin("Ewald_Force_real")
