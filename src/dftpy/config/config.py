@@ -81,6 +81,9 @@ def ConfSpecialFormat(conf):
     if conf["MATH"]["twostep"] and conf["MATH"]["multistep"] == 1 :
         conf["MATH"]["multistep"] = 2
 
+    if 'CONFDICT' in conf :
+        del conf['CONFDICT']
+
     return conf
 
 
