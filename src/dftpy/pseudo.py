@@ -361,7 +361,7 @@ class LocalPseudo(AbstractLocalPseudo):
         denG = rhoG * Barray
         nr = self.grid.nr
         # cell_inv = np.linalg.inv(self.ions.pos[0].cell.lattice)
-        cell_inv = reciprocal_grid.lattice / 2 / np.pi
+        cell_inv = reciprocal_grid.lattice.T / 2 / np.pi
         Forces = np.zeros((self.ions.nat, 3))
         ixyzA = np.mgrid[: self.BsplineOrder, : self.BsplineOrder, : self.BsplineOrder].reshape((3, -1))
         Q_derivativeA = np.zeros((3, self.BsplineOrder * self.BsplineOrder * self.BsplineOrder))
