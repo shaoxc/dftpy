@@ -105,7 +105,8 @@ def WT(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, rho0=None
         KE_kernel_saved = ke_kernel_saved
     if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
         # print("Re-calculate KE_kernel", np.shape(rho))
-        KE_kernel = WTKernel(q, rho0, x=x, y=y, alpha=alpha, beta=beta)
+        # KE_kernel = WTKernel(q, rho0, x=x, y=y, alpha=alpha, beta=beta)
+        KE_kernel = WTKernel(q, rho0, x=x, y=1.0, alpha=alpha, beta=beta) # always remove whole vW
         KE_kernel_saved["Kernel"] = KE_kernel
         KE_kernel_saved["rho0"] = rho0
         KE_kernel_saved["shape"] = np.shape(rho)
