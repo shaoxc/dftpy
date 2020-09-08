@@ -40,8 +40,9 @@ def guess_kf_bound(kf, kfmin = None, kfmax = None, kftol = 1E-3, ke_kernel_saved
     else :
         kfmin_prev = None
         kfmax_prev = None
-    # if kfmin is not None and kfmax is not None :
-        # return [kfmin, kfmax]
+
+    if kfmin is not None and kfmax is not None :
+        return [kfmin, kfmax]
 
     kf_l = np.min(kf)
     kf_r = np.max(kf)
@@ -538,6 +539,7 @@ def LWT(
     pot, ene = LWTPotentialEnergy(rho, alpha=alpha, beta=beta, etamax=etamax, ratio=ratio, nsp=nsp, kdd=kdd, delta=delta, interp=interp, calcType=calcType, ke_kernel_saved = KE_kernel_saved, **kwargs)
     # pot, ene = LWTLineIntegral(rho, alpha=alpha, beta=beta, etamax=etamax, ratio=ratio, nsp=nsp, kdd=kdd, delta=delta, interp=interp, calcType=calcType, ke_kernel_saved = KE_kernel_saved, **kwargs)
     NL = Functional(name="NL", potential=pot, energy=ene)
+    TimeData.End("LWT")
     return NL
 
 
