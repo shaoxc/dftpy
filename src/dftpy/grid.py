@@ -68,6 +68,15 @@ class BaseGrid(BaseCell):
     def latparas(self):
         return self._latparas
 
+    def repeat(self, reps=1):
+        reps = np.ones(3, dtype='int')*reps
+        lattice = self.lattice.copy()
+        for i in range(3):
+            lattice[:, i] *= reps[i]
+        nr = self.nr * reps
+        results = self.__class__(lattice, nr, origin=self.origin, units=self.units)
+        return results
+
 
 class DirectGrid(BaseGrid, DirectCell):
     """

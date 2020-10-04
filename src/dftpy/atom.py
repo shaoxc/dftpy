@@ -1,7 +1,7 @@
 import os
 import numpy as np
 from scipy.interpolate import interp1d, splrep, splev
-from dftpy.base import Coord
+from dftpy.base import Coord,DirectCell
 from dftpy.field import ReciprocalField, DirectField
 from dftpy.functional_output import Functional
 from dftpy.constants import LEN_CONV, ENERGY_CONV
@@ -70,6 +70,30 @@ class Atom(object):
 
     def __str__(self): 
         return '\n'.join(['%20s : %s' % item for item in self.__dict__.items()]) 
+
+    def repeat(self, reps=1):
+        reps = np.ones(3, dtype='int')*reps
+        pos = self.pos.copy()
+        Z = self.Z.copy()
+        Zval = self.Zval.copy()
+        lattice = self.pos.cell.lattice.copy()
+        nat = self.nat
+        rep = np.prod(reps)
+        #-----------------------------------------------------------------------
+        pos = np.tile(pos, (rep, 1))
+        Z = np.tile(Z, rep)
+        ia = 0
+        ixyzA = np.mgrid[:reps[0],:reps[1],:reps[2]].reshape((3, -1))
+        for i in range(rep):
+            item = ixyzA[:, i]
+            ib = ia + nat
+            pos[ia:ib] += np.dot(lattice, item)
+            ia = ib
+        for i in range(3):
+            lattice[:, i] *= reps[i]
+        cell = DirectCell(lattice)
+        atoms = self.__class__(Z=Z, Zval=Zval, pos=pos, cell = cell, basis = self.pos.basis)
+        return atoms
 
 
 z2lab = [

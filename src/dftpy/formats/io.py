@@ -18,7 +18,7 @@ def read(infile, format=None, **kwargs):
     elif format == "qepp":
         qepp = PP(infile).read(**kwargs)
         atom = qepp.ions
-    elif format == "qepp":
+    elif format == "xsf":
         xsf = XSF(infile).read(**kwargs)
         atom = xsf.ions
     else:
@@ -67,7 +67,7 @@ def write(outfile, data, ions = None, format=None, **kwargs):
     if isinstance(data, System):
         system = data
     elif isinstance(data, DirectField) and ions is not None :
-        system = System(ions, data.grid, name="DFTpy", field=data)
+        system = System(ions, ions.pos.cell, name="DFTpy", field=data)
     elif isinstance(data, Atom):
         ions = data
 
