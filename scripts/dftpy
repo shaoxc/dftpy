@@ -8,32 +8,35 @@ from dftpy.time_data import TimeData
 
 
 def RunJob():
+    print("Begin on :", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
     parser = argparse.ArgumentParser(description='Process task')
-
+    parser.add_argument('confs', nargs = '*')
     parser.add_argument('-i', '--ini', '--input', dest='input', type=str, action='store',
             default='config.ini', help='input file (default: config.ini)')
 
     args = parser.parse_args()
-    config, others = ConfigParser(args.input)
+    if len(args.confs) == 0 :
+        args.confs.append(args.input)
+    for fname in args.confs:
+        config, others = ConfigParser(fname)
+        print("#" * 80)
+        TimeData.Begin("TOTAL")
 
-    print("Begin on :", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-    print("#" * 80)
-    TimeData.Begin("TOTAL")
+        if "Propagate" in config["JOB"]["task"]:
+            RealTimeRunner(config, others["struct"].field, others["E_v_Evaluator"])
+        elif "Casida" in config["JOB"]["task"]:
+            CasidaRunner(config, others["struct"].field, others["E_v_Evaluator"])
+        elif "Diagonize" in config["JOB"]["task"]:
+            DiagonizeRunner(config, others["struct"], others["E_v_Evaluator"])
+        elif "Inversion" in config["JOB"]["task"]:
+            InvertRunner(config, others["struct"], others["E_v_Evaluator"])
+        else:
+            results = OptimizeDensityConf(config, others["struct"], others["E_v_Evaluator"], others["nr2"])
+            # results = OptimizeDensityConf(args.input)
 
-    if "Propagate" in config["JOB"]["task"]:
-        RealTimeRunner(config, others["struct"].field, others["E_v_Evaluator"])
-    elif "Casida" in config["JOB"]["task"]:
-        CasidaRunner(config, others["struct"].field, others["E_v_Evaluator"])
-    elif "Diagonize" in config["JOB"]["task"]:
-        DiagonizeRunner(config, others["struct"], others["E_v_Evaluator"])
-    elif "Inversion" in config["JOB"]["task"]:
-        InvertRunner(config, others["struct"], others["E_v_Evaluator"])
-    else:
-        results = OptimizeDensityConf(config, others["struct"], others["E_v_Evaluator"], others["nr2"])
-        # results = OptimizeDensityConf(args.input)
-
-    TimeData.End("TOTAL")
-    TimeData.output(config)
+        TimeData.End("TOTAL")
+        TimeData.output(config)
+        print("-" * 80)
     print("#" * 80)
     print("Finished on :", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
 
