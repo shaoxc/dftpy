@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.special as sp
 from scipy.interpolate import interp1d, splrep, splev
+from dftpy.mpi import mp, smpi, sprint
 from dftpy.functional_output import Functional
 from dftpy.field import DirectField
 from dftpy.kedf.tf import TF
@@ -33,17 +34,18 @@ def MGP(
 ):
     TimeData.Begin("MGP")
     q = rho.grid.get_reciprocal().q
-    rho0 = np.mean(rho)
+    rho0 = mp.amean(rho)
+    sprint('rho0000', rho0)
     if ke_kernel_saved is None :
         KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
     else :
         KE_kernel_saved = ke_kernel_saved
     # if abs(KE_kernel_saved['rho0']-rho0) > 1E-6 or np.shape(rho) != KE_kernel_saved['shape'] :
     if abs(KE_kernel_saved["rho0"] - rho0) > 1e-2 or np.shape(rho) != KE_kernel_saved["shape"]:
-        print("Re-calculate KE_kernel")
+        sprint("Re-calculate KE_kernel")
         KE_kernel = MGPKernel(q, rho0, maxpoints=maxpoint, symmetrization=symmetrization)
         if lumpfactor is not None:
-            Ne = rho0 * np.size(rho) * rho.grid.dV
+            Ne = rho0 * rho.grid.Volume
             KE_kernel += MGPOmegaE(q, Ne, lumpfactor)
         # -----------------------------------------------------------------------
         # rh0 = 0.03;lumpfactor = 0.0;q = np.linspace(1E-3, 8, 10000).reshape((1, 1, 1, -1))

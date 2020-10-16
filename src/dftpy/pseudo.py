@@ -2,6 +2,7 @@ import os
 import numpy as np
 from scipy.interpolate import interp1d, splrep, splev
 import scipy.special as sp
+from dftpy.mpi import mp, smpi, sprint
 from dftpy.base import Coord
 from dftpy.field import ReciprocalField, DirectField
 from dftpy.functional_output import Functional
@@ -81,7 +82,7 @@ class LocalPseudo(AbstractLocalPseudo):
 
         self.restart(grid, ions, full=True)
 
-        if not PME :
+        if not PME and smpi.is_root:
             warnings.warn("Using N^2 method for strf!")
 
         self.usePME = PME
@@ -180,9 +181,11 @@ class LocalPseudo(AbstractLocalPseudo):
         if not isinstance(rho, (DirectField)):
             raise TypeError("rho must be DirectField")
         if self.usePME:
-            return self._StressPME(rho, energy)
+            s = self._StressPME(rho, energy)
         else:
-            return self._Stress(rho, energy)
+            s = self._Stress(rho, energy)
+        # s = mp.vsum(s)
+        return s
 
     def force(self, rho):
         if rho is None:
@@ -190,9 +193,11 @@ class LocalPseudo(AbstractLocalPseudo):
         if not isinstance(rho, (DirectField)):
             raise TypeError("rho must be DirectField")
         if self.usePME:
-            return self._ForcePME(rho)
+            f = self._ForcePME(rho)
         else:
-            return self._Force(rho)
+            f = self._Force(rho)
+        # f = mp.vsum(f)
+        return f
 
     @property
     def vreal(self):
@@ -271,7 +276,7 @@ class LocalPseudo(AbstractLocalPseudo):
                     QA = self.Bspline.get_PME_Qarray(i, QA)
             Qarray = DirectField(grid=self.grid, griddata_3d=QA, rank=1)
             v = v + self.vlines[key] * Qarray.fft()
-        v = v * self.Bspline.Barray * self.grid.nnr / self.grid.volume
+        v = v * self.Bspline.Barray * self.grid.nnrR / self.grid.volume
         self._v = v
         TimeData.End("Vion_PME")
         return "PP successfully interpolated"
@@ -310,14 +315,12 @@ class LocalPseudo(AbstractLocalPseudo):
             energy = self(density=rho, calcType=["E"]).energy
         reciprocal_grid = self.grid.get_reciprocal()
         g = reciprocal_grid.g
-        # gg= reciprocal_grid.gg
         mask = reciprocal_grid.mask
-        q = reciprocal_grid.q
-        q[0, 0, 0] = 1.0
+        invq = reciprocal_grid.invq
         rhoG = rho.fft()
         stress = np.zeros((3, 3))
         v_deriv = self._PP_Derivative()
-        rhoGV_q = rhoG * v_deriv / q
+        rhoGV_q = rhoG * v_deriv * invq
         for i in range(3):
             for j in range(i, 3):
                 # den = (g[i]*g[j])[np.newaxis] * rhoGV_q
@@ -327,7 +330,6 @@ class LocalPseudo(AbstractLocalPseudo):
                 if i == j:
                     stress[i, j] -= energy
         stress /= self.grid.volume
-        q[0, 0, 0] = 0.0
         return stress
 
     def _Force(self, density):
@@ -359,7 +361,7 @@ class LocalPseudo(AbstractLocalPseudo):
         Barray = Bspline.Barray
         Barray = np.conjugate(Barray)
         denG = rhoG * Barray
-        nr = self.grid.nr
+        nrR = self.grid.nrR
         # cell_inv = np.linalg.inv(self.ions.pos[0].cell.lattice)
         cell_inv = reciprocal_grid.lattice.T / 2 / np.pi
         Forces = np.zeros((self.ions.nat, 3))
@@ -371,26 +373,24 @@ class LocalPseudo(AbstractLocalPseudo):
             rhoPB = denGV.ifft(force_real=True)
             for i in range(self.ions.nat):
                 if self.ions.labels[i] == key:
-                    Up = np.array(self.ions.pos[i].to_crys()) * nr
+                    Up = np.array(self.ions.pos[i].to_crys()) * nrR
                     Mn = []
                     Mn_2 = []
                     for j in range(3):
                         Mn.append(Bspline.calc_Mn(Up[j] - np.floor(Up[j])))
                         Mn_2.append(Bspline.calc_Mn(Up[j] - np.floor(Up[j]), order=self.BsplineOrder - 1))
-                    Q_derivativeA[0] = nr[0] * np.einsum(
+                    Q_derivativeA[0] = nrR[0] * np.einsum(
                         "i, j, k -> ijk", Mn_2[0][1:] - Mn_2[0][:-1], Mn[1][1:], Mn[2][1:]
                     ).reshape(-1)
-                    Q_derivativeA[1] = nr[1] * np.einsum(
+                    Q_derivativeA[1] = nrR[1] * np.einsum(
                         "i, j, k -> ijk", Mn[0][1:], Mn_2[1][1:] - Mn_2[1][:-1], Mn[2][1:]
                     ).reshape(-1)
-                    Q_derivativeA[2] = nr[2] * np.einsum(
+                    Q_derivativeA[2] = nrR[2] * np.einsum(
                         "i, j, k -> ijk", Mn[0][1:], Mn[1][1:], Mn_2[2][1:] - Mn_2[2][:-1]
                     ).reshape(-1)
-                    l123A = np.mod(1 + np.floor(Up).astype(np.int32).reshape((3, 1)) - ixyzA, nr.reshape((3, 1)))
-                    Forces[i] = -np.sum(
-                        np.matmul(Q_derivativeA.T, cell_inv) * rhoPB[l123A[0], l123A[1], l123A[2]][:, np.newaxis],
-                        axis=0,
-                    )
+                    l123A = np.mod(1 + np.floor(Up).astype(np.int32).reshape((3, 1)) - ixyzA, nrR.reshape((3, 1)))
+                    mask = self.Bspline.get_Qarray_mask(l123A)
+                    Forces[i] = -np.sum(np.matmul(Q_derivativeA.T, cell_inv)[mask] * rhoPB[l123A[0][mask], l123A[1][mask], l123A[2][mask]][:, np.newaxis], axis=0)
         return Forces
 
     def _StressPME(self, density, energy=None):
@@ -404,8 +404,7 @@ class LocalPseudo(AbstractLocalPseudo):
         rhoG = rho.fft()
         reciprocal_grid = self.grid.get_reciprocal()
         g = reciprocal_grid.g
-        q = reciprocal_grid.q
-        q[0, 0, 0] = 1.0
+        invq = reciprocal_grid.invq
         mask = reciprocal_grid.mask
         Bspline = self.Bspline
         Barray = Bspline.Barray
@@ -423,15 +422,14 @@ class LocalPseudo(AbstractLocalPseudo):
             rhoGBV = rhoGBV * Qarray.fft()
             for i in range(3):
                 for j in range(i, 3):
-                    den = (g[i][mask] * g[j][mask]) * rhoGBV[mask] / q[mask]
+                    den = (g[i][mask] * g[j][mask]) * rhoGBV[mask] * invq[mask]
                     stress[i, j] -= (np.einsum("i->", den)).real / self.grid.volume ** 2
-        stress *= 2.0 * self.grid.nnr
+        stress *= 2.0 * self.grid.nnrR
         for i in range(3):
             for j in range(i, 3):
                 stress[j, i] = stress[i, j]
             stress[i, i] -= energy
         stress /= self.grid.volume
-        q[0, 0, 0] = 0.0
         return stress
 
 
@@ -450,7 +448,7 @@ class ReadPseudo(object):
         self.PP_type = {}
 
         for key in self.PP_list:
-            print("setting key: " + key)
+            sprint("setting key: " + key)
             if not os.path.isfile(self.PP_list[key]):
                 raise Exception("PP file for atom type " + str(key) + " not found")
             if PP_list[key].lower().endswith("recpot"):
@@ -553,7 +551,7 @@ class ReadPseudo(object):
             line = " ".join([line.strip() for line in lines[ibegin:iend]])
 
             if "1000" in lines[iend] or len(lines[iend].strip()) == 1 :
-                print("Recpot pseudopotential " + Single_PP_file + " loaded")
+                sprint("Recpot pseudopotential " + Single_PP_file + " loaded")
             else:
                 return Exception
             gmax = np.float(lines[ibegin - 1].strip()) * BOHR2ANG
@@ -605,7 +603,7 @@ class ReadPseudo(object):
             info['Zval'] = Zval
 
             if "1000" in lines[iend] or len(lines[iend].strip()) == 1 or len(lines[iend].strip()) == 5 :
-                print("Recpot pseudopotential " + Single_PP_file + " loaded")
+                sprint("Recpot pseudopotential " + Single_PP_file + " loaded")
             else:
                 raise AttributeError("Error : Check the PP file")
             gmax = np.float(lines[ibegin - 1].split()[0]) * BOHR2ANG
@@ -679,7 +677,7 @@ class ReadPseudo(object):
         dr[1:] = r[1:]-r[:-1]
         dr[0] = r[0]
         ene = np.sum(r *r * vr * rhop * dr) * 4 * np.pi
-        print('Ne ', np.sum(r *r * rhop * dr) * 4 * np.pi)
+        sprint('Ne ', np.sum(r *r * rhop * dr) * 4 * np.pi)
         return ene
 
     # def _init_PP_psp(self, MaxPoints=15000, Gmax=30):
@@ -724,7 +722,7 @@ class ReadPseudo(object):
 
             r = data[:, 0] 
             v = data[:, 1] 
-            print("psp pseudopotential " + Single_PP_file + " loaded")
+            sprint("psp pseudopotential " + Single_PP_file + " loaded")
             info['grid'] = r
             info['local_potential'] = v
             return r, v, info

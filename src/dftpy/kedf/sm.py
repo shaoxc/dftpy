@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.special as sp
 from scipy.interpolate import interp1d, splrep, splev
+from dftpy.mpi import smpi, mp, sprint
 from dftpy.functional_output import Functional
 from dftpy.field import DirectField
 from dftpy.kedf.tf import TF
@@ -89,16 +90,16 @@ def SM(rho, x=1.0, y=1.0, sigma=None, alpha=0.5, beta=0.5, rho0=None, calcType=[
     # alpha = beta = 5.0/6.0
     q = rho.grid.get_reciprocal().q
     if rho0 is None:
-        rho0 = np.mean(rho)
-    rho1 = 0.5 * (np.max(rho) + np.min(rho))
-    # print(rho0, rho1, rho1 / rho0)
+        rho0 = mp.amean(rho)
+    # rho1 = 0.5 * (np.max(rho) + np.min(rho))
+    # sprint(rho0, rho1, rho1 / rho0)
     # rho0 = rho1
     if ke_kernel_saved is None :
         KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
     else :
         KE_kernel_saved = ke_kernel_saved
     if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
-        print("Re-calculate KE_kernel")
+        sprint("Re-calculate KE_kernel")
         KE_kernel = SMKernel(q, rho0, alpha=alpha, beta=beta)
         KE_kernel_saved["Kernel"] = KE_kernel
         KE_kernel_saved["rho0"] = rho0

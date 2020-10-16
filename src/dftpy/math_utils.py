@@ -3,6 +3,7 @@ import scipy.special as sp
 from scipy import ndimage, interpolate
 from scipy.optimize import minpack2
 from scipy import optimize as sopt
+from dftpy.mpi import mp, smpi
 from dftpy.constants import FFTLIB
 
 if FFTLIB == "pyfftw":
@@ -121,13 +122,13 @@ def LineSearchDcsrchVector(func, alpha0=None, func0=None, c1=1e-4, c2=0.9, amax=
         resA.append(g1)
         direction = get_direction_CG(resA, dirA=dirA, method="CG-PR")
         dirA.append(direction)
-        grad = np.sum(g1 * direction)
+        grad = mp.asum(g1 * direction)
         if grad > 0.0 :
             direction = -g1
-            grad = np.sum(g1 * direction)
+            grad = mp.asum(g1 * direction)
 
         task = b"START"
-        factor = np.max(np.abs(direction))
+        factor = mp.amax(np.abs(direction))
         beta = min(0.1, 0.1 * np.pi/factor)
         # stop
         for j in range(maxiter):
@@ -138,14 +139,14 @@ def LineSearchDcsrchVector(func, alpha0=None, func0=None, c1=1e-4, c2=0.9, amax=
                 func1 = func(alpha1)
                 x1 = func1[0]
                 g1 = func1[1]
-                grad = np.sum(g1 * direction)
+                grad = mp.asum(g1 * direction)
             else:
                 break
         else:
             alpha1 = None
         if task[:5] == b"ERROR" or task[:4] == b"WARN":
             alpha1 = None  # failed
-        if alpha1 is None or np.sum(g1 * g1) < econv :
+        if alpha1 is None or mp.asum(g1 * g1) < econv :
             break
     return alpha1, x1, g1, task, it, func1
 
@@ -436,9 +437,9 @@ class LBFGS(object):
         self.s.append(dx)
         self.y.append(dg)
         try :
-            rho = 1.0 / np.einsum("..., ...->", dg, dx, optimize = 'optimal')
+            rho = 1.0 / mp.einsum("..., ...->", dg, dx, optimize = 'optimal')
         except Exception :
-            rho = 1.0 / np.sum(dg * dx)
+            rho = 1.0 / mp.asum(dg * dx)
 
         self.rho.append(rho)
 
@@ -452,23 +453,23 @@ def get_direction_CG(resA, dirA=None, method="CG-HS", **kwargs):
     if len(resA) == 1:
         beta = 0.0
     elif method == "CG-HS" and len(dirA) > 0:  # Maybe the best of the CG.
-        beta = np.sum(resA[-1] * (resA[-1] - resA[-2])) / np.sum(
+        beta = mp.asum(resA[-1] * (resA[-1] - resA[-2])) / mp.asum(
             dirA[-1] * (resA[-1] - resA[-2])
         )
         # print('beta', beta)
     elif method == "CG-FR":
-        beta = np.sum(resA[-1] ** 2) / np.sum(resA[-2] ** 2)
+        beta = mp.asum(resA[-1] ** 2) / mp.asum(resA[-2] ** 2)
     elif method == "CG-PR":
-        beta = np.sum(resA[-1] * (resA[-1] - resA[-2])) / np.sum(resA[-2] ** 2)
+        beta = mp.asum(resA[-1] * (resA[-1] - resA[-2])) / mp.asum(resA[-2] ** 2)
         beta = max(beta, 0.0)
     elif method == "CG-DY" and len(dirA) > 0:
-        beta = np.sum(resA[-1] ** 2) / np.sum(dirA[-1] * (resA[-1] - resA[-2]))
+        beta = mp.asum(resA[-1] ** 2) / mp.asum(dirA[-1] * (resA[-1] - resA[-2]))
     elif method == "CG-CD" and len(dirA) > 0:
-        beta = -np.sum(resA[-1] ** 2) / np.sum(dirA[-1] * resA[-2])
+        beta = -mp.asum(resA[-1] ** 2) / mp.asum(dirA[-1] * resA[-2])
     elif method == "CG-LS" and len(dirA) > 0:
-        beta = np.sum(resA[-1] * (resA[-1] - resA[-2])) / np.sum(dirA[-1] * resA[-2])
+        beta = mp.asum(resA[-1] * (resA[-1] - resA[-2])) / mp.asum(dirA[-1] * resA[-2])
     else:
-        beta = np.sum(resA[-1] ** 2) / np.sum(resA[-2] ** 2)
+        beta = mp.asum(resA[-1] ** 2) / mp.asum(resA[-2] ** 2)
 
     if dirA is None or len(dirA) == 0:
         direction = -resA[-1]
@@ -488,7 +489,7 @@ def get_direction_LBFGS(resA, lbfgs=None, **kwargs):
     q = -resA[-1]
     alphaList = np.zeros(len(lbfgs.s))
     for i in range(len(lbfgs.s) - 1, 0, -1):
-        alpha = lbfgs.rho[i] * np.sum(lbfgs.s[i] * q)
+        alpha = lbfgs.rho[i] * mp.asum(lbfgs.s[i] * q)
         alphaList[i] = alpha
         q -= alpha * lbfgs.y[i]
 
@@ -496,13 +497,13 @@ def get_direction_LBFGS(resA, lbfgs=None, **kwargs):
         if len(lbfgs.s) < 1:
             gamma = 1.0
         else:
-            gamma = np.sum(lbfgs.s[-1] * lbfgs.y[-1]) / np.sum(lbfgs.y[-1] * lbfgs.y[-1])
+            gamma = mp.asum(lbfgs.s[-1] * lbfgs.y[-1]) / mp.asum(lbfgs.y[-1] * lbfgs.y[-1])
         direction = gamma * q
     else:
         direction = lbfgs.H0 * q
 
     for i in range(len(lbfgs.s)):
-        beta = lbfgs.rho[i] * np.sum(lbfgs.y[i] * direction)
+        beta = lbfgs.rho[i] * mp.asum(lbfgs.y[i] * direction)
         direction += lbfgs.s[i] * (alphaList[i] - beta)
 
     return direction

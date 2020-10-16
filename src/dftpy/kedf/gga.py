@@ -1,6 +1,7 @@
 # Collection of semilocal functionals
 
 import numpy as np
+from dftpy.mpi import mp, smpi
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.functional_output import Functional
 from dftpy.math_utils import PowerInt

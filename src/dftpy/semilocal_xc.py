@@ -1,6 +1,7 @@
 # Drivers for LibXC
 
 import numpy as np
+from dftpy.mpi import mp, smpi, sprint
 from dftpy.field import DirectField
 from dftpy.functional_output import Functional
 from dftpy.time_data import TimeData
@@ -209,7 +210,9 @@ def LibXC(density, k_str=None, x_str=None, c_str=None, calcType=["E","V"], **kwa
 
     for key, value in func_str.items():
         func = LibXCFunctional(value, polarization)
+        TimeData.Begin("libxc_eval")
         out = func.compute(inp, **kargs)
+        TimeData.End("libxc_eval")
         if 'out_functional' in locals():
             out_functional += Get_LibXC_Output(out, density)
             out_functional.name += "_" + value
@@ -294,15 +297,15 @@ def LDAStress(rho, energy=None, potential=None, **kwargs):
     TimeData.Begin("LDA_Stress")
     if energy is None:
         EnergyPotential = LDA(rho, calcType=["E","V"])
-        energy = EnergyPotential.energy
         potential = EnergyPotential.potential
+        energy = EnergyPotential.energy
     elif potential is None :
         potential = LDA(rho, calcType=["V"]).potential
     stress = np.zeros((3, 3))
     try:
         Etmp = energy - np.einsum("..., ...-> ", potential, rho, optimize = 'optimal') * rho.grid.dV
     except Exception :
-        Etmp = energy - np.sum(potential * rho) * rho.grid.dV
+        Etmp = energy - np.asum(potential * rho) * rho.grid.dV
     for i in range(3):
         stress[i, i] = Etmp / rho.grid.volume
     TimeData.End("LDA_Stress")
@@ -347,7 +350,7 @@ def _LDAStress(density, xc_str='lda_x', energy=None, flag='standard', **kwargs):
     try :
         P = energy - np.einsum("..., ...-> ", v, rho, optimize = 'optimal') * rho.grid.dV
     except Exception :
-        P = energy - np.sum(v*rho) * rho.grid.dV
+        P = energy - np.asum(v*rho) * rho.grid.dV
     stress = np.eye(3)*P
     return stress/ rho.grid.volume
 

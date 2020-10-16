@@ -2,6 +2,7 @@
 # functional class (output handler) in output
 
 # local imports
+from dftpy.mpi import mp, smpi, sprint
 from dftpy.field import DirectField
 from dftpy.functional_output import Functional
 from dftpy.semilocal_xc import PBE, LDA, LibXC
@@ -46,16 +47,16 @@ class AbstractFunctional(ABC):
 
     def CheckFunctional(self):
         if self.type not in self.FunctionalTypeList:
-            print(self.type, " is not a valid Functional type")
-            print("Valid Functional types are:")
-            print(self.FunctionalTypeList)
+            sprint(self.type, " is not a valid Functional type")
+            sprint("Valid Functional types are:")
+            sprint(self.FunctionalTypeList)
             return False
         # if self.name not in self.FunctionalNameList:
         for name in self.name.split('+'):
             if name not in self.FunctionalNameList:
-                print(name, " is not a valid Functional name")
-                print("Valid Functional names are:")
-                print(self.FunctionalNameList)
+                sprint(name, " is not a valid Functional name")
+                sprint("Valid Functional names are:")
+                sprint(self.FunctionalNameList)
                 return False
         return True
 
@@ -315,20 +316,22 @@ class TotalEnergyAndPotential(AbstractFunctional):
         for key, evalfunctional in self.funcDict.items():
             if Obj is None :
                 Obj = evalfunctional(rho, calcType)
-                # print('key', key, Obj.energy)
             else :
                 Obj += evalfunctional(rho, calcType)
-                # sss = evalfunctional(rho, calcType)
-                # print('key', key, sss.energy)
+            # sss = evalfunctional(rho, ["E","V"])
+            # sss.energy = mp.vsum(sss.energy)
+            # sprint('key', key, sss.energy)
+        # sprint('-' * 80)
         if Obj is None :
             Obj = Functional(name = 'NONE')
+        if 'E' in calcType :
+            Obj.energy = mp.vsum(Obj.energy)
         return Obj
 
     def Energy(self, rho, ions, usePME=False, calcType=["E"]):
         from .ewald import ewald
 
         ewald_ = ewald(rho=rho, ions=ions, PME=usePME)
-        print('Ewald :', ewald_.energy)
         total_e = self.ComputeEnergyPotential(rho, calcType=["E"])
-        return ewald_.energy + total_e.energy
-
+        ewald_energy = mp.vsum(ewald_.energy)
+        return ewald_energy + total_e.energy

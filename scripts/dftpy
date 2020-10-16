@@ -1,25 +1,40 @@
 #!/usr/bin/env python3
-import configparser
-import argparse
-from dftpy.interface import ConfigParser, OptimizeDensityConf, InvertRunner
-from dftpy.td.interface import RealTimeRunner, CasidaRunner, DiagonizeRunner
-import time
-from dftpy.time_data import TimeData
 
-
-def RunJob():
-    print("Begin on :", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+def GetConf():
+    import argparse
     parser = argparse.ArgumentParser(description='Process task')
     parser.add_argument('confs', nargs = '*')
     parser.add_argument('-i', '--ini', '--input', dest='input', type=str, action='store',
-            default='config.ini', help='input file (default: config.ini)')
+            default='config.ini', help='Input file (default: config.ini)')
+    parser.add_argument('--mpi', '--mpi4py', dest='mpi', action='store_true',
+            default=False, help='Use mpi4py to be parallel')
 
     args = parser.parse_args()
+    if args.mpi :
+        from mpi4py import MPI
+        from mpi4py_fft import PFFT
+        from dftpy.mpi import smpi
+        smpi.comm = MPI.COMM_WORLD
+    return args
+
+def RunJob(args):
+    from dftpy.interface import ConfigParser, OptimizeDensityConf, InvertRunner
+    from dftpy.td.interface import RealTimeRunner, CasidaRunner, DiagonizeRunner
+    import time
+    from dftpy.time_data import TimeData
+    from dftpy.mpi import smpi, mp, sprint
+
+    sprint("Begin on :", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+    if smpi.is_mpi :
+        info = 'Parallel version (MPI) on {0:>8d} processors'.format(smpi.comm.size)
+    else :
+        info = 'Serial version on {0:>8d} processors'.format(smpi.comm.size)
+    sprint(info)
     if len(args.confs) == 0 :
         args.confs.append(args.input)
     for fname in args.confs:
         config, others = ConfigParser(fname)
-        print("#" * 80)
+        sprint("#" * 80)
         TimeData.Begin("TOTAL")
 
         if "Propagate" in config["JOB"]["task"]:
@@ -36,10 +51,11 @@ def RunJob():
 
         TimeData.End("TOTAL")
         TimeData.output(config)
-        print("-" * 80)
-    print("#" * 80)
-    print("Finished on :", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+        sprint("-" * 80)
+    sprint("#" * 80)
+    sprint("Finished on :", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
 
 
 if __name__ == "__main__":
-    RunJob()
+    args = GetConf()
+    RunJob(args)

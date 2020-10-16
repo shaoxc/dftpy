@@ -6,10 +6,9 @@ try:
 except Exception:
     FFTLIB = "numpy"
 
+FFTLIB = "numpy"
 FFTLIB = os.environ.get('DFTPY_FFTLIB', FFTLIB)
-
-print('Use "%s" for Fourier Transform' % (FFTLIB))
-
+# print('Use "%s" for Fourier Transform' % (FFTLIB))
 SAVEFFT = os.environ.get('DFTPY_SAVEFFT', False)
 
 LEN_UNITS = ["Bohr", "Angstrom", "nm", "m"]

@@ -10,7 +10,6 @@ class PP(object):
         self.filepp = filepp
         self.title = ""
         self.cutoffvars = {}
-        # self.readpp()
 
     def read(self, full=True, **kwargs):
 

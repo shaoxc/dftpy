@@ -19,9 +19,10 @@ class Atom(object):
         else:
             self.Zval = Zval
         # self.pos = Coord(pos, cell, basis='Cartesian')
-        self.pos = Coord(pos, cell, basis=basis).to_cart()
+        self._pos = Coord(pos, cell, basis=basis).to_cart()
         self.nat = len(pos)
         self.Z = Z
+        self._ncharge = None
 
         # check label
         if label is not None:
@@ -40,6 +41,31 @@ class Atom(object):
 
         self.labels = np.asarray(self.labels)
         self.Z = np.asarray(self.Z)
+
+    @property
+    def pos(self):
+        return self._pos
+
+    @pos.setter
+    def pos(self, value):
+        self._pos = value
+        self.nat = len(self._pos)
+        if self._ncharge is not None :
+            self._ncharge = self.get_ncharge()
+
+    @property
+    def ncharge(self):
+        if self._ncharge is None :
+            self._ncharge = self.get_ncharge()
+        return self._ncharge
+
+    def get_ncharge(self):
+        if self.Zval is None:
+            raise Exception("Must set 'Zval' first")
+        ncharge = 0
+        for item, n in zip(*np.unique(self.labels, return_counts=True)):
+            ncharge += self.Zval[item] * n
+        return ncharge
 
     def set_Zval(self, labels=None):
         if self.Zval is None:

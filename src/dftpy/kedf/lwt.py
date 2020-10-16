@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.special as sp
 from scipy.interpolate import interp1d, splrep, splev
+from dftpy.mpi import mp, smpi, sprint
 from dftpy.functional_output import Functional
 from dftpy.field import DirectField
 from dftpy.kedf.tf import TF
@@ -44,8 +45,8 @@ def guess_kf_bound(kf, kfmin = None, kfmax = None, kftol = 1E-3, ke_kernel_saved
     if kfmin is not None and kfmax is not None :
         return [kfmin, kfmax]
 
-    kf_l = np.min(kf)
-    kf_r = np.max(kf)
+    kf_l = mp.amin(kf)
+    kf_r = mp.amax(kf)
 
     if kfmin_prev is None :
         kfmin_prev = 10
@@ -102,7 +103,7 @@ def LWTPotentialEnergy(
     KE_kernel_saved = ke_kernel_saved
     savetol = 1e-16
     q = rho.grid.get_reciprocal().q
-    rho0 = np.mean(rho)
+    rho0 = mp.amean(rho)
     kf0 = 2.0 * np.cbrt(3.0 * np.pi ** 2 * rho0)
     kf = 2.0 * np.cbrt(3.0 * np.pi ** 2 * rho)
     # gamma = 1.0
@@ -110,7 +111,7 @@ def LWTPotentialEnergy(
     # kf = 2.0 * (3.0 * np.pi ** 2 * rhomod) ** (1.0 / 3.0)
 
     ### HEG
-    if abs(np.max(kf) - np.min(kf)) < 1e-8:
+    if abs(mp.amax(kf) - mp.amin(kf)) < 1e-8:
         return np.zeros_like(rho), 0.0
 
     kfmin, kfmax = guess_kf_bound(kf, kfmin, kfmax, ke_kernel_saved = ke_kernel_saved)
@@ -127,12 +128,12 @@ def LWTPotentialEnergy(
     mask2 = kf > kfBound[1]
     kf[mask2] = kfBound[1]
     if kfmin is None :
-        kfMin = max(np.min(kf), kfBound[0])
+        kfMin = max(mp.amin(kf), kfBound[0])
     else :
         kfMin = kfmin
 
     if kfmax is None :
-        kfMax = np.max(kf)
+        kfMax = mp.amax(kf)
     else :
         kfMax = kfmax
 
@@ -154,7 +155,7 @@ def LWTPotentialEnergy(
         kflists = np.asarray(kflists)
     kflists[0] -= savetol  # for numerical safe
     kflists[-1] += savetol  # for numerical safe
-    print('nsp', nsp, kfMax, kfMin, kf0, np.max(kflists), np.min(kflists))
+    sprint('nsp', nsp, kfMax, kfMin, kf0, np.max(kflists), np.min(kflists))
     # -----------------------------------------------------------------------
     kernel0 = np.empty_like(q)
     kernel1 = np.empty_like(q)
@@ -196,8 +197,7 @@ def LWTPotentialEnergy(
         mcalc = True
     else:
         mcalc = False
-    # print('interp', interp, mcalc)
-    # print('interp', interp, np.sum(rhoBeta), alpha, beta)
+    # sprint('interp', interp, mcalc)
     # -----------------------------------------------------------------------
     for i in range(nsp - 1):
         if i == 0:
@@ -299,7 +299,7 @@ def LWTPotentialEnergy(
     #-----------------------------------------------------------------------
     if ldw is None :
         ldw = 1.0/6.0
-    rhov = np.max(rho)
+    rhov = mp.amax(rho)
     factor = np.ones_like(rho)
     mask = rho < 1E-6
     ld = max(0.1, ldw)
@@ -317,7 +317,7 @@ def LWTPotentialEnergy(
     pot3 *= (kf / 3.0) * rhoAlpha1
     pot1 += pot2 + pot3
     pot = pot1
-    print('lwt', ene)
+    sprint('lwt', ene)
 
     return pot, ene
 
@@ -390,7 +390,7 @@ def LWTLineIntegral(
         kflists = np.asarray(kflists)
     kflists[0] -= 1e-16  # for numerical safe
     kflists[-1] += 1e-16  # for numerical safe
-    # print('nsp', nsp, kfMax, kfMin, kf0, np.max(kflists))
+    # sprint('nsp', nsp, kfMax, kfMin, kf0, np.max(kflists))
     # -----------------------------------------------------------------------
     kernel0 = np.empty_like(q)
     kernel1 = np.empty_like(q)
@@ -464,7 +464,7 @@ def LWTLineIntegral(
     # -----------------------------------------------------------------------
     ene = np.einsum("ijk, ijk ->", rho, pot1) * rho.grid.dV * dt * alpha
     # ene2 = np.einsum("ijk, ijk ->", rho, pot) * rho.grid.dV
-    # print('ene', ene, ene2)
+    # sprint('ene', ene, ene2)
     # -----------------------------------------------------------------------
     pot *= alpha
     # pot *= alpha * rhoAlpha1
@@ -500,14 +500,14 @@ def LWT(
     TimeData.Begin("LWT")
     # Only performed once for each grid
     q = rho.grid.get_reciprocal().q
-    rho0 = np.mean(rho)
+    rho0 = mp.amean(rho)
     if ke_kernel_saved is None :
         KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
     else :
         KE_kernel_saved = ke_kernel_saved
     # if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
     if np.shape(rho) != KE_kernel_saved["shape"]:
-        print('Re-calculate %s KernelTable ' %kerneltype, np.shape(rho))
+        sprint('Re-calculate %s KernelTable ' %kerneltype, np.shape(rho))
         eta = np.linspace(0, etamax, neta)
         if kerneltype == "WT":
             KernelTable = WTKernelTable(eta, x, y, alpha, beta)
@@ -519,8 +519,8 @@ def LWT(
             KernelTable = MGPKernelTable(eta, q, maxpoints=maxpoints, symmetrization="Geometric")
         # Add MGP kinetic electron
         if lumpfactor is not None:
-            # print('Calculate MGP kinetic electron(%f)' %lumpfactor)
-            Ne = rho0 * np.size(rho) * rho.grid.dV
+            # sprint('Calculate MGP kinetic electron(%f)' %lumpfactor)
+            Ne = rho0 * rho.grid.Volume
             MGPKernelE = MGPOmegaE(q, Ne, lumpfactor)
             KE_kernel_saved["MGPKernelE"] = MGPKernelE
         # Different method to interpolate the kernel

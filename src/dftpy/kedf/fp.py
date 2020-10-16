@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.special as sp
 from scipy.interpolate import interp1d, splrep, splev
+from dftpy.mpi import smpi, mp, sprint
 from dftpy.math_utils import PowerInt
 from dftpy.functional_output import Functional
 from dftpy.field import DirectField
@@ -68,13 +69,13 @@ def FP_origin(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType=["E",
         ke_kernel_saved = None, **kwargs):
     TimeData.Begin("FP")
     q = rho.grid.get_reciprocal().q
-    rho0 = np.mean(rho)
+    rho0 = mp.amean(rho)
     if ke_kernel_saved is None :
         KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
     else :
         KE_kernel_saved = ke_kernel_saved
     if abs(KE_kernel_saved["rho0"] - rho0) > 1e-10 or np.shape(rho) != KE_kernel_saved["shape"]:
-        print("Re-calculate KE_kernel", np.shape(rho))
+        sprint("Re-calculate KE_kernel", np.shape(rho))
         # KE_kernel = SMKernel(q,rho0, alpha = alpha, beta = beta)
         KE_kernel = SMKernel(q, rho0, alpha=1.0, beta=1.0) * 1.6
         KE_kernel_saved["Kernel"] = KE_kernel
@@ -97,9 +98,9 @@ def FP_origin(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType=["E",
         # dPrho = rho0 **(11.0/6.0) * (1 - nu)  + (1.0/6.0 * rho0 * nuMinus1 * rhoFiveSixth) + \
         # (5.0/6.0 * nu * rho * rhoFiveSixth)
         # dPrho /= (rho * rho)
-        # print('dd', dPrho[:3, 0, 0, 0])
+        # sprint('dd', dPrho[:3, 0, 0, 0])
         dPrho = 5.0 / 6.0 * (nu - (nuMinus1 * rho0) / rho) * rhoFiveSixth / rho
-        # print('dd2', dPrho[:3, 0, 0, 0])
+        # sprint('dd2', dPrho[:3, 0, 0, 0])
         pot *= 2.0 * dPrho
 
     OutFunctional = Functional(name="FP")
@@ -114,13 +115,13 @@ def FP0(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType=["E","V"], 
     TimeData.Begin("FP")
     # Only performed once for each grid
     q = rho.grid.get_reciprocal().q
-    rho0 = np.einsum("ijk -> ", rho) / np.size(rho)
+    rho0 = mp.amean(rho)
     if ke_kernel_saved is None :
         KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
     else :
         KE_kernel_saved = ke_kernel_saved
     if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
-        print("Re-calculate KE_kernel", np.shape(rho))
+        sprint("Re-calculate KE_kernel", np.shape(rho))
         # KE_kernel = SMKernel(q,rho0, alpha = 1.0, beta = 1.0) * 1.6
         KE_kernel = WTKernel(q, rho0, alpha=alpha, beta=beta)
         KE_kernel_saved["Kernel"] = KE_kernel
@@ -155,13 +156,13 @@ def FP(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, rho0=None, calcType=[
     TimeData.Begin("FP")
     q = rho.grid.get_reciprocal().q
     if rho0 is None:
-        rho0 = np.einsum("ijk -> ", rho) / np.size(rho)
+        rho0 = mp.amean(rho)
     if ke_kernel_saved is None :
         KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
     else :
         KE_kernel_saved = ke_kernel_saved
     if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
-        print("Re-calculate KE_kernel", np.shape(rho))
+        sprint("Re-calculate KE_kernel", np.shape(rho))
         # KE_kernel = SMKernel(q,rho0, alpha = 1.0, beta = 1.0) * 1.6
         KE_kernel = WTKernel(q, rho0, alpha=alpha, beta=beta)
         KE_kernel_saved["Kernel"] = KE_kernel

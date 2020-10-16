@@ -3,6 +3,7 @@ from scipy.optimize import minimize, line_search
 from scipy import optimize as sopt
 import scipy.special as sp
 from functools import partial
+from dftpy.mpi import mp, smpi, sprint
 from dftpy.field import DirectField
 from dftpy.math_utils import LineSearchDcsrchVector, LineSearchDcsrch2, Brent
 from dftpy.math_utils import LBFGS
@@ -97,7 +98,7 @@ class Optimization(AbstractOptimization):
         epsi = 1.0e-9
         res = -res0.copy()
         p = res.copy()
-        r0Norm = np.einsum("ijk, ijk->", res, res)
+        r0Norm = mp.einsum("ijk, ijk->", res, res)
         r1Norm = r0Norm
         rConv = r0Norm * 0.1
         stat = "NOTCONV"
@@ -113,20 +114,20 @@ class Optimization(AbstractOptimization):
             else :
                 func = self.EnergyEvaluator(rho1, calcType=["V"], phi = phi1, lphi = self.lphi)
                 Ap = ((func.potential - mu) * phi1 - res0) / epsi
-            pAp = np.einsum("ijk, ijk->", p, Ap)
+            pAp = mp.einsum("ijk, ijk->", p, Ap)
             if pAp < 0.0:
                 if it == 0:
                     direction = r0Norm / pAp * p
                     stat = "WARN"
                 else:
                     stat = "FAILED"
-                    print("!WARN : pAp small than zero :iter = ", it)
+                    sprint("!WARN : pAp small than zero :iter = ", it)
                 break
             alpha = r0Norm / pAp
             direction += alpha * p
             res -= alpha * Ap
-            r1Norm = np.einsum("ijk, ijk->", res, res)
-            # print('it', it, rConv, r1Norm)
+            r1Norm = mp.einsum("ijk, ijk->", res, res)
+            # sprint('it', it, rConv, r1Norm)
             if r1Norm < min(rLists):
                 Best = direction.copy()
             rLists.append(r1Norm)
@@ -154,7 +155,7 @@ class Optimization(AbstractOptimization):
         q = -resA[-1]
         alphaList = np.zeros(len(lbfgs.s))
         for i in range(len(lbfgs.s) - 1, 0, -1):
-            alpha = lbfgs.rho[i] * np.einsum("ijk->", lbfgs.s[i] * q)
+            alpha = lbfgs.rho[i] * mp.einsum("ijk, ijk->", lbfgs.s[i], q)
             alphaList[i] = alpha
             q -= alpha * lbfgs.y[i]
 
@@ -162,13 +163,13 @@ class Optimization(AbstractOptimization):
             if len(lbfgs.s) < 1:
                 gamma = 1.0
             else:
-                gamma = np.einsum("ijk->", lbfgs.s[-1] * lbfgs.y[-1]) / np.einsum("ijk->", lbfgs.y[-1] * lbfgs.y[-1])
+                gamma = mp.einsum("ijk, ijk->", lbfgs.s[-1], lbfgs.y[-1]) / mp.einsum("ijk, ijk->", lbfgs.y[-1], lbfgs.y[-1])
             direction = gamma * q
         else:
             direction = lbfgs.H0 * q
 
         for i in range(len(lbfgs.s)):
-            beta = lbfgs.rho[i] * np.einsum("ijk->", lbfgs.y[i] * direction)
+            beta = lbfgs.rho[i] * mp.einsum("ijk->", lbfgs.y[i] * direction)
             direction += lbfgs.s[i] * (alphaList[i] - beta)
 
         return direction, number
@@ -220,6 +221,7 @@ class Optimization(AbstractOptimization):
             if self.nspin > 1 :
                 factor = factor[:, None, None, None]
             p *= factor
+            lll = (p * p).integral()
         else:
             theta = 0.01
             if self.nspin > 1 :
@@ -261,9 +263,9 @@ class Optimization(AbstractOptimization):
             if algorithm == "RMM":
                 residual = (f.potential - mu) * newphi
                 try:
-                    resN = np.einsum("..., ...->", residual, residual, optimize = 'optimal') * phi.grid.dV
+                    resN = mp.einsum("..., ...->", residual, residual, optimize = 'optimal') * phi.grid.dV
                 except Exception :
-                    resN = np.sum(residual*residual) * phi.grid.dV
+                    resN = mp.sum(residual*residual) * phi.grid.dV
                 value = resN
             elif algorithm == "CMM":
                 value = mu
@@ -273,11 +275,12 @@ class Optimization(AbstractOptimization):
         else:
             p2 = p
         if self.nspin == 1 :
-            grad = 2.0 * np.einsum("ijk, ijk, ijk->", f.potential, newphi, p2) * phi.grid.dV
+            grad = 2.0 * mp.einsum("ijk, ijk, ijk->", f.potential, newphi, p2) * phi.grid.dV
         else :
-            grad = 2.0 * np.einsum("lijk, lijk, lijk->l", f.potential, newphi, p2) * phi.grid.dV
+            grad = 2.0 * mp.einsum("lijk, lijk, lijk->l", f.potential, newphi, p2) * phi.grid.dV
 
-        # print('theta', theta, value, grad)
+
+        # sprint('theta', theta, value, grad)
         return [value, grad, newphi, f]
 
     def optimize_rho(self, guess_rho=None, guess_phi = None, lphi = False):
@@ -307,7 +310,7 @@ class Optimization(AbstractOptimization):
             mask2 = np.invert(mask)
             phi[mask] = np.sqrt(rho[mask])
             phi[mask2] = 1E-300
-            factor = np.sqrt(np.sum(rho)/np.sum(phi * phi))
+            factor = np.sqrt(mp.sum(rho)/mp.sum(phi * phi))
             phi *= factor
         else :
             phi = guess_phi.copy()
@@ -331,14 +334,14 @@ class Optimization(AbstractOptimization):
         fmt = "{:8s}{:24s}{:16s}{:16s}{:8s}{:8s}{:16s}".format(
             "Step", "Energy(a.u.)", "dE", "dP", "Nd", "Nls", "Time(s)"
         )
-        print(fmt)
+        sprint(fmt)
         dE = energy
         try:
-            resN = np.einsum("..., ...->", residual, residual, optimize = 'optimal') * rho.grid.dV
+            resN = mp.einsum("..., ...->", residual, residual, optimize = 'optimal') * rho.grid.dV
         except Exception :
-            resN = float(np.sum(residual*residual) * rho.grid.dV)
+            resN = float(mp.sum(residual*residual) * rho.grid.dV)
         fmt = "{:<8d}{:<24.12E}{:<16.6E}{:<16.6E}{:<8d}{:<8d}{:<16.6E}".format(0, energy, dE, resN, 1, 1, CostTime)
-        print(fmt)
+        sprint(fmt)
         Bound = self.optimization_options["maxcor"]
 
         if self.optimization_method == "LBFGS":
@@ -361,20 +364,20 @@ class Optimization(AbstractOptimization):
 
             if self.nspin > 1 :
                 lsfun = 'dcsrchV'
-                thetaDeriv0 = np.einsum("lijk, lijk, lijk ->l", func.potential, phi, p) * 2.0
+                thetaDeriv0 = mp.einsum("lijk, lijk, lijk ->l", func.potential, phi, p) * 2.0
                 if any(thetaDeriv0 > 0) :
                     gradf = True
                 else :
                     gradf = False
             else :
-                thetaDeriv0 = np.einsum("ijk, ijk, ijk->", func.potential, phi, p) * 2.0
+                thetaDeriv0 = mp.einsum("ijk, ijk, ijk->", func.potential, phi, p) * 2.0
                 if thetaDeriv0 > 0 :
                     gradf = True
                 else :
                     gradf = False
             #-----------------------------------------------------------------------
             if gradf:
-                print("!WARN: Change to steepest decent")
+                sprint("!WARN: Change to steepest decent")
                 p = -residualA[-1]
                 p, theta0 = self.OrthogonalNormalization(p, phi, vector=self.optimization_options["vector"])
 
@@ -438,10 +441,10 @@ class Optimization(AbstractOptimization):
 
             if theta is None:
                 converged = 1
-                print("!!!ERROR : Line-Search Failed!!!")
-                print("!!!ERROR : Density Optimization NOT Converged  !!!")
+                sprint("!!!ERROR : Line-Search Failed!!!")
+                sprint("!!!ERROR : Density Optimization NOT Converged  !!!")
                 break
-                # print('!WARN: Line-search failed and change to steepest decent')
+                # sprint('!WARN: Line-search failed and change to steepest decent')
                 # theta = 0.001
 
             newphi = valuederiv[2]
@@ -488,16 +491,16 @@ class Optimization(AbstractOptimization):
             CostTime = TimeData.Time("Optimize")
             dE = EnergyHistory[-1] - EnergyHistory[-2]
             try:
-                resN = np.einsum("..., ...->", residual, residual, optimize = 'optimal') * phi.grid.dV
+                resN = mp.einsum("..., ...->", residual, residual, optimize = 'optimal') * phi.grid.dV
             except Exception :
-                resN = float(np.sum(residual*residual) * phi.grid.dV)
+                resN = float(mp.sum(residual*residual) * phi.grid.dV)
             fmt = "{:<8d}{:<24.12E}{:<16.6E}{:<16.6E}{:<8d}{:<8d}{:<16.6E}".format(
                 it, energy, dE, resN, NumDirectrion, NumLineSearch, CostTime
             )
-            print(fmt)
+            sprint(fmt)
             if self.check_converge(EnergyHistory):
                 converged = 0
-                print("#### Density Optimization Converged ####")
+                sprint("#### Density Optimization Converged ####")
                 break
 
             directionA.append(p)
@@ -507,11 +510,11 @@ class Optimization(AbstractOptimization):
                 directionA.pop(0)
         else :
             converged = 2
-            print("!WARN: Not converged, but reached max steps")
+            sprint("!WARN: Not converged, but reached max steps")
 
         TimeData.End("Optimize")
-        print('Chemical potential (a.u.):', mu)
-        print('Chemical potential (eV)  :', mu * ENERGY_CONV['Hartree']['eV'])
+        sprint('Chemical potential (a.u.):', mu)
+        sprint('Chemical potential (eV)  :', mu * ENERGY_CONV['Hartree']['eV'])
         self.mu = mu
         self.rho = rho
         self.functional = func

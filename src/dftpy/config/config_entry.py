@@ -30,8 +30,15 @@ def format_cstr(expression):
 
 def format_intlist(expression):
     if ':' in expression :
-        l = map(int,expression.split(':'))
-        return np.arange(*l)
+        # l = list(map(int,expression.split(':')))
+        # return np.arange(*l)
+        ls = expression.split(':')
+        l = [None,] * 3
+        for i, item in enumerate(ls):
+            if item.lstrip('-+').isdigit():
+                l[i] = int(item)
+        return slice(*l)
+
     else :
         return list(map(int, expression.split()))
 

@@ -1,6 +1,7 @@
 # Collection of Kinetic Energy Density Functionals
 import numpy as np
 import copy
+from dftpy.mpi import smpi, mp, sprint
 from dftpy.field import DirectField
 from dftpy.kedf.tf import *
 from dftpy.kedf.vw import *
@@ -156,6 +157,9 @@ def KEDFunctional(rho, name="WT", calcType=["E","V"], split=False, nspin = 1, **
         OutFunctional = NL + xTF + yvW
         OutFunctional.name = name
         OutFunctionalDict = {"TF": xTF, "vW": yvW, "NL": NL}
+        # if 'E' in calcType  :
+            # eee = [mp.vsum(x.energy) for k, x in OutFunctionalDict.items()]
+        # sprint('eeee', eee)
     elif name[:5] == 'NLGGA' and name[6:] in NLKEDF_Dict:
         func = NLKEDF_Dict[name[6:]]
         NL = func(rho, calcType=calcType, **kwargs)

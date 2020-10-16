@@ -1,4 +1,5 @@
 import time
+from dftpy.mpi import smpi, mp, sprint
 
 class TimeObj(object):
     """
@@ -40,9 +41,26 @@ class TimeObj(object):
             self.cost[label] += t
         return t
 
-    def output(self, config=None):
-        print(format("Time information", "-^80"))
-        print("{:28s}{:24s}{:16s}{:24s}".format("Label", "Cost(s)", "Number", "Avg. Cost(s)"))
+    def output(self, config=None, sort = 0):
+        """
+        sort : Label(0), Cost(1), Number(2), Avg(3)
+        """
+        column = {
+                'Label'  : 0,
+                'Cost'   : 1,
+                'Number' : 2,
+                'Avg'    : 3,
+                }
+        if sort in column :
+            idx = column[sort]
+        elif isinstance(sort, (int, float)):
+            idx = int(sort)
+            if idx < 0 or idx > 3 :
+                idx = 0
+        else :
+            idx = 0
+        sprint(format("Time information", "-^80"))
+        sprint("{:28s}{:24s}{:16s}{:24s}".format("Label", "Cost(s)", "Number", "Avg. Cost(s)"))
         lprint = False
         if config :
             if isinstance(config, dict) and not config["OUTPUT"]["time"]:
@@ -50,11 +68,16 @@ class TimeObj(object):
             else :
                 lprint = True
         if lprint :
-            for key, cost in sorted(self.cost.items(), key=lambda d: d[1]):
-                print("{:28s}{:<24.4f}{:<16d}{:<24.4f}".format(key, cost, self.number[key], cost/self.number[key]))
-        else:
-            key = "TOTAL"
-            print("{:28s}{:<24.4f}{:<16d}{:<24.4f}".format(key, self.cost[key], self.number[key], self.cost[key]/self.number[key]))
+            info = []
+            for key, cost in self.cost.items():
+                if key == 'TOTAL' : continue
+                item = [key, cost, self.number[key], cost/self.number[key]]
+                info.append(item)
+            for item in sorted(info, key=lambda d: d[idx]):
+                sprint("{:28s}{:<24.4f}{:<16d}{:<24.4f}".format(*item))
+        key = "TOTAL"
+        sprint("{:28s}{:<24.4f}{:<16d}{:<24.4f}".format(key, self.cost[key], self.number[key], self.cost[key]/self.number[key]))
+        # print(sorted(self.toc.keys()))
 
 
 TimeData = TimeObj()

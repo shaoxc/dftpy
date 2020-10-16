@@ -1,5 +1,6 @@
 import numpy as np
 from dftpy.base import BaseCell, DirectCell, ReciprocalCell, Coord, s2r
+from dftpy.mpi import mp, smpi
 
 
 class BaseGrid(BaseCell):
@@ -20,20 +21,26 @@ class BaseGrid(BaseCell):
 
     """
 
-    def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), units="Bohr", convention="mic", **kwargs):
+    def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), units="Bohr", convention="mic", full = False, realspace = True, **kwargs):
         # print("BaseGrid __init__")
         super().__init__(lattice=lattice, origin=origin, units=units, **kwargs)
-        self._nr = np.asarray(nr, dtype=np.int32)
-        self._nnr = self._nr[0] * self._nr[1] * self._nr[2]
-        self._dV = np.abs(self._volume) / self._nnr
+        self._nrR = np.array(nr, dtype = np.int32)
+        self._nnrR = np.prod(self._nrR)
+        self._dV = np.abs(self._volume) / self._nnrR
+        self._nrG = self._nrR.copy()
+        if not full :
+            self._nrG[-1] = self._nrG[-1] // 2 + 1
+            self._nnrG = np.prod(self._nrG)
         metric = np.dot(lattice.T, lattice)
         latparas = np.zeros(3)
         for i in range(3):
             latparas[i] = np.sqrt(metric[i, i])
-        self._spacings = latparas / self._nr
+        self._spacings = latparas / self._nrR
         self._latparas= latparas
         # self._r = None # initialize them on request
         # self._s = None # initialize them on request
+        self.local_slice(nr, realspace = realspace, full = full)
+        self._nnr = np.prod(self._nr)
 
     def __eq__(self, other):
         if not super().__eq__(other):
@@ -51,6 +58,22 @@ class BaseGrid(BaseCell):
     @property
     def nnr(self):
         return self._nnr
+
+    @property
+    def nrR(self):
+        return self._nrR
+
+    @property
+    def nnrR(self):
+        return self._nnrR
+
+    @property
+    def nrG(self):
+        return self._nrG
+
+    @property
+    def nnrG(self):
+        return self._nnrG
 
     @property
     def dV(self):
@@ -77,6 +100,18 @@ class BaseGrid(BaseCell):
         results = self.__class__(lattice, nr, origin=self.origin, units=self.units)
         return results
 
+    def local_slice(self, nr, **kwargs):
+        # print('KKKKKKKKKKKKKKKKKKKKKK', kwargs)
+        self._slice, self._nr, self._offsets = mp.get_local_fft_shape(nr, **kwargs)
+
+    @property
+    def slice(self):
+        return self._slice
+
+    @property
+    def offsets(self):
+        return self._offsets
+
 
 class DirectGrid(BaseGrid, DirectCell):
     """
@@ -89,8 +124,8 @@ class DirectGrid(BaseGrid, DirectCell):
         s : crystal coordinates of each grid point
     """
 
-    # def __init__(self, lattice, nr, origin=np.array([0.,0.,0.]), units=None, full = False, **kwargs):
     def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), units=None, full=True, uppergrid = None, **kwargs):
+        # print('RRRRRRRRRRRRRRRRRRRRRRRRRR', nr)
         """
         Parameters
         ----------
@@ -103,18 +138,13 @@ class DirectGrid(BaseGrid, DirectCell):
         # print("DirectGrid __init__")
         # lattice is already scaled inside the super()__init__, no need to do it here
         # lattice *= LEN_CONV[units]["Bohr"]
-        super().__init__(lattice=lattice, nr=nr, origin=origin, units=units, **kwargs)
+        super().__init__(lattice=lattice, nr=nr, origin=origin, units=units, full = full, realspace = True, **kwargs)
         self._r = None
         self._rr = None
         self._s = None
         self.RPgrid = uppergrid
         self._Rtable = None
         self._full = full
-        if full:
-            self._nrG = nr
-        else:
-            self._nrG = nr.copy()
-            self._nrG[-1] = self._nrG[-1] // 2 + 1
     
     def __eq__(self, other):
         """
@@ -129,11 +159,18 @@ class DirectGrid(BaseGrid, DirectCell):
 
     def _calc_grid_crys_points(self):
         if self._s is None:
-            s0 = np.linspace(0, 1, self.nr[0], endpoint=False)
-            s1 = np.linspace(0, 1, self.nr[1], endpoint=False)
-            s2 = np.linspace(0, 1, self.nr[2], endpoint=False)
-            S0, S1, S2 = np.meshgrid(s0, s1, s2, indexing="ij")
-            self._s = np.asarray([S0, S1, S2])
+            # s0 = np.linspace(0, 1, self.nr[0], endpoint=False)
+            # s1 = np.linspace(0, 1, self.nr[1], endpoint=False)
+            # s2 = np.linspace(0, 1, self.nr[2], endpoint=False)
+            # S0, S1, S2 = np.meshgrid(s0, s1, s2, indexing="ij")
+            # self._s = np.asarray([S0, S1, S2])
+            ax = []
+            for i in range(3):
+                s0 = np.linspace(0, 1, self.nrR[i], endpoint=False)
+                ax.append(s0)
+            AX = [a[sl] for a, sl in zip(ax, self.slice)]
+            S = np.meshgrid(*AX, indexing="ij")
+            self._s = np.asarray(S)
 
     def _calc_grid_cart_points(self):
         if self._r is None:
@@ -161,10 +198,6 @@ class DirectGrid(BaseGrid, DirectCell):
         return self._s
 
     @property
-    def nrG(self):
-        return self._nrG
-
-    @property
     def full(self):
         return self._full
 
@@ -176,10 +209,8 @@ class DirectGrid(BaseGrid, DirectCell):
             '''
             self._full = value
             self.RPgrid = None
-            if self._full:
-                self._nrG = self.nr
-            else:
-                self._nrG = self.nr.copy()
+            self._nrG = self.nr.copy()
+            if not self._full:
                 self._nrG[-1] = self._nrG[-1] // 2 + 1
 
     def get_reciprocal(self, scale=None, convention="physics"):
@@ -199,7 +230,7 @@ class DirectGrid(BaseGrid, DirectCell):
             Note2: We have to use 'Bohr' units to avoid changing hbar value
         """
         # TODO define in constants module hbar value for all units allowed
-        if self.RPgrid is None or scale is None:
+        if self.RPgrid is None or scale is not None:
             if scale is None :
                 scale=[1.0, 1.0, 1.0]
             scale = np.array(scale)
@@ -212,10 +243,11 @@ class DirectGrid(BaseGrid, DirectCell):
             # bg = bg/LEN_CONV["Bohr"][self.units]
             reciprocal_lat = np.einsum("ij,j->ij", bg, scale)
 
-            self.RPgrid = ReciprocalGrid(lattice=reciprocal_lat, nr=self.nr, units=self.units, full=self.full, uppergrid=self)
+            self.RPgrid = ReciprocalGrid(lattice=reciprocal_lat, nr=self.nrR, units=self.units, full=self.full, uppergrid=self)
         return self.RPgrid
 
     def get_Rtable(self, rcut=10):
+        '''Only support for serial'''
         if self._Rtable is None:
             self._Rtable = {}
             metric = np.dot(self.lattice.T, self.lattice)
@@ -266,22 +298,19 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
         # print("ReciprocalGrid __init__")
         # lattice is already scaled inside the super()__init__, no need to do it here
         # lattice /= LEN_CONV[units]["Bohr"]
-        if full:
-            nrG = nr
-        else:
-            nrG = nr.copy()
-            nrG[-1] = nrG[-1] // 2 + 1
-        super().__init__(lattice=lattice, nr=nrG, origin=origin, units=units, **kwargs)
+        # print('GGGGGGGGGGGGGGGGGGGGGGGGGG', nr)
+        super().__init__(lattice=lattice, nr=nr, origin=origin, units=units, full = full, realspace = False, **kwargs)
         self._g = None
         self._gg = None
         self.Dgrid = uppergrid
         self._q = None
         self._mask = None
-        self._nrR = nr
         self._gF = None
         self._ggF = None
         self._full = full
-    
+        self._invgg = None
+        self._invq = None
+
     def __eq__(self, other):
         """
         Implement the == operator in the ReciprocalGrid class.
@@ -313,6 +342,31 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
             gg = np.einsum("lijk,lijk->ijk", self._g, self._g)
             self._gg = gg
         return self._gg
+
+    @property
+    def invgg(self):
+        if self._invgg is None:
+            if smpi.is_root :
+                self.gg[0, 0, 0] = 1.0
+            invgg = 1.0/self.gg
+            if smpi.is_root :
+                self.gg[0, 0, 0] = 0.0
+                invgg[0, 0, 0] = 0.0
+            self._invgg = invgg
+        return self._invgg
+
+    @property
+    def invq(self):
+        if self._invq is None:
+            if smpi.is_root :
+                self.q[0, 0, 0] = 1.0
+            invq = 1.0/self.q
+            if smpi.is_root :
+                self.q[0, 0, 0] = 0.0
+            invq[0, 0, 0] = 0.0
+        # self._invq = invq
+        # return self._invq
+        return invq
 
     def get_direct(self, scale= None, convention="physics"):
         """
@@ -375,21 +429,15 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
                 # else :
                     # ax.append(freq)
                 ax.append(freq)
-        S0, S1, S2 = np.meshgrid(ax[0], ax[1], ax[2], indexing="ij")
-
-        # S_cart = s2r(S, self)
-        # S_cart = np.asarray([S2, S1, S0])
-        S_cart = np.asarray([S0, S1, S2])
+        AX = [a[sl] for a, sl in zip(ax, self.slice)]
+        S = np.meshgrid(*AX, indexing="ij")
+        S_cart = np.asarray(S)
         S_cart = np.einsum("j...,kj->k...", S_cart, self.lattice)
 
         return S_cart
 
     @property
-    def nrR(self):
-        return self._nrR
-
-    @property
-    def mask(self):
+    def mask_serial(self):
         if self._mask is None:
             nrR = self.nrR[:3]
             # Dnr = nr[:3]//2
@@ -425,6 +473,46 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
         return self._mask
 
     @property
+    def mask(self):
+        if self._mask is None:
+            nrR = self.nrR[:3]
+            Dnr = nrR[:3] // 2 - self.offsets
+            Dnr = np.where(Dnr > 0, Dnr, 0)
+            Dmod = nrR[:3] % 2
+            mask = np.ones(self.nr[:3], dtype=bool)
+            if np.all(self.nrG == self.nrR):
+                mask[:, :, Dnr[2] + 1 :] = False
+
+            if np.all(self.offsets == 0):
+                mask[0, 0, 0] = False
+            if self.offsets[0] == self.offsets[2] == 0 :
+                mask[0, Dnr[1] + 1 :, 0] = False
+            if self.offsets[2] == 0 :
+                mask[Dnr[0] + 1 :, :, 0] = False
+            if Dmod[2] == 0:
+                if self.offsets[0] == 0 :
+                    if self.offsets[1] == 0 :
+                        mask[0, 0, Dnr[2]:Dnr[2]+1] = False
+                    mask[0, Dnr[1] + 1 :, Dnr[2]:Dnr[2]+1] = False
+                mask[Dnr[0] + 1 :, :, Dnr[2]:Dnr[2]+1] = False
+                if Dmod[1] == 0 and self.offsets[0] == 0 :
+                    mask[0, Dnr[1]:Dnr[1]+1, Dnr[2]:Dnr[2]+1] = False
+                if Dmod[0] == 0:
+                    if self.offsets[1] == 0 :
+                        mask[Dnr[0]:Dnr[0]+1, 0, Dnr[2]:Dnr[2]+1] = False
+                    mask[Dnr[0]:Dnr[0]+1, Dnr[1] + 1 :, Dnr[2]:Dnr[2]+1] = False
+            if Dmod[0] == 0 and self.offsets[2] == 0 :
+                mask[Dnr[0]:Dnr[0]+1, Dnr[1] + 1 :, 0] = False
+                if Dmod[1] == 0:
+                    mask[Dnr[0]:Dnr[0]+1, Dnr[1]:Dnr[1]+1, 0] = False
+            if Dmod[1] == 0 and self.offsets[2] == 0 :
+                mask[0, Dnr[1]:Dnr[1]+1, 0] = False
+            if all(Dmod == 0):
+                mask[Dnr[0]:Dnr[0]+1, Dnr[1]:Dnr[1]+1, Dnr[2]:Dnr[2]+1] = False
+            self._mask = mask
+        return self._mask
+
+    @property
     def gF(self):
         if self._gF is None:
             self._gF = self._calc_grid_points(full=True)
@@ -448,3 +536,4 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
     def full(self, value):
         if self._full != value :
             self._full = value
+

@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.special as sp
+from dftpy.mpi import mp, smpi
 from scipy.interpolate import interp1d, splrep, splev
 from dftpy.time_data import TimeData
 
@@ -347,7 +348,8 @@ def LWTKernelKf(q, kf, KernelTable, etamax=1000.0, out=None):
     cond1 = np.invert(cond0)
     if isinstance(KernelTable, tuple):
         limit = splev(etamax, KernelTable)
-        Kernel[cond0] = splev(eta[cond0], KernelTable)
+        if np.where(cond0)[0].size > 0 :
+            Kernel[cond0] = splev(eta[cond0], KernelTable)
     elif isinstance(KernelTable, np.ndarray):
         limit = KernelTable[-1]
         deta = etamax / (np.size(KernelTable) - 1)
@@ -357,7 +359,8 @@ def LWTKernelKf(q, kf, KernelTable, etamax=1000.0, out=None):
     else:
         raise AttributeError("Wrong type of KernelTable")
     Kernel[cond1] = limit
-    Kernel[0, 0, 0] = 0.0
+    if smpi.is_root :
+        Kernel[0, 0, 0] = 0.0
     TimeData.End("LWTKernelKf")
     return Kernel
 
@@ -380,12 +383,14 @@ def MGPOmegaE(q, Ne=1, lumpfactor=0.2):
         a = float(a / Ne ** (2.0 / 3.0))
         b = a
 
-    q[0, 0, 0] = 1.0
+    if smpi.is_root :
+        q[0, 0, 0] = 1.0
     gg = q ** 2
     corr = 4 * np.pi * sp.erf(c * gg) ** 2 * a * np.exp(-gg * b) / gg
     # corr = 4 * np.pi * sp.erf(c * q) ** 2* a * np.exp(-gg * b) / gg + 0.001*np.exp(-0.1*(gg-1.5)**2)
-    q[0, 0, 0] = 0.0
-    corr[0, 0, 0] = 0.0
+    if smpi.is_root :
+        q[0, 0, 0] = 0.0
+        corr[0, 0, 0] = 0.0
     # Same as the formular in MGP
     corr /= 1.2
     return corr

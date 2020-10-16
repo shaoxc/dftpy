@@ -1,6 +1,7 @@
 import warnings
 import numpy as np
 from dftpy.constants import units_warning
+from dftpy.mpi import smpi, mp, sprint
 
 
 class BaseCell(object):
@@ -33,7 +34,6 @@ class BaseCell(object):
         # self.bg = np.linalg.inv(at)
         self._origin = np.asarray(origin)
         if units is not None:
-            print("WARN")
             warnings.warn(units_warning, DeprecationWarning)
         self._units = None
         self._volume = np.abs(np.dot(lattice[:, 0], np.cross(lattice[:, 1], lattice[:, 2])))
