@@ -5,19 +5,18 @@ from mpi4py import MPI
 from dftpy.mpi import smpi
 import dftpy.mpi.mp_serial as mps
 
+from dftpy.constants import FFTLIB
+
 # Global variables
 fft_saved = None
 #-----------------------------------------------------------------------
-def get_local_fft_shape(nr, realspace = True, decomposition = 'Slab', **kwargs):
-    global fft_saved
-    if fft_saved is not None and fft_saved.global_shape() == tuple(nr) :
-        fft = fft_saved
-    else :
-        if decomposition == 'Slab' :
-            fft = PFFT(smpi.comm, nr, axes=(0, 1, 2), dtype=np.float, grid=(-1,))
-        else :
-            fft = PFFT(smpi.comm, nr, axes=(0, 1, 2), dtype=np.float)
-        fft_saved = fft
+def get_local_fft_shape(nr, realspace = True, decomposition = 'Slab', backend = None, **kwargs):
+    """
+    TIP :
+        When the environment variable LD_PRELOAD is defined, backend = 'fftw' will give a wrong results
+        for mpi4py-fft==2.0.3
+    """
+    fft = get_mpi4py_fft(nr, decomposition=decomposition, backend=backend, **kwargs)
     s = fft.local_slice(not realspace)
     shape = fft.shape(not realspace)
     offsets = np.zeros_like(s, dtype = np.int)
@@ -27,18 +26,24 @@ def get_local_fft_shape(nr, realspace = True, decomposition = 'Slab', **kwargs):
     shape = np.asarray(shape)
     return (s, shape, offsets)
 
+def get_mpi4py_fft(nr, decomposition = 'Slab', backend = 'numpy', **kwargs):
+    if backend not in ['fftw', 'pyfftw', 'numpy','scipy', 'mkl_fft'] :
+        backend = FFTLIB
+    global fft_saved
+    if fft_saved is not None and fft_saved.global_shape() == tuple(nr) :
+        fft = fft_saved
+    else :
+        if decomposition == 'Slab' :
+            fft = PFFT(smpi.comm, nr, axes=(0, 1, 2), dtype=np.float, grid=(-1,), backend = backend)
+        else :
+            fft = PFFT(smpi.comm, nr, axes=(0, 1, 2), dtype=np.float, backend = backend)
+        fft_saved = fft
+    return fft
+
 
 class MPI4PYFFTRUN :
-    def __init__(self, nr, forward = True, decomposition = 'Slab'):
-        global fft_saved
-        if fft_saved is not None and fft_saved.global_shape() == tuple(nr) :
-            fft = fft_saved
-        else :
-            if decomposition == 'Slab' :
-                fft = PFFT(smpi.comm, nr, axes=(0, 1, 2), dtype=np.float, grid=(-1,))
-            else :
-                fft = PFFT(smpi.comm, nr, axes=(0, 1, 2), dtype=np.float)
-            fft_saved = fft
+    def __init__(self, nr, forward = True, decomposition = 'Slab', backend = None, **kwargs):
+        fft = get_mpi4py_fft(nr, decomposition=decomposition, backend=backend, **kwargs)
         # self.arr = newDistArray(fft, False, view = True)
         # self.arr_g = newDistArray(fft, True, view = True)
         self.arr = newDistArray(fft, False)
@@ -121,3 +126,14 @@ def amean(a):
     s = smpi.comm.allreduce(s)
     s = s[0]/s[1]
     return s
+
+def split_number(n):
+    av = n//smpi.comm.size
+    res = n - av * smpi.comm.size
+    if smpi.comm.rank < res :
+        lb = (av + 1) * smpi.comm.rank
+        ub = lb + av + 1
+    else :
+        lb = av * smpi.comm.rank + res
+        ub = lb + av
+    return lb, ub

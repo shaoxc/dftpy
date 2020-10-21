@@ -76,3 +76,6 @@ def amax(a):
 def amean(a):
     s = np.mean(a)
     return s
+
+def split_number(n):
+    return 0, n

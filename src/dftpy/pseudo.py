@@ -95,7 +95,7 @@ class LocalPseudo(AbstractLocalPseudo):
     def restart(self, grid=None, ions=None, full=False):
         """
         Clean all private data and resets the ions and grid.
-        This will prompt the computation of a new pseudo 
+        This will prompt the computation of a new pseudo
         without recomputing the local pp on the atoms.
         """
         if full:
@@ -128,7 +128,7 @@ class LocalPseudo(AbstractLocalPseudo):
     @property
     def ions(self):
         if self._ions is not None:
-            return self._ions 
+            return self._ions
         else:
             raise AttributeError("Must specify ions for Pseudopotentials")
 
@@ -374,6 +374,8 @@ class LocalPseudo(AbstractLocalPseudo):
             for i in range(self.ions.nat):
                 if self.ions.labels[i] == key:
                     Up = np.array(self.ions.pos[i].to_crys()) * nrR
+                    if self.Bspline.check_out_cell(Up):
+                        continue
                     Mn = []
                     Mn_2 = []
                     for j in range(3):
@@ -526,7 +528,7 @@ class ReadPseudo(object):
 
     def _init_PP_recpot(self, key):
         """
-        This is a private method used only in this specific class. 
+        This is a private method used only in this specific class.
         """
 
         def set_PP(Single_PP_file):
@@ -568,8 +570,8 @@ class ReadPseudo(object):
 
     def _init_PP_usp(self, key, ext = 'usp'):
         """
-        !!! NOT FULL TEST !!! 
-        This is a private method used only in this specific class. 
+        !!! NOT FULL TEST !!!
+        This is a private method used only in this specific class.
         """
 
         def set_PP(Single_PP_file):
@@ -607,7 +609,7 @@ class ReadPseudo(object):
             else:
                 raise AttributeError("Error : Check the PP file")
             gmax = np.float(lines[ibegin - 1].split()[0]) * BOHR2ANG
-                
+
             # v = np.array(line.split()).astype(np.float) / (HARTREE2EV*BOHR2ANG ** 3 * 4.0 * np.pi)
             v = np.array(line.split()).astype(np.float) / (HARTREE2EV*BOHR2ANG ** 3)
             g = np.linspace(0, gmax, num=len(v))
@@ -644,7 +646,7 @@ class ReadPseudo(object):
 
     def _init_PP_upf(self, key, MaxPoints=15000, Gmax=30):
         """
-        This is a private method used only in this specific class. 
+        This is a private method used only in this specific class.
         """
 
         def set_PP(Single_PP_file):
@@ -660,7 +662,7 @@ class ReadPseudo(object):
             with open(Single_PP_file, "r") as outfil:
                 upf = upf_to_json(upf_str=outfil.read(), fname=Single_PP_file)
             r = np.array(upf["pseudo_potential"]["radial_grid"], dtype=np.float64)
-            # v = np.array(upf["pseudo_potential"]["local_potential"], dtype=np.float64) 
+            # v = np.array(upf["pseudo_potential"]["local_potential"], dtype=np.float64)
             v = np.array(upf["pseudo_potential"]["local_potential"], dtype=np.float64)
             return r, v, upf
 
@@ -720,8 +722,8 @@ class ReadPseudo(object):
             data = [line.split()[1:3] for line in lines[ibegin:iend]]
             data = np.asarray(data, dtype = float)
 
-            r = data[:, 0] 
-            v = data[:, 1] 
+            r = data[:, 0]
+            v = data[:, 1]
             sprint("psp pseudopotential " + Single_PP_file + " loaded")
             info['grid'] = r
             info['local_potential'] = v

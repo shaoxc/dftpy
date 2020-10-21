@@ -7,7 +7,6 @@ from dftpy.constants import FFTLIB, SAVEFFT
 from dftpy.math_utils import PYfft, PYifft
 from dftpy.time_data import TimeData
 from dftpy.base import Coord
-import dftpy.constants
 from dftpy.mpi import smpi, mp
 
 
@@ -660,7 +659,7 @@ class ReciprocalField(BaseField):
     #    return ReciprocalField(grid=self.grid,rank=s_pol*o_pol,griddata_3d=prod)
     # else:
     #    return self*other
-    
+
     def integral(self):
         """ Returns the integral of self """
         if self.rank == 1:

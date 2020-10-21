@@ -43,8 +43,8 @@ class Optimization(AbstractOptimization):
     optimization_options: dict
             kwargs for the minim. method
 
-    EnergyEvaluator: TotalEnergyAndPotential class   
-            
+    EnergyEvaluator: TotalEnergyAndPotential class
+
 
     guess_rho: DirectField, optional
             an initial guess for the electron density
@@ -95,7 +95,7 @@ class Optimization(AbstractOptimization):
         if self.nspin > 1 :
             rho = density.copy()
         direction = np.zeros_like(res0)
-        epsi = 1.0e-9
+        epsi = 1.0e-9 * smpi.comm.size
         res = -res0.copy()
         p = res.copy()
         r0Norm = mp.einsum("ijk, ijk->", res, res)
@@ -121,7 +121,7 @@ class Optimization(AbstractOptimization):
                     stat = "WARN"
                 else:
                     stat = "FAILED"
-                    sprint("!WARN : pAp small than zero :iter = ", it)
+                    sprint("!WARN : pAp small than zero :iter = ", it, pAp)
                 break
             alpha = r0Norm / pAp
             direction += alpha * p
