@@ -26,15 +26,20 @@ def get_local_fft_shape(nr, realspace = True, decomposition = 'Slab', backend = 
     shape = np.asarray(shape)
     return (s, shape, offsets)
 
-def get_mpi4py_fft(nr, decomposition = 'Slab', backend = 'numpy', **kwargs):
-    if backend not in ['fftw', 'pyfftw', 'numpy','scipy', 'mkl_fft'] :
+def get_mpi4py_fft(nr, decomposition = 'Slab', backend = None, grid = None, **kwargs):
+    fft_support = ['pyfftw', 'numpy','scipy', 'mkl_fft']
+    # fft_support = ['fftw', 'pyfftw', 'numpy','scipy', 'mkl_fft']
+    if backend not in fft_support :
         backend = FFTLIB
+    if backend not in fft_support :
+        backend = 'numpy'
     global fft_saved
     if fft_saved is not None and fft_saved.global_shape() == tuple(nr) :
         fft = fft_saved
     else :
         if decomposition == 'Slab' :
-            fft = PFFT(smpi.comm, nr, axes=(0, 1, 2), dtype=np.float, grid=(-1,), backend = backend)
+            # fft = PFFT(smpi.comm, nr, axes=(0, 1, 2), dtype=np.float, grid=(-1,), backend = backend)
+            fft = PFFT(smpi.comm, nr, axes=(0, 1, 2), dtype=np.float, backend = backend)
         else :
             fft = PFFT(smpi.comm, nr, axes=(0, 1, 2), dtype=np.float, backend = backend)
         fft_saved = fft
@@ -137,3 +142,16 @@ def split_number(n):
         lb = av * smpi.comm.rank + res
         ub = lb + av
     return lb, ub
+
+def best_fft_size(n, opt = True, **kwargs):
+    if opt :
+        n_l = n/smpi.comm.size
+    else :
+        n_l = n
+    n_l = mps.best_fft_size(n_l, **kwargs)
+
+    if opt :
+        n_best = n_l * smpi.comm.size
+    else :
+        n_best = n_l
+    return n_best

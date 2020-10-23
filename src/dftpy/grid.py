@@ -41,6 +41,7 @@ class BaseGrid(BaseCell):
         # self._s = None # initialize them on request
         self.local_slice(nr, realspace = realspace, full = full)
         self._nnr = np.prod(self._nr)
+        print('nr_local', smpi.comm.rank, self._nr, realspace)
 
     def __eq__(self, other):
         if not super().__eq__(other):
@@ -101,7 +102,6 @@ class BaseGrid(BaseCell):
         return results
 
     def local_slice(self, nr, **kwargs):
-        # print('KKKKKKKKKKKKKKKKKKKKKK', kwargs)
         self._slice, self._nr, self._offsets = mp.get_local_fft_shape(nr, **kwargs)
 
     @property
@@ -145,7 +145,7 @@ class DirectGrid(BaseGrid, DirectCell):
         self.RPgrid = uppergrid
         self._Rtable = None
         self._full = full
-    
+
     def __eq__(self, other):
         """
         Implement the == operator in the DirectGrid class.
@@ -385,7 +385,7 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
             Note2: We have to use 'Bohr' units to avoid changing hbar value
         """
         # TODO define in constants module hbar value for all units allowed
-        if self.Dgrid is None or scale is None:
+        if self.Dgrid is None or scale is not None:
             if scale is None :
                 scale=[1.0, 1.0, 1.0]
             scale = np.array(scale)
