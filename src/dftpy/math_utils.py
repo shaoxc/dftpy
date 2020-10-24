@@ -1,9 +1,8 @@
 import numpy as np
-import scipy.special as sp
 from scipy import ndimage, interpolate
 from scipy.optimize import minpack2
 from scipy import optimize as sopt
-from dftpy.mpi import mp, smpi
+import dftpy.mpi.mp_serial as mps
 from dftpy.constants import FFTLIB
 
 if FFTLIB == "pyfftw":
@@ -122,13 +121,13 @@ def LineSearchDcsrchVector(func, alpha0=None, func0=None, c1=1e-4, c2=0.9, amax=
         resA.append(g1)
         direction = get_direction_CG(resA, dirA=dirA, method="CG-PR")
         dirA.append(direction)
-        grad = mp.asum(g1 * direction)
+        grad = (g1 * direction).asum()
         if grad > 0.0 :
             direction = -g1
-            grad = mp.asum(g1 * direction)
+            grad = (g1 * direction).asum()
 
         task = b"START"
-        factor = mp.amax(np.abs(direction))
+        factor = (np.abs(direction).amax())
         beta = min(0.1, 0.1 * np.pi/factor)
         # stop
         for j in range(maxiter):
@@ -139,14 +138,14 @@ def LineSearchDcsrchVector(func, alpha0=None, func0=None, c1=1e-4, c2=0.9, amax=
                 func1 = func(alpha1)
                 x1 = func1[0]
                 g1 = func1[1]
-                grad = mp.asum(g1 * direction)
+                grad = (g1 * direction).asum()
             else:
                 break
         else:
             alpha1 = None
         if task[:5] == b"ERROR" or task[:4] == b"WARN":
             alpha1 = None  # failed
-        if alpha1 is None or mp.asum(g1 * g1) < econv :
+        if alpha1 is None or (g1 * g1).asum() < econv :
             break
     return alpha1, x1, g1, task, it, func1
 
@@ -238,10 +237,18 @@ def PowerInt(x, numerator, denominator=1):
     return y
 
 
-def bestFFTsize(N, **kwargs):
-    bestN = mp.best_fft_size(N, **kwargs)
-    return bestN
+def bestFFTsize(n, nproc = 1, opt = True, **kwargs):
+    if opt :
+        n_l = n/nproc
+    else :
+        n_l = n
+    n_l = mps.best_fft_size(n_l, **kwargs)
 
+    if opt :
+        n_best = n_l * nproc
+    else :
+        n_best = n_l
+    return n_best
 
 def interpolation_3d(arr, nr_new, interp="map"):
     nr = np.array(arr.shape)
@@ -375,10 +382,7 @@ class LBFGS(object):
             self.rho.pop(0)
         self.s.append(dx)
         self.y.append(dg)
-        try :
-            rho = 1.0 / mp.einsum("..., ...->", dg, dx, optimize = 'optimal')
-        except Exception :
-            rho = 1.0 / mp.asum(dg * dx)
+        rho = 1.0 / (dg * dx).asum()
 
         self.rho.append(rho)
 
@@ -392,23 +396,21 @@ def get_direction_CG(resA, dirA=None, method="CG-HS", **kwargs):
     if len(resA) == 1:
         beta = 0.0
     elif method == "CG-HS" and len(dirA) > 0:  # Maybe the best of the CG.
-        beta = mp.asum(resA[-1] * (resA[-1] - resA[-2])) / mp.asum(
-            dirA[-1] * (resA[-1] - resA[-2])
-        )
+        beta = (resA[-1] * (resA[-1] - resA[-2])).asum() / (dirA[-1] * (resA[-1] - resA[-2]).asum())
         # print('beta', beta)
     elif method == "CG-FR":
-        beta = mp.asum(resA[-1] ** 2) / mp.asum(resA[-2] ** 2)
+        beta = (resA[-1] ** 2).asum() / (resA[-2] ** 2).asum()
     elif method == "CG-PR":
-        beta = mp.asum(resA[-1] * (resA[-1] - resA[-2])) / mp.asum(resA[-2] ** 2)
+        beta = (resA[-1] * (resA[-1] - resA[-2]).asum()) / (resA[-2] ** 2).asum()
         beta = max(beta, 0.0)
     elif method == "CG-DY" and len(dirA) > 0:
-        beta = mp.asum(resA[-1] ** 2) / mp.asum(dirA[-1] * (resA[-1] - resA[-2]))
+        beta = (resA[-1] ** 2).asum() / (dirA[-1] * (resA[-1] - resA[-2]).asum())
     elif method == "CG-CD" and len(dirA) > 0:
-        beta = -mp.asum(resA[-1] ** 2) / mp.asum(dirA[-1] * resA[-2])
+        beta = -(resA[-1] ** 2).asum() / (dirA[-1] * resA[-2]).asum()
     elif method == "CG-LS" and len(dirA) > 0:
-        beta = mp.asum(resA[-1] * (resA[-1] - resA[-2])) / mp.asum(dirA[-1] * resA[-2])
+        beta = (resA[-1] * (resA[-1] - resA[-2]).asum()) / (dirA[-1] * resA[-2]).asum()
     else:
-        beta = mp.asum(resA[-1] ** 2) / mp.asum(resA[-2] ** 2)
+        beta = (resA[-1] ** 2).asum() / (resA[-2] ** 2).asum()
 
     if dirA is None or len(dirA) == 0:
         direction = -resA[-1]
@@ -428,7 +430,7 @@ def get_direction_LBFGS(resA, lbfgs=None, **kwargs):
     q = -resA[-1]
     alphaList = np.zeros(len(lbfgs.s))
     for i in range(len(lbfgs.s) - 1, 0, -1):
-        alpha = lbfgs.rho[i] * mp.asum(lbfgs.s[i] * q)
+        alpha = lbfgs.rho[i] * (lbfgs.s[i] * q).asum()
         alphaList[i] = alpha
         q -= alpha * lbfgs.y[i]
 
@@ -436,13 +438,13 @@ def get_direction_LBFGS(resA, lbfgs=None, **kwargs):
         if len(lbfgs.s) < 1:
             gamma = 1.0
         else:
-            gamma = mp.asum(lbfgs.s[-1] * lbfgs.y[-1]) / mp.asum(lbfgs.y[-1] * lbfgs.y[-1])
+            gamma = (lbfgs.s[-1] * lbfgs.y[-1]).asum() / (lbfgs.y[-1] * lbfgs.y[-1]).asum()
         direction = gamma * q
     else:
         direction = lbfgs.H0 * q
 
     for i in range(len(lbfgs.s)):
-        beta = lbfgs.rho[i] * mp.asum(lbfgs.y[i] * direction)
+        beta = lbfgs.rho[i] * (lbfgs.y[i] * direction).asum()
         direction += lbfgs.s[i] * (alphaList[i] - beta)
 
     return direction
@@ -458,4 +460,3 @@ def quartic_interpolation(f, dx):
     else :
         raise AttributeError("Error : Not implemented yet")
     return results
-

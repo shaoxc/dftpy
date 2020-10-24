@@ -1,7 +1,6 @@
 import warnings
 import numpy as np
 from dftpy.constants import units_warning
-from dftpy.mpi import smpi, mp, sprint
 
 
 class BaseCell(object):

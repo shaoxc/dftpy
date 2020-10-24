@@ -7,7 +7,6 @@ from dftpy.constants import FFTLIB, SAVEFFT
 from dftpy.math_utils import PYfft, PYifft
 from dftpy.time_data import TimeData
 from dftpy.base import Coord
-from dftpy.mpi import smpi, mp
 
 
 class BaseField(np.ndarray):
@@ -63,6 +62,7 @@ class BaseField(np.ndarray):
         obj.memo = str(memo)
         # add fft data
         obj._fft_data = fft_data
+        obj.mp = obj.grid.smpi.mp
         # Finally, we must return the newly created object:
         return obj
 
@@ -81,6 +81,7 @@ class BaseField(np.ndarray):
         self.grid = getattr(obj, "grid", None)
         self.span = getattr(obj, "span", None)
         self.memo = getattr(obj, "memo", None)
+        self.mp = getattr(obj, "mp", None)
         if np.prod(self.shape) != np.prod(obj.shape):
             #clean saved fft_data
             self._fft_data = None
@@ -125,7 +126,7 @@ class BaseField(np.ndarray):
         if np.shape(self) != np.shape(obj):
             raise ValueError("Shape incompatible")  # to be specified
 
-        prod = mp.einsum("ijkl,ijkl->jkl", self, obj)
+        prod = self.mp.einsum("ijkl,ijkl->jkl", self, obj)
         prod = np.expand_dims(prod, axis=3)
 
         return type(self)(self.grid, rank=1, griddata_3d=prod)
@@ -141,6 +142,18 @@ class BaseField(np.ndarray):
         """ Normalize the field to N """
         return self / self.norm() * np.sqrt(N)
 
+    def asum(self):
+        return self.mp.asum(self)
+
+    def amean(self):
+        return self.mp.amean(self)
+
+    def amax(self):
+        return self.mp.amax(self)
+
+    def amin(self):
+        return self.mp.amin(self)
+
 class DirectField(BaseField):
     spl_order = 3
 
@@ -153,8 +166,9 @@ class DirectField(BaseField):
         obj._N = None
         obj.spl_coeffs = None
         obj._cplx = cplx
-        if smpi.is_mpi :
-            obj.fft_object = mp.mpi_fft(obj.grid)
+        if obj.mp.is_mpi :
+            from dftpy.mpi.mp_mpi4py import mpi_fft
+            obj.fft_object = mpi_fft(obj.grid)
         elif not obj._cplx and np.all(obj.grid.nr == obj.grid.nrG):  # Can only use numpy.fft
             obj.fft_object = np.fft.fftn
         elif FFTLIB == "pyfftw":
@@ -195,9 +209,9 @@ class DirectField(BaseField):
     def integral(self):
         """ Returns the integral of self """
         if self.rank == 1:
-            return mp.einsum("ijk->", self) * self.grid.dV
+            return self.mp.einsum("ijk->", self) * self.grid.dV
         else:
-            return mp.einsum("ijkl->i", self) * self.grid.dV
+            return self.mp.einsum("ijkl->i", self) * self.grid.dV
 
     def _calc_spline(self):
         padded_values = np.pad(self, ((self.spl_order,)), mode="wrap")
@@ -210,7 +224,7 @@ class DirectField(BaseField):
         Wx = signal.get_window(window, nr[0])
         Wy = signal.get_window(window, nr[1])
         Wz = signal.get_window(window, nr[2])
-        Wxyz = mp.einsum("i, j, k -> ijk", Wx, Wy, Wz)
+        Wxyz = self.mp.einsum("i, j, k -> ijk", Wx, Wy, Wz)
         return Wxyz
 
     def numerically_smooth_gradient(self, ipol=None):
@@ -326,12 +340,12 @@ class DirectField(BaseField):
             sigma = []
             for i in range(0, self.rank):
                 for j in range(i, self.rank):
-                    s = mp.einsum("lijk,lijk->ijk", vs[i], vs[j])
+                    s = self.mp.einsum("lijk,lijk->ijk", vs[i], vs[j])
                     sigma.append(s)
             rank = (self.rank * (self.rank + 1))//2
         else :
             gradrho = self.gradient(flag=flag)
-            sigma = mp.einsum("lijk,lijk->ijk", gradrho, gradrho)
+            sigma = self.mp.einsum("lijk,lijk->ijk", gradrho, gradrho)
             rank = 1
         return DirectField(grid=self.grid, rank=rank, griddata_3d=sigma)
 
@@ -340,7 +354,7 @@ class DirectField(BaseField):
             return self.fft_data
         TimeData.Begin("FFT")
         """ Implements the Discrete Fourier Transform
-        Tips : If you use pyfft to perform fft, you should copy the input_array sometime. Becuase 
+        Tips : If you use pyfft to perform fft, you should copy the input_array sometime. Becuase
         the input_array may be overwite.
         """
         reciprocal_grid = self.grid.get_reciprocal()
@@ -366,7 +380,10 @@ class DirectField(BaseField):
         return fft_data
 
     def get_value_at_points(self, points):
-        """points is in crystal coordinates"""
+        """
+        Only support for serial.
+        points is in crystal coordinates
+        """
         if self.spl_coeffs is None:
             self._calc_spline()
         for ipol in range(3):
@@ -376,6 +393,9 @@ class DirectField(BaseField):
         return values
 
     def get_values_flatarray(self, pad=0, order="F"):
+        """
+        Only support for serial.
+        """
         if pad > 0:
             nr0 = self.shape
             p = []
@@ -395,6 +415,7 @@ class DirectField(BaseField):
 
     def get_3dinterpolation(self, nr_new):
         """
+        Only support for serial.
         Interpolates the values of the function on a cell with a different number
         of points, and returns a new Grid_Function_Base object.
         """
@@ -414,6 +435,7 @@ class DirectField(BaseField):
 
     def get_3dinterpolation_map(self, nr_new):
         """
+        Only support for serial.
         Interpolates the values of the function on a cell with a different number
         of points, and returns a new Grid_Function_Base object.
         """
@@ -431,6 +453,7 @@ class DirectField(BaseField):
 
     def get_cut(self, r0, r1=None, r2=None, origin=None, center=None, nr=10, basis = 'Crystal'):
         """
+        Only support for serial.
         general routine to get the arbitrary cuts of a Grid_Function_Base object in 1,2,
         or 3 dimensions. spline interpolation will be used.
             r0 = first vector (always required)
@@ -587,8 +610,9 @@ class ReciprocalField(BaseField):
         )
         obj.spl_coeffs = None
         obj._cplx = cplx
-        if smpi.is_mpi :
-            obj.ifft_object = mp.mpi_ifft(obj.grid)
+        if obj.mp.is_mpi :
+            from dftpy.mpi.mp_mpi4py import mpi_ifft
+            obj.ifft_object = mpi_ifft(obj.grid)
         elif not obj._cplx and np.all(obj.grid.nrG == obj.grid.nrR):  # Can only use numpy.fft
             obj.ifft_object = np.fft.ifftn
             # if FFTLIB != 'numpy' :
@@ -663,9 +687,9 @@ class ReciprocalField(BaseField):
     def integral(self):
         """ Returns the integral of self """
         if self.rank == 1:
-            return mp.einsum("ijk->", self) * self.grid.dV * self.grid.nnrG / (2.0 * np.pi) ** 3
+            return self.mp.einsum("ijk->", self) * self.grid.dV * self.grid.nnrG / (2.0 * np.pi) ** 3
         else:
-            return mp.einsum("lijk->l", self) * self.grid.dV * self.grid.nnrG / (2.0 * np.pi) ** 3
+            return self.mp.einsum("lijk->l", self) * self.grid.dV * self.grid.nnrG / (2.0 * np.pi) ** 3
 
     def ifft(self, check_real=False, force_real=False):
         """

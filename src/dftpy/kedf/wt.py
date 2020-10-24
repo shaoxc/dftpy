@@ -1,15 +1,8 @@
 import numpy as np
-import scipy.special as sp
-from scipy.interpolate import interp1d, splrep, splev
-from dftpy.mpi import mp, smpi, sprint
+# from dftpy.mpi import sprint
 from dftpy.functional_output import Functional
-from dftpy.field import DirectField
-from dftpy.kedf.tf import TF
-from dftpy.kedf.vw import vW
 from dftpy.kedf.kernel import WTKernel, LindhardDerivative
-from dftpy.kedf.kernel import MGPKernel
 from dftpy.time_data import TimeData
-from dftpy.kedf.gga import GGA
 
 __all__ = ["WT", "WTStress"]
 
@@ -47,9 +40,9 @@ def WTEnergy(rho, rho0, Kernel, alpha, beta):
     return ene
 
 
-def WTStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, energy=None, 
+def WTStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, energy=None,
         ke_kernel_saved = None, **kwargs):
-    rho0 = mp.amean(rho)
+    rho0 = rho.amean()
     g = rho.grid.get_reciprocal().g
     invgg = rho.grid.get_reciprocal().invgg
     q = rho.grid.get_reciprocal().q
@@ -92,12 +85,12 @@ def WTStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, ene
     return stress
 
 
-def WT(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, rho0=None, calcType=["E","V"], split=False, 
-    ke_kernel_saved = None, **kwargs):
+def WT(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, rho0=None, calcType=["E","V"], split=False,
+        ke_kernel_saved = None, **kwargs):
     TimeData.Begin("WT")
     q = rho.grid.get_reciprocal().q
     if rho0 is None:
-        rho0 = mp.amean(rho)
+        rho0 = rho.amean()
 
     if ke_kernel_saved is None :
         KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}

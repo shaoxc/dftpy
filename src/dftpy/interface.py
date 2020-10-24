@@ -1,7 +1,7 @@
 import numpy as np
 import time
 import os
-from dftpy.mpi import smpi, mp, sprint
+from dftpy.mpi import sprint
 from dftpy.optimization import Optimization
 from dftpy.functionals import FunctionalClass, TotalEnergyAndPotential
 from dftpy.constants import LEN_CONV, ENERGY_CONV, FORCE_CONV, STRESS_CONV
@@ -18,14 +18,12 @@ from dftpy.kedf import KEDFStress
 from dftpy.hartree import HartreeFunctionalStress
 from dftpy.config.config import PrintConf, ReadConf
 from dftpy.system import System
-from dftpy.functional_output import Functional
 from dftpy.inverter import Inverter
 from dftpy.formats.xsf import XSF
 from dftpy.formats.qepp import PP
-from functools import reduce
 
 
-def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None):
+def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, smpi = None):
     if isinstance(config, dict):
         pass
     elif isinstance(config, str):
@@ -54,8 +52,14 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None):
         for i in range(3):
             nr[i] = int(np.sqrt(metric[i, i]) / spacing)
         sprint("The initial grid size is ", nr)
+        nproc = 1
+        # nr0 = nr.copy()
         for i in range(3):
-            nr[i] = bestFFTsize(nr[i], **config["GRID"])
+            # if i == 0 :
+                # if smpi is not None : nproc = smpi.comm.size
+            # else :
+                # nr[i] *= nr[0]/nr0[0]
+            nr[i] = bestFFTsize(nr[i], nproc=nproc, **config["GRID"])
     sprint("The final grid size is ", nr)
     nr2 = nr.copy()
     if config["MATH"]["multistep"] > 1:
@@ -65,7 +69,7 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None):
 
     ############################## Grid  ##############################
     if grid is None:
-        grid = DirectGrid(lattice=lattice, nr=nr, units=None, full=config["GRID"]["gfull"])
+        grid = DirectGrid(lattice=lattice, nr=nr, units=None, full=config["GRID"]["gfull"], smpi=smpi)
     ############################## PSEUDO  ##############################
     PPlist = {}
     for key in config["PP"]:
@@ -225,7 +229,7 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2 = None):
     sprint(format("Energy information", "-^80"))
     keys, ep = zip(*energypotential.items())
     values = [item.energy for item in ep]
-    values = mp.vsum(values)
+    values = rho.mp.vsum(values)
     ep_w = dict(zip(keys, values))
     for key in sorted(keys):
         if key == "TOTAL":
@@ -342,7 +346,7 @@ def GetForces(ions, rho, EnergyEvaluator, linearii=True, linearie=True, PPlist=N
     ewaldobj = ewald(rho=rho, ions=ions, verbose=False, PME=linearii)
     forces["II"] = ewaldobj.forces
     forces["TOTAL"] = forces["PSEUDO"] + forces["II"]
-    forces["TOTAL"] = mp.vsum(forces["TOTAL"])
+    forces["TOTAL"] = rho.mp.vsum(forces["TOTAL"])
     return forces
 
 
@@ -364,11 +368,11 @@ def GetStress(
     """
     #-----------------------------------------------------------------------
     KEDF_Stress_L= {
-            "TF" : ["TF"], 
-            "vW": ["TF"], 
-            "x_TF_y_vW": ["TF", "vW"], 
-            "TFvW": ["TF", "vW"], 
-            "WT": ["TF", "vW", "NL"], 
+            "TF" : ["TF"],
+            "vW": ["TF"],
+            "x_TF_y_vW": ["TF", "vW"],
+            "TFvW": ["TF", "vW"],
+            "WT": ["TF", "vW", "NL"],
             }
     if ke not in KEDF_Stress_L :
         raise AttributeError("%s KEDF have not implemented for stress" % ke)
@@ -426,7 +430,7 @@ def GetStress(
             stress["TOTAL"][i, j] = stress["TOTAL"][j, i]
 
     keys, values = zip(*stress.items())
-    values = mp.vsum(values)
+    values = rho.mp.vsum(values)
     stress = dict(zip(keys, values))
 
     return stress

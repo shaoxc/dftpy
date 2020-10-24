@@ -1,6 +1,5 @@
 import numpy as np
 from dftpy.base import BaseCell, DirectCell, ReciprocalCell, Coord, s2r
-from dftpy.mpi import mp, smpi
 
 
 class BaseGrid(BaseCell):
@@ -21,8 +20,11 @@ class BaseGrid(BaseCell):
 
     """
 
-    def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), units="Bohr", convention="mic", full = False, realspace = True, **kwargs):
-        # print("BaseGrid __init__")
+    def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), units="Bohr", convention="mic",
+            full = False, realspace = True, smpi = None, **kwargs):
+        if smpi is None :
+            from dftpy.mpi import smpi
+        self.smpi = smpi
         super().__init__(lattice=lattice, origin=origin, units=units, **kwargs)
         self._nrR = np.array(nr, dtype = np.int32)
         self._nnrR = np.prod(self._nrR)
@@ -39,9 +41,10 @@ class BaseGrid(BaseCell):
         self._latparas= latparas
         # self._r = None # initialize them on request
         # self._s = None # initialize them on request
+        self._smpi = smpi
         self.local_slice(nr, realspace = realspace, full = full)
         self._nnr = np.prod(self._nr)
-        print('nr_local', smpi.comm.rank, self._nr, realspace)
+        # print('nr_local', self.smpi.comm.rank, self._nr, realspace)
 
     def __eq__(self, other):
         if not super().__eq__(other):
@@ -51,6 +54,14 @@ class BaseGrid(BaseCell):
                 return False
 
         return True
+
+    @property
+    def smpi(self):
+        return self._smpi
+
+    @smpi.setter
+    def smpi(self, value):
+        self._smpi = value
 
     @property
     def nr(self):
@@ -102,7 +113,7 @@ class BaseGrid(BaseCell):
         return results
 
     def local_slice(self, nr, **kwargs):
-        self._slice, self._nr, self._offsets = mp.get_local_fft_shape(nr, **kwargs)
+        self._slice, self._nr, self._offsets = self.smpi.mp.get_local_fft_shape(nr, **kwargs)
 
     @property
     def slice(self):
@@ -346,10 +357,10 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
     @property
     def invgg(self):
         if self._invgg is None:
-            if smpi.is_root :
+            if self.smpi.is_root :
                 self.gg[0, 0, 0] = 1.0
             invgg = 1.0/self.gg
-            if smpi.is_root :
+            if self.smpi.is_root :
                 self.gg[0, 0, 0] = 0.0
                 invgg[0, 0, 0] = 0.0
             self._invgg = invgg
@@ -358,10 +369,10 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
     @property
     def invq(self):
         if self._invq is None:
-            if smpi.is_root :
+            if self.smpi.is_root :
                 self.q[0, 0, 0] = 1.0
             invq = 1.0/self.q
-            if smpi.is_root :
+            if self.smpi.is_root :
                 self.q[0, 0, 0] = 0.0
             invq[0, 0, 0] = 0.0
         # self._invq = invq
@@ -536,4 +547,3 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
     def full(self, value):
         if self._full != value :
             self._full = value
-

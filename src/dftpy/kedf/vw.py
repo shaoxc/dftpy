@@ -1,7 +1,7 @@
 # Collection of local and semilocal functionals
 
 import numpy as np
-from dftpy.mpi import smpi, mp, sprint
+from dftpy.mpi import sprint
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.functional_output import Functional
 from dftpy.math_utils import PowerInt

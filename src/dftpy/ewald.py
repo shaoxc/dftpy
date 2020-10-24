@@ -1,9 +1,8 @@
 import numpy as np
 from scipy import special as sp
-import sys
 from scipy.spatial.distance import cdist
-from itertools import product
-from dftpy.mpi import mp, smpi, sprint
+# from itertools import product
+from dftpy.mpi import sprint
 
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.time_data import TimeData
@@ -35,6 +34,8 @@ class CBspline(object):
             self.grid = grid
         else:
             raise AttributeError("Must pass grid to CBspline")
+
+        self.mp = grid.smpi.mp
 
     @property
     def order(self):
@@ -103,7 +104,7 @@ class CBspline(object):
         return bm
 
     def get_Qarray_mask(self, l123A):
-        # if smpi.comm.size == 1 :
+        # if self.mp.comm.size == 1 :
             # return slice(None)
         offsets = self.grid.offsets.reshape((3, 1))
         nr = self.grid.nr
@@ -120,7 +121,7 @@ class CBspline(object):
         return mask
 
     def check_out_cell(self, p):
-        if smpi.comm.size == 1 :
+        if self.mp.comm.size == 1 :
             return False
         nr = self.grid.nr
         nrR = self.grid.nrR
@@ -221,6 +222,7 @@ class ewald(object):
             self.rho = rho
         else:
             raise AttributeError("Must pass rho to Ewald")
+        self.mp = rho.grid.smpi.mp
 
         gmax = self.Get_Gmax(self.rho.grid)
         eta = self.Get_Best_eta(self.precision, gmax, self.ions)
@@ -240,9 +242,9 @@ class ewald(object):
 
     def Get_Gmax(self, grid):
         gg = grid.get_reciprocal().gg
-        gmax_x = np.sqrt(mp.amax(gg[:, 0, 0]))
-        gmax_y = np.sqrt(mp.amax(gg[0, :, 0]))
-        gmax_z = np.sqrt(mp.amax(gg[0, 0, :]))
+        gmax_x = np.sqrt(self.mp.amax(gg[:, 0, 0]))
+        gmax_y = np.sqrt(self.mp.amax(gg[0, :, 0]))
+        gmax_z = np.sqrt(self.mp.amax(gg[0, 0, :]))
         gmax = np.amin([gmax_x, gmax_y, gmax_z])
         return gmax
 
@@ -307,7 +309,7 @@ class ewald(object):
         # Esum+=charges[i]*charges[j]*sp.erfc(etaSqrt*dij)/dij
         ## for speed
         charges = np.asarray(charges)
-        lb, ub = mp.split_number(self.ions.nat)
+        lb, ub = self.mp.split_number(self.ions.nat)
         for i in range(lb, ub):
             dists = cdist(positions, self.ions.pos[i].reshape((1, 3))).ravel()
             index = np.logical_and(dists < Rcut, dists > rtol)
@@ -350,7 +352,7 @@ class ewald(object):
         ## for speed
         positions = np.asarray(positions)
         charges = np.asarray(charges)
-        lb, ub = mp.split_number(self.ions.nat)
+        lb, ub = self.mp.split_number(self.ions.nat)
         for i in range(lb, ub):
             posi = self.ions.pos[i].reshape((1, 3))
             LBound = posi - Rcut
@@ -401,7 +403,7 @@ class ewald(object):
         CellBound = np.empty((2, 3))
         CellBound[0, :] = np.min(self.ions.pos, axis=0)
         CellBound[1, :] = np.max(self.ions.pos, axis=0)
-        lb, ub = mp.split_number(self.ions.nat)
+        lb, ub = self.mp.split_number(self.ions.nat)
         for i in range(lb, ub):
             posi = self.ions.pos[i].reshape((1, 3))
             LBound = posi - Rcut
@@ -498,7 +500,7 @@ class ewald(object):
                 e_real = self.Energy_real()
                 e_rec = self.Energy_rec()
 
-            e_corr /= smpi.comm.size
+            e_corr /= self.mp.comm.size
 
             Ewald_Energy = e_corr + e_real + e_rec
 
@@ -568,7 +570,7 @@ class ewald(object):
         positions = np.asarray(positions)
         piSqrt = np.sqrt(np.pi)
         F_real = np.zeros((self.ions.nat, 3))
-        lb, ub = mp.split_number(self.ions.nat)
+        lb, ub = self.mp.split_number(self.ions.nat)
         for i in range(lb, ub):
             dists = cdist(positions, self.ions.pos[i].reshape((1, 3))).ravel()
             index = np.logical_and(dists < Rcut, dists > rtol)
@@ -581,7 +583,7 @@ class ewald(object):
             )
         F_real *= etaSqrt ** 3
         TimeData.End("Ewald_Force_real")
-        # F_real /= smpi.comm.size
+        # F_real /= self.mp.comm.size
 
         return F_real
 
@@ -641,7 +643,7 @@ class ewald(object):
         positions = np.asarray(positions)
 
         Stmp = np.zeros(6)
-        lb, ub = mp.split_number(self.ions.nat)
+        lb, ub = self.mp.split_number(self.ions.nat)
         for ia in range(lb, ub):
             dists = cdist(positions, self.ions.pos[ia].reshape((1, 3))).ravel()
             index = np.logical_and(dists < Rcut, dists > rtol)
@@ -696,7 +698,7 @@ class ewald(object):
         positions = np.asarray(positions)
 
         Stmp = np.zeros(6)
-        lb, ub = mp.split_number(self.ions.nat)
+        lb, ub = self.mp.split_number(self.ions.nat)
         for ia in range(lb, ub):
             dists = cdist(positions, self.ions.pos[ia].reshape((1, 3))).ravel()
             index = np.logical_and(dists < Rcut, dists > rtol)
@@ -757,7 +759,7 @@ class ewald(object):
         Stmp = Stmp.real * 4.0 * np.pi / self.rho.grid.volume ** 2
         # G = 0 term
         sum = self.ions.ncharge
-        S_g0 = sum ** 2 * 4.0 * np.pi * (1.0 / (4.0 * self.eta * self.rho.grid.volume ** 2) / 2.0)/smpi.comm.size
+        S_g0 = sum ** 2 * 4.0 * np.pi * (1.0 / (4.0 * self.eta * self.rho.grid.volume ** 2) / 2.0)/self.mp.comm.size
         k = 0
         S_rec = np.zeros((3, 3))
         for i in range(3):
@@ -935,7 +937,7 @@ class ewald(object):
         Stmp = Stmp.real * 2.0 * np.pi / self.rho.grid.volume ** 2 / self.rho.grid.dV ** 2
         # G = 0 term
         sum = self.ions.ncharge
-        S_g0 = sum ** 2 * 4.0 * np.pi * (1.0 / (4.0 * self.eta * self.rho.grid.volume ** 2) / 2.0)/smpi.comm.size
+        S_g0 = sum ** 2 * 4.0 * np.pi * (1.0 / (4.0 * self.eta * self.rho.grid.volume ** 2) / 2.0)/self.mp.comm.size
         k = 0
         S_rec = np.zeros((3, 3))
         for i in range(3):
@@ -991,7 +993,7 @@ class ewald(object):
         Stmp = Stmp.real * 2.0 * np.pi / self.rho.grid.volume ** 2 / self.rho.grid.dV ** 2
         # G = 0 term
         sum = self.ions.ncharge
-        S_g0 = sum ** 2 * 4.0 * np.pi * (1.0 / (4.0 * self.eta * self.rho.grid.volume ** 2) / 2.0)/smpi.comm.size
+        S_g0 = sum ** 2 * 4.0 * np.pi * (1.0 / (4.0 * self.eta * self.rho.grid.volume ** 2) / 2.0)/self.mp.comm.size
         k = 0
         S_rec = np.zeros((3, 3))
         for i in range(3):

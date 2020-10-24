@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.special as sp
 from scipy.interpolate import interp1d, splrep, splev
-from dftpy.mpi import mp, smpi, sprint
+from dftpy.mpi import sprint
 from dftpy.functional_output import Functional
 from dftpy.field import DirectField
 from dftpy.kedf.tf import TF
@@ -34,8 +34,8 @@ def MGP(
 ):
     TimeData.Begin("MGP")
     q = rho.grid.get_reciprocal().q
-    rho0 = mp.amean(rho)
-    sprint('rho0000', rho0)
+    rho0 = rho.amean()
+    # sprint('rho0000', rho0)
     if ke_kernel_saved is None :
         KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
     else :

@@ -1,9 +1,8 @@
 import os
 import numpy as np
-from scipy.interpolate import interp1d, splrep, splev
+from scipy.interpolate import splrep, splev
 import scipy.special as sp
-from dftpy.mpi import mp, smpi, sprint
-from dftpy.base import Coord
+from dftpy.mpi import sprint
 from dftpy.field import ReciprocalField, DirectField
 from dftpy.functional_output import Functional
 from dftpy.constants import LEN_CONV, ENERGY_CONV
@@ -11,8 +10,7 @@ from dftpy.ewald import CBspline
 from dftpy.time_data import TimeData
 from dftpy.atom import Atom
 from abc import ABC, abstractmethod
-from dftpy.grid import DirectGrid, ReciprocalGrid
-import warnings
+from dftpy.grid import DirectGrid
 from dftpy.math_utils import quartic_interpolation
 
 
@@ -82,8 +80,8 @@ class LocalPseudo(AbstractLocalPseudo):
 
         self.restart(grid, ions, full=True)
 
-        if not PME and smpi.is_root:
-            warnings.warn("Using N^2 method for strf!")
+        # if not PME :
+            # sprint("Using N^2 method for strf!")
 
         self.usePME = PME
 
@@ -184,7 +182,6 @@ class LocalPseudo(AbstractLocalPseudo):
             s = self._StressPME(rho, energy)
         else:
             s = self._Stress(rho, energy)
-        # s = mp.vsum(s)
         return s
 
     def force(self, rho):
@@ -196,7 +193,6 @@ class LocalPseudo(AbstractLocalPseudo):
             f = self._ForcePME(rho)
         else:
             f = self._Force(rho)
-        # f = mp.vsum(f)
         return f
 
     @property
@@ -227,7 +223,6 @@ class LocalPseudo(AbstractLocalPseudo):
         if not self._vlines:
             reciprocal_grid = self.grid.get_reciprocal()
             q = reciprocal_grid.q
-            gg = reciprocal_grid.gg
             vloc = np.empty_like(q)
             for key in self._vloc_interp.keys():
                 vloc_interp = self._vloc_interp[key]

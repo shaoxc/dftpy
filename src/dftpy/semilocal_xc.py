@@ -1,7 +1,6 @@
 # Drivers for LibXC
 
 import numpy as np
-from dftpy.mpi import mp, smpi, sprint
 from dftpy.field import DirectField
 from dftpy.functional_output import Functional
 from dftpy.time_data import TimeData

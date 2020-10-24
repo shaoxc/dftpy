@@ -1,12 +1,10 @@
 # Collection of semilocal functionals
 
 import numpy as np
-from dftpy.mpi import mp, smpi
-from dftpy.field import DirectField, ReciprocalField
 from dftpy.functional_output import Functional
-from dftpy.math_utils import PowerInt
-from dftpy.time_data import TimeData
-from dftpy.kedf.tf import TF
+# from dftpy.math_utils import PowerInt
+# from dftpy.time_data import TimeData
+# from dftpy.kedf.tf import TF
 import scipy.special as sp
 
 __all__ = ["GGA", "GGA_KEDF_list", "GGAStress"]
@@ -44,11 +42,11 @@ GGA_KEDF_list = [
     "VT84F",
     "LKT-PADE46",
     "SMP",
-    "TF", 
-    "VW", 
-    "X_TF_Y_VW", 
+    "TF",
+    "VW",
+    "X_TF_Y_VW",
     "TFVW",     # same as `X_TF_Y_VW`
-    "STV", 
+    "STV",
 ]
 
 
@@ -92,7 +90,7 @@ def GGAFs(s, functional="LKT", calcType=["E","V"], params=None, gga_remove_vw = 
     ckf = (3\pi^2)^{1/3}
     cTF = (3/10) * (3\pi^2)^{2/3} = (3/10) * ckf^2
     bb = 2^{4/3} * ckf = 2^{1/3} * tkf0
-    x = (5/27) * ss * ss 
+    x = (5/27) * ss * ss
 
     In DFTpy, default we use following definitions :
     tkf0 = 2 * ckf
@@ -111,7 +109,7 @@ def GGAFs(s, functional="LKT", calcType=["E","V"], params=None, gga_remove_vw = 
           title={Kinetic energy density study of some representative semilocal kinetic energy functionals}}
         @article{gotz2009performance,
           title={Performance of kinetic energy functionals for interaction energies in a subsystem formulation of density functional theory}}
-        @article{lacks1994tests, 
+        @article{lacks1994tests,
           title = {Tests of nonlocal kinetic energy functionals}}
         @misc{hfofke,
           url = {http://www.qtp.ufl.edu/ofdft/research/KE_refdata_27ii18/Explanatory_Post_HF_OFKE.pdf}}
@@ -673,11 +671,11 @@ def GGAFs(s, functional="LKT", calcType=["E","V"], params=None, gga_remove_vw = 
 
 def GGA(rho, functional="LKT", calcType=["E","V"], split=False, params = None, **kwargs):
     """
-    Interface to compute GGAs internally to DFTpy. 
+    Interface to compute GGAs internally to DFTpy.
     This is the default way, even though DFTpy can generate some of the GGAs with LibXC.
-    Nota Bene: gradient and divergence is done brute force here and in a non-smooth way. 
-               while the LibXC implementation can be numerically smoothed by changing 
-               flag='standard' to flag='smooth'. The results with smooth math are 
+    Nota Bene: gradient and divergence is done brute force here and in a non-smooth way.
+               while the LibXC implementation can be numerically smoothed by changing
+               flag='standard' to flag='smooth'. The results with smooth math are
                slightly different.
     """
     sigma = kwargs.get('sigma', None)

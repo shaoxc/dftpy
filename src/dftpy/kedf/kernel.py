@@ -1,20 +1,20 @@
 import numpy as np
 import scipy.special as sp
-from dftpy.mpi import mp, smpi
 from scipy.interpolate import interp1d, splrep, splev
 from dftpy.time_data import TimeData
+from dftpy.constants import ZERO
 
 
 # def LindhardFunctionSeries(eta,lbda,mu):
 def LindhardFunction(eta, lbda, mu):
     """
     The Inverse Lindhard Function
-    
+
     Attributes
     ----------
     eta: numpy array
     lbda, mu: floats (TF and vW contributions)
-    
+
     """
     TimeData.Begin("Lindhard")
     if isinstance(eta, (np.ndarray, np.generic)):
@@ -119,30 +119,30 @@ def LindhardFunction2(eta, lbda, mu):
     # def LindhardFunction(eta,lbda,mu):
     """
     (1) for x -> 0.0
-            2      4  
-           x    8⋅x   
-       1 + ── + ──── + ... 
-           3     45   
-    
-    (2)  for x -> 1.0  
-        2 + (1-x)⋅(2⋅log(1-x) - 2⋅log(2)) + ... 
+            2      4
+           x    8⋅x
+       1 + ── + ──── + ...
+           3     45
+
+    (2)  for x -> 1.0
+        2 + (1-x)⋅(2⋅log(1-x) - 2⋅log(2)) + ...
         We use a magic number 48, because 2.0*(log(1E-10)-log(2))~ -47.4
-       
-    (3) for y -> 0.0, y = 1/x   
-                     2      4          6   
-        3    3   24⋅y    8⋅y    12728⋅y   
+
+    (3) for y -> 0.0, y = 1/x
+                     2      4          6
+        3    3   24⋅y    8⋅y    12728⋅y
         ── - ─ - ───── - ──── - ──────── -...
-         2   5    175    125     336875   
-        y                                                                                                                                                                  
+         2   5    175    125     336875
+        y
         Actually, if not write the multiplication using C++ or Fortran, numpy.log will be faster.
 
     The Inverse Lindhard Function
-    
+
     Attributes
     ----------
     eta: numpy array
     lbda, mu: floats (TF and vW contributions)
-    
+
     """
     TimeData.Begin("Lindhard")
     if isinstance(eta, (np.ndarray, np.generic)):
@@ -194,7 +194,7 @@ def LindhardDerivative(eta, mu):
 
 
 def MGPKernelOld(q, rho0, lumpfactor, maxpoints):
-    """ 
+    """
     The MGP Kernel
     """
     # cTF_WT = 2.87123400018819
@@ -231,7 +231,7 @@ def MGPKernelOld(q, rho0, lumpfactor, maxpoints):
 
 
 def MGPKernel(q, rho0, lumpfactor=0.2, maxpoints=1000, symmetrization=None, KernelTable=None):
-    """ 
+    """
     The MGP Kernel
     symmetrization : 'None', 'Arithmetic', 'Geometric'
     """
@@ -241,7 +241,7 @@ def MGPKernel(q, rho0, lumpfactor=0.2, maxpoints=1000, symmetrization=None, Kern
 
 
 def MGPKernelTable(eta, q, maxpoints=1000, symmetrization=None, KernelTable=None):
-    """ 
+    """
     The MGP Kernel
     symmetrization : 'None', 'Arithmetic', 'Geometric'
     """
@@ -280,7 +280,7 @@ def MGPKernelTable(eta, q, maxpoints=1000, symmetrization=None, KernelTable=None
     return kernel
 
 def WTKernel(q, rho0, x=1.0, y=1.0, alpha=5.0 / 6.0, beta=5.0 / 6.0):
-    """ 
+    """
     The WT Kernel
     """
     tkf = 2.0 * (3.0 * rho0 * np.pi ** 2) ** (1.0 / 3.0)
@@ -291,7 +291,7 @@ def WTKernel(q, rho0, x=1.0, y=1.0, alpha=5.0 / 6.0, beta=5.0 / 6.0):
 
 
 def SMKernel(q, rho0, x=1.0, y=1.0, alpha=0.5, beta=0.5):
-    """ 
+    """
     The SM Kernel
     """
     return WTKernel(q, rho0, x, y, alpha, beta)
@@ -359,14 +359,14 @@ def LWTKernelKf(q, kf, KernelTable, etamax=1000.0, out=None):
     else:
         raise AttributeError("Wrong type of KernelTable")
     Kernel[cond1] = limit
-    if smpi.is_root :
+    if q[0, 0, 0] < ZERO :
         Kernel[0, 0, 0] = 0.0
     TimeData.End("LWTKernelKf")
     return Kernel
 
 
 def MGPOmegaE(q, Ne=1, lumpfactor=0.2):
-    """ 
+    """
     """
     c = 1.0
     b = None
@@ -383,12 +383,14 @@ def MGPOmegaE(q, Ne=1, lumpfactor=0.2):
         a = float(a / Ne ** (2.0 / 3.0))
         b = a
 
-    if smpi.is_root :
+    qflag = False
+    if q[0, 0, 0] < ZERO :
+        qflag = True
         q[0, 0, 0] = 1.0
     gg = q ** 2
     corr = 4 * np.pi * sp.erf(c * gg) ** 2 * a * np.exp(-gg * b) / gg
     # corr = 4 * np.pi * sp.erf(c * q) ** 2* a * np.exp(-gg * b) / gg + 0.001*np.exp(-0.1*(gg-1.5)**2)
-    if smpi.is_root :
+    if qflag :
         q[0, 0, 0] = 0.0
         corr[0, 0, 0] = 0.0
     # Same as the formular in MGP
@@ -396,7 +398,7 @@ def MGPOmegaE(q, Ne=1, lumpfactor=0.2):
     return corr
 
 def SmoothKernel(q, rho0, x=1.0, y=1.0, alpha=5.0 / 6.0, beta=5.0 / 6.0):
-    """ 
+    """
     The WT Kernel
     """
     tkf = 2.0 * (3.0 * rho0 * np.pi ** 2) ** (1.0 / 3.0)

@@ -1,5 +1,5 @@
 import time
-from dftpy.mpi import smpi, mp, sprint
+from dftpy.mpi import sprint
 
 class TimeObj(object):
     """

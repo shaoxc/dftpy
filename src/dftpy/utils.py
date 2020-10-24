@@ -1,4 +1,3 @@
-import warnings
 import numpy as np
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.grid import ReciprocalGrid
@@ -75,6 +74,9 @@ def grid_map_index(nr, nr2, full = False):
     return index, lfine
 
 def grid_map_data(data, nr = None, direct = True, index = None, grid = None):
+    """
+    Only support for serial.
+    """
     if hasattr(data, 'fft'):
         value = data.fft()
     else :
@@ -115,6 +117,9 @@ def grid_map_data(data, nr = None, direct = True, index = None, grid = None):
 
 
 def coarse_to_fine(data, nr_fine, direct = True, index = None):
+    """
+    Only support for serial.
+    """
     if hasattr(data, 'fft'):
         value = data.fft()
     else :
@@ -134,6 +139,9 @@ def coarse_to_fine(data, nr_fine, direct = True, index = None):
     return results
 
 def fine_to_coarse(data, nr_coarse, direct = True, index = None):
+    """
+    Only support for serial.
+    """
     if hasattr(data, 'fft'):
         value = data.fft()
     else :

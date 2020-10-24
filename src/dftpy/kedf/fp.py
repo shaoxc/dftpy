@@ -1,13 +1,8 @@
 import numpy as np
-import scipy.special as sp
-from scipy.interpolate import interp1d, splrep, splev
-from dftpy.mpi import smpi, mp, sprint
+from dftpy.mpi import sprint
 from dftpy.math_utils import PowerInt
 from dftpy.functional_output import Functional
-from dftpy.field import DirectField
-from dftpy.kedf.tf import TF
-from dftpy.kedf.vw import vW
-from dftpy.kedf.kernel import SMKernel, LindhardDerivative, WTKernel
+from dftpy.kedf.kernel import SMKernel, WTKernel
 from dftpy.time_data import TimeData
 
 """
@@ -50,7 +45,7 @@ def FPPotential(rho, rho0, Kernel, alpha=1.0, beta=1.0):
 
 
 def FPEnergy(rho, rho0, Kernel, alpha=1.0, beta=1.0):
-    rhoD = rho - rho0
+    # rhoD = rho - rho0
     nu = 5.0 / np.sqrt(32.0)
     rhoFiveSixth = PowerInt(rho, 5, 6)
     nuMinus1 = nu - 1.0
@@ -65,11 +60,11 @@ def FPStress(rho, energy=None):
     pass
 
 
-def FP_origin(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType=["E","V"], 
+def FP_origin(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType=["E","V"],
         ke_kernel_saved = None, **kwargs):
     TimeData.Begin("FP")
     q = rho.grid.get_reciprocal().q
-    rho0 = mp.amean(rho)
+    rho0 = rho.amean()
     if ke_kernel_saved is None :
         KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
     else :
@@ -115,7 +110,7 @@ def FP0(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType=["E","V"], 
     TimeData.Begin("FP")
     # Only performed once for each grid
     q = rho.grid.get_reciprocal().q
-    rho0 = mp.amean(rho)
+    rho0 = rho.amean()
     if ke_kernel_saved is None :
         KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
     else :
@@ -151,12 +146,12 @@ def FP0(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType=["E","V"], 
     return NL
 
 
-def FP(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, rho0=None, calcType=["E","V"], split=False, 
+def FP(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, rho0=None, calcType=["E","V"], split=False,
         ke_kernel_saved = None, **kwargs):
     TimeData.Begin("FP")
     q = rho.grid.get_reciprocal().q
     if rho0 is None:
-        rho0 = mp.amean(rho)
+        rho0 = rho.amean()
     if ke_kernel_saved is None :
         KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
     else :

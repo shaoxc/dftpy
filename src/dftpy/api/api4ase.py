@@ -1,5 +1,5 @@
 import numpy as np
-from dftpy.mpi import smpi, mp, sprint
+from dftpy.mpi import sprint
 from dftpy.atom import Atom
 from dftpy.base import DirectCell
 from dftpy.constants import LEN_CONV, ENERGY_CONV, FORCE_CONV, STRESS_CONV

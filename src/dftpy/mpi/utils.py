@@ -1,4 +1,3 @@
-import os
 from .mpi import SMPI
 
 __all__ = ["smpi", "sprint"]

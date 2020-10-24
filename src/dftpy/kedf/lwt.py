@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.special as sp
 from scipy.interpolate import interp1d, splrep, splev
-from dftpy.mpi import mp, smpi, sprint
+from dftpy.mpi import sprint
 from dftpy.functional_output import Functional
 from dftpy.field import DirectField
 from dftpy.kedf.tf import TF
@@ -45,8 +45,8 @@ def guess_kf_bound(kf, kfmin = None, kfmax = None, kftol = 1E-3, ke_kernel_saved
     if kfmin is not None and kfmax is not None :
         return [kfmin, kfmax]
 
-    kf_l = mp.amin(kf)
-    kf_r = mp.amax(kf)
+    kf_l = kf.amin()
+    kf_r = kf.amax()
 
     if kfmin_prev is None :
         kfmin_prev = 10
@@ -90,11 +90,11 @@ def LWTPotentialEnergy(
     beta=5.0 / 6.0,
     interp="linear",
     calcType=["E","V"],
-    kfmin = None, 
-    kfmax = None, 
-    ldw = None, 
+    kfmin = None,
+    kfmax = None,
+    ldw = None,
     ke_kernel_saved = None,
-    **kwargs 
+    **kwargs
 ):
     """
     ldw : local density weight
@@ -103,15 +103,16 @@ def LWTPotentialEnergy(
     KE_kernel_saved = ke_kernel_saved
     savetol = 1e-16
     q = rho.grid.get_reciprocal().q
-    rho0 = mp.amean(rho)
+    rho0 = rho.amean()
     kf0 = 2.0 * np.cbrt(3.0 * np.pi ** 2 * rho0)
     kf = 2.0 * np.cbrt(3.0 * np.pi ** 2 * rho)
+    kf =DirectField(grid=rho.grid, memo=rho.memo, rank=rho.rank, griddata_3d=kf, cplx=rho.cplx)
     # gamma = 1.0
-    # rhomod = (0.5 * (rho **gamma + rho0 ** gamma)) ** (1.0/gamma) 
+    # rhomod = (0.5 * (rho **gamma + rho0 ** gamma)) ** (1.0/gamma)
     # kf = 2.0 * (3.0 * np.pi ** 2 * rhomod) ** (1.0 / 3.0)
 
     ### HEG
-    if abs(mp.amax(kf) - mp.amin(kf)) < 1e-8:
+    if abs(kf.amax() - kf.amin()) < 1e-8:
         return np.zeros_like(rho), 0.0
 
     kfmin, kfmax = guess_kf_bound(kf, kfmin, kfmax, ke_kernel_saved = ke_kernel_saved)
@@ -128,12 +129,12 @@ def LWTPotentialEnergy(
     mask2 = kf > kfBound[1]
     kf[mask2] = kfBound[1]
     if kfmin is None :
-        kfMin = max(mp.amin(kf), kfBound[0])
+        kfMin = max(kf.amin(), kfBound[0])
     else :
         kfMin = kfmin
 
     if kfmax is None :
-        kfMax = mp.amax(kf)
+        kfMax = kf.amax()
     else :
         kfMax = kfmax
 
@@ -299,7 +300,7 @@ def LWTPotentialEnergy(
     #-----------------------------------------------------------------------
     if ldw is None :
         ldw = 1.0/6.0
-    rhov = mp.amax(rho)
+    rhov = rho.amax()
     factor = np.ones_like(rho)
     mask = rho < 1E-6
     ld = max(0.1, ldw)
@@ -334,10 +335,10 @@ def LWTLineIntegral(
     nt = 500,
     interp="linear",
     calcType=["E","V"],
-    kfmin = None, 
-    kfmax = None, 
+    kfmin = None,
+    kfmax = None,
     ke_kernel_saved = None,
-    **kwargs 
+    **kwargs
 ):
 
     KE_kernel_saved = ke_kernel_saved
@@ -436,7 +437,7 @@ def LWTLineIntegral(
         for kf, trhoi in zip(kfLI, trhoAlpha1):
             mask = np.logical_and(
                 kf > kflists[i], kf < kflists[i + 1] + 1e-18
-            )  
+            )
             Dkf = kflists[i + 1] - kflists[i]
             t = (kf - kflists[i]) / Dkf
             if interp == "newton" or interp == "linear":
@@ -500,7 +501,7 @@ def LWT(
     TimeData.Begin("LWT")
     # Only performed once for each grid
     q = rho.grid.get_reciprocal().q
-    rho0 = mp.amean(rho)
+    rho0 = rho.amean()
     if ke_kernel_saved is None :
         KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
     else :

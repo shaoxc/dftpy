@@ -34,3 +34,5 @@ STRESS_CONV["Ha/Bohr3"] = {
 }
 
 units_warning = "All the quantities in atomic units"
+
+ZERO = 1E-30

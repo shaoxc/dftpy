@@ -22,7 +22,7 @@ def RunJob(args):
     from dftpy.td.interface import RealTimeRunner, CasidaRunner, DiagonizeRunner
     import time
     from dftpy.time_data import TimeData
-    from dftpy.mpi import smpi, mp, sprint
+    from dftpy.mpi import smpi, sprint
 
     sprint("Begin on :", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
     if smpi.is_mpi :
@@ -33,7 +33,7 @@ def RunJob(args):
     if len(args.confs) == 0 :
         args.confs.append(args.input)
     for fname in args.confs:
-        config, others = ConfigParser(fname)
+        config, others = ConfigParser(fname, smpi = smpi)
         sprint("#" * 80)
         TimeData.Begin("TOTAL")
 
@@ -46,8 +46,7 @@ def RunJob(args):
         elif "Inversion" in config["JOB"]["task"]:
             InvertRunner(config, others["struct"], others["E_v_Evaluator"])
         else:
-            results = OptimizeDensityConf(config, others["struct"], others["E_v_Evaluator"], others["nr2"])
-            # results = OptimizeDensityConf(args.input)
+            OptimizeDensityConf(config, others["struct"], others["E_v_Evaluator"], others["nr2"])
 
         TimeData.End("TOTAL")
         TimeData.output(config)

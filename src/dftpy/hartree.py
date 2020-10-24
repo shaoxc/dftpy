@@ -3,7 +3,6 @@
 import numpy as np
 from dftpy.functional_output import Functional
 from dftpy.time_data import TimeData
-from dftpy.mpi import mp, smpi
 
 
 def HartreeFunctional(density, calcType=["E","V"]):

@@ -1,7 +1,7 @@
 import numpy as np
 import copy
 import configparser
-from dftpy.mpi import smpi, mp, sprint
+from dftpy.mpi import sprint
 from dftpy.constants import ENERGY_CONV, LEN_CONV
 from dftpy.config.config_entry import ConfigEntry
 
