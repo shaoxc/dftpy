@@ -396,19 +396,18 @@ def get_direction_CG(resA, dirA=None, method="CG-HS", **kwargs):
     if len(resA) == 1:
         beta = 0.0
     elif method == "CG-HS" and len(dirA) > 0:  # Maybe the best of the CG.
-        beta = (resA[-1] * (resA[-1] - resA[-2])).asum() / (dirA[-1] * (resA[-1] - resA[-2]).asum())
-        # print('beta', beta)
+        beta = (resA[-1] * (resA[-1] - resA[-2])).asum() / (dirA[-1] * (resA[-1] - resA[-2])).asum()
     elif method == "CG-FR":
         beta = (resA[-1] ** 2).asum() / (resA[-2] ** 2).asum()
     elif method == "CG-PR":
-        beta = (resA[-1] * (resA[-1] - resA[-2]).asum()) / (resA[-2] ** 2).asum()
+        beta = (resA[-1] * (resA[-1] - resA[-2])).asum() / (resA[-2] ** 2).asum()
         beta = max(beta, 0.0)
     elif method == "CG-DY" and len(dirA) > 0:
-        beta = (resA[-1] ** 2).asum() / (dirA[-1] * (resA[-1] - resA[-2]).asum())
+        beta = (resA[-1] ** 2).asum() / (dirA[-1] * (resA[-1] - resA[-2])).asum()
     elif method == "CG-CD" and len(dirA) > 0:
         beta = -(resA[-1] ** 2).asum() / (dirA[-1] * resA[-2]).asum()
     elif method == "CG-LS" and len(dirA) > 0:
-        beta = (resA[-1] * (resA[-1] - resA[-2]).asum()) / (dirA[-1] * resA[-2]).asum()
+        beta = (resA[-1] * (resA[-1] - resA[-2])).asum() / (dirA[-1] * resA[-2]).asum()
     else:
         beta = (resA[-1] ** 2).asum() / (resA[-2] ** 2).asum()
 
