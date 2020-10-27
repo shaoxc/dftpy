@@ -1,5 +1,4 @@
 import numpy as np
-from dftpy.mpi import sprint
 from dftpy.atom import Atom
 from dftpy.base import DirectCell
 from dftpy.constants import LEN_CONV, ENERGY_CONV, FORCE_CONV, STRESS_CONV
@@ -73,7 +72,7 @@ class DFTpyCalculator(object):
         # return self.results['stress']['TOTAL'] * STRESS_CONV['Ha/Bohr3']['eV/A3']
         stress_voigt = np.zeros(6)
         if "TOTAL" not in self.results["stress"]:
-            sprint("!WARN : NOT calculate the stress, so return zeros")
+            # print("!WARN : NOT calculate the stress, so return zeros")
             return stress_voigt
         for i in range(3):
             stress_voigt[i] = self.results["stress"]["TOTAL"][i, i]

@@ -4,6 +4,7 @@ __all__ = ["smpi", "sprint"]
 
 smpi = SMPI()
 
-def sprint(*args, **kwargs):
-    if smpi.is_root :
+def sprint(*args, comm = None, **kwargs):
+    kwargs['flush'] = True
+    if (comm is None and smpi.is_root) or (comm is not None and comm.rank == 0) :
         print(*args, **kwargs)

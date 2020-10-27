@@ -674,7 +674,7 @@ class ReadPseudo(object):
         dr[1:] = r[1:]-r[:-1]
         dr[0] = r[0]
         ene = np.sum(r *r * vr * rhop * dr) * 4 * np.pi
-        sprint('Ne ', np.sum(r *r * rhop * dr) * 4 * np.pi)
+        # sprint('Ne ', np.sum(r *r * rhop * dr) * 4 * np.pi)
         return ene
 
     # def _init_PP_psp(self, MaxPoints=15000, Gmax=30):
@@ -719,7 +719,6 @@ class ReadPseudo(object):
 
             r = data[:, 0]
             v = data[:, 1]
-            sprint("psp pseudopotential " + Single_PP_file + " loaded")
             info['grid'] = r
             info['local_potential'] = v
             return r, v, info

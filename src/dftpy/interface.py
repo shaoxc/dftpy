@@ -179,7 +179,7 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2 = None):
             sprint("#" * 80)
             sprint("MULTI-STEP: Perform %d optimization step" % istep)
             sprint("Grid size of %d" % istep, " step is ", nr)
-            grid2 = DirectGrid(lattice=grid.lattice, nr=nr, units=None, full=config["GRID"]["gfull"])
+            grid2 = DirectGrid(lattice=grid.lattice, nr=nr, units=None, full=config["GRID"]["gfull"], smpi=grid.smpi)
             rho_ini = interpolation_3d(rho, nr)
             rho_ini[rho_ini < 1e-12] = 1e-12
             rho_ini = DirectField(grid=grid2, griddata_3d=rho_ini, rank=1)

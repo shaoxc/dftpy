@@ -88,18 +88,18 @@ def ConfSpecialFormat(conf):
     return conf
 
 
-def PrintConf(conf):
+def PrintConf(conf, comm = None):
     if not isinstance(conf, dict):
         raise TypeError("conf must be dict")
     try:
         import json
-        sprint(json.dumps(conf, indent=4, sort_keys=True))
+        pretty_dict_str = json.dumps(conf, indent=4, sort_keys=True)
     except Exception:
         import pprint
-
-        pprint.pprint(conf)
+        # pprint.pprint(conf)
         pretty_dict_str = pprint.pformat(conf)
-        return pretty_dict_str
+    sprint(pretty_dict_str, comm = comm)
+    return pretty_dict_str
 
 
 def ReadConfbak(infile):

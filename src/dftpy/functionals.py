@@ -2,7 +2,7 @@
 # functional class (output handler) in output
 
 # local imports
-from dftpy.mpi import sprint
+# from dftpy.mpi import sprint
 from dftpy.functional_output import Functional
 from dftpy.semilocal_xc import PBE, LDA, LibXC
 from dftpy.hartree import HartreeFunctional
@@ -45,16 +45,16 @@ class AbstractFunctional(ABC):
 
     def CheckFunctional(self):
         if self.type not in self.FunctionalTypeList:
-            sprint(self.type, " is not a valid Functional type")
-            sprint("Valid Functional types are:")
-            sprint(self.FunctionalTypeList)
+            print(self.type, " is not a valid Functional type")
+            print("Valid Functional types are:")
+            print(self.FunctionalTypeList)
             return False
         # if self.name not in self.FunctionalNameList:
         for name in self.name.split('+'):
             if name not in self.FunctionalNameList:
-                sprint(name, " is not a valid Functional name")
-                sprint("Valid Functional names are:")
-                sprint(self.FunctionalNameList)
+                print(name, " is not a valid Functional name")
+                print("Valid Functional names are:")
+                print(self.FunctionalNameList)
                 return False
         return True
 

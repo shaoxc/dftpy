@@ -2,7 +2,8 @@
 import numpy as np
 import copy
 import sys
-from .utils import *
+from .utils import smpi, sprint
+from .mpi import SMPI
 
 # if 'mpi4py' in sys.modules:
     # import dftpy.mpi.mp_mpi4py as mp
