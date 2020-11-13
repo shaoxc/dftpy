@@ -5,4 +5,4 @@ __version__ = "0.0.2"
 __date__ = "2020-10-16"
 
 from .config import *
-from .mpi import smpi
+from .mpi import mp

@@ -13,8 +13,8 @@ def GetConf():
     if args.mpi :
         from mpi4py import MPI
         from mpi4py_fft import PFFT
-        from dftpy.mpi import smpi
-        smpi.comm = MPI.COMM_WORLD
+        from dftpy.mpi import mp
+        mp.comm = MPI.COMM_WORLD
     return args
 
 def RunJob(args):
@@ -22,18 +22,18 @@ def RunJob(args):
     from dftpy.td.interface import RealTimeRunner, CasidaRunner, DiagonizeRunner
     import time
     from dftpy.time_data import TimeData
-    from dftpy.mpi import smpi, sprint
+    from dftpy.mpi import mp, sprint
 
     sprint("Begin on :", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-    if smpi.is_mpi :
-        info = 'Parallel version (MPI) on {0:>8d} processors'.format(smpi.comm.size)
+    if mp.is_mpi :
+        info = 'Parallel version (MPI) on {0:>8d} processors'.format(mp.comm.size)
     else :
-        info = 'Serial version on {0:>8d} processors'.format(smpi.comm.size)
+        info = 'Serial version on {0:>8d} processors'.format(mp.comm.size)
     sprint(info)
     if len(args.confs) == 0 :
         args.confs.append(args.input)
     for fname in args.confs:
-        config, others = ConfigParser(fname, smpi = smpi)
+        config, others = ConfigParser(fname, mp = mp)
         sprint("#" * 80)
         TimeData.Begin("TOTAL")
 

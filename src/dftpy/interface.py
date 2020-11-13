@@ -23,7 +23,7 @@ from dftpy.formats.xsf import XSF
 from dftpy.formats.qepp import PP
 
 
-def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, smpi = None):
+def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = None):
     if isinstance(config, dict):
         pass
     elif isinstance(config, str):
@@ -56,7 +56,7 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, smpi = 
         # nr0 = nr.copy()
         for i in range(3):
             # if i == 0 :
-                # if smpi is not None : nproc = smpi.comm.size
+                # if mp is not None : nproc = mp.comm.size
             # else :
                 # nr[i] *= nr[0]/nr0[0]
             nr[i] = bestFFTsize(nr[i], nproc=nproc, **config["GRID"])
@@ -69,7 +69,7 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, smpi = 
 
     ############################## Grid  ##############################
     if grid is None:
-        grid = DirectGrid(lattice=lattice, nr=nr, units=None, full=config["GRID"]["gfull"], smpi=smpi)
+        grid = DirectGrid(lattice=lattice, nr=nr, units=None, full=config["GRID"]["gfull"], mp=mp)
     ############################## PSEUDO  ##############################
     PPlist = {}
     for key in config["PP"]:
@@ -179,7 +179,7 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2 = None):
             sprint("#" * 80)
             sprint("MULTI-STEP: Perform %d optimization step" % istep)
             sprint("Grid size of %d" % istep, " step is ", nr)
-            grid2 = DirectGrid(lattice=grid.lattice, nr=nr, units=None, full=config["GRID"]["gfull"], smpi=grid.smpi)
+            grid2 = DirectGrid(lattice=grid.lattice, nr=nr, units=None, full=config["GRID"]["gfull"], mp=grid.mp)
             rho_ini = interpolation_3d(rho, nr)
             rho_ini[rho_ini < 1e-12] = 1e-12
             rho_ini = DirectField(grid=grid2, griddata_3d=rho_ini, rank=1)

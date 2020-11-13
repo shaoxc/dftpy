@@ -356,6 +356,7 @@ def ecut2nr(ecut, lattice, optfft = True, spacing = None, **kwargs):
     for i in range(3):
         # nr[i] = np.ceil(np.sqrt(metric[i, i])/spacings[i])
         nr[i] = int(np.sqrt(metric[i, i])/spacings[i])
+        nr[i] += nr[i] %2
         if optffts[i] :
             nr[i] = bestFFTsize(nr[i], **kwargs)
     return nr

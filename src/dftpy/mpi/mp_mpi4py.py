@@ -11,7 +11,7 @@ fft_saved = collections.OrderedDict()
 class MPI4PYFFTRUN :
     def __init__(self, grid, forward = True, decomposition = 'Slab', backend = None, fft = None, **kwargs):
         if fft is None :
-            fft = get_mpi4py_fft(grid.smpi.comm, grid.nrR, decomposition=decomposition, backend=backend, **kwargs)
+            fft = get_mpi4py_fft(grid.mp.comm, grid.nrR, decomposition=decomposition, backend=backend, **kwargs)
         # self.arr = newDistArray(fft, False, view = True)
         # self.arr_g = newDistArray(fft, True, view = True)
         self.arr = newDistArray(fft, False)

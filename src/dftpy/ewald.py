@@ -35,7 +35,7 @@ class CBspline(object):
         else:
             raise AttributeError("Must pass grid to CBspline")
 
-        self.mp = grid.smpi.mp
+        self.mp = grid.mp
 
     @property
     def order(self):
@@ -222,7 +222,7 @@ class ewald(object):
             self.rho = rho
         else:
             raise AttributeError("Must pass rho to Ewald")
-        self.mp = rho.grid.smpi.mp
+        self.mp = rho.grid.mp
 
         gmax = self.Get_Gmax(self.rho.grid)
         eta = self.Get_Best_eta(self.precision, gmax, self.ions)

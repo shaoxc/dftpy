@@ -62,7 +62,7 @@ class BaseField(np.ndarray):
         obj.memo = str(memo)
         # add fft data
         obj._fft_data = fft_data
-        obj.mp = obj.grid.smpi.mp
+        obj.mp = obj.grid.mp
         # Finally, we must return the newly created object:
         return obj
 

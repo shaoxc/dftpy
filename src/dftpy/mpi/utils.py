@@ -1,10 +1,10 @@
-from .mpi import SMPI
+from .mpi import MP
 
-__all__ = ["smpi", "sprint"]
+__all__ = ["mp", "sprint"]
 
-smpi = SMPI()
+mp = MP()
 
 def sprint(*args, comm = None, **kwargs):
     kwargs['flush'] = True
-    if (comm is None and smpi.is_root) or (comm is not None and comm.rank == 0) :
+    if (comm is None and mp.is_root) or (comm is not None and comm.rank == 0) :
         print(*args, **kwargs)

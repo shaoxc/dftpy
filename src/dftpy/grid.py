@@ -21,9 +21,9 @@ class BaseGrid(BaseCell):
     """
 
     def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), units="Bohr", convention="mic",
-            full = False, realspace = True, smpi = None, **kwargs):
-        if smpi is None :
-            from dftpy.mpi import smpi
+            full = False, realspace = True, mp = None, **kwargs):
+        if mp is None :
+            from dftpy.mpi import mp
         super().__init__(lattice=lattice, origin=origin, units=units, **kwargs)
         self._nrR = np.array(nr, dtype = np.int32)
         self._nnrR = np.prod(self._nrR)
@@ -38,10 +38,11 @@ class BaseGrid(BaseCell):
             latparas[i] = np.sqrt(metric[i, i])
         self._spacings = latparas / self._nrR
         self._latparas= latparas
-        self._smpi = smpi
+        self._mp = mp
         self.local_slice(nr, realspace = realspace, full = full)
         self._nnr = np.prod(self._nr)
-        # print('nr_local', self.smpi.comm.rank, self._nr, realspace, self.smpi.comm.size, flush = True)
+        # print('nr_local', self.mp.comm.rank, self._nr, realspace, self.mp.comm.size, flush = True)
+        self._full = full
 
     def __eq__(self, other):
         if not super().__eq__(other):
@@ -53,12 +54,12 @@ class BaseGrid(BaseCell):
         return True
 
     @property
-    def smpi(self):
-        return self._smpi
+    def mp(self):
+        return self._mp
 
-    @smpi.setter
-    def smpi(self, value):
-        self._smpi = value
+    @mp.setter
+    def mp(self, value):
+        self._mp = value
 
     @property
     def nr(self):
@@ -100,17 +101,21 @@ class BaseGrid(BaseCell):
     def latparas(self):
         return self._latparas
 
+    @property
+    def full(self):
+        return self._full
+
     def repeat(self, reps=1):
         reps = np.ones(3, dtype='int')*reps
         lattice = self.lattice.copy()
         for i in range(3):
             lattice[:, i] *= reps[i]
         nr = self.nr * reps
-        results = self.__class__(lattice, nr, origin=self.origin, units=self.units)
+        results = self.__class__(lattice, nr, origin=self.origin, units=self.units, full=self.full)
         return results
 
     def local_slice(self, nr, **kwargs):
-        self._slice, self._nr, self._offsets = self.smpi.mp.get_local_fft_shape(nr, **kwargs)
+        self._slice, self._nr, self._offsets = self.mp.get_local_fft_shape(nr, **kwargs)
 
     @property
     def slice(self):
@@ -151,7 +156,6 @@ class DirectGrid(BaseGrid, DirectCell):
         self._s = None
         self.RPgrid = uppergrid
         self._Rtable = None
-        self._full = full
 
     def __eq__(self, other):
         """
@@ -250,7 +254,7 @@ class DirectGrid(BaseGrid, DirectCell):
             # bg = bg/LEN_CONV["Bohr"][self.units]
             reciprocal_lat = np.einsum("ij,j->ij", bg, scale)
 
-            self.RPgrid = ReciprocalGrid(lattice=reciprocal_lat, nr=self.nrR, units=self.units, full=self.full, uppergrid=self, smpi=self.smpi)
+            self.RPgrid = ReciprocalGrid(lattice=reciprocal_lat, nr=self.nrR, units=self.units, full=self.full, uppergrid=self, mp=self.mp)
         return self.RPgrid
 
     def get_Rtable(self, rcut=10):
@@ -352,10 +356,10 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
     @property
     def invgg(self):
         if self._invgg is None:
-            if self.smpi.is_root :
+            if self.mp.is_root :
                 self.gg[0, 0, 0] = 1.0
             invgg = 1.0/self.gg
-            if self.smpi.is_root :
+            if self.mp.is_root :
                 self.gg[0, 0, 0] = 0.0
                 invgg[0, 0, 0] = 0.0
             self._invgg = invgg
@@ -364,10 +368,10 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
     @property
     def invq(self):
         if self._invq is None:
-            if self.smpi.is_root :
+            if self.mp.is_root :
                 self.q[0, 0, 0] = 1.0
             invq = 1.0/self.q
-            if self.smpi.is_root :
+            if self.mp.is_root :
                 self.q[0, 0, 0] = 0.0
             invq[0, 0, 0] = 0.0
         # self._invq = invq
@@ -401,7 +405,7 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
             at = np.linalg.inv(self.lattice.T * fac)
             # at = at*LEN_CONV["Bohr"][self.units]
             direct_lat = np.einsum("ij,j->ij", at, 1.0 / scale)
-            self.Dgrid = DirectGrid(lattice=direct_lat, nr=self.nrR, units=self.units, full=self.full, uppergrid=self, smpi=self.smpi)
+            self.Dgrid = DirectGrid(lattice=direct_lat, nr=self.nrR, units=self.units, full=self.full, uppergrid=self, mp=self.mp)
         return self.Dgrid
 
     def _calc_grid_points(self, full=None):

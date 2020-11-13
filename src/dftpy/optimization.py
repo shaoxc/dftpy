@@ -297,7 +297,7 @@ class Optimization(AbstractOptimization):
         if self.nspin > 1 :
             theta = np.ones(self.nspin) * theta
         #-----------------------------------------------------------------------
-        self.mp = rho.grid.smpi.mp
+        self.mp = rho.grid.mp
         #-----------------------------------------------------------------------
         EnergyHistory = []
         if guess_phi is None :

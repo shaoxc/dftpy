@@ -245,8 +245,8 @@ def MGPKernelTable(eta, q, maxpoints=1000, symmetrization=None, KernelTable=None
     The MGP Kernel
     symmetrization : 'None', 'Arithmetic', 'Geometric'
     """
-    if symmetrization == "Try":
-        return MGPKernelTableSym(eta, q, maxpoints, symmetrization, KernelTable)
+    # if symmetrization == "Try":
+        # return MGPKernelTableSym(eta, q, maxpoints, symmetrization, KernelTable)
     TimeData.Begin("MGPKernelTable")
     dt = 1.0 / (maxpoints)
     cTF = 0.3 * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
