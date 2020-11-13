@@ -435,7 +435,7 @@ class ReadPseudo(object):
     Support class for LocalPseudo.
     """
 
-    def __init__(self, PP_list=None, MaxPoints = 15000, Gmax = 30, Rmax = 10):
+    def __init__(self, PP_list=None, MaxPoints = 150000, Gmax = 30, Rmax = 10):
         self._gp = {}  # 1D PP grid g-space
         self._vp = {}  # PP on 1D PP grid
         self._vloc_interp = {}  # Interpolates recpot PP
@@ -470,7 +470,7 @@ class ReadPseudo(object):
                 raise Exception("Pseudopotential not supported")
 
     @staticmethod
-    def _real2recip(r, v, zval, MaxPoints=15000, Gmax=30):
+    def _real2recip(r, v, zval, MaxPoints=150000, Gmax=30):
         gp = np.linspace(start=0, stop=Gmax, num=MaxPoints)
         vp = np.empty_like(gp)
         dr = np.empty_like(r)
@@ -639,7 +639,7 @@ class ReadPseudo(object):
         vloc_interp = splrep(gp, vp)
         self._vloc_interp[key] = vloc_interp
 
-    def _init_PP_upf(self, key, MaxPoints=15000, Gmax=30):
+    def _init_PP_upf(self, key, MaxPoints=150000, Gmax=30):
         """
         This is a private method used only in this specific class.
         """
@@ -677,8 +677,7 @@ class ReadPseudo(object):
         # sprint('Ne ', np.sum(r *r * rhop * dr) * 4 * np.pi)
         return ene
 
-    # def _init_PP_psp(self, MaxPoints=15000, Gmax=30):
-    def _init_PP_psp(self, key, MaxPoints=200000, Gmax=30):
+    def _init_PP_psp(self, MaxPoints=150000, Gmax=30):
         """
         """
 
