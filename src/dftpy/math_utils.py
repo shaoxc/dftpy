@@ -237,7 +237,7 @@ def PowerInt(x, numerator, denominator=1):
     return y
 
 
-def bestFFTsize(N, max_prime = 13, scale = 0.99, even = True, prime_factors = None):
+def bestFFTsize(N, max_prime = 13, scale = 0.99, even = True, prime_factors = None, **kwargs):
     """
     http ://www.fftw.org/fftw3_doc/Complex-DFTs.html#Complex-DFTs
     "FFTW is best at handling sizes of the form 2^a 3^b 5^c 7^d 11^e 13^f,  where e+f is either 0 or 1,  and the other exponents are arbitrary."
@@ -407,7 +407,8 @@ def ecut2nr(ecut, lattice, optfft = True, spacing = None, **kwargs):
         spacings[:] = spacing
     metric = np.dot(lattice.T, lattice)
     for i in range(3):
-        nr[i] = np.ceil(np.sqrt(metric[i, i])/spacings[i])
+        # nr[i] = np.ceil(np.sqrt(metric[i, i])/spacings[i])
+        nr[i] = int(np.sqrt(metric[i, i])/spacings[i])
         if optffts[i] :
             nr[i] = bestFFTsize(nr[i], **kwargs)
     return nr

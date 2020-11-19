@@ -54,7 +54,7 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None):
             nr[i] = int(np.sqrt(metric[i, i]) / spacing)
         print("The initial grid size is ", nr)
         for i in range(3):
-            nr[i] = bestFFTsize(nr[i])
+            nr[i] = bestFFTsize(nr[i], **config["GRID"])
     print("The final grid size is ", nr)
     nr2 = nr.copy()
     if config["MATH"]["multistep"] > 1:

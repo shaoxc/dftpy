@@ -82,6 +82,14 @@
     "nr": {
       "type": "intlist",
       "default": null
+    },
+    "maxprime": {
+      "type": "int",
+      "default": 13
+    },
+    "scale": {
+      "type": "float",
+      "default": 0.99
     }
   },
   "DENSITY": {

@@ -59,27 +59,42 @@ def read_xsf(infile, kind="All", full=False, pbc=True, units='Angstrom', **kwarg
             if kind == "cell":
                 return atoms
 
-        if line.startswith("BEGIN_BLOCK_DATAGRID_3D"):
+        if line.startswith("BEGIN_BLOCK_DATAGRID_"):
             line = readline()
             line = readline()
         data = []
-        if line.startswith("BEGIN_DATAGRID_3D"):
-            nrx = np.empty(3, dtype=int)
-            nrx[0], nrx[1], nrx[2] = map(int, readline().split())
-            readline()  # read one useless line
-            if len(lattice) == 0 :
+        if line.startswith("BEGIN_DATAGRID"):
+            nrx = np.ones(3, dtype=int)
+            npbc = 3
+            if line.startswith("BEGIN_DATAGRID_3D"):
+                nrx[0], nrx[1], nrx[2] = map(int, readline().split())
+                npbc = 3
+            elif line.startswith("BEGIN_DATAGRID_2D"):
+                nrx[0], nrx[1] = map(int, readline().split())
+                npbc = 2
+            elif line.startswith("BEGIN_DATAGRID_1D"):
+                nrx[0] = map(int, readline().split())
+                npbc = 1
+            readline()  # read the origin
+            vlat = np.zeros((3, 3))
+            for i in range(npbc):
+                l = list(map(float, readline().split()))
+                vlat[i] = np.asarray(l)
+            if npbc == 1:
                 for i in range(3):
-                    l = list(map(float, readline().split()))
-                    lattice.append(l)
-                lattice = np.asarray(lattice)
-                lattice = lattice.T  # cell = [a, b, c]
-                cell = DirectCell(lattice)
-                atoms = Atom(label=label, pos=pos, cell=cell, basis="Cartesian")
-                if kind == "cell":
-                    return atoms
-            else:
-                for i in range(3):
-                    line = readline()
+                    if abs(vlat[0][i]) > 1e-4:
+                        j = i - 1
+                        vlat[1][j] = vlat[0][i]
+                        vlat[1][i] = -vlat[0][j]
+                        vlat[1] = vlat[1] / np.sqrt(np.dot(vlat[1], vlat[1]))
+                        break
+                vlat[2] = np.cross(vlat[0], vlat[1])
+                vlat[2] = vlat[2] / np.sqrt(np.dot(vlat[2], vlat[2]))
+            elif npbc == 2:
+                vlat[2] = np.cross(vlat[0], vlat[1])
+                vlat[2] = vlat[2] / np.sqrt(np.dot(vlat[2], vlat[2]))
+            data_lat = vlat.T  # cell = [a, b, c]
+            data_lat /= LEN_CONV["Bohr"][xsf_units[0]]
             # for speed, we assume in the data block no blank line
             for line in fr:
                 line = line.split()
@@ -108,7 +123,7 @@ def read_xsf(infile, kind="All", full=False, pbc=True, units='Angstrom', **kwarg
             nrx = bound.copy()
         data *= LEN_CONV["Bohr"][xsf_units[1]] ** 3
 
-        grid = DirectGrid(lattice=lattice, nr=nrx, units=None, full=full)
+        grid = DirectGrid(lattice=data_lat, nr=nrx, units=None, full=full)
         plot = DirectField(grid=grid, griddata_3d=data, rank=1)
         # plot = DirectField(grid=grid, griddata_F=data, rank=1)
         return System(atoms, grid, name="xsf", field=plot)

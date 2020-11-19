@@ -564,6 +564,13 @@ class DirectField(BaseField):
         if self._cplx and not self.grid.full :
             self.grid.full = True
 
+    def repeat(self, reps=1):
+        reps = np.ones(3, dtype='int')*reps
+        data = np.tile(np.array(self), reps)
+        grid = self.grid.repeat(reps)
+        results = self.__class__(grid=grid, rank=self.rank, griddata_3d=data, cplx=self.cplx, fft_data=None)
+        return results
+
 
 class ReciprocalField(BaseField):
     def __new__(cls, grid, memo="", rank=1, griddata_F=None, griddata_C=None, griddata_3d=None, cplx=False, fft_data = None):
