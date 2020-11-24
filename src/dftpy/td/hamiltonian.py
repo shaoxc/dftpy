@@ -2,15 +2,21 @@ import numpy as np
 from scipy.sparse.linalg import LinearOperator, eigsh
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.time_data import TimeData
+from dftpy.constants import SPEED_OF_LIGHT
 
 class Hamiltonian(object):
 
-    def __init__(self, v=None):
+    def __init__(self, v=None, A=None):
         self.v = v
+        self.A = A
 
     @property
     def v(self):
         return self._v
+
+    @property
+    def A(self):
+        return self._A
 
     @v.setter
     def v(self, new_v):
@@ -23,6 +29,17 @@ class Hamiltonian(object):
         else:
             raise TypeError("v must be a DFTpy DirectField.")
 
+    @v.setter
+    def A(self, new_A):
+        if new_A is None:
+            self._A = new_A
+        else:
+            self._A = np.asarray(new_A)
+            if np.size(new_A) !=3:
+                raise AttributeError('Size of the A must be 3.')
+            ones = np.ones(self.grid.nr)
+            self.a_field = DirectField(self.grid, rank=3, griddata_3d = np.asarray([self._A[0]*ones, self._A[1]*ones, self._A[2]*ones])/SPEED_OF_LIGHT)
+
     def __call__(self, psi, force_real=None, sigma = 0.025):
         if isinstance(psi, DirectField):
             if force_real is None:
@@ -30,7 +47,12 @@ class Hamiltonian(object):
                     force_real = True
                 else:
                     force_real = False
-            return -0.5 * psi.laplacian(force_real = force_real, sigma=sigma) + self.v * psi
+            if self.A is None:
+                return -0.5 * psi.laplacian(force_real = force_real, sigma=sigma) + self.v * psi
+            else:
+                return -0.5 * psi.laplacian(force_real = force_real, sigma=sigma) + 0.5 * self.a_field.dot(self.a_field) * psi + 1.0j * self.a_field.dot(psi.gradient(flag = "standard", force_real = force_real)) + self.v * psi
+                #return -0.5 * psi.laplacian(force_real = force_real, sigma=sigma) + 0.5 * self.a_field.dot(self.a_field) * psi + 0.5j * self.a_field.dot(psi.gradient(force_real = force_real)) + 0.5j * (self.a_field * psi).divergence(force_real=force_real) + self.v * psi
+
         elif isinstance(psi, ReciprocalField):
             return 0.5 * psi.grid.gg * psi + (self.v * psi.ifft()).fft
         else:

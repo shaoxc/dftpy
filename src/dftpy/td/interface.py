@@ -11,6 +11,7 @@ from dftpy.utils import calc_rho, calc_j
 from dftpy.dynamic_functionals_utils import DynamicPotential
 from dftpy.formats.xsf import XSF
 from dftpy.time_data import TimeData
+from dftpy.constants import SPEED_OF_LIGHT
 import time
 import os
 
@@ -38,12 +39,16 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
             psi = np.load(f)
         psi = DirectField(grid=rho0.grid, rank=1, griddata_3d=psi, cplx=True)
     else:
-        x = rho0.grid.r[direc]
-        psi = np.sqrt(rho0) * np.exp(1j * k * x)
+        #x = rho0.grid.r[direc]
+        psi = np.sqrt(rho0)
         psi.cplx = True
         i_t0 = 0
+        A_t = np.zeros(3)
+        A_t[direc]=k
+        A_tm1 = A_t * (1-int_t)
 
     rho = calc_rho(psi)
+    N = rho.integral()
     j = calc_j(psi)
     delta_mu = np.empty(3)
     j_int = np.empty(3)
@@ -51,6 +56,7 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     delta_mu = (delta_rho * delta_rho.grid.r).integral()
     j_int = j.integral()
     eps = 1e-8
+    Omega = psi.grid.Volume
 
     if not restart:
         with open(outfile + "_mu", "w") as fmu:
@@ -68,28 +74,35 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
         prop.hamiltonian.v = func.potential
         if dynamic:
             prop.hamiltonian.v += DynamicPotential(rho, j)
+        prop.hamiltonian.A = A_t
         E = np.real(np.conj(psi) * prop.hamiltonian(psi)).integral()
 
         for i_cn in range(order):
             if i_cn > 0:
-                old_rho1 = rho1
-                old_j1 = j1
-            psi1, info = prop(psi)
-            rho1 = calc_rho(psi1)
-            j1 = calc_j(psi1)
-            if i_cn > 0 and np.max(np.abs(old_rho1 - rho1)) < eps and np.max(np.abs(old_j1 - j1)) < eps:
-                break
+                old_rho_pred = rho_pred
+                old_j_pred = j_pred
+            psi_pred, info = prop(psi)
+            rho_pred = calc_rho(psi_pred)
+            j_pred = calc_j(psi_pred)
+            A_t_pred = 2*A_t - A_tm1 + 4*np.pi*N*A_t/Omega*int_t*int_t + 4.0j*np.pi*SPEED_OF_LIGHT*N/Omega*(np.conj(psi_pred)*psi_pred.gradient(flag = "standard", force_real=False)).integral()
 
-            rho_half = (rho + rho1) * 0.5
-            func = E_v_Evaluator.ComputeEnergyPotential(rho_half, calcType=["V"])
+            #if i_cn > 0 and np.max(np.abs(old_rho1 - rho1)) < eps and np.max(np.abs(old_j1 - j1)) < eps:
+            #    break
+
+            rho_corr = (rho + rho_pred) * 0.5
+            func = E_v_Evaluator.ComputeEnergyPotential(rho_corr, calcType=["V"])
             prop.hamiltonian.v = func.potential
             if dynamic:
-                j_half = (j + j1) * 0.5
-                prop.hamiltonian.v += DynamicPotential(rho_half, j_half)
+                j_corr = (j + j_pred) * 0.5
+                prop.hamiltonian.v += DynamicPotential(rho_corr, j_corr)
+            A_t_corr = (A_t + A_t_pred) * 0.5
+            prop.hamiltonian.A = A_t_corr
 
-        psi = psi1
-        rho = rho1
-        j = j1
+        psi = psi_pred
+        rho = rho_pred
+        j = j_pred
+        A_tm1 = A_t
+        A_t = A_t_pred
 
         delta_rho = rho - rho0
         delta_mu = (delta_rho * delta_rho.grid.r).integral()

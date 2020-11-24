@@ -34,4 +34,6 @@ STRESS_CONV["Ha/Bohr3"] = {
     "eV/A3": ENERGY_CONV["Hartree"]["eV"] / LEN_CONV["Bohr"]["Angstrom"] ** 3,
 }
 
+SPEED_OF_LIGHT = 137.035999084
+
 units_warning = "All the quantities in atomic units"
