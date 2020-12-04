@@ -75,7 +75,11 @@ class LocalPseudo(AbstractLocalPseudo):
         else:
             raise AttributeError("Must specify PP_list for Pseudopotentials")
         # Read PP first, then initialize other variables.
-        readPP = ReadPseudo(PP_list)
+        if grid is None :
+            comm = None
+        else :
+            comm = grid.mp.comm
+        readPP = ReadPseudo(PP_list, comm=comm, **kwargs)
         self.readpp = readPP
 
         self.restart(grid, ions, full=True)
@@ -435,7 +439,7 @@ class ReadPseudo(object):
     Support class for LocalPseudo.
     """
 
-    def __init__(self, PP_list=None, MaxPoints = 150000, Gmax = 30, Rmax = 10):
+    def __init__(self, PP_list=None, MaxPoints = 150000, Gmax = 30, Rmax = 10, comm = None):
         self._gp = {}  # 1D PP grid g-space
         self._vp = {}  # PP on 1D PP grid
         self._vloc_interp = {}  # Interpolates recpot PP
@@ -443,9 +447,10 @@ class ReadPseudo(object):
 
         self.PP_list = PP_list
         self.PP_type = {}
+        self.comm = comm
 
         for key in self.PP_list:
-            sprint("setting key: " + key)
+            sprint("setting key: " + key, comm = comm)
             if not os.path.isfile(self.PP_list[key]):
                 raise Exception("PP file for atom type " + str(key) + " not found")
             if PP_list[key].lower().endswith("recpot"):
@@ -548,7 +553,7 @@ class ReadPseudo(object):
             line = " ".join([line.strip() for line in lines[ibegin:iend]])
 
             if "1000" in lines[iend] or len(lines[iend].strip()) == 1 :
-                sprint("Recpot pseudopotential " + Single_PP_file + " loaded")
+                sprint("Recpot pseudopotential " + Single_PP_file + " loaded", comm = self.comm)
             else:
                 return Exception
             gmax = np.float(lines[ibegin - 1].strip()) * BOHR2ANG
@@ -600,7 +605,7 @@ class ReadPseudo(object):
             info['Zval'] = Zval
 
             if "1000" in lines[iend] or len(lines[iend].strip()) == 1 or len(lines[iend].strip()) == 5 :
-                sprint("Recpot pseudopotential " + Single_PP_file + " loaded")
+                sprint("Recpot pseudopotential " + Single_PP_file + " loaded", comm = self.comm)
             else:
                 raise AttributeError("Error : Check the PP file")
             gmax = np.float(lines[ibegin - 1].split()[0]) * BOHR2ANG
@@ -677,7 +682,7 @@ class ReadPseudo(object):
         # sprint('Ne ', np.sum(r *r * rhop * dr) * 4 * np.pi)
         return ene
 
-    def _init_PP_psp(self, MaxPoints=150000, Gmax=30):
+    def _init_PP_psp(self, key, MaxPoints=150000, Gmax=30):
         """
         """
 

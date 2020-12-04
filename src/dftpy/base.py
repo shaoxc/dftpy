@@ -38,7 +38,7 @@ class BaseCell(object):
         self._volume = np.abs(np.dot(lattice[:, 0], np.cross(lattice[:, 1], lattice[:, 2])))
         self._pbc = np.ones(3, dtype = 'int32')
         self._pbc[:] = pbc
-        super().__init__(**kwargs)
+        # super().__init__(**kwargs)
 
     def __eq__(self, other):
         """

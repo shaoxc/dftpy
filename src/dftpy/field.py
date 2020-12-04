@@ -154,6 +154,25 @@ class BaseField(np.ndarray):
     def amin(self):
         return self.mp.amin(self)
 
+    def gather(self):
+        if self.mp.is_mpi :
+            reqs = []
+            if self.mp.is_root :
+                arr = np.empty(self.grid.nrR, dtype = self.dtype)
+                arr[self.grid.slice_all[self.mp.rank]] = self
+                for i in range(1, self.mp.comm.size):
+                    req = self.mp.comm.Irecv(arr[self.grid.slice_all[i]], source = i, tag = i)
+                    reqs.append(req)
+            else :
+                req = self.mp.comm.Isend(self, dest = 0, tag = self.mp.rank)
+                reqs.append(req)
+                arr = np.ones((1, 1, 1))
+            self.mp.MPI.Request.Waitall(reqs)
+        else :
+            # arr = np.array(self)
+            arr = self.copy()
+        return arr
+
 class DirectField(BaseField):
     spl_order = 3
 
@@ -597,6 +616,14 @@ class DirectField(BaseField):
         grid = self.grid.repeat(reps)
         results = self.__class__(grid=grid, rank=self.rank, griddata_3d=data, cplx=self.cplx, fft_data=None)
         return results
+
+    def gather(self, grid = None):
+        value = super().gather()
+        if self.grid.mp.rank == 0 :
+            if grid is None :
+                grid = DirectGrid(self.grid.lattice, self.grid.nrR, units=self.grid.units, full=self.grid.full)
+            value = self.__class__(grid=grid, rank=self.rank, griddata_3d=value, cplx=self.cplx, fft_data=None)
+        return value
 
 
 class ReciprocalField(BaseField):

@@ -25,7 +25,7 @@ class MP :
     @property
     def is_mpi(self):
         self._is_mpi = True
-        if isinstance(self._comm, SerialComm):
+        if isinstance(self._comm, SerialComm) or self._comm == 1:
             self._is_mpi = False
         return self._is_mpi
 
@@ -37,6 +37,14 @@ class MP :
     @property
     def comm(self):
         return self._comm
+
+    @property
+    def rank(self):
+        return self.comm.rank
+
+    @property
+    def size(self):
+        return self.comm.size
 
     @comm.setter
     def comm(self, value):

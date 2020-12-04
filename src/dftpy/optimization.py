@@ -86,6 +86,7 @@ class Optimization(AbstractOptimization):
 
         self.optimization_method = optimization_method
         self.lphi = False
+        self.comm = None
 
     def get_direction_TN(self, res0, phi=None, mu=None, density=None, spin=1, **kwargs):
         if self.nspin > 1 :
@@ -117,13 +118,13 @@ class Optimization(AbstractOptimization):
                     stat = "WARN"
                 else:
                     stat = "FAILED"
-                    sprint("!WARN : pAp small than zero :iter = ", it, pAp)
+                    sprint("!WARN : pAp small than zero :iter = ", it, pAp, comm=self.comm)
                 break
             alpha = r0Norm / pAp
             direction += alpha * p
             res -= alpha * Ap
             r1Norm = self.mp.einsum("ijk, ijk->", res, res)
-            # sprint('it', it, rConv, r1Norm)
+            # sprint('it', it, rConv, r1Norm, comm=self.comm)
             if r1Norm < min(rLists):
                 Best = direction.copy()
             rLists.append(r1Norm)
@@ -274,7 +275,7 @@ class Optimization(AbstractOptimization):
         else :
             grad = 2.0 * self.mp.einsum("lijk, lijk, lijk->l", f.potential, newphi, p2) * phi.grid.dV
 
-        # sprint('theta', theta, value, grad)
+        # sprint('theta', theta, value, grad, comm=self.comm)
         return [value, grad, newphi, f]
 
     def optimize_rho(self, guess_rho=None, guess_phi = None, lphi = False):
@@ -298,6 +299,7 @@ class Optimization(AbstractOptimization):
             theta = np.ones(self.nspin) * theta
         #-----------------------------------------------------------------------
         self.mp = rho.grid.mp
+        self.comm = self.mp.comm
         #-----------------------------------------------------------------------
         EnergyHistory = []
         if guess_phi is None :
@@ -330,14 +332,14 @@ class Optimization(AbstractOptimization):
         fmt = "{:8s}{:24s}{:16s}{:16s}{:8s}{:8s}{:16s}".format(
             "Step", "Energy(a.u.)", "dE", "dP", "Nd", "Nls", "Time(s)"
         )
-        sprint(fmt)
+        sprint(fmt, comm=self.comm)
         dE = energy
         try:
             resN = self.mp.einsum("..., ...->", residual, residual, optimize = 'optimal') * rho.grid.dV
         except Exception :
             resN = float(self.mp.sum(residual*residual) * rho.grid.dV)
         fmt = "{:<8d}{:<24.12E}{:<16.6E}{:<16.6E}{:<8d}{:<8d}{:<16.6E}".format(0, energy, dE, resN, 1, 1, CostTime)
-        sprint(fmt)
+        sprint(fmt, comm=self.comm)
         Bound = self.optimization_options["maxcor"]
 
         if self.optimization_method == "LBFGS":
@@ -373,7 +375,7 @@ class Optimization(AbstractOptimization):
                     gradf = False
             #-----------------------------------------------------------------------
             if gradf:
-                sprint("!WARN: Change to steepest decent")
+                sprint("!WARN: Change to steepest decent", comm=self.comm)
                 p = -residualA[-1]
                 p, theta0 = self.OrthogonalNormalization(p, phi, vector=self.optimization_options["vector"])
 
@@ -437,10 +439,10 @@ class Optimization(AbstractOptimization):
 
             if theta is None:
                 converged = 1
-                sprint("!!!ERROR : Line-Search Failed!!!")
-                sprint("!!!ERROR : Density Optimization NOT Converged  !!!")
+                sprint("!!!ERROR : Line-Search Failed!!!", comm=self.comm)
+                sprint("!!!ERROR : Density Optimization NOT Converged  !!!", comm=self.comm)
                 break
-                # sprint('!WARN: Line-search failed and change to steepest decent')
+                # sprint('!WARN: Line-search failed and change to steepest decent', comm=self.comm)
                 # theta = 0.001
 
             newphi = valuederiv[2]
@@ -493,10 +495,10 @@ class Optimization(AbstractOptimization):
             fmt = "{:<8d}{:<24.12E}{:<16.6E}{:<16.6E}{:<8d}{:<8d}{:<16.6E}".format(
                 it, energy, dE, resN, NumDirectrion, NumLineSearch, CostTime
             )
-            sprint(fmt)
+            sprint(fmt, comm=self.comm)
             if self.check_converge(EnergyHistory):
                 converged = 0
-                sprint("#### Density Optimization Converged ####")
+                sprint("#### Density Optimization Converged ####", comm=self.comm)
                 break
 
             directionA.append(p)
@@ -506,11 +508,11 @@ class Optimization(AbstractOptimization):
                 directionA.pop(0)
         else :
             converged = 2
-            sprint("!WARN: Not converged, but reached max steps")
+            sprint("!WARN: Not converged, but reached max steps", comm=self.comm)
 
         TimeData.End("Optimize")
-        sprint('Chemical potential (a.u.):', mu)
-        sprint('Chemical potential (eV)  :', mu * ENERGY_CONV['Hartree']['eV'])
+        sprint('Chemical potential (a.u.):', mu, comm=self.comm)
+        sprint('Chemical potential (eV)  :', mu * ENERGY_CONV['Hartree']['eV'], comm=self.comm)
         self.mu = mu
         self.rho = rho
         self.functional = func

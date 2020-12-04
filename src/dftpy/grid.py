@@ -23,7 +23,8 @@ class BaseGrid(BaseCell):
     def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), units="Bohr", convention="mic",
             full = False, realspace = True, mp = None, **kwargs):
         if mp is None :
-            from dftpy.mpi import mp
+            from dftpy.mpi import MP
+            mp = MP()
         super().__init__(lattice=lattice, origin=origin, units=units, **kwargs)
         self._nrR = np.array(nr, dtype = np.int32)
         self._nnrR = np.prod(self._nrR)
@@ -39,7 +40,7 @@ class BaseGrid(BaseCell):
         self._spacings = latparas / self._nrR
         self._latparas= latparas
         self._mp = mp
-        self.local_slice(nr, realspace = realspace, full = full)
+        self.local_slice(nr, realspace = realspace, full = full, **kwargs)
         self._nnr = np.prod(self._nr)
         # print('nr_local', self.mp.comm.rank, self._nr, realspace, self.mp.comm.size, flush = True)
         self._full = full
@@ -116,6 +117,14 @@ class BaseGrid(BaseCell):
 
     def local_slice(self, nr, **kwargs):
         self._slice, self._nr, self._offsets = self.mp.get_local_fft_shape(nr, **kwargs)
+        if self.mp.is_mpi :
+            self.slice_all = self.mp.comm.gather(self._slice)
+            self.nr_all = self.mp.comm.gather(self._nr)
+            self.offsets_all = self.mp.comm.gather(self._offsets)
+        else :
+            self.slice_all = self._slice
+            self.nr_all = self._nr
+            self.offsets_all = self._offsets
 
     @property
     def slice(self):
