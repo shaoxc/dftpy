@@ -207,23 +207,20 @@ class DirectField(BaseField):
         if obj is None:
             return
         if isinstance(obj, (DirectField)):
-            # self.rank = np.max([self.rank, obj.rank])
-            self.fft_object = obj.fft_object
-            self.cplx = obj.cplx
+            self.fft_object = getattr(obj, 'fft_object', None)
+            self.cplx = getattr(obj, 'cplx', None)
         self.spl_coeffs = None
         self._N = None
 
     # def __array_wrap__(self,obj,context=None):
-    #    '''wrap it up'''
-    #    b = np.ndarray.__array_wrap__(self, obj, context)
-    #    #b.rank = self.rank * obj.rank
-    #    rank = 1
-    #    a=np.shape(np.shape(self))[0]
-    #    if a == 4:
-    #        rank = np.shape(self)[3]
-    #    nr = *self.grid.nr, self.rank
-    #    b = np.reshape(b,nr)
-    #    return DirectField(grid=self.grid,rank=rank,griddata_3d=b)
+        # b = super().__array_wrap__(obj, context)
+        # if isinstance(obj, (DirectField)):
+            # b.fft_object = obj.fft_object
+            # b.cplx = obj.cplx
+        # else :
+            # b.fft_object = self.fft_object
+            # b.cplx = self.cplx
+        # return b
 
     def integral(self):
         """ Returns the integral of self """

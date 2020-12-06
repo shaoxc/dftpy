@@ -70,7 +70,7 @@ def FP_origin(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType=["E",
     else :
         KE_kernel_saved = ke_kernel_saved
     if abs(KE_kernel_saved["rho0"] - rho0) > 1e-10 or np.shape(rho) != KE_kernel_saved["shape"]:
-        sprint("Re-calculate KE_kernel", np.shape(rho))
+        sprint("Re-calculate KE_kernel", comm=rho.mp.comm)
         # KE_kernel = SMKernel(q,rho0, alpha = alpha, beta = beta)
         KE_kernel = SMKernel(q, rho0, alpha=1.0, beta=1.0) * 1.6
         KE_kernel_saved["Kernel"] = KE_kernel
@@ -116,7 +116,7 @@ def FP0(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType=["E","V"], 
     else :
         KE_kernel_saved = ke_kernel_saved
     if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
-        sprint("Re-calculate KE_kernel", np.shape(rho))
+        sprint("Re-calculate KE_kernel", comm=rho.mp.comm)
         # KE_kernel = SMKernel(q,rho0, alpha = 1.0, beta = 1.0) * 1.6
         KE_kernel = WTKernel(q, rho0, alpha=alpha, beta=beta)
         KE_kernel_saved["Kernel"] = KE_kernel
@@ -157,7 +157,7 @@ def FP(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, rho0=None, calcType=[
     else :
         KE_kernel_saved = ke_kernel_saved
     if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
-        sprint("Re-calculate KE_kernel", np.shape(rho))
+        sprint("Re-calculate KE_kernel", comm=rho.mp.comm)
         # KE_kernel = SMKernel(q,rho0, alpha = 1.0, beta = 1.0) * 1.6
         KE_kernel = WTKernel(q, rho0, alpha=alpha, beta=beta)
         KE_kernel_saved["Kernel"] = KE_kernel

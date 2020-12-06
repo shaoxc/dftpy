@@ -1,11 +1,7 @@
 import numpy as np
-import scipy.special as sp
 from scipy.interpolate import interp1d, splrep, splev
 from dftpy.mpi import sprint
 from dftpy.functional_output import Functional
-from dftpy.field import DirectField
-from dftpy.kedf.tf import TF
-from dftpy.kedf.vw import vW
 from dftpy.kedf.wt import WTPotential, WTEnergy
 from dftpy.kedf.kernel import MGPKernel, MGPOmegaE, LindhardDerivative
 from dftpy.time_data import TimeData
@@ -42,7 +38,7 @@ def MGP(
         KE_kernel_saved = ke_kernel_saved
     # if abs(KE_kernel_saved['rho0']-rho0) > 1E-6 or np.shape(rho) != KE_kernel_saved['shape'] :
     if abs(KE_kernel_saved["rho0"] - rho0) > 1e-2 or np.shape(rho) != KE_kernel_saved["shape"]:
-        sprint("Re-calculate KE_kernel")
+        sprint("Re-calculate KE_kernel", comm = rho.mp.comm)
         KE_kernel = MGPKernel(q, rho0, maxpoints=maxpoint, symmetrization=symmetrization)
         if lumpfactor is not None:
             Ne = rho0 * rho.grid.Volume

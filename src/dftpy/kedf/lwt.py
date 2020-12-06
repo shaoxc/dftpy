@@ -156,7 +156,7 @@ def LWTPotentialEnergy(
         kflists = np.asarray(kflists)
     kflists[0] -= savetol  # for numerical safe
     kflists[-1] += savetol  # for numerical safe
-    sprint('nsp', nsp, kfMax, kfMin, kf0, np.max(kflists), np.min(kflists))
+    sprint('nsp', nsp, kfMax, kfMin, kf0, np.max(kflists), np.min(kflists), comm = rho.mp.comm)
     # -----------------------------------------------------------------------
     kernel0 = np.empty_like(q)
     kernel1 = np.empty_like(q)
@@ -318,7 +318,7 @@ def LWTPotentialEnergy(
     pot3 *= (kf / 3.0) * rhoAlpha1
     pot1 += pot2 + pot3
     pot = pot1
-    sprint('lwt', ene)
+    sprint('lwt', ene, comm = rho.mp.comm)
 
     return pot, ene
 
@@ -508,7 +508,7 @@ def LWT(
         KE_kernel_saved = ke_kernel_saved
     # if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
     if np.shape(rho) != KE_kernel_saved["shape"]:
-        sprint('Re-calculate %s KernelTable ' %kerneltype, np.shape(rho))
+        sprint('Re-calculate %s KernelTable ' %kerneltype, rho.grid.nrR, comm=rho.mp.comm)
         eta = np.linspace(0, etamax, neta)
         if kerneltype == "WT":
             KernelTable = WTKernelTable(eta, x, y, alpha, beta)
