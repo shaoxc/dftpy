@@ -28,7 +28,7 @@ def format_str(expression):
 def format_cstr(expression):
     return expression.capitalize()
 
-def format_intlist(expression):
+def format_slice(expression):
     if ':' in expression :
         ls = expression.split(':')
         l = [None,] * 3
@@ -36,7 +36,23 @@ def format_intlist(expression):
             if item.lstrip('-+').isdigit():
                 l[i] = int(item)
         return slice(*l)
+    else :
+        return int(expression)
 
+def format_intlist(expression):
+    if ':' in expression :
+        items = expression.split()
+        if len(items) == 1 :
+            return format_slice(items[0])
+        ints = []
+        for item in items :
+            s = format_slice(item)
+            if ':' in item:
+                a = np.arange(0, s.stop)[s].tolist()
+                ints.extend(a)
+            else :
+                ints.append(s)
+        return ints
     else :
         return list(map(int, expression.split()))
 
