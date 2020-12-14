@@ -82,7 +82,7 @@ def write(outfile, data, ions = None, format=None, **kwargs):
     else:
         raise AttributeError("%s format not support yet" % format)
 
-    return 
+    return
 
 
 def read_data_den(infile, order="F", **kwargs):

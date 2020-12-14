@@ -25,17 +25,19 @@ class Atom(object):
         self._ncharge = None
 
         # check label
+        self.labels = []
         if label is not None:
-            self.labels = label
-            for i in range(len(self.labels)):
-                if self.labels[i].isdigit():
-                    self.labels[i] = z2lab[int(self.labels[i])]
+            self.labels = []
+            for i, item in enumerate(label):
+                if str(item).isdigit():
+                    self.labels.append(z2lab[int(item)])
+                else :
+                    self.labels.append(item)
             if self.Z is None:
                 self.Z = []
                 for item in self.labels:
                     self.Z.append(z2lab.index(item))
         else :
-            self.labels = []
             for item in self.Z:
                 self.labels.append(z2lab[item])
 

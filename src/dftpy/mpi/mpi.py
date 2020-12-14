@@ -1,4 +1,5 @@
 import numpy as np
+import os
 # import dftpy.mpi.mp_serial as mps
 
 class SerialComm :
@@ -7,9 +8,8 @@ class SerialComm :
         self.size = 1
         self.root = True
 
-
 class MP :
-    def __init__(self, comm = None, parallel = False, **kwargs):
+    def __init__(self, comm = None, parallel = False, decomposition = 'Slab', **kwargs):
         MPI = None
         if comm is None :
             if parallel :
@@ -21,6 +21,7 @@ class MP :
         self._is_mpi = parallel
         self._MPI = MPI
         self._is_root = False
+        self.decomposition = decomposition
 
     @property
     def is_mpi(self):
@@ -60,12 +61,13 @@ class MP :
         else :
             raise AttributeError("Only works for parallel version")
 
-    def _get_local_fft_shape_mpi4py(self, nr, realspace = True, decomposition = 'Slab', backend = None, fft = None, **kwargs):
+    def _get_local_fft_shape_mpi4py(self, nr, realspace = True, decomposition = None, backend = None, fft = None, **kwargs):
         """
         TIP :
             When the environment variable LD_PRELOAD is defined, backend = 'fftw' will give a wrong results
             for mpi4py-fft==2.0.3
         """
+        decomposition = decomposition or self.decomposition
         if fft is None :
             from .mp_mpi4py import get_mpi4py_fft
             fft = get_mpi4py_fft(self.comm, nr, decomposition=decomposition, backend=backend, **kwargs)
@@ -198,3 +200,29 @@ class MP :
         a = self._mul(*args)
         s = self._sum_1(a)
         return s
+
+class PMI :
+    """
+    Detect mpi
+    ref :
+        https://www.open-mpi.org/faq/?category=running#mpi-environmental-variables
+        https://docs.microsoft.com/en-us/powershell/high-performance-computing/environment-variables-for-the-mpiexec-command
+    """
+    def __init__(self):
+        self.comm = None
+        self.size = self._get_size()
+        self.rank = self._get_rank()
+
+    @staticmethod
+    def _get_size():
+        psize0 = int(os.environ.get('OMPI_COMM_WORLD_SIZE', 0)) #OpenMPI
+        psize1 = int(os.environ.get('PMI_SIZE', 0))  # Intel MPI and MVAPICH2
+        pmi_size = max(psize0, psize1)
+        return pmi_size
+
+    @staticmethod
+    def _get_rank():
+        prank0 = int(os.environ.get('OMPI_COMM_WORLD_RANK', 0))
+        prank1 = int(os.environ.get('PMI_RANK', 0))
+        pmi_rank = max(prank0, prank1)
+        return pmi_rank

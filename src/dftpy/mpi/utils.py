@@ -1,10 +1,11 @@
-from .mpi import MP
+from .mpi import MP, PMI
 import sys
 import dftpy.constants
 
 __all__ = ["mp", "sprint"]
 
 mp = MP()
+pmi = PMI()
 
 def sprint(*args, comm = None, lprint = False, debug = False, fileobj = None, **kwargs):
     kwargs['flush'] = True
