@@ -25,7 +25,6 @@ from dftpy.field import DirectField
 from dftpy.system import System
 from dftpy.atom import Atom
 from dftpy.formats import npy
-from dftpy.mpi import MP, MPIFile
 
 MAGIC_PREFIX = b'\x93DFTPY'
 
@@ -36,22 +35,25 @@ def write(fname, system, mp = None, units = 'Bohr'):
         mp = data.grid.mp
     if isinstance(fname, str):
         if mp.size > 1 :
-            # fh = mp.MPI.File.Open(mp.comm, fname, amode = mp.MPI.MODE_CREATE | mp.MPI.MODE_WRONLY)
-            fh = MPIFile(fname, mp, amode = mp.MPI.MODE_CREATE | mp.MPI.MODE_WRONLY)
+            fh = mp.MPI.File.Open(mp.comm, fname, amode = mp.MPI.MODE_CREATE | mp.MPI.MODE_WRONLY)
         else :
             fh = open(fname, "wb")
     else :
         fh = fname
-
     if mp.rank == 0 :
         # write cell
-        npy.write(fh, ions.pos.cell.lattice, single = True)
+        npy.write(fh, ions.pos.cell.lattice, single = True, close = False)
         # write labels
-        npy.write(fh, ions.Z, single = True)
+        # npy.write(fh, ions.labels, single = True, close = False)
+        npy.write(fh, ions.Z, single = True, close = False)
         # write coordinates
-        npy.write(fh, ions.pos, single = True)
+        npy.write(fh, ions.pos, single = True, close = False)
     # write volumetric data
     npy.write(fh, data)
+    if hasattr(fh, 'close'):
+        fh.close()
+    elif hasattr(fh, 'Close'):
+        fh.Close()
     return
 
 def read(fname, mp=None, grid=None, kind="all", full=False, units='Bohr', datarep='native', **kwargs):
@@ -60,33 +62,35 @@ def read(fname, mp=None, grid=None, kind="all", full=False, units='Bohr', datare
         Only support DirectField
     """
     if mp is None :
-        # from dftpy.mpi import mp
-        mp = MP()
+        from dftpy.mpi import mp
     if isinstance(fname, str):
         if mp.size > 1 :
-            # fh = mp.MPI.File.Open(mp.comm, fname, amode = mp.MPI.MODE_RDONLY)
-            fh = MPIFile(fname, mp, amode = mp.MPI.MODE_RDONLY)
+            fh = mp.MPI.File.Open(mp.comm, fname, amode = mp.MPI.MODE_RDONLY)
         else :
             fh = open(fname, "rb")
     else :
         fh = fname
-
     # read cell
-    lattice = npy.read(fh, single = True)
+    lattice = npy.read(fh, single = True, close = False)
     # read labels
-    labels = npy.read(fh, single = True)
+    labels = npy.read(fh, single = True, close = False)
     # read coordinates
-    pos = npy.read(fh, single = True)
+    pos = npy.read(fh, single = True, close = False)
     cell = DirectCell(lattice)
     atoms = Atom(label=labels, pos=pos, cell=cell, basis="Cartesian")
     if kind == 'cell' :
+        if hasattr(fh, 'close'):
+            fh.close()
+        elif hasattr(fh, 'Close'):
+            fh.Close()
         return atoms
     # read volumetric data
     if mp.size == 1 :
-        data = npy.read(fh, single=True)
+        data = npy.read(fh, single=True, close=False)
         if grid is None :
             grid = DirectGrid(lattice=lattice, nr=data.shape, units='Bohr', full=full, mp=mp)
         data = DirectField(grid=grid, griddata_3d=data, rank=1)
+        fh.close()
     else :
         shape, fortran_order, dtype = npy._read_header(fh)
         if fortran_order :
@@ -97,4 +101,5 @@ def read(fname, mp=None, grid=None, kind="all", full=False, units='Bohr', datare
         elif not(np.all(shape == grid.nrR) or np.all(shape == grid.nrG)):
             raise AttributeError("The shape is not match with grid")
         npy._read_value(fh, data, datarep=datarep)
+        fh.Close()
     return System(atoms, grid, name="snpy", field=data)

@@ -1,6 +1,5 @@
 import numpy as np
 import os
-# import dftpy.mpi.mp_serial as mps
 
 class SerialComm :
     def __init__(self, *args, **kwargs):
@@ -215,7 +214,7 @@ class PMI :
 
     @staticmethod
     def _get_size():
-        psize0 = int(os.environ.get('OMPI_COMM_WORLD_SIZE', 0)) #OpenMPI
+        psize0 = int(os.environ.get('OMPI_COMM_WORLD_SIZE', 0)) # OpenMPI
         psize1 = int(os.environ.get('PMI_SIZE', 0))  # Intel MPI and MVAPICH2
         pmi_size = max(psize0, psize1)
         return pmi_size
@@ -226,3 +225,65 @@ class PMI :
         prank1 = int(os.environ.get('PMI_RANK', 0))
         pmi_rank = max(prank0, prank1)
         return pmi_rank
+
+class MPIFile(object):
+    def __init__(self, fname, mp, **kwargs):
+        if mp is None :
+            mp = MP()
+        self.mp = mp
+        if isinstance(fname, str):
+            if mp.size > 1 :
+                self.fh = mp.MPI.File.Open(mp.comm, fname, **kwargs)
+            else :
+                self.fh = open(fname, **kwargs)
+        else :
+            self.fh = fname
+
+    @property
+    def is_mpi(self):
+        if hasattr(self.fh, 'Close'):
+            return True
+        else :
+            return False
+
+    # def __enter__(self):
+        # return self.fh
+
+    def __exit__(self, *args, **kwargs):
+        if hasattr(self.fh, '__exit__'):
+            return self.fh.__exit__(*args, **kwargs)
+        if hasattr(self.fh, 'close'):
+            return self.fh.close()
+        elif hasattr(self.fh, 'Close'):
+            return self.fh.Close()
+
+    def close(self, *args, **kwargs):
+        return self.__exit__(*args, **kwargs)
+
+    def __getattr__(self, attr):
+        if self.is_mpi :
+            if attr == 'read' :
+                return self._read_bytes
+            elif attr == 'write' :
+                return self._write_bytes
+
+        return getattr(self.fh, attr)
+
+    def __iter__(self):
+        return iter(self.fh)
+
+    def _read_bytes(self, n, data=None):
+        if data is None :
+            data = bytearray(n)
+        self.fh.Read(data)
+        return data
+
+    def _read_bytes_2(self, n, data=None):
+        if data is None :
+            data = np.empty(n, dtype = np.byte)
+        self.fh.Read(data)
+        return data.tobytes()
+
+    def _write_bytes(self, data):
+        self.fh.Write(data)
+        return data

@@ -157,17 +157,24 @@ class BaseField(np.ndarray):
     def gather(self):
         if self.mp.is_mpi :
             reqs = []
+            bufs = []
             if self.mp.is_root :
                 arr = np.empty(self.grid.nrR, dtype = self.dtype)
                 arr[self.grid.slice_all[self.mp.rank]] = self
                 for i in range(1, self.mp.comm.size):
-                    req = self.mp.comm.Irecv(arr[self.grid.slice_all[i]], source = i, tag = i)
+                    buf = np.empty(self.grid.nr_all[i], dtype = self.dtype)
+                    bufs.append(buf)
+                    req = self.mp.comm.Irecv(buf, source = i, tag = i)
                     reqs.append(req)
             else :
                 req = self.mp.comm.Isend(self, dest = 0, tag = self.mp.rank)
                 reqs.append(req)
                 arr = np.ones((1, 1, 1))
             self.mp.MPI.Request.Waitall(reqs)
+            if self.mp.is_root :
+                for i in range(1, self.mp.comm.size):
+                    arr[self.grid.slice_all[i]] = bufs[i - 1]
+            self.mp.comm.Barrier()
         else :
             # arr = np.array(self)
             arr = self.copy()
