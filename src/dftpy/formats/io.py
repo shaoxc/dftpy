@@ -9,22 +9,7 @@ from dftpy.constants import LEN_CONV
 from dftpy.formats.vasp import read_POSCAR
 from dftpy.formats.qepp import PP
 from dftpy.formats.xsf import XSF
-
-def read(infile, format=None, **kwargs):
-    if format is None:
-        format = guessType(infile)
-    if format == "vasp":
-        atom = read_POSCAR(infile, **kwargs)
-    elif format == "qepp":
-        qepp = PP(infile).read(**kwargs)
-        atom = qepp.ions
-    elif format == "xsf":
-        xsf = XSF(infile).read(**kwargs)
-        atom = xsf.ions
-    else:
-        raise AttributeError("%s format not support yet" % format)
-    return atom
-
+from dftpy.formats import snpy
 
 def guessType(infile, **kwargs):
     basename = os.path.basename(infile)
@@ -37,53 +22,84 @@ def guessType(infile, **kwargs):
         format = "xsf"
     elif ext == ".den":
         format = "den"
+    elif ext == ".snpy":
+        format = "snpy"
     else:
         raise AttributeError("%s not support yet" % infile)
 
     return format
 
-def read_density(infile, format=None, **kwargs):
+def read(infile, format=None, **kwargs):
+    struct = read_system(infile, format=format, **kwargs)
+    kind = kwargs.get('kind', 'cell')
+    if kind == 'cell' :
+        return struct.ions
+    elif kind == 'field' :
+        return struct.field
+    else :
+        return struct
+
+def read_system(infile, format=None, **kwargs):
     if format is None:
         format = guessType(infile)
 
-    if format == "qepp":
-        qepp = PP(infile).read(**kwargs)
-        density = qepp.field
+    if format == "snpy":
+        struct = snpy.read(infile, **kwargs)
+        return struct
+
+    if format == "vasp":
+        atom = read_POSCAR(infile, **kwargs)
+        struct= System(atom)
+    elif format == "qepp":
+        struct = PP(infile).read(**kwargs)
     elif format == "xsf":
-        xsf = XSF(infile).read(**kwargs)
-        density = xsf.field
+        struct = XSF(infile).read(**kwargs)
     elif format == "den":
         density = read_data_den(infile, **kwargs)
+        struct= System(None, field = density)
     else:
         raise AttributeError("%s format not support yet" % format)
+    return struct
 
-    return density
+def read_density(infile, format=None, **kwargs):
+    struct = read_system(infile, format=format, **kwargs)
+    return struct.field
 
 def write(outfile, data, ions = None, format=None, **kwargs):
     if format is None:
         format = guessType(outfile)
 
-    system = None
-    if isinstance(data, System):
+    if isinstance(data, Atom):
+        from dftpy.formats import ase_io
+        return ase_io.ase_write(outfile, ions, **kwargs)
+    elif isinstance(data, System):
         system = data
-    elif isinstance(data, DirectField) and ions is not None :
-        system = System(ions, ions.pos.cell, name="DFTpy", field=data)
-    elif isinstance(data, Atom):
-        ions = data
+    elif isinstance(data, DirectField):
+        system = System(ions, name="DFTpy", field=data)
+    else :
+        raise AttributeError("Please check the input data")
 
-    if format == "qepp":
-        PP(outfile).write(system)
-    elif format == "xsf":
-        XSF(outfile).write(system)
-    elif format == "den":
-        if system is not None :
-            data = system.field
-        write_data_den(outfile, data, **kwargs)
-    else:
-        raise AttributeError("%s format not support yet" % format)
+    if format == "snpy":
+        # Parallel IO
+        return snpy.write(outfile, system)
 
+    mp = system.field.mp
+
+    if mp.is_mpi :
+        total = system.field.gather()
+        system = System(system.ions, name="DFTpy", field=total)
+
+    if mp.is_root :
+        if format == "qepp":
+            PP(outfile).write(system)
+        elif format == "xsf":
+            XSF(outfile).write(system)
+        elif format == "den":
+            write_data_den(outfile, system.field, **kwargs)
+        else:
+            raise AttributeError("%s format not support yet" % format)
+    mp.comm.Barrier()
     return
-
 
 def read_data_den(infile, order="F", **kwargs):
     with open(infile, "r") as fr:

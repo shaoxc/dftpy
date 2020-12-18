@@ -7,6 +7,15 @@ class SerialComm :
         self.size = 1
         self.root = True
 
+    def __getattr__(self, attr):
+        if attr in self.__dir__():
+            return getattr(self, attr)
+        else :
+            return self.nothing
+
+    def nothing(self, *args, **kwargs):
+        pass
+
 class MP :
     def __init__(self, comm = None, parallel = False, decomposition = 'Slab', **kwargs):
         MPI = None
@@ -24,9 +33,11 @@ class MP :
 
     @property
     def is_mpi(self):
-        self._is_mpi = True
-        if isinstance(self._comm, SerialComm) or self._comm == 1:
+        # if isinstance(self.comm, SerialComm) or self.comm.size == 1:
+        if self.comm.size == 1:
             self._is_mpi = False
+        else :
+            self._is_mpi = True
         return self._is_mpi
 
     @property

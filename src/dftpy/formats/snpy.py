@@ -29,7 +29,7 @@ from dftpy.mpi import MP, MPIFile
 
 MAGIC_PREFIX = b'\x93DFTPY'
 
-def write(fname, system, mp = None, units = 'Bohr'):
+def write(fname, system, mp = None):
     ions = system.ions
     data = system.field
     if mp is None :
@@ -54,14 +54,16 @@ def write(fname, system, mp = None, units = 'Bohr'):
     npy.write(fh, data)
     return
 
-def read(fname, mp=None, grid=None, kind="all", full=False, units='Bohr', datarep='native', **kwargs):
+def read(fname, mp=None, grid=None, kind="all", full=False, datarep='native', **kwargs):
     """
     Notes :
         Only support DirectField
     """
     if mp is None :
-        # from dftpy.mpi import mp
-        mp = MP()
+        if grid is None :
+            mp = MP()
+        else :
+            mp = grid.mp
     if isinstance(fname, str):
         if mp.size > 1 :
             # fh = mp.MPI.File.Open(mp.comm, fname, amode = mp.MPI.MODE_RDONLY)
