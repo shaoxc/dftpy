@@ -32,6 +32,8 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     hamiltonian = Hamiltonian()
     prop = Propagator(hamiltonian, interval=int_t, type=config["PROPAGATOR"]["type"], optional_kwargs=config["PROPAGATOR"])
 
+    E_v_Evaluator.UpdateFunctional(keysToRemove=["PSEUDO"])
+    print(E_v_Evaluator.funcDict)
 
     if restart:
         with open('./tmp/restart_data.npy', 'rb') as f:
@@ -44,8 +46,9 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
         psi.cplx = True
         i_t0 = 0
         A_t = np.zeros(3)
-        A_t[direc]=k
-        A_tm1 = A_t * (1-int_t)
+        A_t[direc]=k*SPEED_OF_LIGHT
+        #A_tm1 = A_t * (1-int_t)
+        A_tm1 = A_t
 
     rho = calc_rho(psi)
     N = rho.integral()
@@ -63,6 +66,8 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
             fmu.write("{0:17.10e} {1:17.10e} {2:17.10e}\n".format(delta_mu[0], delta_mu[1], delta_mu[2]))
         with open(outfile + "_j", "w") as fj:
             fj.write("{0:17.10e} {1:17.10e} {2:17.10e}\n".format(j_int[0], j_int[1], j_int[2]))
+        with open(outfile + "_A", "w") as fj:
+            fj.write("{0:17.10e} {1:17.10e} {2:17.10e}\n".format(A_t[0], A_t[1], A_t[2]))
         with open(outfile + "_E", "w") as fE:
             pass
 
@@ -76,18 +81,22 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
             prop.hamiltonian.v += DynamicPotential(rho, j)
         prop.hamiltonian.A = A_t
         E = np.real(np.conj(psi) * prop.hamiltonian(psi)).integral()
+        E += Omega/8.0/np.pi/SPEED_OF_LIGHT**2*(np.dot((A_t-A_tm1),(A_t-A_tm1))/int_t/int_t)
 
         for i_cn in range(order):
             if i_cn > 0:
                 old_rho_pred = rho_pred
                 old_j_pred = j_pred
+                old_A_t_pred = A_t_pred
             psi_pred, info = prop(psi)
             rho_pred = calc_rho(psi_pred)
             j_pred = calc_j(psi_pred)
-            A_t_pred = 2*A_t - A_tm1 + 4*np.pi*N*A_t/Omega*int_t*int_t + 4.0j*np.pi*SPEED_OF_LIGHT*N/Omega*(np.conj(psi_pred)*psi_pred.gradient(flag = "standard", force_real=False)).integral()
+            #A_t_pred = np.real(2*A_t - A_tm1 + 4*np.pi*N*A_t/Omega*int_t*int_t + 4.0j*np.pi*SPEED_OF_LIGHT*N/Omega*(np.conj(psi_pred)*psi_pred.gradient(flag = "supersmooth", force_real=False)).integral())
+            A_t_pred = np.real(2*A_t - A_tm1 - 4*np.pi*N*A_t/Omega*int_t*int_t - 4.0*np.pi*SPEED_OF_LIGHT*N/Omega*psi_pred.para_current(sigma=0.025)*int_t*int_t)
+            #A_t_pred = np.real(2*A_t - A_tm1 + 4.0*np.pi*SPEED_OF_LIGHT*N/Omega*psi_pred.para_current(sigma=0.025)*int_t*int_t)
 
-            #if i_cn > 0 and np.max(np.abs(old_rho1 - rho1)) < eps and np.max(np.abs(old_j1 - j1)) < eps:
-            #    break
+            if i_cn > 0 and np.max(np.abs(old_rho_pred - rho_pred)) < eps and np.max(np.abs(old_j_pred - j_pred)) < eps and np.max(np.abs(old_A_t_pred - A_t_pred)) < eps:
+                break
 
             rho_corr = (rho + rho_pred) * 0.5
             func = E_v_Evaluator.ComputeEnergyPotential(rho_corr, calcType=["V"])
@@ -101,6 +110,7 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
         psi = psi_pred
         rho = rho_pred
         j = j_pred
+        print(psi_pred.para_current(sigma=0.025)[0], j_pred.integral()[0])
         A_tm1 = A_t
         A_t = A_t_pred
 
@@ -112,6 +122,8 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
             fmu.write("{0:17.10e} {1:17.10e} {2:17.10e}\n".format(delta_mu[0], delta_mu[1], delta_mu[2]))
         with open(outfile + "_j", "a") as fj:
             fj.write("{0:17.10e} {1:17.10e} {2:17.10e}\n".format(j_int[0], j_int[1], j_int[2]))
+        with open(outfile + "_A", "a") as fj:
+            fj.write("{0:17.10e} {1:17.10e} {2:17.10e}\n".format(A_t[0], A_t[1], A_t[2]))
         with open(outfile + "_E", "a") as fE:
             fE.write("{0:17.10e}\n".format(E))
 

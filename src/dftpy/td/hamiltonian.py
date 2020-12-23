@@ -50,7 +50,11 @@ class Hamiltonian(object):
             if self.A is None:
                 return -0.5 * psi.laplacian(force_real = force_real, sigma=sigma) + self.v * psi
             else:
-                return -0.5 * psi.laplacian(force_real = force_real, sigma=sigma) + 0.5 * self.a_field.dot(self.a_field) * psi + 1.0j * self.a_field.dot(psi.gradient(flag = "standard", force_real = force_real)) + self.v * psi
+                psi_fft = psi.fft()
+                intermediate_result = 0.5 * psi_fft.grid.gg * psi_fft - self.a_field.dot(psi_fft.grid.g) * psi_fft
+                intermediate_result *= np.exp(-psi_fft.grid.gg * sigma * sigma / 4.0)
+                return intermediate_result.ifft(force_real = force_real) + 0.5 * self.a_field.dot(self.a_field) * psi + self.v * psi
+                #return -0.5 * psi.laplacian(force_real = force_real, sigma=sigma) + 0.5 * self.a_field.dot(self.a_field) * psi + 1.0j * self.a_field.dot(psi.gradient(flag = "supersmooth", force_real = force_real)) + self.v * psi
                 #return -0.5 * psi.laplacian(force_real = force_real, sigma=sigma) + 0.5 * self.a_field.dot(self.a_field) * psi + 0.5j * self.a_field.dot(psi.gradient(force_real = force_real)) + 0.5j * (self.a_field * psi).divergence(force_real=force_real) + self.v * psi
 
         elif isinstance(psi, ReciprocalField):

@@ -228,7 +228,7 @@ class DirectField(BaseField):
                 raise ValueError("Gradient rank incompatible with shape")
             return DirectField(grid=grad.grid, rank=1, griddata_3d=2.0 * sq_self * np.reshape(grad, np.shape(sq_self)))
 
-    def super_smooth_gradient(self, ipol=None, force_real=True):
+    def super_smooth_gradient(self, ipol=None, force_real=True, sigma=0.025):
         reciprocal_self = self.fft()
         imag = 0 + 1j
         nr = 3, *reciprocal_self.grid.nr
@@ -238,7 +238,7 @@ class DirectField(BaseField):
             grad_g = (
                 reciprocal_self.grid.g
                 * (reciprocal_self * imag)
-                * np.exp(-reciprocal_self.grid.gg * (0.1 / 2.0) ** 2)
+                * np.exp(-reciprocal_self.grid.gg * (sigma / 2.0) ** 2)
             )
             grad_g = ReciprocalField(grid=self.grid.get_reciprocal(), rank=3, griddata_3d=grad_g)
             grad = grad_g.ifft(force_real=force_real)
@@ -250,7 +250,7 @@ class DirectField(BaseField):
             grad_g = (
                 reciprocal_self.grid.g[i]
                 * (reciprocal_self * imag)
-                * np.exp(-reciprocal_self.grid.gg * (0.1 / 2.0) ** 2)
+                * np.exp(-reciprocal_self.grid.gg * (sigma / 2.0) ** 2)
             )
             grad_g = ReciprocalField(grid=self.grid.get_reciprocal(), rank=1, griddata_3d=grad_g)
             grad = grad_g.ifft(force_real=force_real)
@@ -285,7 +285,7 @@ class DirectField(BaseField):
         div.rank = 1
         return div
 
-    def gradient(self, flag="smooth", ipol=None, force_real=True):
+    def gradient(self, flag="smooth", ipol=None, force_real=True, sigma=10.0):
         if self.rank > 1 and ipol is None:
             raise Exception("gradient is only implemented for scalar fields")
         if flag == "standard":
@@ -295,18 +295,18 @@ class DirectField(BaseField):
                 raise Exception("Smooth gradient is not implemented for complex fields")
             return self.numerically_smooth_gradient(ipol)
         elif flag == "supersmooth":
-            return self.super_smooth_gradient(ipol, force_real)
+            return self.super_smooth_gradient(ipol, force_real, sigma=sigma)
         else :
             raise Exception("Incorrect flag")
 
     def laplacian(self, check_real = False, force_real = False, sigma = 0.025):
-        self_fft = self.fft()
-        gg = self_fft.grid.gg
+        reciprocal_self = self.fft()
+        gg = reciprocal_self.grid.gg
         if sigma is None :
-            self_fft = -self_fft.grid.gg*self_fft
+            reciprocal_self = -reciprocal_self.grid.gg*reciprocal_self
         else :
-            self_fft = -gg*self_fft*np.exp(-gg*(sigma*sigma)/4.0)
-        return self_fft.ifft(check_real = check_real, force_real = force_real)
+            reciprocal_self = -gg*reciprocal_self*np.exp(-gg*(sigma*sigma)/4.0)
+        return reciprocal_self.ifft(check_real = check_real, force_real = force_real)
 
     #def laplacian(self, flag="smooth"):
         #return self.gradient(flag=flag).divergence(flag=flag)
@@ -547,6 +547,22 @@ class DirectField(BaseField):
             values = values.reshape((a, b, c))
 
         return DirectField(grid=cut_grid, memo=self.memo, griddata_3d=values)
+
+    def para_current(self, sigma=0.025):
+        """
+        Calculate <\psi|i\nabla|psi>
+        """
+        reciprocal_self = self.fft()
+        reciprocal_self_conj = np.conj(self).fft()
+        nr = 3, *reciprocal_self.grid.nr
+        j_p = np.empty(nr, dtype='complex128')
+        j_p = (
+            reciprocal_self.grid.g
+            * (- reciprocal_self * reciprocal_self_conj)
+            * np.exp(-reciprocal_self.grid.gg * (sigma / 2.0) ** 2)
+        )
+        j_p = ReciprocalField(grid=self.grid.get_reciprocal(), rank=3, griddata_3d=j_p)
+        return j_p.integral()
 
     @property
     def N(self):
