@@ -19,6 +19,7 @@ def read_POSCAR(infile, names=None, **kwargs):
         for i in range(2, 5):
             lat.append(list(map(float, fr.readline().split())))
         lat = np.asarray(lat).T / BOHR2ANG
+        lat = np.ascontiguousarray(lat)
         for i in range(3):
             lat[i] *= scale[i]
         lineL = fr.readline().split()

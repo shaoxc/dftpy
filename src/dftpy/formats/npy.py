@@ -47,12 +47,12 @@ def _write_header(fh, data, version = (1, 0), grid = None):
     if hasattr(data, 'grid'):
         grid = data.grid
     header = npyf.header_data_from_array_1_0(data)
-    if header['fortran_order'] :
-        raise AttributeError("Not support Fortran order")
     if grid is None :
         shape = data.shape
     else :
         shape = grid.nrR
+        if header['fortran_order'] and grid.mp.size > 1:
+            raise AttributeError("Not support Fortran order")
     header['shape'] = tuple(shape)
     npyf._write_array_header(fh, header, version)
     return
@@ -102,8 +102,10 @@ def read(fh, data=None, grid=None, single=False, datarep = 'native'):
         grid = data.grid
 
     shape, fortran_order, dtype = _read_header(fh)
-    if 'fortran_order' :
+
+    if 'fortran_order' and grid.mp.size > 1 :
         raise AttributeError("Not support Fortran order")
+
     if not(np.all(shape == grid.nrR) or np.all(shape == grid.nrG)):
         raise AttributeError("The shape is not match with grid")
     if data is None :

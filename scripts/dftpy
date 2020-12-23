@@ -2,6 +2,7 @@
 
 def GetConf():
     import argparse
+    from dftpy.mpi import pmi
     parser = argparse.ArgumentParser(description='Process task')
     parser.add_argument('confs', nargs = '*')
     parser.add_argument('-i', '--ini', '--input', dest='input', type=str, action='store',
@@ -10,7 +11,7 @@ def GetConf():
             default=False, help='Use mpi4py to be parallel')
 
     args = parser.parse_args()
-    if args.mpi :
+    if args.mpi or pmi.size > 0 :
         from mpi4py import MPI
         from mpi4py_fft import PFFT
         from dftpy.mpi import mp

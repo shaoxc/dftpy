@@ -29,6 +29,7 @@ def ase_write(outfile, ions, format=None, pbc=None, **kwargs):
 def ase2ions(ase_atoms):
     lattice = ase_atoms.cell[:]
     lattice = np.asarray(lattice).T / BOHR2ANG
+    lattice = np.ascontiguousarray(lattice)
     Z = ase_atoms.numbers
     cell = DirectCell(lattice)
     pos = ase_atoms.get_positions() / BOHR2ANG
@@ -37,6 +38,7 @@ def ase2ions(ase_atoms):
 
 def ions2ase(ions):
     cell = ions.pos.cell.lattice.T * BOHR2ANG
+    cell = np.ascontiguousarray(cell)
     numbers = ions.Z
     pos = ions.pos[:] * BOHR2ANG
     struct = ase.Atoms(positions=pos, numbers=numbers, cell=cell)
