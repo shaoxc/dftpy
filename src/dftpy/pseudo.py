@@ -439,9 +439,11 @@ class ReadPseudo(object):
     Support class for LocalPseudo.
     """
 
-    def __init__(self, PP_list=None, MaxPoints = 150000, Gmax = 30, Rmax = 10, comm = None):
+    def __init__(self, PP_list=None, MaxPoints = 15000, Gmax = 30, Rmax = 10, comm = None):
         self._gp = {}  # 1D PP grid g-space
         self._vp = {}  # PP on 1D PP grid
+        self._r = {}  # 1D PP grid r-space
+        self._v = {}  # PP on 1D PP grid r-space
         self._vloc_interp = {}  # Interpolates recpot PP
         self._info = {}
 
@@ -456,13 +458,10 @@ class ReadPseudo(object):
             if PP_list[key].lower().endswith("recpot"):
                 self.PP_type[key] = "recpot"
                 self._init_PP_recpot(key)
-            elif PP_list[key].lower().endswith("usp"):
+            elif PP_list[key].lower().endswith(("usp", "uspcc")):
                 self.PP_type[key] = "usp"
                 self._init_PP_usp(key)
-            elif PP_list[key].lower().endswith("uspcc"):
-                self.PP_type[key] = "usp"
-                self._init_PP_usp(key)
-            elif PP_list[key].lower().endswith("uspso"):
+            elif PP_list[key].lower().endswith('uspso'):
                 self.PP_type[key] = "uspso"
                 self._init_PP_usp(key, 'uspso')
             elif PP_list[key].lower().endswith("upf"):
@@ -474,8 +473,20 @@ class ReadPseudo(object):
             else:
                 raise Exception("Pseudopotential not supported")
 
+            self.get_vloc_interp(key)
+
+    def get_vloc_interp(self, key, k = 3):
+        """get the representation of PP
+
+        Args:
+            key: Atomic symbol
+            k: The degree of the spline fit of splrep, should keep use 3.
+        """
+        vloc_interp = splrep(self._gp[key][1:], self._vp[key][1:], k=k)
+        self._vloc_interp[key] = vloc_interp
+
     @staticmethod
-    def _real2recip(r, v, zval, MaxPoints=150000, Gmax=30):
+    def _real2recip(r, v, zval, MaxPoints=15000, Gmax=30):
         gp = np.linspace(start=0, stop=Gmax, num=MaxPoints)
         vp = np.empty_like(gp)
         dr = np.empty_like(r)
@@ -526,6 +537,14 @@ class ReadPseudo(object):
                 ions.Zval[key] = round(val)
         self.zval = ions.Zval.copy()
 
+    def _self_energy(self, r, vr, rhop):
+        dr = np.empty_like(r)
+        dr[1:] = r[1:]-r[:-1]
+        dr[0] = r[0]
+        ene = np.sum(r *r * vr * rhop * dr) * 4 * np.pi
+        # sprint('Ne ', np.sum(r *r * rhop * dr) * 4 * np.pi)
+        return ene
+
     def _init_PP_recpot(self, key):
         """
         This is a private method used only in this specific class.
@@ -565,8 +584,6 @@ class ReadPseudo(object):
         gp, vp = set_PP(self.PP_list[key])
         self._gp[key] = gp
         self._vp[key] = vp
-        vloc_interp = splrep(gp, vp)
-        self._vloc_interp[key] = vloc_interp
 
     def _init_PP_usp(self, key, ext = 'usp'):
         """
@@ -641,10 +658,8 @@ class ReadPseudo(object):
         gp, vp, self._info[key] = set_PP(self.PP_list[key])
         self._gp[key] = gp
         self._vp[key] = vp
-        vloc_interp = splrep(gp, vp)
-        self._vloc_interp[key] = vloc_interp
 
-    def _init_PP_upf(self, key, MaxPoints=150000, Gmax=30):
+    def _init_PP_upf(self, key, MaxPoints=15000, Gmax=30):
         """
         This is a private method used only in this specific class.
         """
@@ -667,22 +682,14 @@ class ReadPseudo(object):
             return r, v, upf
 
         r, vr, self._info[key] = set_PP(self.PP_list[key])
+        self._r[key] = r
+        self._v[key] = vr
         zval = self._info[key]["pseudo_potential"]["header"]["z_valence"]
         gp, vp = self._real2recip(r, vr, zval, MaxPoints, Gmax)
         self._gp[key] = gp
         self._vp[key] = vp
-        vloc_interp = splrep(gp, vp)
-        self._vloc_interp[key] = vloc_interp
 
-    def _self_energy(self, r, vr, rhop):
-        dr = np.empty_like(r)
-        dr[1:] = r[1:]-r[:-1]
-        dr[0] = r[0]
-        ene = np.sum(r *r * vr * rhop * dr) * 4 * np.pi
-        # sprint('Ne ', np.sum(r *r * rhop * dr) * 4 * np.pi)
-        return ene
-
-    def _init_PP_psp(self, key, MaxPoints=150000, Gmax=30):
+    def _init_PP_psp(self, key, MaxPoints=15000, Gmax=30):
         """
         """
 
@@ -728,12 +735,12 @@ class ReadPseudo(object):
             return r, v, info
 
         r, v, self._info[key] = set_PP(self.PP_list[key])
+        self._r[key] = r
+        self._v[key] = v
         zval = self._info[key]['Zval']
         gp, vp = self._real2recip(r, v, zval, MaxPoints, Gmax)
         self._gp[key] = gp
         self._vp[key] = vp
-        vloc_interp = splrep(gp, vp)
-        self._vloc_interp[key] = vloc_interp
 
     @property
     def vloc_interp(self):
