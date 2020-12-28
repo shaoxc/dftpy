@@ -22,10 +22,11 @@ class Casida(object):
         self.functional = E_v_Evaluator
         self.fkxc = self.functional(self.rho0, calcType=['V2']).v2rho2
 
-    def calc_k(self, psi_i, psi_j, vh):
+    def calc_k(self, psi_i, psi_j, vnl):
         if not self.polarized:
-            fkxc = DirectField(self.grid, rank=1, griddata_3d=(self.fkxc[0]+self.fkxc[1])/2.0)
-            return (psi_i*(vh+fkxc*psi_j)).integral()
+            #fkxc = DirectField(self.grid, rank=1, griddata_3d=(self.fkxc[0]+self.fkxc[1])/2.0)
+            #return (psi_i*(vnl+fkxc*psi_j)).integral()
+            return (psi_i*(vnl)).integral()
         else:
             raise Exception('Spin polarized Casida is not implemented')
 
@@ -41,9 +42,11 @@ class Casida(object):
         mu = (psi_1*x*psi_2).integral()
         return mu
 
-    def build_matrix(self, num_psi, eigs, psi_list, calc_triplet=False, build_ab = False):
+    def build_matrix(self, num_psi, eigs, psi_list, calc_triplet=False, build_ab = False, calc_nl = False, **kwargs):
         TimeData.Begin('Casida Matrix')
         hartree = FunctionalClass(type='HARTREE')
+        if calc_nl:
+            nl = FunctionalClass(type='KEDF', name='Nonadiabatic') 
         self.c = np.empty([num_psi-1, num_psi-1], dtype = np.float64)
         if build_ab:
             self.a = np.empty([num_psi-1, num_psi-1], dtype = np.float64)
@@ -56,10 +59,12 @@ class Casida(object):
         omega = eigs[1:]-eigs[0]
         for j in range(1, num_psi):
             psi_j = psi_list[0] * psi_list[j]
-            vh = hartree(psi_j, calcType = ['V']).potential
+            #vnl = hartree(psi_j, calcType = ['V']).potential
+            if calc_nl:
+                vnl = nl(psi_j, calcType = ['V'], kf = kwargs['kf'], omega = kwargs['omega_guess']).potential
             for i in range(j, num_psi):
                 psi_i = psi_list[0] * psi_list[i]
-                k = self.calc_k(psi_i, psi_j, vh)
+                k = self.calc_k(psi_i, psi_j, vnl)
                 self.c[i-1,j-1] = k * self.N * 2.0 * np.sqrt(omega[i-1]*omega[j-1])
                 if build_ab:
                     self.a[i-1,j-1] = k * self.N

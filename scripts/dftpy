@@ -2,7 +2,7 @@
 import configparser
 import argparse
 from dftpy.interface import ConfigParser, OptimizeDensityConf, InvertRunner
-from dftpy.td.interface import RealTimeRunner, CasidaRunner, DiagonizeRunner
+from dftpy.td.interface import RealTimeRunner, CasidaRunner, DiagonizeRunner, CasidaIterative
 import time
 from dftpy.time_data import TimeData
 
@@ -24,6 +24,8 @@ def RunJob():
 
         if "Propagate" in config["JOB"]["task"]:
             RealTimeRunner(config, others["struct"].field, others["E_v_Evaluator"])
+        elif "Casidaiter" in config["JOB"]["task"]:
+            CasidaIterative(config, others["struct"].field, others["E_v_Evaluator"])
         elif "Casida" in config["JOB"]["task"]:
             CasidaRunner(config, others["struct"].field, others["E_v_Evaluator"])
         elif "Diagonize" in config["JOB"]["task"]:

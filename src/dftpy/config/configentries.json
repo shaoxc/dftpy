@@ -367,6 +367,14 @@
     "tda": {
       "type": "bool",
       "default": false
+    },
+    "omega_guess": {
+        "type": "float",
+        "default": 0.1
+    },
+    "i_pole": {
+        "type": "int",
+        "default": 0
     }
   },
   "INVERSION": {

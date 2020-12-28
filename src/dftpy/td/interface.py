@@ -155,6 +155,42 @@ def CasidaRunner(config, rho0, E_v_Evaluator):
     #    for x_minus_y in x_minus_y_list:
     #        with open('{0:s}/x_minus_y{1:d}',format(ev_path, i), 'w') as fw:
 
+def CasidaIterative(config, rho0, E_v_Evaluator):
+
+    numeig = config["CASIDA"]["numeig"]
+    outfile = config["TD"]["outfile"]
+    diagonize = config["CASIDA"]["diagonize"]
+    omega_old = -9999
+    omega_new = config["CASIDA"]["omega_guess"]
+    i_pole = config["CASIDA"]["i_pole"]
+    eps = 1e-4
+    iter_max = 100
+
+    if diagonize:
+        potential = E_v_Evaluator(rho0, calcType=['V']).potential
+        hamiltonian = Hamiltonian(potential)
+        print('Start diagonizing Hamlitonian.')
+        eigs, psi_list = hamiltonian.diagonize(numeig)
+        print('Diagonizing Hamlitonian done.')
+    else:
+        raise Exception("diagonize must be true.")
+
+    E_v_Evaluator.UpdateFunctional(keysToRemove = ['HARTREE', 'PSEUDO', 'KineticEnergyFunctional'])
+    casida = Casida(rho0, E_v_Evaluator)
+    kf = np.cbrt(3 * np.pi ** 2 * rho0)
+    
+    print('iter  omega')
+    i = 0
+    while np.abs(omega_new - omega_old) > eps and i < iter_max:
+        print(i, omega_new)
+        casida.build_matrix(numeig, eigs, psi_list, calc_nl = True, omega_guess = omega_old, kf = kf)
+        omega, f, x_minus_y_list = casida()
+        omega_old = omega_new
+        omega_new = omega[i_pole]
+        i += 1
+    print(i, omega_new)
+
+
 
 def DiagonizeRunner(config, struct, E_v_Evaluator):
 

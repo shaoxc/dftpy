@@ -6,6 +6,7 @@ from dftpy.field import DirectField
 from dftpy.functional_output import Functional
 from dftpy.semilocal_xc import PBE, LDA, LibXC
 from dftpy.hartree import HartreeFunctional
+from dftpy.nonadiabatic_functional import NonadiabaticFunctional
 # from dftpy.kedf import KEDFunctional
 from dftpy.kedf import KEDF
 from dftpy.pseudo import LocalPseudo
@@ -126,7 +127,7 @@ class FunctionalClass(AbstractFunctional):
 
         self.FunctionalTypeList = ["XC", "KEDF", "PSEUDO", "HARTREE","EXT"]
         XCNameList = ["LDA", "PBE", "LIBXC_XC", "CUSTOM_XC"]
-        KEDFNameList = ["TF", "vW", "x_TF_y_vW", "LC94", "revAPBEK", "TFvW", "LIBXC_KEDF", "CUSTOM_KEDF"]
+        KEDFNameList = ["TF", "vW", "x_TF_y_vW", "LC94", "revAPBEK", "TFvW", "LIBXC_KEDF", "CUSTOM_KEDF", "Nonadiabatic"]
         KEDFNLNameList = [
             "WT",
             "MGP",
@@ -187,7 +188,9 @@ class FunctionalClass(AbstractFunctional):
     def ComputeEnergyPotential(self, rho, calcType=["E","V"], **kwargs):
         self.optional_kwargs.update(kwargs)
         if self.type == "KEDF":
-            if self.name != "LIBXC_KEDF":
+            if self.name == "Nonadiabatic":
+                return NonadiabaticFunctional(rho, calcType, **kwargs)
+            elif self.name != "LIBXC_KEDF":
                 return self.KEDF(rho, calcType=calcType, **self.optional_kwargs)
                 # return KEDFunctional(rho, self.name, calcType=calcType, **self.optional_kwargs)
             else:
