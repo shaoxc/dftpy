@@ -318,7 +318,7 @@ def LWTPotentialEnergy(
     pot3 *= (kf / 3.0) * rhoAlpha1
     pot1 += pot2 + pot3
     pot = pot1
-    sprint('lwt', ene, comm = rho.mp.comm)
+    sprint('lwt', ene, pot.amin(), pot.amax(), comm = rho.mp.comm)
 
     return pot, ene
 

@@ -439,7 +439,7 @@ class ReadPseudo(object):
     Support class for LocalPseudo.
     """
 
-    def __init__(self, PP_list=None, MaxPoints = 15000, Gmax = 30, Rmax = 10, comm = None):
+    def __init__(self, PP_list=None, MaxPoints = 10000, Gmax = 30, Gmin = 1E-4, Rmax = 10, comm = None):
         self._gp = {}  # 1D PP grid g-space
         self._vp = {}  # PP on 1D PP grid
         self._r = {}  # 1D PP grid r-space
@@ -466,10 +466,10 @@ class ReadPseudo(object):
                 self._init_PP_usp(key, 'uspso')
             elif PP_list[key].lower().endswith("upf"):
                 self.PP_type[key] = "upf"
-                self._init_PP_upf(key, MaxPoints, Gmax)
+                self._init_PP_upf(key, MaxPoints = MaxPoints, Gmax = Gmax, Gmin = Gmin)
             elif PP_list[key].lower().endswith(("psp", "psp8")):
                 self.PP_type[key] = "psp"
-                self._init_PP_psp(key, MaxPoints, Gmax)
+                self._init_PP_psp(key, MaxPoints = MaxPoints, Gmax = Gmax, Gmin = Gmin)
             else:
                 raise Exception("Pseudopotential not supported")
 
@@ -486,8 +486,9 @@ class ReadPseudo(object):
         self._vloc_interp[key] = vloc_interp
 
     @staticmethod
-    def _real2recip(r, v, zval, MaxPoints=15000, Gmax=30):
-        gp = np.linspace(start=0, stop=Gmax, num=MaxPoints)
+    def _real2recip(r, v, zval, MaxPoints=10000, Gmax=30, Gmin=1E-4):
+        # gp = np.linspace(start=0, stop=Gmax, num=MaxPoints)
+        gp = np.logspace(np.log10(Gmin), np.log10(Gmax), num = MaxPoints)
         vp = np.empty_like(gp)
         dr = np.empty_like(r)
         dr[1:] = r[1:]-r[:-1]
@@ -659,7 +660,7 @@ class ReadPseudo(object):
         self._gp[key] = gp
         self._vp[key] = vp
 
-    def _init_PP_upf(self, key, MaxPoints=15000, Gmax=30):
+    def _init_PP_upf(self, key, **kwargs):
         """
         This is a private method used only in this specific class.
         """
@@ -685,11 +686,11 @@ class ReadPseudo(object):
         self._r[key] = r
         self._v[key] = vr
         zval = self._info[key]["pseudo_potential"]["header"]["z_valence"]
-        gp, vp = self._real2recip(r, vr, zval, MaxPoints, Gmax)
+        gp, vp = self._real2recip(r, vr, zval, **kwargs)
         self._gp[key] = gp
         self._vp[key] = vp
 
-    def _init_PP_psp(self, key, MaxPoints=15000, Gmax=30):
+    def _init_PP_psp(self, key, **kwargs):
         """
         """
 
@@ -738,7 +739,7 @@ class ReadPseudo(object):
         self._r[key] = r
         self._v[key] = v
         zval = self._info[key]['Zval']
-        gp, vp = self._real2recip(r, v, zval, MaxPoints, Gmax)
+        gp, vp = self._real2recip(r, v, zval, **kwargs)
         self._gp[key] = gp
         self._vp[key] = vp
 
