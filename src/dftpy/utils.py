@@ -101,7 +101,7 @@ def grid_map_data(data, nr = None, direct = True, index = None, grid = None):
     if lfine :
         value2[index[0], index[1], index[2]] = value[:bd[0], :bd[1], :bd[2]].ravel()
     else :
-        value2[:bd[0], :bd[1], :bd[2]] = value[index[0], index[1], index[2]].reshape(nr2_g)
+        value2[:bd[0], :bd[1], :bd[2]] = value[index[0], index[1], index[2]].reshape(bd)
 
     if direct :
         results = value2.ifft(force_real=True)
