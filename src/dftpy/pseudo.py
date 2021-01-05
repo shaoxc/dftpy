@@ -496,7 +496,7 @@ class ReadPseudo(object):
                 from scipy.integrate import simpson
             except Exception :
                 from scipy.integrate import simps as simpson
-            vr = (v * r + zval * sp.erf(r)) * r
+            vr = (v * r + zval) * r
             for k in range(1, len(gp)):
                 y = sp.spherical_jn(0, gp[k] * r) * vr
                 vp[k] = (4.0 * np.pi) * simpson(y, r)
@@ -505,7 +505,7 @@ class ReadPseudo(object):
             dr = np.empty_like(r)
             dr[1:] = r[1:]-r[:-1]
             dr[0] = r[0]
-            vr = (v * r + zval * sp.erf(r)) * r * dr
+            vr = (v * r + zval) * r * dr
             for k in range(1, len(gp)):
                 vp[k] = (4.0 * np.pi) * np.sum(sp.spherical_jn(0, gp[k] * r) * vr)
             vp[0] = (4.0 * np.pi) * np.sum(vr)
