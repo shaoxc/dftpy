@@ -2,6 +2,7 @@ from json import JSONEncoder
 import re
 import numpy as np
 import ast
+from collections import OrderedDict
 
 try:
     from numexpr import evaluate
@@ -78,7 +79,7 @@ def format_direction(expression):
 
 def format_cdict(expression):
     vk = ast.literal_eval(expression)
-    return {v.capitalize():k for v, k in vk.items()}
+    return OrderedDict((v.capitalize(),k) for v, k in vk.items())
 
 class ConfigEntry(object):
 

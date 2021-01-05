@@ -145,7 +145,7 @@ class LocalPseudo(AbstractLocalPseudo):
         # update Zval in ions
         self.readpp.get_Zval(self._ions)
 
-    def __call__(self, density=None, calcType=["E", "V"]):
+    def __call__(self, density=None, calcType=["E", "V"], **kwargs):
         if self._vreal is None:
             self.local_PP()
         pot = self._vreal
@@ -446,6 +446,7 @@ class ReadPseudo(object):
         self._v = {}  # PP on 1D PP grid r-space
         self._vloc_interp = {}  # Interpolates recpot PP
         self._info = {}
+        self._core_density = {}  # the radial core charge density for the non-linear core correction
 
         self.PP_list = PP_list
         self.PP_type = {}
@@ -486,18 +487,29 @@ class ReadPseudo(object):
         self._vloc_interp[key] = vloc_interp
 
     @staticmethod
-    def _real2recip(r, v, zval, MaxPoints=10000, Gmax=30, Gmin=1E-4):
-        # gp = np.linspace(start=0, stop=Gmax, num=MaxPoints)
+    def _real2recip(r, v, zval, MaxPoints=10000, Gmax=30, Gmin=1E-4, method='simpson'):
         gp = np.logspace(np.log10(Gmin), np.log10(Gmax), num = MaxPoints)
         vp = np.empty_like(gp)
-        dr = np.empty_like(r)
-        dr[1:] = r[1:]-r[:-1]
-        dr[0] = r[0]
-        vr = (v * r + zval) * r * dr
-        for k in range(1, len(gp)):
-            vp[k] = (4.0 * np.pi) * np.sum(sp.spherical_jn(0, gp[k] * r) * vr)
+        if method == 'simpson' :
+            try:
+                #new version of scipy=1.6.0 change the name to simpson
+                from scipy.integrate import simpson
+            except Exception :
+                from scipy.integrate import simps as simpson
+            vr = (v * r + zval * sp.erf(r)) * r
+            for k in range(1, len(gp)):
+                y = sp.spherical_jn(0, gp[k] * r) * vr
+                vp[k] = (4.0 * np.pi) * simpson(y, r)
+            vp[0] = (4.0 * np.pi) * simpson(vr, r)
+        else :
+            dr = np.empty_like(r)
+            dr[1:] = r[1:]-r[:-1]
+            dr[0] = r[0]
+            vr = (v * r + zval * sp.erf(r)) * r * dr
+            for k in range(1, len(gp)):
+                vp[k] = (4.0 * np.pi) * np.sum(sp.spherical_jn(0, gp[k] * r) * vr)
+            vp[0] = (4.0 * np.pi) * np.sum(vr)
         vp[1:] -= 4.0 * np.pi * zval / (gp[1:] ** 2)
-        vp[0] = (4.0 * np.pi) * np.sum(vr)
         return gp, vp
 
     @staticmethod
@@ -689,6 +701,10 @@ class ReadPseudo(object):
         gp, vp = self._real2recip(r, vr, zval, **kwargs)
         self._gp[key] = gp
         self._vp[key] = vp
+        if 'core_charge_density' in self._info[key]["pseudo_potential"] :
+            self._core_density[key] = self._info[key]["pseudo_potential"]["core_charge_density"]
+        else :
+            self._core_density[key] = None
 
     def _init_PP_psp(self, key, **kwargs):
         """

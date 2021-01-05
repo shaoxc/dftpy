@@ -507,17 +507,17 @@ def LWT(
     else :
         KE_kernel_saved = ke_kernel_saved
     # if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
-    if np.shape(rho) != KE_kernel_saved["shape"]:
+    if tuple(rho.grid.nrR) != KE_kernel_saved["shape"]:
         sprint('Re-calculate %s KernelTable ' %kerneltype, rho.grid.nrR, comm=rho.mp.comm)
         eta = np.linspace(0, etamax, neta)
         if kerneltype == "WT":
             KernelTable = WTKernelTable(eta, x, y, alpha, beta)
         elif kerneltype == "MGP":
-            KernelTable = MGPKernelTable(eta, q, maxpoints=maxpoints, symmetrization=symmetrization)
+            KernelTable = MGPKernelTable(eta, maxpoints=maxpoints, symmetrization=symmetrization, mp = rho.grid.mp)
         elif kerneltype == "MGPA":
-            KernelTable = MGPKernelTable(eta, q, maxpoints=maxpoints, symmetrization="Arithmetic")
+            KernelTable = MGPKernelTable(eta, maxpoints=maxpoints, symmetrization="Arithmetic", mp = rho.grid.mp)
         elif kerneltype == "MGPG":
-            KernelTable = MGPKernelTable(eta, q, maxpoints=maxpoints, symmetrization="Geometric")
+            KernelTable = MGPKernelTable(eta, maxpoints=maxpoints, symmetrization="Geometric", mp = rho.grid.mp)
         # Add MGP kinetic electron
         if lumpfactor is not None:
             # sprint('Calculate MGP kinetic electron(%f)' %lumpfactor)
@@ -535,7 +535,7 @@ def LWT(
             KE_kernel_saved["KernelTable"] = KernelTable
             KE_kernel_saved["KernelDeriv"] = KernelDerivTable
         KE_kernel_saved["etamax"] = etamax
-        KE_kernel_saved["shape"] = np.shape(rho)
+        KE_kernel_saved["shape"] = tuple(rho.grid.nrR)
         KE_kernel_saved["rho0"] = rho0
     pot, ene = LWTPotentialEnergy(rho, alpha=alpha, beta=beta, etamax=etamax, ratio=ratio, nsp=nsp, kdd=kdd, delta=delta, interp=interp, calcType=calcType, ke_kernel_saved = KE_kernel_saved, **kwargs)
     # pot, ene = LWTLineIntegral(rho, alpha=alpha, beta=beta, etamax=etamax, ratio=ratio, nsp=nsp, kdd=kdd, delta=delta, interp=interp, calcType=calcType, ke_kernel_saved = KE_kernel_saved, **kwargs)

@@ -3,6 +3,7 @@ import scipy.special as sp
 from scipy.interpolate import interp1d, splrep, splev
 from dftpy.time_data import TimeData
 from dftpy.constants import ZERO
+from dftpy.mpi import MP
 
 
 # def LindhardFunctionSeries(eta,lbda,mu):
@@ -237,10 +238,10 @@ def MGPKernel(q, rho0, lumpfactor=0.2, maxpoints=1000, symmetrization=None, Kern
     """
     tkf = 2.0 * (3.0 * rho0 * np.pi ** 2) ** (1.0 / 3.0)
     eta = q / tkf
-    return MGPKernelTable(eta, q, maxpoints, symmetrization, KernelTable)
+    return MGPKernelTable(eta, maxpoints, symmetrization, KernelTable)
 
 
-def MGPKernelTable(eta, q, maxpoints=1000, symmetrization=None, KernelTable=None):
+def MGPKernelTable(eta, maxpoints=1000, symmetrization=None, KernelTable=None, mp = None):
     """
     The MGP Kernel
     symmetrization : 'None', 'Arithmetic', 'Geometric'
@@ -253,7 +254,18 @@ def MGPKernelTable(eta, q, maxpoints=1000, symmetrization=None, KernelTable=None
     # factor = 5.0 / (9.0 * alpha * beta * rho0 ** (alpha + beta - 5.0/3.0))*2*alpha
     coe = 4.0 / 5.0 * cTF * 5.0 / 6.0 * dt
     cWT = 4.0 / 5.0 * 0.3 * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
+    #-----------------------------------------------------------------------
+    kernel0 = LindhardFunction(np.zeros(1), 1.0, 1.0)[0]
+    if KernelTable is None:
+        gp = np.logspace(np.log10(eta[1]/10), np.log10(eta[-1]+2), num = eta.size)
+        k = LindhardFunction(gp, 1.0, 1.0)
+        KernelTable = splrep(gp, k)
+    #-----------------------------------------------------------------------
+    if mp is None :
+        mp = MP()
+    kernel = None
     for i in range(1, maxpoints + 1):
+        if i % mp.size != mp.rank : continue
         t = i * dt
         eta2 = eta / np.cbrt(t)
         # t16 = np.cbrt(np.cbrt(t))
@@ -262,13 +274,15 @@ def MGPKernelTable(eta, q, maxpoints=1000, symmetrization=None, KernelTable=None
         else:
             t16 = t ** (1.0 / 6.0)
         if KernelTable is not None:
-            Gt = splev(eta2, KernelTable)
+            Gt = splev(eta2, KernelTable, ext=3)
+            Gt[0] = kernel0
         else:
             Gt = LindhardFunction(eta2, 1.0, 1.0)
-        if i == 1:
+        if kernel is None :
             kernel = Gt / t16
         else:
             kernel += Gt / t16
+    kernel = mp.vsum(kernel)
     if symmetrization == "Arithmetic":
         # kernel = kernel * (coe * 0.5) + WTKernelTable(eta) * (0.5 / (2.0 * 5.0/6.0))
         kernel = 0.5 * (kernel * coe + WTKernelTable(eta))

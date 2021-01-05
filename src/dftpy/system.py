@@ -7,7 +7,6 @@ class System(object):
         self._cell = cell
         self.name = name
         self.field = field
-        self.natoms = np.shape(ions.pos)[0]
 
     @property
     def cell(self):
@@ -15,3 +14,7 @@ class System(object):
             return self._cell
         else :
             return self.ions.pos.cell
+
+    @property
+    def natoms(self):
+        return np.shape(self.ions.pos)[0]
