@@ -132,10 +132,7 @@ class MP :
 
     def asum(self, a, *args, **kwargs):
         s = np.sum(a)
-        if not self.is_mpi : return s
-        s = self.to_mpi_type(s)
-        s = self.comm.allreduce(s, *args, **kwargs)
-        return s
+        return self.vsum(s, *args, **kwargs)
 
     def sum(self,a, *args, **kwargs):
         return self.asum(a, *args, **kwargs)

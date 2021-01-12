@@ -134,6 +134,56 @@ class BaseGrid(BaseCell):
     def offsets(self):
         return self._offsets
 
+    def gather(self, data, nr, out = None):
+        if self.mp.is_mpi :
+            reqs = []
+            bufs = []
+            if self.mp.is_root :
+                if out is None :
+                    out = np.empty(nr, dtype = data.dtype)
+                out[self.slice_all[self.mp.rank]] = data
+                for i in range(1, self.mp.comm.size):
+                    buf = np.empty(self.nr_all[i], dtype = data.dtype)
+                    bufs.append(buf)
+                    req = self.mp.comm.Irecv(buf, source = i, tag = i)
+                    reqs.append(req)
+            else :
+                req = self.mp.comm.Isend(data, dest = 0, tag = self.mp.rank)
+                reqs.append(req)
+                out = np.ones((1, 1, 1))
+            self.mp.MPI.Request.Waitall(reqs)
+            if self.mp.is_root :
+                for i in range(1, self.mp.comm.size):
+                    out[self.slice_all[i]] = bufs[i - 1]
+            self.mp.comm.Barrier()
+        else :
+            out = data.copy()
+        return out
+
+    def scatter(self, data, out = None):
+        if self.mp.is_mpi :
+            reqs = []
+            if out is None :
+                out = np.empty(self.nr, dtype = data.dtype)
+            if self.mp.is_root :
+                out[:] = data[self.slice_all[self.mp.rank]]
+                for i in range(1, self.mp.comm.size):
+                    buf = np.empty(self.nr_all[i], dtype = data.dtype)
+                    buf[:] = data[self.slice_all[i]]
+                    req = self.mp.comm.Isend(buf, dest = i, tag = i)
+                    reqs.append(req)
+            else :
+                req = self.mp.comm.Irecv(out, source = 0, tag = self.mp.rank)
+                reqs.append(req)
+            self.mp.MPI.Request.Waitall(reqs)
+            self.mp.comm.Barrier()
+        else :
+            if out is None :
+                out = data.copy()
+            else :
+                out[:] = data.copy()
+        return out
+
 
 class DirectGrid(BaseGrid, DirectCell):
     """
@@ -292,6 +342,10 @@ class DirectGrid(BaseGrid, DirectCell):
             self._Rtable["Nmax"] = Nmax
             self._Rtable["table"] = dists
         return self._Rtable
+
+    def gather(self, data, out = None):
+        value = super().gather(data, self.nrR, out = out)
+        return value
 
 
 class ReciprocalGrid(BaseGrid, ReciprocalCell):

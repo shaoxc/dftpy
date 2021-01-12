@@ -154,31 +154,6 @@ class BaseField(np.ndarray):
     def amin(self):
         return self.mp.amin(self)
 
-    def gather(self):
-        if self.mp.is_mpi :
-            reqs = []
-            bufs = []
-            if self.mp.is_root :
-                arr = np.empty(self.grid.nrR, dtype = self.dtype)
-                arr[self.grid.slice_all[self.mp.rank]] = self
-                for i in range(1, self.mp.comm.size):
-                    buf = np.empty(self.grid.nr_all[i], dtype = self.dtype)
-                    bufs.append(buf)
-                    req = self.mp.comm.Irecv(buf, source = i, tag = i)
-                    reqs.append(req)
-            else :
-                req = self.mp.comm.Isend(self, dest = 0, tag = self.mp.rank)
-                reqs.append(req)
-                arr = np.ones((1, 1, 1))
-            self.mp.MPI.Request.Waitall(reqs)
-            if self.mp.is_root :
-                for i in range(1, self.mp.comm.size):
-                    arr[self.grid.slice_all[i]] = bufs[i - 1]
-            self.mp.comm.Barrier()
-        else :
-            # arr = np.array(self)
-            arr = self.copy()
-        return arr
 
 class DirectField(BaseField):
     spl_order = 3
@@ -621,12 +596,26 @@ class DirectField(BaseField):
         results = self.__class__(grid=grid, rank=self.rank, griddata_3d=data, cplx=self.cplx, fft_data=None)
         return results
 
-    def gather(self, grid = None):
-        value = super().gather()
-        if self.grid.mp.rank == 0 :
-            if grid is None :
-                grid = DirectGrid(self.grid.lattice, self.grid.nrR, units=self.grid.units, full=self.grid.full)
-            value = self.__class__(grid=grid, rank=self.rank, griddata_3d=value, cplx=self.cplx, fft_data=None)
+    def gather(self, grid = None, out = None):
+        if out is None :
+            value = self.grid.gather(self)
+            if self.grid.mp.rank == 0 :
+                if grid is None :
+                    grid = DirectGrid(self.grid.lattice, self.grid.nrR, units=self.grid.units, full=self.grid.full)
+                value = self.__class__(grid=grid, rank=self.rank, griddata_3d=value, cplx=self.cplx, fft_data=None)
+        else :
+            value = self.grid.gather(self, out = out)
+        return value
+
+    def __scatter(self, grid, data = None):
+        pass
+        if data is None :
+            if self.grid.mp.is_mpi :
+                data = self.grid.gather(self)
+            else :
+                data = self
+        value = grid.scatter(data)
+        value = self.__class__(grid=grid, rank=self.rank, griddata_3d=value, cplx=self.cplx, fft_data=None)
         return value
 
 

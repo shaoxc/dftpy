@@ -1,4 +1,5 @@
 import numpy as np
+import gc
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.grid import ReciprocalGrid
 
@@ -159,3 +160,8 @@ def fine_to_coarse(data, nr_coarse, direct = True, index = None):
     else :
         results = value_g
     return results
+
+def clean_variables(*args):
+    for item in args :
+        del item
+    gc.collect()

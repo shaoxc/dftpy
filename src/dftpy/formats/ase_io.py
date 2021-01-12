@@ -36,10 +36,10 @@ def ase2ions(ase_atoms):
     ions = Atom(Z=Z, pos=pos, cell=cell, basis="Cartesian")
     return ions
 
-def ions2ase(ions):
+def ions2ase(ions, pbc = True):
     cell = ions.pos.cell.lattice.T * BOHR2ANG
     cell = np.ascontiguousarray(cell)
     numbers = ions.Z
     pos = ions.pos[:] * BOHR2ANG
-    struct = ase.Atoms(positions=pos, numbers=numbers, cell=cell)
+    struct = ase.Atoms(positions=pos, numbers=numbers, cell=cell, pbc = pbc)
     return struct
