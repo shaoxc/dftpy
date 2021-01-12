@@ -93,9 +93,13 @@ def KEDFunctional(rho, name="WT", calcType=["E","V"], split=False, nspin = 1, **
                         ke[k1].energy = ke[k1].energy + ke1[k1].energy
                     if 'V' in calcType :
                         ke[k1].potential = np.vstack((ke[k1].potential, ke1[k1].potential))
+                    if 'D' in calcType :
+                        ke[k1].energydensity = np.vstack((ke[k1].energydensity, ke1[k1].energydensity))
             for k1 in ke :
                 if 'V' in calcType :
                     ke[k1].potential = ke[k1].potential.reshape(rho.shape)
+                if 'D' in calcType :
+                    ke[k1].energydensity = ke[k1].energydensity.reshape(rho.shape)
         else :
             for i in range(1, nspin):
                 ke1 = KEDFunctional(rho[i] * nspin, name, calcType, split, nspin = nspin, **kwargs)
@@ -103,8 +107,12 @@ def KEDFunctional(rho, name="WT", calcType=["E","V"], split=False, nspin = 1, **
                     ke.energy = ke.energy + ke1.energy
                 if 'V' in calcType :
                     ke.potential = np.vstack((ke.potential, ke1.potential))
+                if 'D' in calcType :
+                    ke.energydensity = np.vstack((ke.energydensity, ke1.energydensity))
             if 'V' in calcType :
                 ke.potential = DirectField(grid=rho.grid, griddata_3d=ke.potential, rank=nspin)
+            if 'D' in calcType :
+                ke.energydensity = DirectField(grid=rho.grid, griddata_3d=ke.energydensity, rank=nspin)
         return ke
     #-----------------------------------------------------------------------
     if name[:3] == "GGA":

@@ -2,7 +2,7 @@ import numpy as np
 from scipy.interpolate import interp1d, splrep, splev
 from dftpy.mpi import sprint
 from dftpy.functional_output import Functional
-from dftpy.kedf.wt import WTPotential, WTEnergy
+from dftpy.kedf.wt import WTPotential, WTEnergyDensity
 from dftpy.kedf.kernel import MGPKernel, MGPOmegaE, LindhardDerivative
 from dftpy.time_data import TimeData
 
@@ -57,15 +57,15 @@ def MGP(
     else:
         KE_kernel = KE_kernel_saved["Kernel"]
 
-    if "E" in calcType:
-        ene = WTEnergy(rho, rho0, KE_kernel, alpha, beta)
-    else:
-        ene = 0.0
+    NL = Functional(name="NL")
+    if "E" in calcType or 'D' in calcType:
+        energydensity = WTEnergyDensity(rho, rho0, KE_kernel, alpha, beta)
+        NL.energy = energydensity.sum() * rho.grid.dV
+        if 'D' in calcType:
+            NL.energydensity = energydensity
     if "V" in calcType:
         pot = WTPotential(rho, rho0, KE_kernel, alpha, beta)
-    else:
-        pot = np.empty_like(rho)
-    NL = Functional(name="NL", potential=pot, energy=ene)
+        NL.potential = pot
     return NL
 
 

@@ -1,12 +1,7 @@
 import numpy as np
-import scipy.special as sp
-from scipy.interpolate import interp1d, splrep, splev
 from dftpy.mpi import sprint
 from dftpy.functional_output import Functional
-from dftpy.field import DirectField
-from dftpy.kedf.tf import TF
-from dftpy.kedf.vw import vW
-from dftpy.kedf.kernel import SMKernel, LindhardDerivative, WTKernel
+from dftpy.kedf.kernel import SMKernel
 from dftpy.time_data import TimeData
 
 """
@@ -21,7 +16,6 @@ __all__ = ["SM", "SMStress"]
 def SMPotential2(rho, rho0, Kernel, alpha=0.5, beta=0.5):
     # alpha equal beta
     tol = 1e-10
-    alphaMinus1 = alpha - 1.0
     # rhoD = np.abs(rho - rho0)
     fac = 2.0 * alpha
     if abs(alpha - 0.5) < tol:
@@ -59,8 +53,6 @@ def SMEnergy2(rho, rho0, Kernel, alpha=0.5, beta=0.5):
 
 def SMPotential(rho, rho0, Kernel, alpha=0.5, beta=0.5):
     # alpha equal beta
-    tol = 1e-10
-    alphaMinus1 = alpha - 1.0
     fac = 2.0 * alpha
     rhoDBeta = rho ** beta
     rhoDAlpha1 = rhoDBeta / rho
@@ -69,9 +61,16 @@ def SMPotential(rho, rho0, Kernel, alpha=0.5, beta=0.5):
     pot = fac * rhoDAlpha1 * (rhoDBeta.fft() * Kernel).ifft(force_real=True)
     return pot
 
+def SMEnergyDensity(rho, rho0, Kernel, alpha=0.5, beta=0.5):
+    rhoDAlpha = rho ** alpha - rho0 ** alpha
+    rhoDBeta = rhoDAlpha
+
+    pot = (rhoDBeta.fft() * Kernel).ifft(force_real=True)
+    energydensity = pot * rhoDAlpha
+
+    return energydensity
 
 def SMEnergy(rho, rho0, Kernel, alpha=0.5, beta=0.5):
-    tol = 1e-10
     rhoDAlpha = rho ** alpha - rho0 ** alpha
     rhoDBeta = rhoDAlpha
 
@@ -107,14 +106,16 @@ def SM(rho, x=1.0, y=1.0, sigma=None, alpha=0.5, beta=0.5, rho0=None, calcType=[
     else:
         KE_kernel = KE_kernel_saved["Kernel"]
 
-    if "E" in calcType:
-        ene = SMEnergy(rho, rho0, KE_kernel, alpha, beta)
-    else:
-        ene = 0.0
+    NL = Functional(name="NL")
+
+    if "E" in calcType or "D" in calcType :
+        energydensity = SMEnergyDensity(rho, rho0, KE_kernel, alpha, beta)
+        if 'D' in calcType :
+            NL.energydensity = energydensity
+        NL.energy = energydensity.sum() * rho.grid.dV
+
     if "V" in calcType:
         pot = SMPotential(rho, rho0, KE_kernel, alpha, beta)
-    else:
-        pot = np.empty_like(rho)
+        NL.potential = pot
 
-    NL = Functional(name="NL", potential=pot, energy=ene)
     return NL

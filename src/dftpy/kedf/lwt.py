@@ -118,6 +118,12 @@ def LWTPotentialEnergy(
     kfmin, kfmax = guess_kf_bound(kf, kfmin, kfmax, ke_kernel_saved = ke_kernel_saved)
     kfBound = [kfmin, kfmax]
 
+    if 'V' in calcType :
+        vcalc = True
+    else :
+        vcalc = False
+        kdd = 1
+
     # ----------------Test WT------------------------------------------------
     # kfBound = [kf0, kf0]
     # nsp = 2
@@ -164,7 +170,6 @@ def LWTPotentialEnergy(
     kernelDeriv1 = np.empty_like(q)
     Rmask = np.empty_like(rho)
     pot1 = np.zeros_like(rho)
-    # pot2G = np.zeros_like(q, dtype = 'complex128')
     pot2G = None
     pot3 = np.zeros_like(rho)
     # pot4 = np.zeros_like(rho)
@@ -183,10 +188,10 @@ def LWTPotentialEnergy(
         rhoBeta = rho ** beta
         rhoBeta1 = rhoBeta / rho
     rhoBetaG = rhoBeta.fft()
-    if abs(alpha - beta) < 1e-8:
-        rhoAlphaG = rhoBetaG
-    else:
-        rhoAlphaG = rhoAlpha.fft()
+    # if abs(alpha - beta) < 1e-8:
+        # rhoAlphaG = rhoBetaG
+    # else:
+        # rhoAlphaG = rhoAlpha.fft()
 
     rho[mask2] = rho_saved
     #-----------------------------------------------------------------------
@@ -291,12 +296,13 @@ def LWTPotentialEnergy(
         mgpe = (MGPKernelE * rhoBetaG).ifft(force_real=True)
         pot1 += mgpe
 
-    if pot2G is not None:
-        pot2 = pot2G.ifft(force_real=True)
-        if MGPKernelE is not None:
-            pot2 += mgpe
-    else:
-        pot2 = pot1.copy()
+    if vcalc :
+        if pot2G is not None:
+            pot2 = pot2G.ifft(force_real=True)
+            if MGPKernelE is not None:
+                pot2 += mgpe
+        else:
+            pot2 = pot1.copy()
     #-----------------------------------------------------------------------
     if ldw is None :
         ldw = 1.0/6.0
@@ -307,20 +313,27 @@ def LWTPotentialEnergy(
     factor[mask] = np.abs(rho[mask])** ld /(rhov ** ld)
     factor[rho < 0] = 0.0
     pot1 *= factor
-    pot2 *= factor
-    pot3 *= factor
     #-----------------------------------------------------------------------
-    ene = np.einsum("ijk, ijk ->", rhoAlpha, pot1) * rho.grid.dV
+    NL = Functional(name="NL")
+    # if 'E' in calcType or 'D' in calcType :
+    energydensity = rhoAlpha * pot1
+    NL.energy = energydensity.sum() * rho.grid.dV
+    if 'D' in calcType:
+        NL.energydensity = energydensity
     #-----------------------------------------------------------------------
+    if vcalc :
+        pot2 *= factor
+        pot3 *= factor
 
-    pot1 *= alpha * rhoAlpha1
-    pot2 *= beta * rhoBeta1
-    pot3 *= (kf / 3.0) * rhoAlpha1
-    pot1 += pot2 + pot3
-    pot = pot1
-    sprint('lwt', ene, pot.amin(), pot.amax(), comm = rho.mp.comm)
+        pot1 *= alpha * rhoAlpha1
+        pot2 *= beta * rhoBeta1
+        pot3 *= (kf / 3.0) * rhoAlpha1
+        pot1 += pot2 + pot3
+        pot = pot1
+        sprint('lwt', NL.energy, pot.amin(), pot.amax(), comm = rho.mp.comm)
+        NL.potential = pot
 
-    return pot, ene
+    return NL
 
 
 def LWTLineIntegral(
@@ -469,8 +482,9 @@ def LWTLineIntegral(
     # -----------------------------------------------------------------------
     pot *= alpha
     # pot *= alpha * rhoAlpha1
+    NL = Functional(name="NL", potential=pot, energy=ene)
 
-    return pot, ene
+    return NL
 
 
 def LWT(
@@ -537,9 +551,8 @@ def LWT(
         KE_kernel_saved["etamax"] = etamax
         KE_kernel_saved["shape"] = tuple(rho.grid.nrR)
         KE_kernel_saved["rho0"] = rho0
-    pot, ene = LWTPotentialEnergy(rho, alpha=alpha, beta=beta, etamax=etamax, ratio=ratio, nsp=nsp, kdd=kdd, delta=delta, interp=interp, calcType=calcType, ke_kernel_saved = KE_kernel_saved, **kwargs)
-    # pot, ene = LWTLineIntegral(rho, alpha=alpha, beta=beta, etamax=etamax, ratio=ratio, nsp=nsp, kdd=kdd, delta=delta, interp=interp, calcType=calcType, ke_kernel_saved = KE_kernel_saved, **kwargs)
-    NL = Functional(name="NL", potential=pot, energy=ene)
+    NL = LWTPotentialEnergy(rho, alpha=alpha, beta=beta, etamax=etamax, ratio=ratio, nsp=nsp, kdd=kdd, delta=delta, interp=interp, calcType=calcType, ke_kernel_saved = KE_kernel_saved, **kwargs)
+    # NL = LWTLineIntegral(rho, alpha=alpha, beta=beta, etamax=etamax, ratio=ratio, nsp=nsp, kdd=kdd, delta=delta, interp=interp, calcType=calcType, ke_kernel_saved = KE_kernel_saved, **kwargs)
     TimeData.End("LWT")
     return NL
 

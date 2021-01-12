@@ -177,12 +177,17 @@ def FP(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, rho0=None, calcType=[
     Prho = Mr * rhoFiveSixth
     pot = (Prho.fft() * KE_kernel).ifft(force_real=True)
     # -----------------------------------------------------------------------
-    ene = 0
-    if "E" in calcType:
-        ene = np.einsum("ijk, ijk->", pot, Prho) * rho.grid.dV
+    NL = Functional(name="NL")
+
+    if "E" in calcType or "D" in calcType :
+        energydensity = pot * Prho
+        if 'D' in calcType :
+            NL.energydensity = energydensity
+        NL.energy = energydensity.sum() * rho.grid.dV
+
     if "V" in calcType:
         # dPrho = 5.0/6.0 * Mr * rhoFiveSixth/rho;# pot *= 2.0 * dPrho
         pot *= (5.0 / 3.0) * Mr * rhoFiveSixth / rho
+        NL.potential = pot
 
-    NL = Functional(name="NL", potential=pot, energy=ene)
     return NL

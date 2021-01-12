@@ -20,16 +20,22 @@ def ThomasFermiPotential(rho):
     # return (3.0/10.0)*(5.0/3.0)*(3.0*np.pi**2)**(2.0/3.0)*np.abs(rho)**(2.0/3.0)
     return pot
 
+def ThomasFermiEnergyDensity(rho):
+    """
+    The Thomas-Fermi EnergyDensity
+    """
+    # edens = (3.0/10.0)*(3.0*np.pi**2)**(2.0/3.0)*np.abs(rho)**(5.0/3.0)
+    # edens = np.cbrt(rho * rho * rho * rho * rho)
+    edens = PowerInt(rho, 5, 3)
+    edens *= (3.0 / 10.0) * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
+    return edens
 
 def ThomasFermiEnergy(rho):
     """
     The Thomas-Fermi Energy
     """
-    # edens = (3.0/10.0)*(3.0*np.pi**2)**(2.0/3.0)*np.abs(rho)**(5.0/3.0)
-    # edens = np.cbrt(rho * rho * rho * rho * rho)
-    edens = PowerInt(rho, 5, 3)
-    ene = np.einsum("ijk->", edens)
-    ene *= (3.0 / 10.0) * (3.0 * np.pi ** 2) ** (2.0 / 3.0) * rho.grid.dV
+    edens = ThomasFermiEnergyDensity(rho)
+    ene = edens.sum() * rho.grid.dV
     return ene
 
 
@@ -54,9 +60,12 @@ def ThomasFermiStress(rho, x=1.0, energy=None, **kwargs):
 def TF(rho, x=1.0, calcType=["E","V"], split=False, **kwargs):
     TimeData.Begin("TF")
     OutFunctional = Functional(name="TF")
-    if "E" in calcType:
-        ene = ThomasFermiEnergy(rho)
+    if "E" in calcType or "D" in calcType :
+        energydensity = ThomasFermiEnergyDensity(rho)
+        ene = energydensity.sum() * rho.grid.dV
         OutFunctional.energy = ene * x
+        if 'D' in calcType :
+            OutFunctional.energydensity = energydensity
     if "V" in calcType:
         pot = ThomasFermiPotential(rho)
         OutFunctional.potential = pot * x

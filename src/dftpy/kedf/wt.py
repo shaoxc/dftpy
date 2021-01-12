@@ -29,15 +29,19 @@ def WTPotentialEdens(rho, rho0, Kernel, alpha, beta):
 
 
 def WTEnergy(rho, rho0, Kernel, alpha, beta):
+    energydensity = WTEnergyDensity(rho, rho0, Kernel, alpha, beta)
+    energy = energydensity.sum() * rho.grid.dV
+    return energy
+
+def WTEnergyDensity(rho, rho0, Kernel, alpha, beta):
     rhoBeta = rho ** beta
     if abs(beta - alpha) < 1e-9:
         rhoAlpha = rhoBeta
     else:
         rhoAlpha = rho ** alpha
     pot1 = (rhoBeta.fft() * Kernel).ifft(force_real=True)
-    ene = np.einsum("ijk, ijk->", pot1, rhoAlpha) * rho.grid.dV
-
-    return ene
+    energydensity = pot1 * rhoAlpha
+    return energydensity
 
 
 def WTStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, energy=None,
@@ -106,19 +110,20 @@ def WT(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, rho0=None
     else:
         KE_kernel = KE_kernel_saved["Kernel"]
 
+    NL = Functional(name="NL")
+
     if "V" in calcType:
         pot = WTPotential(rho, rho0, KE_kernel, alpha, beta)
-    else:
-        pot = np.empty_like(rho)
+        NL.potential = pot
 
-    if "E" in calcType:
+    if "E" in calcType or 'D' in calcType:
         if abs(beta - alpha) < 1e-9 and "V" in calcType:
-            ene = np.einsum("ijk, ijk->", pot, rho) * rho.grid.dV / (2 * alpha)
+            energydensity = pot * rho / (2 * alpha)
         else:
-            ene = WTEnergy(rho, rho0, KE_kernel, alpha, beta)
-    else:
-        ene = 0.0
+            energydensity = WTEnergyDensity(rho, rho0, KE_kernel, alpha, beta)
+        if 'D' in calcType :
+            NL.energydensity = energydensity
+        NL.energy = energydensity.sum() * rho.grid.dV
 
-    NL = Functional(name="NL", potential=pot, energy=ene)
     TimeData.End("WT")
     return NL

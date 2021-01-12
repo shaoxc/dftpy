@@ -707,9 +707,11 @@ def GGA(rho, functional="LKT", calcType=["E","V"], split=False, params = None, *
     F, dFds2 = GGAFs(s, functional=functional, calcType=calcType, params = params, **kwargs)
     OutFunctional = Functional(name="GGA-" + str(functional))
 
-    if 'E' in calcType:
-        ene = np.einsum("ijk, ijk -> ", tf, F) * rhom.grid.dV
-        OutFunctional.energy = ene
+    if 'E' in calcType or 'D' in calcType :
+        energydensity = tf * F
+        if 'D' in calcType:
+            OutFunctional.energydensity = energydensity
+        OutFunctional.energy = energydensity.sum() * rhom.grid.dV
 
     if 'V' in calcType:
         pot = 5.0 / 3.0 * cTF * rho23 * F
