@@ -43,6 +43,7 @@ class Atom(object):
 
         self.labels = np.asarray(self.labels)
         self.Z = np.asarray(self.Z)
+        self.nsymbols, self.typ = np.unique(self.labels, return_counts=True)
 
     @property
     def pos(self):
@@ -54,6 +55,10 @@ class Atom(object):
         self.nat = len(self._pos)
         if self._ncharge is not None :
             self._ncharge = self.get_ncharge()
+
+    @property
+    def symbols(self):
+        return self.labels
 
     @property
     def ncharge(self):
@@ -85,10 +90,12 @@ class Atom(object):
         return a
 
     def __getitem__(self, i):
+        if i is None : i = slice(None)
         atoms = self.__class__(Z=self.Z[i].copy(), Zval=self.Zval, label=self.labels[i].copy(), pos=self.pos[i].copy(), cell = self.pos.cell, basis = self.pos.basis)
         return atoms
 
     def __delitem__(self, i):
+        if i is None : i = slice(None)
         mask = np.ones_like(self.labels, dtype = bool)
         mask[i] = False
         self.labels = self.labels[mask]
@@ -96,8 +103,8 @@ class Atom(object):
         self.Z = self.Z[mask]
         self.nat = len(self.pos)
 
-    def __str__(self): 
-        return '\n'.join(['%20s : %s' % item for item in self.__dict__.items()]) 
+    def __str__(self):
+        return '\n'.join(['%20s : %s' % item for item in self.__dict__.items()])
 
     def repeat(self, reps=1):
         reps = np.ones(3, dtype='int')*reps

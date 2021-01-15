@@ -227,6 +227,10 @@
       "type": "float",
       "default": null
     },
+    "rhomax": {
+      "type": "float",
+      "default": null
+    },
     "ldw": {
       "type": "float",
       "default": null

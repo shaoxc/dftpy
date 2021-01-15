@@ -113,7 +113,14 @@ def LWTPotentialEnergy(
 
     ### HEG
     if abs(kf.amax() - kf.amin()) < 1e-8:
-        return np.zeros_like(rho), 0.0
+        NL = Functional(name="NL", energy = 0.0)
+        if 'D' in calcType:
+            energydensity = DirectField(grid=rho.grid, memo=rho.memo, rank=rho.rank, cplx=rho.cplx)
+            NL.energydensity = energydensity
+        if 'V' in calcType :
+            pot = DirectField(grid=rho.grid, memo=rho.memo, rank=rho.rank, cplx=rho.cplx)
+            NL.potential = pot
+        return NL
 
     kfmin, kfmax = guess_kf_bound(kf, kfmin, kfmax, ke_kernel_saved = ke_kernel_saved)
     kfBound = [kfmin, kfmax]
@@ -144,15 +151,7 @@ def LWTPotentialEnergy(
     else :
         kfMax = kfmax
 
-    if nsp is None:
-        nsp = int(np.ceil(np.log(kfMax / kfMin) / np.log(ratio))) + 1
-        kflists = kfMin * ratio ** np.arange(nsp)
-        # kflists = np.geomspace(kfMin, kfMax, nsp)
-    elif delta is not None:
-        # delta = 0.10
-        nsp = int(np.ceil((kfMax - kfMin) / delta)) + 1
-        kflists = np.linspace(kfMin, kfMax, nsp)
-    else:
+    if nsp is not None:
         # kflists = kfMin + (kfMax - kfMin)/(nsp - 1) * np.arange(nsp)
         if kfMax - kfMin < 1e-3:
             kflists = [kfMin, kfMax]
@@ -160,6 +159,13 @@ def LWTPotentialEnergy(
         else:
             kflists = kfMin + (kfMax - kfMin) / (nsp - 1) * np.arange(nsp)
         kflists = np.asarray(kflists)
+    elif delta is not None: # delta = 0.10
+        nsp = int(np.ceil((kfMax - kfMin) / delta)) + 1
+        kflists = np.linspace(kfMin, kfMax, nsp)
+    else:
+        nsp = int(np.ceil(np.log(kfMax / kfMin) / np.log(ratio))) + 1
+        kflists = kfMin * ratio ** np.arange(nsp)
+        # kflists = np.geomspace(kfMin, kfMax, nsp)
     kflists[0] -= savetol  # for numerical safe
     kflists[-1] += savetol  # for numerical safe
     sprint('nsp', nsp, kfMax, kfMin, kf0, np.max(kflists), np.min(kflists), comm = rho.mp.comm)
@@ -306,8 +312,8 @@ def LWTPotentialEnergy(
     #-----------------------------------------------------------------------
     if ldw is None :
         ldw = 1.0/6.0
-    rhov = rho.amax()
     factor = np.ones_like(rho)
+    rhov = rho.amax()
     mask = rho < 1E-6
     ld = max(0.1, ldw)
     factor[mask] = np.abs(rho[mask])** ld /(rhov ** ld)
@@ -385,23 +391,30 @@ def LWTLineIntegral(
 
     ### HEG
     if abs(kfMax - kfMin) < 1e-8:
-        return np.zeros_like(rho), 0.0
+        NL = Functional(name="NL", energy = 0.0)
+        if 'D' in calcType:
+            energydensity = DirectField(grid=rho.grid, memo=rho.memo, rank=rho.rank, cplx=rho.cplx)
+            NL.energydensity = energydensity
+        if 'V' in calcType :
+            pot = DirectField(grid=rho.grid, memo=rho.memo, rank=rho.rank, cplx=rho.cplx)
+            NL.potential = pot
+        return NL
 
-    if nsp is None:
-        nsp = int(np.ceil(np.log(kfMax / kfMin) / np.log(ratio))) + 1
-        # kflists = kfMin * ratio ** np.arange(nsp)
-        kflists = np.geomspace(kfMin, kfMax, nsp)
-    elif delta is not None:
-        # delta = 0.10
-        nsp = int(np.ceil((kfMax - kfMin) / delta)) + 1
-        kflists = np.linspace(kfMin, kfMax, nsp)
-    else:
+    if nsp is not None:
         # kflists = kfMin + (kfMax - kfMin)/(nsp - 1) * np.arange(nsp)
         if kfMax - kfMin < 1e-3:
             kflists = [kfMin, kfMax]
+            nsp = 2
         else:
             kflists = kfMin + (kfMax - kfMin) / (nsp - 1) * np.arange(nsp)
         kflists = np.asarray(kflists)
+    elif delta is not None: # delta = 0.10
+        nsp = int(np.ceil((kfMax - kfMin) / delta)) + 1
+        kflists = np.linspace(kfMin, kfMax, nsp)
+    else:
+        nsp = int(np.ceil(np.log(kfMax / kfMin) / np.log(ratio))) + 1
+        kflists = kfMin * ratio ** np.arange(nsp)
+        # kflists = np.geomspace(kfMin, kfMax, nsp)
     kflists[0] -= 1e-16  # for numerical safe
     kflists[-1] += 1e-16  # for numerical safe
     # sprint('nsp', nsp, kfMax, kfMin, kf0, np.max(kflists))

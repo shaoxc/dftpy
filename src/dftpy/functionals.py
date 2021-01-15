@@ -186,12 +186,7 @@ class FunctionalClass(AbstractFunctional):
     def ComputeEnergyPotential(self, rho, calcType=["E","V"], **kwargs):
         self.optional_kwargs.update(kwargs)
         if self.type == "KEDF":
-            if self.name != "LIBXC_KEDF":
-                return self.KEDF(rho, calcType=calcType, **self.optional_kwargs)
-                # return KEDFunctional(rho, self.name, calcType=calcType, **self.optional_kwargs)
-            else:
-                k_str = self.optional_kwargs.get("k_str", "gga_k_lc94")
-                return LibXC(density=rho, k_str=k_str, calcType=calcType)
+            return self.KEDF(rho, calcType=calcType, **self.optional_kwargs)
         elif self.type == "XC":
             if self.name == "LDA":
                 return LDA(rho, calcType=calcType)

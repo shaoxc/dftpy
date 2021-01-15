@@ -149,16 +149,17 @@ def Get_LibXC_Output(out, density):
             rho = np.sum(density, axis = 0)
         else :
             rho = density
-        edens = out["zk"].reshape(np.shape(rho))
-        ene = np.einsum("ijk, ijk->", edens, rho) * density.grid.dV
+        edens = rho * out["zk"].reshape(np.shape(rho))
+        ene = edens.sum() * density.grid.dV
         OutFunctional.energy = ene
+        OutFunctional.energydensity = edens
 
     return OutFunctional
 
 
 def LibXC(density, k_str=None, x_str=None, c_str=None, calcType=["E","V"], **kwargs):
     """
-     Output: 
+     Output:
         - out_functional: a functional evaluated with LibXC
      Input:
         - density: a DirectField (rank=1)
@@ -196,7 +197,7 @@ def LibXC(density, k_str=None, x_str=None, c_str=None, calcType=["E","V"], **kwa
 
     inp = Get_LibXC_Input(density, do_sigma=do_sigma)
     kargs = {'do_exc': False, 'do_vxc': False}
-    if 'E' in calcType:
+    if 'E' in calcType or 'D' in calcType:
         kargs.update({'do_exc': True})
     if 'V' in calcType:
         kargs.update({'do_vxc': True})

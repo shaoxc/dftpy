@@ -81,6 +81,14 @@ def format_cdict(expression):
     vk = ast.literal_eval(expression)
     return OrderedDict((v.capitalize(),k) for v, k in vk.items())
 
+def format_cfdict(expression):
+    vk = ast.literal_eval(expression)
+    return OrderedDict((v.capitalize(),float(k)) for v, k in vk.items())
+
+def format_cidict(expression):
+    vk = ast.literal_eval(expression)
+    return OrderedDict((v.capitalize(),int(k)) for v, k in vk.items())
+
 class ConfigEntry(object):
 
     def __init__(self, type, default=None, comment='', options='', **kwargs):
@@ -104,6 +112,8 @@ class ConfigEntry(object):
             "cstrlist": format_cstrlist,
             "direction": format_direction,
             "cdict": format_cdict,
+            "cfdict": format_cfdict,
+            "cidict": format_cidict,
         }
         expression = re.split('#|!', string)[0]
         return format_dict[self.type](expression)
