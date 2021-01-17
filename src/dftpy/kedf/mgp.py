@@ -31,14 +31,13 @@ def MGP(
     TimeData.Begin("MGP")
     q = rho.grid.get_reciprocal().q
     rho0 = rho.amean()
-    # sprint('rho0000', rho0)
     if ke_kernel_saved is None :
         KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
     else :
         KE_kernel_saved = ke_kernel_saved
     # if abs(KE_kernel_saved['rho0']-rho0) > 1E-6 or np.shape(rho) != KE_kernel_saved['shape'] :
     if abs(KE_kernel_saved["rho0"] - rho0) > 1e-2 or np.shape(rho) != KE_kernel_saved["shape"]:
-        sprint("Re-calculate KE_kernel", comm = rho.mp.comm)
+        sprint("Re-calculate KE_kernel", comm = rho.mp.comm, level=1)
         KE_kernel = MGPKernel(q, rho0, maxpoints=maxpoint, symmetrization=symmetrization)
         if lumpfactor is not None:
             Ne = rho0 * rho.grid.Volume

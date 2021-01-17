@@ -3,9 +3,9 @@ from scipy import ndimage, interpolate
 from scipy.optimize import minpack2
 from scipy import optimize as sopt
 import dftpy.mpi.mp_serial as mps
-from dftpy.constants import FFTLIB
+from dftpy.constants import environ
 
-if FFTLIB == "pyfftw":
+if environ["FFTLIB"] == "pyfftw":
     """
     pyfftw.config.NUM_THREADS  =  multiprocessing.cpu_count()
     print('threads', pyfftw.config.NUM_THREADS)
@@ -177,7 +177,7 @@ class pyfftwFFTW(FFTWObj):
 
 def PYfft(grid, cplx=False, threads=1):
     global FFT_SAVE
-    if FFTLIB == "pyfftw":
+    if environ["FFTLIB"] == "pyfftw":
         nr = grid.nr
         if np.all(nr == FFT_SAVE["FFT_Grid"][cplx]):
             fft_object = FFT_SAVE["FFT_OBJ"][cplx]
@@ -199,7 +199,7 @@ def PYfft(grid, cplx=False, threads=1):
 
 def PYifft(grid, cplx=False, threads=1):
     global FFT_SAVE
-    if FFTLIB == "pyfftw":
+    if environ["FFTLIB"] == "pyfftw":
         nr = grid.nrR
         if np.all(nr == FFT_SAVE["IFFT_Grid"][cplx]):
             fft_object = FFT_SAVE["IFFT_OBJ"][cplx]

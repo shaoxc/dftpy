@@ -3,7 +3,7 @@ import numpy as np
 from scipy import ndimage
 from scipy import signal
 from dftpy.grid import DirectGrid, ReciprocalGrid
-from dftpy.constants import FFTLIB, SAVEFFT
+from dftpy.constants import environ
 from dftpy.math_utils import PYfft, PYifft
 from dftpy.time_data import TimeData
 from dftpy.base import Coord
@@ -172,9 +172,9 @@ class DirectField(BaseField):
             obj.fft_object = mpi_fft(obj.grid)
         elif not obj._cplx and np.all(obj.grid.nr == obj.grid.nrG):  # Can only use numpy.fft
             obj.fft_object = np.fft.fftn
-        elif FFTLIB == "pyfftw":
+        elif environ["FFTLIB"] == "pyfftw":
             obj.fft_object = PYfft(obj.grid, obj._cplx)
-        elif FFTLIB == "numpy":
+        elif environ["FFTLIB"] == "numpy":
             if obj._cplx:
                 obj.fft_object = np.fft.fftn
             else:
@@ -348,7 +348,7 @@ class DirectField(BaseField):
         return DirectField(grid=self.grid, rank=rank, griddata_3d=sigma)
 
     def fft(self):
-        if self.fft_data is not None and SAVEFFT :
+        if self.fft_data is not None and environ["SAVEFFT"] :
             return self.fft_data
         TimeData.Begin("FFT")
         """ Implements the Discrete Fourier Transform
@@ -372,7 +372,7 @@ class DirectField(BaseField):
         fft_data=ReciprocalField(
             grid=reciprocal_grid, memo=self.memo, rank=self.rank, griddata_3d=griddata_3d, cplx=self.cplx
         )
-        if SAVEFFT :
+        if environ["SAVEFFT"] :
             self._fft_data = fft_data
             fft_data = self.fft_data
         return fft_data
@@ -635,11 +635,11 @@ class ReciprocalField(BaseField):
             obj.ifft_object = mpi_ifft(obj.grid)
         elif not obj._cplx and np.all(obj.grid.nrG == obj.grid.nrR):  # Can only use numpy.fft
             obj.ifft_object = np.fft.ifftn
-            # if FFTLIB != 'numpy' :
+            # if environ["FFTLIB"] != 'numpy' :
             # print('!WARN : For full G-space, you can only use numpy.fft.\n So here we reset the FFT as numpy.fft.')
-        elif FFTLIB == "pyfftw":
+        elif environ["FFTLIB"] == "pyfftw":
             obj.ifft_object = PYifft(obj.grid, obj._cplx)
-        elif FFTLIB == "numpy":
+        elif environ["FFTLIB"] == "numpy":
             if obj._cplx:
                 obj.ifft_object = np.fft.ifftn
             else:
@@ -721,7 +721,7 @@ class ReciprocalField(BaseField):
         direct_grid = self.grid.get_direct()
         nr = self.rank, *direct_grid.nr
         if self.rank == 1:
-            if FFTLIB == "numpy":
+            if environ["FFTLIB"] == "numpy":
                 griddata_3d = self.ifft_object(self, s=self.grid.nrR) / direct_grid.dV
             else:
                 griddata_3d = self.ifft_object(self) / direct_grid.dV
@@ -738,7 +738,7 @@ class ReciprocalField(BaseField):
         if force_real:
             griddata_3d = np.real(griddata_3d)
         TimeData.End("InvFFT")
-        if SAVEFFT :
+        if environ["SAVEFFT"] :
             fft_data=DirectField(grid=direct_grid, memo=self.memo, rank=self.rank, griddata_3d=griddata_3d, cplx=self.cplx, fft_data=self)
         else :
             fft_data=DirectField(grid=direct_grid, memo=self.memo, rank=self.rank, griddata_3d=griddata_3d, cplx=self.cplx)

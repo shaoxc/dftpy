@@ -1,8 +1,8 @@
 import numpy as np
-from dftpy.constants import FFTLIB
+from dftpy.constants import environ
 from abc import ABC, abstractmethod
 
-if FFTLIB == "pyfftw":
+if environ["FFTLIB"] == "pyfftw":
     """
     pyfftw.config.NUM_THREADS  =  multiprocessing.cpu_count()
     print('threads', pyfftw.config.NUM_THREADS)

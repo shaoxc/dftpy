@@ -168,7 +168,7 @@ def LWTPotentialEnergy(
         # kflists = np.geomspace(kfMin, kfMax, nsp)
     kflists[0] -= savetol  # for numerical safe
     kflists[-1] += savetol  # for numerical safe
-    sprint('nsp', nsp, kfMax, kfMin, kf0, np.max(kflists), np.min(kflists), comm = rho.mp.comm)
+    sprint('nsp', nsp, kfMax, kfMin, kf0, np.max(kflists), np.min(kflists), comm = rho.mp.comm, level=1)
     # -----------------------------------------------------------------------
     kernel0 = np.empty_like(q)
     kernel1 = np.empty_like(q)
@@ -209,7 +209,6 @@ def LWTPotentialEnergy(
         mcalc = True
     else:
         mcalc = False
-    # sprint('interp', interp, mcalc)
     # -----------------------------------------------------------------------
     for i in range(nsp - 1):
         if i == 0:
@@ -336,7 +335,7 @@ def LWTPotentialEnergy(
         pot3 *= (kf / 3.0) * rhoAlpha1
         pot1 += pot2 + pot3
         pot = pot1
-        sprint('lwt', NL.energy, pot.amin(), pot.amax(), comm = rho.mp.comm)
+        sprint('lwt', NL.energy, pot.amin(), pot.amax(), comm = rho.mp.comm, level=1)
         NL.potential = pot
 
     return NL
@@ -417,7 +416,6 @@ def LWTLineIntegral(
         # kflists = np.geomspace(kfMin, kfMax, nsp)
     kflists[0] -= 1e-16  # for numerical safe
     kflists[-1] += 1e-16  # for numerical safe
-    # sprint('nsp', nsp, kfMax, kfMin, kf0, np.max(kflists))
     # -----------------------------------------------------------------------
     kernel0 = np.empty_like(q)
     kernel1 = np.empty_like(q)
@@ -491,7 +489,7 @@ def LWTLineIntegral(
     # -----------------------------------------------------------------------
     ene = np.einsum("ijk, ijk ->", rho, pot1) * rho.grid.dV * dt * alpha
     # ene2 = np.einsum("ijk, ijk ->", rho, pot) * rho.grid.dV
-    # sprint('ene', ene, ene2)
+    # sprint('ene', ene, ene2, level=1)
     # -----------------------------------------------------------------------
     pot *= alpha
     # pot *= alpha * rhoAlpha1
@@ -535,7 +533,7 @@ def LWT(
         KE_kernel_saved = ke_kernel_saved
     # if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
     if tuple(rho.grid.nrR) != KE_kernel_saved["shape"]:
-        sprint('Re-calculate %s KernelTable ' %kerneltype, rho.grid.nrR, comm=rho.mp.comm)
+        sprint('Re-calculate %s KernelTable ' %kerneltype, rho.grid.nrR, comm=rho.mp.comm, level=1)
         eta = np.linspace(0, etamax, neta)
         if kerneltype == "WT":
             KernelTable = WTKernelTable(eta, x, y, alpha, beta)
@@ -547,7 +545,7 @@ def LWT(
             KernelTable = MGPKernelTable(eta, maxpoints=maxpoints, symmetrization="Geometric", mp = rho.grid.mp)
         # Add MGP kinetic electron
         if lumpfactor is not None:
-            # sprint('Calculate MGP kinetic electron(%f)' %lumpfactor)
+            # sprint('Calculate MGP kinetic electron({})'.format(lumpfactor), rho.mp.comm, level=1)
             Ne = rho0 * rho.grid.Volume
             MGPKernelE = MGPOmegaE(q, Ne, lumpfactor)
             KE_kernel_saved["MGPKernelE"] = MGPKernelE

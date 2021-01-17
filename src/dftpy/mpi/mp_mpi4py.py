@@ -3,7 +3,7 @@ import collections
 from mpi4py_fft import PFFT, newDistArray
 from mpi4py import MPI
 
-from dftpy.constants import FFTLIB
+from dftpy.constants import environ
 
 # Global variables
 fft_saved = collections.OrderedDict()
@@ -41,7 +41,7 @@ def get_mpi4py_fft(comm, nr, decomposition = 'Slab', backend = None, grid = None
     fft_support = ['pyfftw', 'numpy','scipy', 'mkl_fft']
     # fft_support = ['fftw', 'pyfftw', 'numpy','scipy', 'mkl_fft']
     if backend not in fft_support :
-        backend = FFTLIB
+        backend = environ["FFTLIB"]
     if backend not in fft_support :
         backend = 'numpy'
     global fft_saved

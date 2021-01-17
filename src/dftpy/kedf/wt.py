@@ -1,5 +1,5 @@
 import numpy as np
-# from dftpy.mpi import sprint
+from dftpy.mpi import sprint
 from dftpy.functional_output import Functional
 from dftpy.kedf.kernel import WTKernel, LindhardDerivative
 from dftpy.time_data import TimeData
@@ -56,7 +56,7 @@ def WTStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, ene
         else :
             KE_kernel_saved = ke_kernel_saved
         if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
-            # sprint('Re-calculate KE_kernel')
+            sprint('Re-calculate KE_kernel', level=1)
             # KE_kernel = WTkernel(q, rho0, alpha=alpha, beta=beta)
             KE_kernel = WTKernel(q, rho0, x=x, y=1.0, alpha=alpha, beta=beta) # always remove whole vW
             KE_kernel_saved["Kernel"] = KE_kernel
@@ -101,7 +101,7 @@ def WT(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, rho0=None
     else :
         KE_kernel_saved = ke_kernel_saved
     if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
-        # sprint("Re-calculate KE_kernel", np.shape(rho))
+        sprint("Re-calculate KE_kernel", np.shape(rho), level=1)
         # KE_kernel = WTKernel(q, rho0, x=x, y=y, alpha=alpha, beta=beta)
         KE_kernel = WTKernel(q, rho0, x=x, y=1.0, alpha=alpha, beta=beta) # always remove whole vW
         KE_kernel_saved["Kernel"] = KE_kernel

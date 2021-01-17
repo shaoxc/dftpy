@@ -453,7 +453,7 @@ class ReadPseudo(object):
         self.comm = comm
 
         for key in self.PP_list:
-            sprint("setting key: " + key, comm = comm)
+            sprint("setting key: {} -> {}".format(key, self.PP_list[key]), comm = comm)
             if not os.path.isfile(self.PP_list[key]):
                 raise Exception("PP file for atom type " + str(key) + " not found")
             if PP_list[key].lower().endswith("recpot"):
@@ -585,9 +585,9 @@ class ReadPseudo(object):
             line = " ".join([line.strip() for line in lines[ibegin:iend]])
 
             if "1000" in lines[iend] or len(lines[iend].strip()) == 1 :
-                sprint("Recpot pseudopotential " + Single_PP_file + " loaded", comm = self.comm)
+                pass
             else:
-                return Exception
+                raise AttributeError("Error : Check the PP file : {}".format(Single_PP_file))
             gmax = np.float(lines[ibegin - 1].strip()) * BOHR2ANG
             v = np.array(line.split()).astype(np.float) / HARTREE2EV / BOHR2ANG ** 3
             g = np.linspace(0, gmax, num=len(v))
@@ -635,9 +635,9 @@ class ReadPseudo(object):
             info['Zval'] = Zval
 
             if "1000" in lines[iend] or len(lines[iend].strip()) == 1 or len(lines[iend].strip()) == 5 :
-                sprint("Recpot pseudopotential " + Single_PP_file + " loaded", comm = self.comm)
+                pass
             else:
-                raise AttributeError("Error : Check the PP file")
+                raise AttributeError("Error : Check the PP file : {}".format(Single_PP_file))
             gmax = np.float(lines[ibegin - 1].split()[0]) * BOHR2ANG
 
             # v = np.array(line.split()).astype(np.float) / (HARTREE2EV*BOHR2ANG ** 3 * 4.0 * np.pi)

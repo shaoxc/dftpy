@@ -90,15 +90,12 @@ def SM(rho, x=1.0, y=1.0, sigma=None, alpha=0.5, beta=0.5, rho0=None, calcType=[
     q = rho.grid.get_reciprocal().q
     if rho0 is None:
         rho0 = rho.amean()
-    # rho1 = 0.5 * (np.max(rho) + np.min(rho))
-    # sprint(rho0, rho1, rho1 / rho0)
-    # rho0 = rho1
     if ke_kernel_saved is None :
         KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
     else :
         KE_kernel_saved = ke_kernel_saved
     if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
-        sprint("Re-calculate KE_kernel", comm=rho.mp.comm)
+        sprint("Re-calculate KE_kernel", comm=rho.mp.comm, level=1)
         KE_kernel = SMKernel(q, rho0, alpha=alpha, beta=beta)
         KE_kernel_saved["Kernel"] = KE_kernel
         KE_kernel_saved["rho0"] = rho0

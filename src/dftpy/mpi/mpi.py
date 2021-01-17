@@ -7,6 +7,33 @@ class SerialComm :
         self.size = 1
         self.root = True
 
+    def Barrier(self):
+        pass
+
+    def Ibarrier(self):
+        pass
+
+    def barrier(self):
+        pass
+
+    def Clone(self):
+        return self.__class__()
+
+    def Free(self):
+        pass
+
+    def Get_rank(self):
+        return self.rank
+
+    def Get_size(self):
+        return self.size
+
+    def Is_inter(self):
+        return False
+
+    def Is_intra(self):
+        return True
+
     def __getattr__(self, attr):
         if attr in self.__dir__():
             return getattr(self, attr)

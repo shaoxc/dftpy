@@ -7,11 +7,6 @@ try:
 except Exception:
     FFTLIB = "numpy"
 
-# FFTLIB = "numpy"
-FFTLIB = os.environ.get('DFTPY_FFTLIB', FFTLIB)
-# print('Use "%s" for Fourier Transform' % (FFTLIB))
-SAVEFFT = os.environ.get('DFTPY_SAVEFFT', False)
-
 LEN_UNITS = ["Bohr", "Angstrom", "nm", "m"]
 
 LEN_CONV = {}
@@ -37,5 +32,17 @@ STRESS_CONV["Ha/Bohr3"] = {
 units_warning = "All the quantities in atomic units"
 
 ZERO = 1E-30
+# set to 0 if smaller than ZERO
 
-STDOUT = sys.stdout
+environ = {} # You can change it anytime you want
+environ['STDOUT'] = sys.stdout # file descriptor of sprint
+environ['LOGLEVEL'] = 2 # The level of sprint
+"""
+    0 : all
+    1 : debug
+    2 : info
+    3 : warning
+    4 : error
+"""
+environ['FFTLIB'] = os.environ.get('DFTPY_FFTLIB', FFTLIB)
+environ['SAVEFFT'] = os.environ.get('DFTPY_SAVEFFT', False)
