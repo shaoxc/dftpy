@@ -252,7 +252,7 @@ class NLGGA:
 
         # truncate the density higher than rhomax for NL
         if rhomax_w > nmax :
-            sprint('!WARN : some density large than rhomax', rhomax_w, nmax, comm = density.mp.comm, level=3)
+            sprint('!WARN : some density large than rhomax', rhomax_w, nmax, comm = density.mp.comm, level=1)
 
         mask = density > nmax
         if np.count_nonzero(mask) > 0 :
