@@ -22,11 +22,15 @@ class Casida(object):
         self.functional = E_v_Evaluator
         self.fkxc = self.functional(self.rho0, calcType=['V2']).v2rho2
 
-    def calc_k(self, psi_i, psi_j, vnl):
+    def calc_k(self, psi_i, psi_j, vnl=None):
+    #def calc_k(self, psi_i, psi_j):
         if not self.polarized:
-            #fkxc = DirectField(self.grid, rank=1, griddata_3d=(self.fkxc[0]+self.fkxc[1])/2.0)
-            #return (psi_i*(vnl+fkxc*psi_j)).integral()
-            return (psi_i*(vnl)).integral()
+            fkxc = DirectField(self.grid, rank=1, griddata_3d=(self.fkxc[0]+self.fkxc[1])/2.0)
+            if vnl is not None:
+                return (psi_i*(vnl+fkxc*psi_j)).integral()
+            else:
+                return (psi_i*fkxc*psi_j).integral()
+            #return (psi_i*(vnl)).integral()
         else:
             raise Exception('Spin polarized Casida is not implemented')
 
@@ -64,7 +68,13 @@ class Casida(object):
                 vnl = nl(psi_j, calcType = ['V'], kf = kwargs['kf'], omega = kwargs['omega_guess']).potential
             for i in range(j, num_psi):
                 psi_i = psi_list[0] * psi_list[i]
-                k = self.calc_k(psi_i, psi_j, vnl)
+                #if calc_nl and (i<2 or j<2 or (i<4 and j<12) or (j<4 and i<12)):
+                if calc_nl and (i<2 or j<2):
+                #if calc_nl:
+                    k = self.calc_k(psi_i, psi_j, vnl)
+                else:
+                    k = self.calc_k(psi_i, psi_j)
+                #print("i:",i,"j:",j,"k:",k)
                 self.c[i-1,j-1] = k * self.N * 2.0 * np.sqrt(omega[i-1]*omega[j-1])
                 if build_ab:
                     self.a[i-1,j-1] = k * self.N
@@ -116,6 +126,7 @@ class Casida(object):
         num_modes = np.shape(self.c)[0]
 
         omega2, z_list = eigh(self.c)
+        #print(omega2[:5])
         omega = np.sqrt(omega2)
         omega = np.real(omega)
 

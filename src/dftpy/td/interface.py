@@ -10,6 +10,7 @@ from dftpy.system import System
 from dftpy.utils import calc_rho, calc_j
 from dftpy.dynamic_functionals_utils import DynamicPotential
 from dftpy.formats.xsf import XSF
+from dftpy.formats.io import read_density
 from dftpy.time_data import TimeData
 import time
 import os
@@ -132,7 +133,8 @@ def CasidaRunner(config, rho0, E_v_Evaluator):
     else:
         raise Exception("diagonize must be true.")
 
-    E_v_Evaluator.UpdateFunctional(keysToRemove = ['HARTREE', 'PSEUDO'])
+    #E_v_Evaluator.UpdateFunctional(keysToRemove = ['HARTREE', 'PSEUDO'])
+    E_v_Evaluator.UpdateFunctional(keysToRemove = ['HARTREE', 'PSEUDO', 'XCFunctional'])
     casida = Casida(rho0, E_v_Evaluator)
 
     print('Start buildling matrix.')
@@ -162,9 +164,14 @@ def CasidaIterative(config, rho0, E_v_Evaluator):
     diagonize = config["CASIDA"]["diagonize"]
     omega_old = -9999
     omega_new = config["CASIDA"]["omega_guess"]
+    omega_guess = omega_new
+    omega_guess_old = omega_guess
     i_pole = config["CASIDA"]["i_pole"]
-    eps = 1e-4
-    iter_max = 100
+    eps = 1e-5
+    iter_max = 1000
+    beta = 1
+    eigsfile = '../invert/eigs'
+    psidir = '../invert/xsf'
 
     if diagonize:
         potential = E_v_Evaluator(rho0, calcType=['V']).potential
@@ -173,20 +180,37 @@ def CasidaIterative(config, rho0, E_v_Evaluator):
         eigs, psi_list = hamiltonian.diagonize(numeig)
         print('Diagonizing Hamlitonian done.')
     else:
-        raise Exception("diagonize must be true.")
+        eigs = []
+        with open(eigsfile, 'r') as feigs:
+            for line in feigs:
+                eigs.append(float(line))
+        eigs = np.asarray(eigs[:numeig])
+        psi_list = []
+        for i in range(numeig):
+            psi_list.append(read_density('{0:s}/psi{1:d}.xsf'.format(psidir,i)))
 
-    E_v_Evaluator.UpdateFunctional(keysToRemove = ['HARTREE', 'PSEUDO', 'KineticEnergyFunctional'])
+    #E_v_Evaluator.UpdateFunctional(keysToRemove = ['HARTREE', 'PSEUDO', 'KineticEnergyFunctional'])
+    E_v_Evaluator.UpdateFunctional(keysToRemove = ['HARTREE', 'PSEUDO', 'XCFunctional'])
     casida = Casida(rho0, E_v_Evaluator)
     kf = np.cbrt(3 * np.pi ** 2 * rho0)
     
     print('iter  omega')
     i = 0
-    while np.abs(omega_new - omega_old) > eps and i < iter_max:
+    while (np.abs(omega_new - omega_old) > eps or np.abs(omega_new - omega_guess) > eps) and i < iter_max:
         print(i, omega_new)
-        casida.build_matrix(numeig, eigs, psi_list, calc_nl = True, omega_guess = omega_old, kf = kf)
-        omega, f, x_minus_y_list = casida()
+        while True:
+            casida.build_matrix(numeig, eigs, psi_list, calc_nl = True, omega_guess = omega_guess, kf = kf)
+            omega, f, x_minus_y_list = casida()
+            if omega[i_pole] >= 0:
+                break
+            beta *= 0.5
+            print('new beta:', beta)
+            omega_guess = omega_guess_old * (1-beta) + omega_new * beta
+
         omega_old = omega_new
         omega_new = omega[i_pole]
+        omega_guess_old = omega_guess
+        omega_guess = omega_guess_old * (1-beta) + omega_new * beta
         i += 1
     print(i, omega_new)
 

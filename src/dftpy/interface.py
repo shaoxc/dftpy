@@ -21,6 +21,7 @@ from dftpy.functional_output import Functional
 from dftpy.inverter import Inverter
 from dftpy.formats.xsf import XSF
 from dftpy.formats.qepp import PP
+from dftpy.utils import grid_map_data
 from functools import reduce
 
 
@@ -459,8 +460,14 @@ def InvertRunner(config, struct, EnergyEvaluater):
     file_v_out = config["INVERSION"]["v_out"]
     rho_in_struct = PP(file_rho_in).read()
 
-    if struct.cell != rho_in_struct.cell:
-        raise ValueError('The grid of the input density does not match the grid of the system')
+    #if struct.cell != rho_in_struct.cell:
+    #    raise ValueError('The grid of the input density does not match the grid of the system')
+
+    if struct.field.grid != rho_in_struct.field.grid:
+        rho_in_struct.field = grid_map_data(rho_in_struct.field, grid = struct.field.grid)
+        rho_in_struct.field[rho_in_struct.field < 0] *= -1
+        xsf = XSF('./rho_in.xsf')
+        xsf.write(struct, field=rho_in_struct.field)
 
     inv = Inverter()
     ext, rho = inv(rho_in_struct.field, EnergyEvaluater)
@@ -468,5 +475,7 @@ def InvertRunner(config, struct, EnergyEvaluater):
     xsf.write(struct, field=ext.v)
     #xsf = XSF('./rho.xsf')
     #xsf.write(struct, field=rho)
+    from dftpy.td.interface import DiagonizeRunner
+    DiagonizeRunner(config, struct, EnergyEvaluater)
 
     return ext

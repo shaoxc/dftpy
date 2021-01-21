@@ -32,6 +32,7 @@ class Inverter(object):
         optimizer = Optimization(EnergyEvaluator=EnergyEvaluator, guess_rho=rho_in, optimization_options={'econv':1e-8})
         rho = optimizer.optimize_rho()
 
+
         return ext, rho
 
 def linear_inverter(delta_rho, alpha):
