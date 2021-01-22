@@ -114,6 +114,8 @@ class Casida(object):
         omega = np.sqrt(omega2)
         omega = np.real(omega)
 
+        x_minus_y_list = []
+
         f = np.empty(num_modes, dtype = np.float64)
         for i in range(num_modes):
             tmp = np.sum(self.x * self.sqrtomega * z_list[:,i])
@@ -124,6 +126,8 @@ class Casida(object):
             f[i] += tmp * tmp
 
             f[i] = f[i] * 2.0 / 3.0 * self.N
+
+            x_minus_y_list.append(z_list[:,i] / self.sqrtomega)
 
         if calc_triplet:
             omega2, z_list = eigh(self.c_tri)
@@ -141,11 +145,13 @@ class Casida(object):
 
                 f_tri[i] = f_tri[i] * 2.0 / 3.0 * self.N
 
+                x_minus_y_list.append(z_list[:,i] / self.sqrtomega)
+
             omega = np.real(np.concatenate((omega, omega_tri)))
             f = np.concatenate((f, f_tri))
 
         TimeData.End('Casida')
-        return omega, f
+        return omega, f, x_minus_y_list
 
     def tda(self, calc_triplet=False):
         if not hasattr(self, 'a'):

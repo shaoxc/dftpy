@@ -349,6 +349,14 @@
     "dynamic_potential": {
       "type": "bool",
       "default": false
+    },
+    "max_runtime": {
+      "type": "float",
+      "default": 0
+    },
+    "restart": {
+      "type": "bool",
+      "default": false
     }
   },
   "CASIDA": {
