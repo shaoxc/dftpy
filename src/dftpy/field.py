@@ -204,12 +204,13 @@ class DirectField(BaseField):
             # b.cplx = self.cplx
         # return b
 
-    def integral(self):
+    def integral(self, gather = True):
         """ Returns the integral of self """
+        mp = self.mp if gather else np
         if self.rank == 1:
-            return self.mp.einsum("ijk->", self) * self.grid.dV
+            return mp.einsum("ijk->", self) * self.grid.dV
         else:
-            return self.mp.einsum("ijkl->i", self) * self.grid.dV
+            return mp.einsum("ijkl->i", self) * self.grid.dV
 
     def _calc_spline(self):
         padded_values = np.pad(self, ((self.spl_order,)), mode="wrap")

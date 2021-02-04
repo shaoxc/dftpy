@@ -145,7 +145,7 @@ class LocalPseudo(AbstractLocalPseudo):
         if not isinstance(value, (Atom)):
             raise TypeError("Ions must be an array of Atom classes")
         for key in set(value.labels[:]):
-            if key not in self.PP_list.keys():
+            if key not in self.PP_list :
                 raise ValueError("There is no pseudopotential for {:4s} atom".format(key))
         self._ions = value
         # update Zval in ions
@@ -234,7 +234,7 @@ class LocalPseudo(AbstractLocalPseudo):
             reciprocal_grid = self.grid.get_reciprocal()
             q = reciprocal_grid.q
             vloc = np.empty_like(q)
-            for key in self._vloc_interp.keys():
+            for key in sorted(self._vloc_interp) :
                 vloc_interp = self._vloc_interp[key]
                 vloc[:] = 0.0
                 mask = q < self._gp[key][-1]
@@ -258,7 +258,7 @@ class LocalPseudo(AbstractLocalPseudo):
         reciprocal_grid = self.grid.get_reciprocal()
         q = reciprocal_grid.q
         v = np.zeros_like(q, dtype=np.complex128)
-        for key in self._vloc_interp.keys():
+        for key in sorted(self._vloc_interp):
             for i in range(len(self.ions.pos)):
                 if self.ions.labels[i] == key:
                     strf = self.ions.strf(reciprocal_grid, i)
@@ -274,7 +274,7 @@ class LocalPseudo(AbstractLocalPseudo):
         q = reciprocal_grid.q
         v = np.zeros_like(q, dtype=np.complex128)
         QA = np.empty(self.grid.nr)
-        for key in self._vloc_interp.keys():
+        for key in sorted(self._vloc_interp):
             QA[:] = 0.0
             for i in range(len(self.ions.pos)):
                 if self.ions.labels[i] == key:
@@ -300,7 +300,7 @@ class LocalPseudo(AbstractLocalPseudo):
         v = np.zeros_like(q, dtype=np.complex128)
         vloc_deriv = np.empty_like(q, dtype=np.complex128)
         if labels is None:
-            labels = self._gp.keys()
+            labels = sorted(self._gp)
         for key in labels:
             vloc_interp = self._vloc_interp[key]
             vloc_deriv[:] = 0.0
@@ -356,6 +356,7 @@ class LocalPseudo(AbstractLocalPseudo):
         return Forces
 
     def _ForcePME(self, density):
+        return self._Force(density)
         if density.rank > 1 :
             rho = np.sum(density, axis = 0)
         else :
@@ -372,7 +373,7 @@ class LocalPseudo(AbstractLocalPseudo):
         Forces = np.zeros((self.ions.nat, 3))
         ixyzA = np.mgrid[: self.BsplineOrder, : self.BsplineOrder, : self.BsplineOrder].reshape((3, -1))
         Q_derivativeA = np.zeros((3, self.BsplineOrder * self.BsplineOrder * self.BsplineOrder))
-        for key in self.ions.Zval.keys():
+        for key in sorted(self.ions.Zval):
             denGV = denG * self.vlines[key]
             denGV[0, 0, 0] = 0.0 + 0.0j
             rhoPB = denGV.ifft(force_real=True)
@@ -419,7 +420,7 @@ class LocalPseudo(AbstractLocalPseudo):
         nr = self.grid.nr
         stress = np.zeros((3, 3))
         QA = np.empty(nr)
-        for key in self.ions.Zval.keys():
+        for key in sorted(self.ions.Zval):
             rhoGBV = rhoGB * self._PP_Derivative_One(key=key)
             QA[:] = 0.0
             for i in range(self.ions.nat):
@@ -535,7 +536,7 @@ class ReadPseudo(object):
         return rhop
 
     def get_Zval(self, ions):
-        for key in self._gp.keys():
+        for key in self._gp :
                 ions.Zval[key] = self._info[key].zval
         self.zval = ions.Zval.copy()
 
@@ -564,13 +565,24 @@ class ReadPseudo(object):
         """
         Note :
             Prefer xmltodict which is more robust
+            xmltodict not work for UPF v1
         """
         has_xml = importlib.util.find_spec("xmltodict")
         has_json = importlib.util.find_spec("upf_to_json")
         if has_xml :
-            self._info[key] = UPF(self.PP_list[key])
+            try :
+                self._info[key] = UPF(self.PP_list[key])
+            except :
+                if has_json :
+                    try :
+                        self._info[key] = UPFJSON(self.PP_list[key])
+                    except :
+                        raise ModuleNotFoundError("Please use standard 'UPF' file")
         elif has_json :
-            self._info[key] = UPFJSON(self.PP_list[key])
+            try :
+                self._info[key] = UPFJSON(self.PP_list[key])
+            except :
+                raise ModuleNotFoundError("Maybe you can try install xmltodict or use standard 'UPF' file")
         else :
             raise ModuleNotFoundError("Must pip install xmltodict or upf_to_json")
 
