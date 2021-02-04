@@ -356,7 +356,6 @@ class LocalPseudo(AbstractLocalPseudo):
         return Forces
 
     def _ForcePME(self, density):
-        return self._Force(density)
         if density.rank > 1 :
             rho = np.sum(density, axis = 0)
         else :
