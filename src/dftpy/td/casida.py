@@ -69,8 +69,8 @@ class Casida(object):
             for i in range(j, num_psi):
                 psi_i = psi_list[0] * psi_list[i]
                 #if calc_nl and (i<2 or j<2 or (i<4 and j<12) or (j<4 and i<12)):
-                if calc_nl and (i<2 or j<2):
-                #if calc_nl:
+                #if calc_nl and (i<2 or j<2):
+                if calc_nl:
                     k = self.calc_k(psi_i, psi_j, vnl)
                 else:
                     k = self.calc_k(psi_i, psi_j)

@@ -27,6 +27,13 @@ class Inverter(object):
         vw = FunctionalClass(type='KEDF', name='vW')
         v_vw = vw(rho_in, calcType=['V']).potential
         v_ext = v - v_of + v_vw
+    
+        from dftpy.math_utils import PowerInt
+        k = 2
+        rho_cutoff = 1e-4
+        v_mask = 1.0 - 1.0 / (1.0 + PowerInt(rho_in / rho_cutoff, k))
+        v_ext *= v_mask
+        
         ext = ExternalPotential(v_ext)
         EnergyEvaluator.UpdateFunctional(newFuncDict={'EXT': ext})
         optimizer = Optimization(EnergyEvaluator=EnergyEvaluator, guess_rho=rho_in, optimization_options={'econv':1e-8})

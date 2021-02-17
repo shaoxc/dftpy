@@ -8,7 +8,7 @@ from dftpy.formats.io import read, read_density, write
 from dftpy.ewald import ewald
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
-from dftpy.math_utils import bestFFTsize, interpolation_3d
+from dftpy.math_utils import bestFFTsize, interpolation_3d, PowerInt
 from dftpy.time_data import TimeData
 from dftpy.functional_output import Functional
 from dftpy.semilocal_xc import LDAStress, PBEStress, XCStress
@@ -473,8 +473,26 @@ def InvertRunner(config, struct, EnergyEvaluater):
     ext, rho = inv(rho_in_struct.field, EnergyEvaluater)
     xsf = XSF(file_v_out)
     xsf.write(struct, field=ext.v)
-    #xsf = XSF('./rho.xsf')
-    #xsf.write(struct, field=rho)
+
+    #k = 10
+    #r_cutoff = 2
+    #sigmoid = 1.0 / (1.0 + np.exp(-k*(-np.sqrt(struct.field.grid.rr) + r_cutoff)))
+    #sigmoid = DirectField(struct.field.grid, rank = 1, griddata_3d=sigmoid)
+    #v_mask = sigmoid.fft()
+    #v_mask *= struct.ions.strf(v_mask.grid)
+    #v_mask = v_mask.ifft()
+    #k = 2
+    #rho_cutoff = 1e-4
+    #v_mask = 1.0 - 1.0 / (1.0 + PowerInt(rho_in_struct.field / rho_cutoff, k))
+    #print(np.max(v_mask))
+    #xsf = XSF('./v_mask.xsf')
+    #xsf.write(struct, field=v_mask)
+    #ext.v *= v_mask
+    #xsf = XSF('./v_smooth.xsf')
+    #xsf.write(struct, field=ext.v)
+
+    xsf = XSF('./rho.xsf')
+    xsf.write(struct, field=rho)
     from dftpy.td.interface import DiagonizeRunner
     DiagonizeRunner(config, struct, EnergyEvaluater)
 

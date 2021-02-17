@@ -45,11 +45,16 @@ class Atom(object):
         if self.Zval is None:
             raise Exception("Must initialize Pseudo Potential with ReadPseudo")
 
-    def strf(self, reciprocal_grid, iatom):
+    def strf(self, reciprocal_grid, iatom=None):
         """
         Returns the Structure Factor associated to i-th ion.
         """
-        a = np.exp(-1j * np.einsum("lijk,l->ijk", reciprocal_grid.g, self.pos[iatom]))
+        if iatom:
+            a = np.exp(-1j * np.einsum("lijk,l->ijk", reciprocal_grid.g, self.pos[iatom]))
+        else:
+            a = np.zeros(reciprocal_grid.nr, dtype=np.complex128)
+            for iatom in range(self.nat):
+                a += np.exp(-1j * np.einsum("lijk,l->ijk", reciprocal_grid.g, self.pos[iatom]))
         return a
 
     def istrf(self, reciprocal_grid, iatom):
