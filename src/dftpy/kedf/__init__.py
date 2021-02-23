@@ -60,6 +60,8 @@ class KEDF:
     def __new__(cls, name = "WT", **kwargs):
         if name.startswith('STV+GGA+') :
             return kedf2nlgga(name, **kwargs)
+        elif name.startswith('MIX_') :
+            return kedf2mixkedf(name, **kwargs)
         else :
             return super(KEDF, cls).__new__(cls)
 
@@ -122,7 +124,14 @@ def KEDFunctional(rho, name="WT", calcType=["E","V"], split=False, nspin = 1, **
                 ke.energydensity = DirectField(grid=rho.grid, griddata_3d=ke.energydensity, rank=nspin)
         return ke
     #-----------------------------------------------------------------------
-    if name[:3] == "GGA":
+    if name.upper() == "NONE" :
+        OutFunctional = Functional(name="NONE", energy = 0.0)
+        if 'D' in calcType:
+            OutFunctional.energydensity = DirectField(grid=rho.grid, rank=nspin)
+        if 'V' in calcType:
+            OutFunctional.potential = DirectField(grid=rho.grid, rank=nspin)
+        OutFunctionalDict = {"NONE": OutFunctional}
+    elif name[:3] == "GGA":
         func = GGA
         k_str = kwargs["k_str"].upper()
         if k_str not in GGA_KEDF_list:
@@ -223,12 +232,13 @@ def KEDFStress(rho, name="WT", energy=None, **kwargs):
 
 
 class NLGGA:
-    def __init__(self, stv = None, gga = None, nl = None, rhomax = None) :
+    def __init__(self, stv = None, gga = None, nl = None, rhomax = None, name = 'STV+GGA+LMGPA') :
         self.stv = stv
         self.gga = gga
         self.nl = nl
         self.rhomax = rhomax
         self.level = 3 # if smaller than 3 only use gga to guess the rhomax
+        self.name = name
 
     def __call__(self, density, calcType=["E","V"], **kwargs):
         return self.compute(density, calcType=calcType, **kwargs)
@@ -333,16 +343,145 @@ def kedf2nlgga(name = 'STV+GGA+LMGPA', **kwargs) :
     rhomax = kwargs.get("rhomax", None)
 
     if k_str.upper() in GGA_KEDF_list :
-        name = 'GGA'
+        names[1] = 'GGA'
         k_str = k_str.upper()
     else :
-        name = 'LIBXC_KEDF'
+        names[1] = 'LIBXC_KEDF'
         k_str = k_str.lower()
 
-    gga = KEDF(name = name, k_str = k_str, sigma = sigma)
-
     stv = KEDF(name = 'GGA', k_str = 'STV', params = params, sigma = sigma)
+    gga = KEDF(name = names[1], k_str = k_str, sigma = sigma)
     nl = KEDF(name = names[2], **kwargs)
-    obj = NLGGA(stv, gga, nl, rhomax = rhomax)
+    obj = NLGGA(stv, gga, nl, rhomax = rhomax, name = name)
 
     return obj
+
+def kedf2mixkedf(name = 'MIX_TF+GGA', first_high = True, **kwargs) :
+    """
+    Base on the input generate MIXKEDF
+
+    Args:
+        name: the name of MIXKEDF
+
+    Raises:
+        AttributeError: The name must startswith 'MIX_'
+
+    """
+
+    if not name.startswith('MIX_') :
+        raise AttributeError("The name of MIXKEDF is not correct : {}".format(name))
+    names = name[4:].split('+')
+
+    # Only for second(GGA)
+    if "k_str" in kwargs :
+        k_str=kwargs.pop("k_str")
+    else :
+        k_str="REVAPBEK"
+
+    sigma = kwargs.get("sigma", None)
+    rhomax = kwargs.get("rhomax", None)
+
+    if k_str.upper() in GGA_KEDF_list :
+        names[1] = 'GGA'
+        k_str = k_str.upper()
+    else :
+        names[1] = 'LIBXC_KEDF'
+        k_str = k_str.lower()
+
+    stv = KEDF(name = names[0], **kwargs)
+    gga = KEDF(name = names[1], k_str = k_str, sigma = sigma)
+    obj = MIXGGAS(stv, gga, rhomax = rhomax, name = name)
+
+    return obj
+
+class MIXGGAS:
+    def __init__(self, stv = None, gga = None, rhomax = None, name = 'MIX_TF+GGA') :
+        self.stv = stv
+        self.gga = gga
+        self.rhomax = rhomax
+        self.name = name
+
+    def __call__(self, density, calcType=["E","V"], **kwargs):
+        return self.compute(density, calcType=calcType, **kwargs)
+
+    def compute(self, density, calcType=["E","V"], **kwargs):
+        calcType = ["E","V"]
+        if 'V' in calcType :
+            calc = ['D', 'V']
+        elif 'E' in calcType :
+            calc = ['D']
+
+        func_stv = self.stv(density, calcType = calc, **kwargs)
+
+        func_gga = self.gga(density, calcType = calc, **kwargs)
+
+        obj = Functional(name = 'MIXGGAS')
+
+        self.interpfunc(density, calcType = calcType, **kwargs)
+        interpolate_f = self.interpolate_f
+        interpolate_df = self.interpolate_df
+
+        if 'V' in calcType :
+            pot = interpolate_f * func_stv.potential + interpolate_df * func_stv.energydensity
+            pot += (1 - interpolate_f)* func_gga.potential - interpolate_df * func_gga.energydensity
+            obj.potential = pot
+
+        if 'E' in calcType :
+            energydensity = interpolate_f * func_stv.energydensity
+            energydensity += (1 - interpolate_f)* func_gga.energydensity
+            energy = energydensity.sum() * density.grid.dV
+            obj.energy = energy
+
+        return obj
+
+    def interpfunc(self, rho, calcType=["E","V"], **kwargs):
+        if self.rhomax is None or self.rhomax < 1E-30 :
+            self.interpolate_f = 1.0
+            self.interpolate_df = 0.0
+        elif self.rhomax > 100 :
+            self.interpolate_f = 0.0
+            self.interpolate_df = 0.0
+        else :
+            self.interpolate_f = np.abs(rho/self.rhomax)
+            mask = self.interpolate_f > 1.0
+            self.interpolate_f[mask] = 1.0
+            self.interpolate_df = np.ones_like(self.interpolate_f)/self.rhomax
+            self.interpolate_df[mask] = 0.0
+        return
+
+    def _interp_lkt(self, rho, calcType=["E","V"], **kwargs):
+        sigma = kwargs.get('sigma', None)
+        rhom = rho.copy()
+        tol = 1e-16
+        rhom[rhom < tol] = tol
+
+        rho23 = rhom ** (2.0 / 3.0)
+        rho43 = rho23 * rho23
+        rho83 = rho43 * rho43
+        q = rho.grid.get_reciprocal().q
+        g = rho.grid.get_reciprocal().g
+
+        rhoG = rho.fft()
+        rhoGrad = []
+        for i in range(3):
+            if sigma is None :
+                grhoG = g[i] * rhoG * 1j
+            else :
+                grhoG = g[i] * rhoG * np.exp(-q*(sigma)**2/4.0) * 1j
+            item = (grhoG).ifft(force_real=True)
+            rhoGrad.append(item)
+        s = np.sqrt(rhoGrad[0] ** 2 + rhoGrad[1] ** 2 + rhoGrad[2] ** 2) / rho43
+        F, dFds2 = GGAFs(s, functional='LKT', calcType=calcType, gga_remove_vw = True, **kwargs)
+
+        if 'V' in calcType:
+            dFdn = -4.0 / 3.0 * dFds2 * s * s / rhom
+            p3 = []
+            for i in range(3):
+                item = dFds2 * rhoGrad[i] / rho83
+                p3.append(item.fft())
+            pot3G = g[0] * p3[0] + g[1] * p3[1] + g[2] * p3[2]
+            dFdn -= (1j * pot3G).ifft(force_real=True)
+
+        self.interpolate_s = s
+        self.interpolate_f = F
+        self.interpolate_df = dFdn

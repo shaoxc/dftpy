@@ -7,7 +7,7 @@ from dftpy.functional_output import Functional
 # from dftpy.kedf.tf import TF
 import scipy.special as sp
 
-__all__ = ["GGA", "GGA_KEDF_list", "GGAStress"]
+__all__ = ["GGA", "GGAFs", "GGA_KEDF_list", "GGAStress"]
 
 GGA_KEDF_list = [
     "LKT",
@@ -47,6 +47,7 @@ GGA_KEDF_list = [
     "X_TF_Y_VW",
     "TFVW",     # same as `X_TF_Y_VW`
     "STV",
+    "TEST-TF-APBEK",
 ]
 
 
@@ -654,6 +655,28 @@ def GGAFs(s, functional="LKT", calcType=["E","V"], params=None, gga_remove_vw = 
         if "V" in calcType :
             dFds2[:] = 5.0 / 3.0 * params[1] * (2.0/Fb - 2.0 * s2 * params[2]/(Fb * Fb))
             dFds2 /= tkf0 ** 2
+
+    elif functional == "TEST-TF-APBEK" :
+        params0 = [1.3, 0.23889, 1.245]
+        if not params:
+            params = params0
+        else :
+            params0[:len(params)] = params
+            params = params0
+        ss = s / tkf0
+        s2 = ss * ss
+
+        Fx, dFds2 = GGAFx(ss, s2, calcType=calcType, params=params, **kwargs)
+
+        Fa = params[1] * s2
+        Fb = 1.0 + params[1] / params[2] * s2
+        F = 1.0 + Fa / Fb * (1 - Fx)
+        if "V" in calcType:
+            dFds2_rest = 2.0 * params[1] / (Fb * Fb)
+
+            dFds2 = (1.0 - Fx) * dFds2_rest - dFds2 * Fa/Fb
+
+            dFds2 /= tkf0 ** 2
     #-----------------------------------------------------------------------
     if gga_remove_vw is not None and gga_remove_vw :
         if isinstance(gga_remove_vw, (int, float)):
@@ -667,6 +690,29 @@ def GGAFs(s, functional="LKT", calcType=["E","V"], params=None, gga_remove_vw = 
             dFds2 -= 10.0 / 3.0 / tkf0 ** 2 * pa
 
     return F, dFds2
+
+def _GGAFx(ss, s2, functional="LKT", calcType=["E","V"], params=None, **kwargs):
+    if not params:
+        params = [1.3]
+    mask1 = ss > 100.0
+    mask2 = ss < 1e-5
+    mask = np.invert(np.logical_or(mask1, mask2))
+
+    Fx = np.empty_like(ss)  # Interpolating function
+    Fx[mask] = 1.0 / np.cosh(params[0] * ss[mask])
+    Fx[mask1] = 0.0
+    Fx[mask2] = 1.0 -0.5 * params[0] ** 2 * s2[mask2] + 5.0 / 24.0 * params[0] ** 4 * s2[mask2] ** 2
+
+    if "V" in calcType:
+        dFds2 = np.empty_like(ss)  # Interpolating function
+        dFds2[mask] = - params[0] * np.sinh(params[0] * ss[mask]) / np.cosh(params[0] * ss[mask]) ** 2 / ss[mask]
+        dFds2[mask1] = 0.0
+        dFds2[mask2] = (- params[0] ** 2 + 5.0 / 6.0 * params[0] ** 4 * s2[mask2]
+            - 61.0 / 120.0 * params[0] ** 6 * s2[mask2] ** 2)
+    else :
+        dFds2 = None
+
+    return Fx, dFds2
 
 
 def GGA(rho, functional="LKT", calcType=["E","V"], split=False, params = None, **kwargs):
