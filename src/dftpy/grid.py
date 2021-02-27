@@ -41,6 +41,8 @@ class BaseGrid(BaseCell):
         self._latparas= latparas
         self._mp = mp
         self.cplx = cplx
+        if cplx :
+            full = True
         self.local_slice(nr, realspace = realspace, full = full, cplx = cplx, **kwargs)
         self._nnr = np.prod(self._nr)
         # print('nr_local', self.mp.comm.rank, self._nr, realspace, self.mp.comm.size, flush = True)
@@ -113,7 +115,7 @@ class BaseGrid(BaseCell):
         for i in range(3):
             lattice[:, i] *= reps[i]
         nr = self.nr * reps
-        results = self.__class__(lattice, nr, origin=self.origin, units=self.units, full=self.full)
+        results = self.__class__(lattice, nr, origin=self.origin, units=self.units, full=self.full, cplx=self.cplx)
         return results
 
     def local_slice(self, nr, **kwargs):
@@ -382,7 +384,6 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
         self._mask = None
         self._gF = None
         self._ggF = None
-        self._full = full
         self._invgg = None
         self._invq = None
 

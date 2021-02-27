@@ -117,13 +117,13 @@ class MP :
         shape = np.asarray(shape)
         return (s, shape, offsets)
 
-    def _get_local_fft_shape_serial(self, nr, realspace = True, full = False, **kwargs):
+    def _get_local_fft_shape_serial(self, nr, realspace = True, full = False, cplx = False, **kwargs):
         s = []
         for item in nr :
             s.append(slice(None))
         s = tuple(s)
         shape = np.array(nr)
-        if not full and not realspace :
+        if not full and not realspace and not cplx:
             shape[-1] = shape[-1]//2 + 1
         offsets = np.zeros_like(nr, dtype = np.int)
         return (s, shape, offsets)
