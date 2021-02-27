@@ -31,7 +31,7 @@ class BaseField(np.ndarray):
 
     """
 
-    def __new__(cls, grid, memo="", rank=1, griddata_F=None, griddata_C=None, griddata_3d=None, fft_data = None):
+    def __new__(cls, grid, memo="", rank=1, griddata_F=None, griddata_C=None, griddata_3d=None, fft_data = None, cplx = False):
         # Input array is an already formed ndarray instance
         # We first cast to be our class type
 
@@ -44,7 +44,10 @@ class BaseField(np.ndarray):
         else:
             nr = rank, *grid.nr
         if griddata_F is None and griddata_C is None and griddata_3d is None:
-            input_values = np.zeros(nr)
+            if cplx :
+                input_values = np.zeros(nr, dtype ='complex128')
+            else :
+                input_values = np.zeros(nr)
         elif griddata_F is not None:
             input_values = np.reshape(griddata_F, nr, order="F")
         elif griddata_C is not None:
@@ -162,8 +165,8 @@ class DirectField(BaseField):
         if not isinstance(grid, DirectGrid):
             raise TypeError("the grid argument is not an instance of DirectGrid")
         obj = super().__new__(
-            cls, grid, memo="", rank=rank, griddata_F=griddata_F, griddata_C=griddata_C, griddata_3d=griddata_3d, fft_data = fft_data
-        )
+            cls, grid, memo="", rank=rank, griddata_F=griddata_F, griddata_C=griddata_C, griddata_3d=griddata_3d,
+            cplx = cplx, fft_data = fft_data)
         obj._N = None
         obj.spl_coeffs = None
         obj._cplx = cplx

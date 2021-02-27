@@ -87,7 +87,7 @@ def GGAStress(rho, functional="LKT", energy=None, potential=None, **kwargs):
 
 
 def GGAFs(s, functional="LKT", calcType=["E","V"], params=None, gga_remove_vw = None, **kwargs):
-    """
+    r"""
     ckf = (3\pi^2)^{1/3}
     cTF = (3/10) * (3\pi^2)^{2/3} = (3/10) * ckf^2
     bb = 2^{4/3} * ckf = 2^{1/3} * tkf0
@@ -431,7 +431,7 @@ def GGAFs(s, functional="LKT", calcType=["E","V"], params=None, gga_remove_vw = 
         Fb3 = Fb * Fb * Fb
         F = 1.0 + params[1] * s2 / Fb + params[2] * s4 / Fb2 + params[3] * s6 / Fb3
         if "V" in calcType:
-            dFds2 = 2.0 * params[1] / Fb2 + 4 * params[2] * s2 / (Fb3) + 4 * params[3] * s4 / (Fb3 * Fb)
+            dFds2 = 2.0 * params[1] / Fb2 + 4 * params[2] * s2 / (Fb3) + 6 * params[3] * s4 / (Fb3 * Fb)
             dFds2 /= tkf0 * tkf0
 
     elif functional == "P82":  # \cite{hfofke} (9)

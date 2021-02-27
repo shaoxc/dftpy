@@ -11,7 +11,7 @@ fft_saved = collections.OrderedDict()
 class MPI4PYFFTRUN :
     def __init__(self, grid, forward = True, decomposition = 'Slab', backend = None, fft = None, **kwargs):
         if fft is None :
-            fft = get_mpi4py_fft(grid.mp.comm, grid.nrR, decomposition=decomposition, backend=backend, **kwargs)
+            fft = get_mpi4py_fft(grid.mp.comm, grid.nrR, decomposition=decomposition, backend=backend, cplx = grid.cplx, **kwargs)
         # self.arr = newDistArray(fft, False, view = True)
         # self.arr_g = newDistArray(fft, True, view = True)
         self.arr = newDistArray(fft, False)
@@ -34,7 +34,7 @@ class MPI4PYFFTRUN :
         return results
 
 
-def get_mpi4py_fft(comm, nr, decomposition = 'Slab', backend = None, grid = None, max_saved = 4, **kwargs):
+def get_mpi4py_fft(comm, nr, decomposition = 'Slab', backend = None, grid = None, max_saved = 4, cplx = False, **kwargs):
     """
     'max_saved' means the number of fft objects saved.
     """
@@ -44,6 +44,13 @@ def get_mpi4py_fft(comm, nr, decomposition = 'Slab', backend = None, grid = None
         backend = environ["FFTLIB"]
     if backend not in fft_support :
         backend = 'numpy'
+
+    if cplx :
+        backend = 'numpy' # If cplx, use numpy for safe
+        dtype = np.complex
+    else :
+        dtype = np.float
+
     global fft_saved
     saved = 0
     item = fft_saved.get(id(comm), None)
@@ -54,9 +61,9 @@ def get_mpi4py_fft(comm, nr, decomposition = 'Slab', backend = None, grid = None
         fft = fft_saved[id(comm)]
     else :
         if decomposition == 'Slab' :
-            fft = PFFT(comm, nr, axes=(0, 1, 2), dtype=np.float, grid=(-1,), backend = backend)
+            fft = PFFT(comm, nr, axes=(0, 1, 2), dtype=dtype, grid=(-1,), backend = backend)
         else :
-            fft = PFFT(comm, nr, axes=(0, 1, 2), dtype=np.float, backend = backend)
+            fft = PFFT(comm, nr, axes=(0, 1, 2), dtype=dtype, backend = backend)
         if len(fft_saved) >= max_saved :
             for key in fft_saved : del fft_saved[key]; break
         fft_saved[id(comm)] = fft

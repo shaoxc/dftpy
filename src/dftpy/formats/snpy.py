@@ -87,14 +87,14 @@ def read(fname, mp=None, grid=None, kind="all", full=False, datarep='native', **
     if mp.size == 1 :
         data = npy.read(fh, single=True)
         if grid is None :
-            grid = DirectGrid(lattice=lattice, nr=data.shape, units='Bohr', full=full, mp=mp)
+            grid = DirectGrid(lattice=lattice, nr=data.shape, full=full, mp=mp)
         data = DirectField(grid=grid, griddata_3d=data, rank=1)
     else :
         shape, fortran_order, dtype = npy._read_header(fh)
         if fortran_order :
             raise AttributeError("Not support Fortran order")
         if grid is None :
-            grid = DirectGrid(lattice=lattice, nr=shape, units='Bohr', full=full, mp=mp)
+            grid = DirectGrid(lattice=lattice, nr=shape, full=full, mp=mp)
             data = DirectField(grid=grid, rank=1)
         elif not(np.all(shape == grid.nrR) or np.all(shape == grid.nrG)):
             raise AttributeError("The shape is not match with grid")
