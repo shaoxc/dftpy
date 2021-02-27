@@ -3,17 +3,17 @@ IO of snpy file
 
 SNPY format
 ===========
-
 snpy format is just contains some numpy NPY files, but has a definite order which contains structure information.
+ - description of snpy (1d integer array)
+   1. lattice matrix  (3x3 float array)
+   2. symbols of atoms (1d integer array)
+   3. positions of atoms (Nx3 float array)
+   4. volumetric data (3d float array)
+   5. other data
+ - repeat
 
- - lattice matrix
- - symbols of atoms
- - positions of atoms
- - volumetric data
- - other data
-
-snpy format also can contains multiframe, each frame is separate by a string matrix only contain one item, which I prefer
-start with 'DFTPY'
+The first item of snpy is the description of all items of this frame. snpy format can contains multiframe, and each
+frame is start with the description.
 
 Notes :
     snpy format also can be directly replace with numpy npz format, but it's need parallel compress and decompress
@@ -25,11 +25,11 @@ from dftpy.field import DirectField
 from dftpy.system import System
 from dftpy.atom import Atom
 from dftpy.formats import npy
-from dftpy.mpi import MP, MPIFile
+from dftpy.mpi import MP, MPIFile, sprint
 
 MAGIC_PREFIX = b'\x93DFTPY'
 
-def write(fname, system, mp = None):
+def write(fname, system, kind = 'all', desc = None, mp = None):
     ions = system.ions
     data = system.field
     if mp is None :
@@ -43,18 +43,29 @@ def write(fname, system, mp = None):
     else :
         fh = fname
 
-    if mp.rank == 0 :
-        # write cell
-        npy.write(fh, ions.pos.cell.lattice, single = True)
-        # write labels
-        npy.write(fh, ions.Z, single = True)
-        # write coordinates
-        npy.write(fh, ions.pos, single = True)
-    # write volumetric data
-    npy.write(fh, data)
+    if desc is None :
+        if kind == 'cell' :
+            desc = np.arange(1, 4)
+        else :
+            desc = np.arange(1, 5)
+
+    if mp.rank == 0 : # write description
+        npy.write(fh, desc, single = True)
+
+    for key in desc :
+        if key == 1 : # write cell
+            if mp.rank == 0 : npy.write(fh, ions.pos.cell.lattice, single = True)
+        elif key == 2 : # write labels
+            if mp.rank == 0 : npy.write(fh, ions.Z, single = True)
+        elif key == 3 : # write coordinates
+            if mp.rank == 0 : npy.write(fh, ions.pos, single = True)
+        elif key == 4 : # write volumetric data
+            npy.write(fh, data)
+
+    if isinstance(fname, str): fh.close()
     return
 
-def read(fname, mp=None, grid=None, kind="all", full=False, datarep='native', **kwargs):
+def read(fname, mp=None, grid=None, kind="all", full=False, datarep='native', desc=None, **kwargs):
     """
     Notes :
         Only support DirectField
@@ -73,30 +84,40 @@ def read(fname, mp=None, grid=None, kind="all", full=False, datarep='native', **
     else :
         fh = fname
 
-    # read cell
-    lattice = npy.read(fh, single = True)
-    # read labels
-    labels = npy.read(fh, single = True)
-    # read coordinates
-    pos = npy.read(fh, single = True)
-    cell = DirectCell(lattice)
-    atoms = Atom(label=labels, pos=pos, cell=cell, basis="Cartesian")
-    if kind == 'cell' :
-        return atoms
-    # read volumetric data
-    if mp.size == 1 :
-        data = npy.read(fh, single=True)
-        if grid is None :
-            grid = DirectGrid(lattice=lattice, nr=data.shape, full=full, mp=mp)
-        data = DirectField(grid=grid, griddata_3d=data, rank=1)
+    if desc is None :
+        # read description
+        desc = npy.read(fh, single = True)
     else :
-        shape, fortran_order, dtype = npy._read_header(fh)
-        if fortran_order :
-            raise AttributeError("Not support Fortran order")
-        if grid is None :
-            grid = DirectGrid(lattice=lattice, nr=shape, full=full, mp=mp)
-            data = DirectField(grid=grid, rank=1)
-        elif not(np.all(shape == grid.nrR) or np.all(shape == grid.nrG)):
-            raise AttributeError("The shape is not match with grid")
-        npy._read_value(fh, data, datarep=datarep)
-    return System(atoms, grid, name="snpy", field=data)
+        sprint('WARN : You set the description by yourself {}'.format(desc), comm = mp.comm, level = 3)
+
+    for key in desc :
+        if key == 1 : # read cell
+            lattice = npy.read(fh, single = True)
+        elif key == 2 : # read labels
+            labels = npy.read(fh, single = True)
+        elif key == 3 : # read coordinates
+            pos = npy.read(fh, single = True)
+            cell = DirectCell(lattice)
+            atoms = Atom(label=labels, pos=pos, cell=cell, basis="Cartesian")
+            if kind == 'cell' :
+                if isinstance(fname, str): fh.close()
+                return atoms
+        elif key == 4 : # read volumetric data
+            if mp.size == 1 :
+                data = npy.read(fh, single=True)
+                if grid is None :
+                    grid = DirectGrid(lattice=lattice, nr=data.shape, full=full, mp=mp)
+                data = DirectField(grid=grid, griddata_3d=data, rank=1)
+            else :
+                shape, fortran_order, dtype = npy._read_header(fh)
+                if fortran_order :
+                    raise AttributeError("Not support Fortran order")
+                if grid is None :
+                    grid = DirectGrid(lattice=lattice, nr=shape, full=full, mp=mp)
+                    data = DirectField(grid=grid, rank=1)
+                elif not(np.all(shape == grid.nrR) or np.all(shape == grid.nrG)):
+                    raise AttributeError("The shape is not match with grid")
+                npy._read_value(fh, data, datarep=datarep)
+
+    if isinstance(fname, str): fh.close()
+    return System(atoms, grid, name="DFTpy", field=data)
