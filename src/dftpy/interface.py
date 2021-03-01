@@ -69,7 +69,7 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
 
     ############################## Grid  ##############################
     if grid is None:
-        grid = DirectGrid(lattice=lattice, nr=nr, units=None, full=config["GRID"]["gfull"], mp=mp)
+        grid = DirectGrid(lattice=lattice, nr=nr, units=None, full=config["GRID"]["gfull"], cplx=config["GRID"]["cplx"], mp=mp)
     ############################## PSEUDO  ##############################
     PPlist = {}
     for key in config["PP"]:
@@ -120,13 +120,13 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
         density = read_density(config["DENSITY"]["densityfile"])
     # normalization
     if density is not None:
-        if not np.all(rho_ini.shape[:3] == density.shape[:3]):
-            density = interpolation_3d(density, rho_ini.shape[:3])
+        if not np.all(grid.nrR == density.shape[:3]):
+            density = interpolation_3d(density, grid.nrR)
             # density = prolongation(density)
             density[density < 1e-12] = 1e-12
-        rho_ini[:] = density.reshape(rho_ini.shape)
+        grid.scatter(density, out = rho_ini)
         charge_total = ions.ncharge
-        rho_ini *= charge_total / (np.sum(rho_ini) * rho_ini.grid.dV)
+        rho_ini *= charge_total / rho_ini.integral()
     # rho_ini[:] = density.reshape(rho_ini.shape, order='F')
     ############################## add spin magmom ##############################
     nspin=config["DENSITY"]["nspin"]

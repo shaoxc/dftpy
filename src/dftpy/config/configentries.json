@@ -90,6 +90,10 @@
     "scale": {
       "type": "float",
       "default": 0.99
+    },
+    "cplx": {
+      "type": "bool",
+      "default": false
     }
   },
   "DENSITY": {
