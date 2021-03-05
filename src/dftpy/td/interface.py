@@ -32,8 +32,8 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     hamiltonian = Hamiltonian()
     prop = Propagator(hamiltonian, interval=int_t, type=config["PROPAGATOR"]["type"], optional_kwargs=config["PROPAGATOR"])
 
-    E_v_Evaluator.UpdateFunctional(keysToRemove=["PSEUDO"])
-    print(E_v_Evaluator.funcDict)
+    #E_v_Evaluator.UpdateFunctional(keysToRemove=["PSEUDO"])
+    #print(E_v_Evaluator.funcDict)
 
     if restart:
         with open('./tmp/restart_data.npy', 'rb') as f:

@@ -245,6 +245,8 @@ class DirectField(BaseField):
             if grad.rank != np.shape(grad)[0]:
                 raise ValueError("Standard Gradient: Gradient rank incompatible with shape")
             return grad
+        elif ipol > 3:
+            raise ValueError("Standard Gradient: ipol can not large than 3")
         else:
             i = ipol - 1
             grad_g = (
@@ -254,8 +256,6 @@ class DirectField(BaseField):
             )
             grad_g = ReciprocalField(grid=self.grid.get_reciprocal(), rank=1, griddata_3d=grad_g)
             grad = grad_g.ifft(force_real=force_real)
-            if grad.rank != np.shape(grad)[0]:
-                raise ValueError("Standard Gradient: Gradient rank incompatible with shape")
             return grad
 
     def standard_gradient(self, ipol=None, force_real=True):
