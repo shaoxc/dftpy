@@ -460,29 +460,3 @@ def quartic_interpolation(f, dx):
     else :
         raise AttributeError("Error : Not implemented yet")
     return results
-
-def cg(A, b, x0, tol, maxiter, mp = None):
-    if mp is None :
-        from dftpy.mpi import MP
-        mp = MP()
-    res = []
-    res.append(b - A(x0))
-    if mp.amax(np.abs(res[0])) < tol:
-        return x0, 0
-    p = []
-    p.append(res[0])
-    k = 0
-    from copy import deepcopy
-    x = deepcopy(x0)
-    from dftpy.mpi import sprint
-    while k < maxiter:
-        alpha = mp.asum(res[-1]*res[-1]) / mp.asum(p[-1]*A(p[-1]))
-        x += alpha * p[-1]
-        res.append(b - A(x))
-        sprint(k, mp.amax(np.abs(res[-1])))
-        if mp.amax(np.abs(res[-1])) < tol:
-            return x, 0
-        beta = mp.asum(res[-1]*res[-1]) / mp.asum(res[-2]*res[-2])
-        p.append(res[-1] + beta * p[-1])
-        k += 1
-    return x, 1
