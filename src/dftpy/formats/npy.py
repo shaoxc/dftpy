@@ -25,6 +25,9 @@ def write(fh, data, grid = None, single = False, version = (1, 0), datarep = 'na
 
     npyf._check_version(version)
 
+    if not isinstance(data, np.ndarray):
+        data = np.asanyarray(data)
+
     if single or (not hasattr(fh, 'Get_position')):
         return _write_single(fh, data, version)
 
@@ -103,7 +106,7 @@ def read(fh, data=None, grid=None, single=False, datarep = 'native'):
 
     shape, fortran_order, dtype = _read_header(fh)
 
-    if 'fortran_order' and grid.mp.size > 1 :
+    if fortran_order and grid.mp.size > 1 :
         raise AttributeError("Not support Fortran order")
 
     if not(np.all(shape == grid.nrR) or np.all(shape == grid.nrG)):

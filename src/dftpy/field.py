@@ -99,6 +99,7 @@ class BaseField(np.ndarray):
             result = self._fft_data.copy()
             result._fft_data = self
             return result
+            self.grid = new_grid
 
     def __array_wrap__(self, obj, context=None):
         """wrap it up"""
@@ -321,7 +322,7 @@ class DirectField(BaseField):
     def laplacian(self, check_real = False, force_real = False, sigma = 0.025):
         self_fft = self.fft()
         gg = self_fft.grid.gg
-        if sigma is None :
+        if sigma is None or sigma == 0:
             self_fft = -self_fft.grid.gg*self_fft
         else :
             self_fft = -gg*self_fft*np.exp(-gg*(sigma*sigma)/4.0)
@@ -590,8 +591,9 @@ class DirectField(BaseField):
     @cplx.setter
     def cplx(self, value):
         self._cplx = value
-        if self._cplx and not self.grid.full :
+        if self._cplx:
             self.grid.full = True
+            self.grid.cplx = True
 
     def repeat(self, reps=1):
         reps = np.ones(3, dtype='int')*reps
