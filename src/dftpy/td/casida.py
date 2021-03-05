@@ -89,9 +89,9 @@ class Casida(object):
             if build_ab:
                 self.a_tri +=  np.identity(num_psi-1) * omega
         self.sqrtomega = np.sqrt(omega)
-        #print(self.sqrtomega)
-        #print(self.c)
-        #print(self.c_tri)
+        #sprint(self.sqrtomega)
+        #sprint(self.c)
+        #sprint(self.c_tri)
 
         self.x = np.empty(num_psi-1, dtype = np.float64)
         self.y = np.empty(num_psi-1, dtype = np.float64)

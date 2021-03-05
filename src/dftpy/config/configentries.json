@@ -327,6 +327,10 @@
     "maxiter": {
       "type": "int",
       "default": 100
+    },
+    "atol": {
+      "type": "float",
+      "default": null
     }
   },
   "TD": {
