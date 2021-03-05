@@ -1,5 +1,6 @@
 import numpy as np
-from dftpy.mpi import sprint
+from dftpy.mpi import mp, sprint, MPIFile
+from dftpy.field import DirectField
 from dftpy.functionals import TotalEnergyAndPotential
 from dftpy.td.propagator import Propagator
 from dftpy.td.hamiltonian import Hamiltonian
@@ -9,12 +10,15 @@ from dftpy.system import System
 from dftpy.utils import calc_rho, calc_j
 from dftpy.dynamic_functionals_utils import DynamicPotential
 from dftpy.formats.xsf import XSF
+from dftpy.formats import npy
 from dftpy.time_data import TimeData
 import time
+#import tracemalloc
 import os
 
 
 def RealTimeRunner(config, rho0, E_v_Evaluator):
+    #tracemalloc.start()
 
     outfile = config["TD"]["outfile"]
     int_t = config["PROPAGATOR"]["int_t"]
@@ -32,15 +36,18 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
 
 
     if restart:
-        with open('./tmp/restart_data.npy', 'rb') as f:
-            i_t0 = np.load(f)+1
-            psi = np.load(f)
+        fname = './tmp/restart_data.npy'
+        if mp.size > 1 :
+            f = MPIFile(fname, mp, amode = mp.MPI.MODE_RDONLY)
+        else :
+            f = open(fname, "rb")
+        i_t0 = npy.read(f, single = True)+1
+        psi = npy.read(f, grid = rho0.grid)
         psi = DirectField(grid=rho0.grid, rank=1, griddata_3d=psi, cplx=True)
     else:
-        #x = rho0.grid.r[direc]
-        #psi = np.sqrt(rho0) * np.exp(1j * k * x)
-        psi = np.sqrt(rho0)
-        #psi.cplx = True
+        x = rho0.grid.r[direc]
+        psi = np.sqrt(rho0) * np.exp(1j * k * x)
+        psi.cplx = True
         i_t0 = 0
 
     rho = calc_rho(psi)
@@ -53,27 +60,21 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     eps = 1e-8
 
     if not restart:
-        with open(outfile + "_mu", "w") as fmu:
-            sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(delta_mu[0], delta_mu[1], delta_mu[2]), fileobj=fmu)
-            #fmu.write("{0:17.10e} {1:17.10e} {2:17.10e}\n".format(delta_mu[0], delta_mu[1], delta_mu[2]))
-        with open(outfile + "_j", "w") as fj:
-            sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(j_int[0], j_int[1], j_int[2]), fileobj=fj)
-            #fj.write("{0:17.10e} {1:17.10e} {2:17.10e}\n".format(j_int[0], j_int[1], j_int[2]))
-        with open(outfile + "_E", "w") as fE:
-            pass
-
-    #sprint(psi.grid.cplx)
-    sprint((np.conj(psi)*psi.laplacian()).integral())
-    sprint((np.conj(psi)*psi).integral())
-    sprint(psi.integral())
-    sprint(rho0.integral())
-    import sys
-    sys.exit(0)
+        if mp.is_root:
+            with open(outfile + "_mu", "w") as fmu:
+                sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(delta_mu[0], delta_mu[1], delta_mu[2]), fileobj=fmu)
+            with open(outfile + "_j", "w") as fj:
+                sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(j_int[0], j_int[1], j_int[2]), fileobj=fj)
+            with open(outfile + "_E", "w") as fE:
+                pass
 
     sprint("{:20s}{:30s}{:24s}".format('Iter', 'Num. of Predictor-corrector', 'Total Cost(s)'))
     begin_t = time.time()
     for i_t in range(i_t0, num_t):
         
+        #current_mem, peak_mem = tracemalloc.get_traced_memory()
+        #print(f"Current memory usage is {current_mem / 1.0e6}MB; Peak was {peak_mem / 1.0e6}MB")
+
         t = int_t * i_t
         func = E_v_Evaluator.ComputeEnergyPotential(rho, calcType=["V"])
         prop.hamiltonian.v = func.potential
@@ -87,7 +88,7 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
             psi1, info = prop(psi)
             rho1 = calc_rho(psi1)
             j1 = calc_j(psi1)
-            if i_cn > 0 and np.max(np.abs(old_rho1 - rho1)) < eps and np.max(np.abs(old_j1 - j1)) < eps:
+            if i_cn > 0 and (np.abs(old_rho1 - rho1)).amax() < eps and (np.abs(old_j1 - j1)).amax() < eps:
                 break
             rho_half = (rho + rho1) * 0.5
             func = E_v_Evaluator.ComputeEnergyPotential(rho_half, calcType=["V"])
@@ -103,28 +104,34 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
         delta_mu = (delta_rho * delta_rho.grid.r).integral()
         j_int = j.integral()
 
-        with open(outfile + "_mu", "a") as fmu:
-            sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(delta_mu[0], delta_mu[1], delta_mu[2]), fileobj=fmu)
-            #fmu.write("{0:17.10e} {1:17.10e} {2:17.10e}\n".format(delta_mu[0], delta_mu[1], delta_mu[2]))
-        with open(outfile + "_j", "a") as fj:
-            sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(j_int[0], j_int[1], j_int[2]), fileobj=fj)
-            #fj.write("{0:17.10e} {1:17.10e} {2:17.10e}\n".format(j_int[0], j_int[1], j_int[2]))
-        with open(outfile + "_E", "a") as fE:
-            sprint("{0:17.10e}".format(E), fileobj=fE)
-            #fE.write("{0:17.10e}\n".format(E))
+        if mp.is_root:
+            with open(outfile + "_mu", "a") as fmu:
+                sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(delta_mu[0], delta_mu[1], delta_mu[2]), fileobj=fmu)
+            with open(outfile + "_j", "a") as fj:
+                sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(j_int[0], j_int[1], j_int[2]), fileobj=fj)
+            with open(outfile + "_E", "a") as fE:
+                sprint("{0:17.10e}".format(E), fileobj=fE)
 
         cost_t = time.time() - begin_t
         sprint("{:<20d}{:<30d}{:<24.4f}".format(i_t+1, i_cn, cost_t))
+        
         if info:
             break
+
         if max_runtime > 0 and cost_t > max_runtime:
             sprint('Maximum run time reached. Clean exitting.')
             if not os.path.isdir('./tmp'):
                 os.mkdir('./tmp')
-            with open('./tmp/restart_data.npy', 'wb') as f:
-                np.save(f, i_t)
-                np.save(f, psi)
+            fname = './tmp/restart_data.npy'
+            if mp.size > 1:
+                f = MPIFile(fname, mp, amode = mp.MPI.MODE_CREATE | mp.MPI.MODE_WRONLY)
+            else :
+                f = open(fname, "wb")
+            npy.write(f, i_t, single = True)
+            npy.write(f, psi, grid = psi.grid)
             break
+
+    #tracemalloc.stop()
 
 
 def CasidaRunner(config, rho0, E_v_Evaluator):
