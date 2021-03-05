@@ -55,7 +55,7 @@ class Propagator(object):
         else:
             raise TypeError("hamiltonian must be a DFTpy Hamiltonian.")
 
-        self.optional_kwargs = kwargs["optional_kwargs"]
+        self.optional_kwargs = kwargs
         self.interval = interval
 
 

@@ -32,7 +32,7 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     num_t = int(t_max / int_t)
 
     hamiltonian = Hamiltonian()
-    prop = Propagator(hamiltonian, interval=int_t, type=config["PROPAGATOR"]["type"], optional_kwargs=config["PROPAGATOR"])
+    prop = Propagator(hamiltonian, interval=int_t, **config["PROPAGATOR"])
 
 
     if restart:
