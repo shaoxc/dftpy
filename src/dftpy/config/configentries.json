@@ -308,10 +308,6 @@
       "type": "str",
       "default": "crank-nicolson"
     },
-    "int_t": {
-      "type": "float",
-      "default": 0.001
-    },
     "order": {
       "type": "int",
       "default": 20
@@ -337,6 +333,10 @@
     "outfile": {
       "type": "str",
       "default": "td_out"
+    },
+    "int_t": {
+      "type": "float",
+      "default": 0.001
     },
     "tmax": {
       "type": "float",

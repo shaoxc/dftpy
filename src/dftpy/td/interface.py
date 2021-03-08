@@ -21,7 +21,7 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     #tracemalloc.start()
 
     outfile = config["TD"]["outfile"]
-    int_t = config["PROPAGATOR"]["int_t"]
+    int_t = config["TD"]["int_t"]
     t_max = config["TD"]["tmax"]
     order = config["TD"]["order"]
     direc = config["TD"]["direc"]
@@ -32,7 +32,7 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     num_t = int(t_max / int_t)
 
     hamiltonian = Hamiltonian()
-    prop = Propagator(hamiltonian, interval=int_t, **config["PROPAGATOR"])
+    prop = Propagator(hamiltonian, **config["PROPAGATOR"])
 
 
     if restart:
@@ -85,7 +85,7 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
             if i_cn > 0:
                 old_rho1 = rho1
                 old_j1 = j1
-            psi1, info = prop(psi)
+            psi1, info = prop(psi, int_t)
             rho1 = calc_rho(psi1)
             j1 = calc_j(psi1)
             if i_cn > 0 and (np.abs(old_rho1 - rho1)).amax() < eps and (np.abs(old_j1 - j1)).amax() < eps:

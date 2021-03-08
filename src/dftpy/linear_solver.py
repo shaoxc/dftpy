@@ -34,7 +34,7 @@ def cg(A, b, x0, tol, maxiter, atol = None, mp = None):
         alpha = mp.asum(res[-1]*res[-1]) / mp.asum(p[-1]*v)
         x += alpha * p[-1]
         res.append(res[-1] - alpha * v)
-        sprint(k, mp.amax(np.abs(res[-1])))
+        #sprint(k, mp.amax(np.abs(res[-1])))
         if _get_norm(res[-1], mp) < atol:
             return x, 0
         beta = mp.asum(res[-1]*res[-1]) / mp.asum(res[-2]*res[-2])
@@ -58,7 +58,7 @@ def bicg(A, b, x0, tol, maxiter, atol = None, mp = None):
         alpha = mp.asum(np.conj(res[-1])*res[-1]) / mp.asum(np.conj(p[-1])*v)
         x += alpha * p[-1]
         res.append(res[-1] - alpha * v)
-        sprint(k, mp.amax(np.abs(res[-1])))
+        #sprint(k, mp.amax(np.abs(res[-1])))
         if _get_norm(res[-1], mp) < atol:
             return x, 0
         beta = mp.asum(np.conj(res[-1])*res[-1]) / mp.asum(np.conj(res[-2])*res[-2])
@@ -90,7 +90,7 @@ def bicgstab(A, b, x0, tol, maxiter, atol = None, mp = None):
         alpha = rho[-1] / mp.asum(r[0]*v[-1])
         h = x + alpha * p[-1]
         res = res - alpha * v[-1]
-        sprint(k, mp.amax(np.abs(res)))
+        #sprint(k, mp.amax(np.abs(res)))
         if _get_norm(res, mp) < atol:
             return h, 0
         s = r[-1] - alpha * v[-1]
@@ -98,7 +98,7 @@ def bicgstab(A, b, x0, tol, maxiter, atol = None, mp = None):
         omega = mp.asum(t*s)/mp.asum(t*t)
         x = h + omega * s
         res = res - omega * t
-        sprint(k, mp.amax(np.abs(res)))
+        #sprint(k, mp.amax(np.abs(res)))
         if _get_norm(res, mp) < atol:
             return x, 0
         r.append(s - omega * t)

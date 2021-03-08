@@ -20,16 +20,14 @@ class TestPropagator(unittest.TestCase):
 
     def setUp(self):
         self.hamiltonian = Hamiltonian()
-        self.taylor = Propagator(self.hamiltonian, interval = 1.0e-3, type='taylor',
+        self.taylor = Propagator(self.hamiltonian, type='taylor',
             order = 5)
-        self.cn = Propagator(self.hamiltonian, interval = 1.0e-3, type='crank-nicolson')
+        self.cn = Propagator(self.hamiltonian, type='crank-nicolson')
 
     def test_init(self):
         self.assertEqual(self.taylor.type, 'taylor')
-        self.assertEqual(self.taylor.interval, 1.0e-3)
         self.assertEqual(self.taylor.optional_kwargs['order'], 5)
         self.assertEqual(self.cn.type, 'crank-nicolson')
-        self.assertEqual(self.cn.interval, 1.0e-3)
 
     def test_call(self):
         dftpy_data_path = os.environ.get('DFTPY_DATA_PATH')
@@ -58,8 +56,9 @@ class TestPropagator(unittest.TestCase):
         func = E_v_Evaluator.ComputeEnergyPotential(rho0, calcType=["V"])
         self.hamiltonian.v = func.potential
         E0 = np.real(np.conj(psi) * self.hamiltonian(psi)).integral()
+        int_t = 1e-3
         for i_t in range(10):
-            psi, info = self.taylor(psi)
+            psi, info = self.taylor(psi, int_t)
             rho = calc_rho(psi)
             func = E_v_Evaluator.ComputeEnergyPotential(rho, calcType=["V"])
             self.hamiltonian.v = func.potential
@@ -76,7 +75,7 @@ class TestPropagator(unittest.TestCase):
         func = E_v_Evaluator.ComputeEnergyPotential(rho0, calcType=["V"])
         self.hamiltonian.v = func.potential
         for i_t in range(10):
-            psi, info = self.cn(psi)
+            psi, info = self.cn(psi, int_t)
             rho = calc_rho(psi)
             func = E_v_Evaluator.ComputeEnergyPotential(rho, calcType=["V"])
             self.hamiltonian.v = func.potential

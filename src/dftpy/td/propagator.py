@@ -36,7 +36,7 @@ class Propagator(object):
         "cg": {"func": linear_solver.cg, "scipy": False},
     }
 
-    def __init__(self, hamiltonian, interval=1.0e-3, type="taylor", **kwargs):
+    def __init__(self, hamiltonian, type="taylor", **kwargs):
         # init the class
 
         TypeList = [
@@ -56,22 +56,21 @@ class Propagator(object):
             raise TypeError("hamiltonian must be a DFTpy Hamiltonian.")
 
         self.optional_kwargs = kwargs
-        self.interval = interval
 
 
-    def __call__(self, psi):
+    def __call__(self, psi, interval):
 
         if self.type == "taylor":
             order = self.optional_kwargs.get("order", 1)
-            return self.Taylor(psi, self.interval, order)
+            return self.Taylor(psi, interval, order)
         elif self.type == "crank-nicolson":
             linearsolver = self.optional_kwargs.get("linearsolver", "cg")
             tol = self.optional_kwargs.get("tol", 1e-8)
             atol = self.optional_kwargs.get("atol", None)
             maxiter = self.optional_kwargs.get("maxiter", 100)
-            return self.CrankNicolson(psi, self.interval, linearsolver=linearsolver, tol=tol, maxiter=maxiter, atol=atol)
+            return self.CrankNicolson(psi, interval, linearsolver=linearsolver, tol=tol, maxiter=maxiter, atol=atol)
         elif self.type == "rk4":
-            return self.RK4(psi, self.interval)
+            return self.RK4(psi, interval)
 
 
     def Taylor(self, psi0, interval, order=1):
