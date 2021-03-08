@@ -342,9 +342,17 @@
       "type": "float",
       "default": 1
     },
-    "order": {
+    "max_pc": {
       "type": "int",
       "default": 1
+    },
+    "tol_pc": {
+      "type": "float",
+      "default": 1e-8
+    },
+    "atol_pc": {
+      "type": "float",
+      "default": 1e-10
     },
     "direc": {
       "type": "direction",

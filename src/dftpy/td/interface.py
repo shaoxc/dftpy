@@ -12,6 +12,7 @@ from dftpy.dynamic_functionals_utils import DynamicPotential
 from dftpy.formats.xsf import XSF
 from dftpy.formats import npy
 from dftpy.time_data import TimeData
+from dftpy.linear_solver import _get_atol
 import time
 #import tracemalloc
 import os
@@ -23,7 +24,9 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     outfile = config["TD"]["outfile"]
     int_t = config["TD"]["int_t"]
     t_max = config["TD"]["tmax"]
-    order = config["TD"]["order"]
+    max_pred_corr = config["TD"]["max_pc"]
+    tol = config["TD"]["tol_pc"]
+    atol = config["TD"]["atol_pc"]
     direc = config["TD"]["direc"]
     k = config["TD"]["strength"]
     dynamic = config["TD"]["dynamic_potential"]
@@ -57,7 +60,7 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     delta_rho = rho - rho0
     delta_mu = (delta_rho * delta_rho.grid.r).integral()
     j_int = j.integral()
-    eps = 1e-8
+    atol_rho = _get_atol(tol, atol, rho.norm())
 
     if not restart:
         if mp.is_root:
@@ -81,14 +84,17 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
         if dynamic:
             prop.hamiltonian.v += DynamicPotential(rho, j)
         E = np.real(np.conj(psi) * prop.hamiltonian(psi)).integral()
-        for i_cn in range(order):
-            if i_cn > 0:
+        for i_pred_corr in range(max_pred_corr):
+            if i_pred_corr > 0:
                 old_rho1 = rho1
                 old_j1 = j1
+            else:
+                atol_j = _get_atol(tol, atol, np.max(j.norm()))
             psi1, info = prop(psi, int_t)
             rho1 = calc_rho(psi1)
             j1 = calc_j(psi1)
-            if i_cn > 0 and (np.abs(old_rho1 - rho1)).amax() < eps and (np.abs(old_j1 - j1)).amax() < eps:
+            
+            if i_pred_corr > 0 and (old_rho1 - rho1).norm() < atol_rho and np.max((old_j1 - j1).norm()) < atol_j:
                 break
             rho_half = (rho + rho1) * 0.5
             func = E_v_Evaluator.ComputeEnergyPotential(rho_half, calcType=["V"])
@@ -113,7 +119,7 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
                 sprint("{0:17.10e}".format(E), fileobj=fE)
 
         cost_t = time.time() - begin_t
-        sprint("{:<20d}{:<30d}{:<24.4f}".format(i_t+1, i_cn, cost_t))
+        sprint("{:<20d}{:<30d}{:<24.4f}".format(i_t+1, i_pred_corr, cost_t))
         
         if info:
             break
