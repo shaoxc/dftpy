@@ -11,6 +11,7 @@ from dftpy.kedf.fp import *
 from dftpy.kedf.sm import *
 from dftpy.kedf.mgp import *
 from dftpy.kedf.gga import *
+from dftpy.kedf.hc import *
 from dftpy.functional_output import Functional
 from dftpy.semilocal_xc import LibXC
 
@@ -33,6 +34,7 @@ NLKEDF_Dict = {
     "LMGP": LMGP,
     "LMGPA": LMGPA,
     "LMGPG": LMGPG,
+    "HC" : HC,
 }
 
 KEDF_Stress_Dict = {

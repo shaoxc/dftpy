@@ -144,6 +144,7 @@ class FunctionalClass(AbstractFunctional):
             "LMGPA",
             "LMGPG",
             "GGA",
+            "HC"
         ]
         NLGGAList = ['NLGGA-' + item for item in KEDFNLNameList]
         KEDFNLNameList.extend(NLGGAList)
