@@ -43,7 +43,7 @@ JOB
 .. option:: task
 
     The task to be performed.
-        *Options* : Optdensity, Calculation
+        *Options* : Optdensity, Calculation, Propagate, Casida, Diagonize, Inversion
 
         *Default* : Optdensity
 
@@ -519,89 +519,173 @@ PROPAGATOR
 
 where :math:`{v_s = v_{xc} + v_H + v_{T_s} - v_{vW} + v_{dyn}}`, See `paper <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.111.175002>`_.
 
-
 .. option:: type
-    
+
     The type of propagator.
         *Options* : crank-nicolson, taylor, rk4 (experimental)
 
         *Default* : crank-nicolson
 
-.. option:: int_t
-
-    The time step in atomic units.
-        *Options* :
-
-        *Default* : 1.0e-3
-
 .. option:: order
 
     The order used for the Taylor expansion propagator.
-        *Options* :
+        *Options* : 
 
         *Default* : 20
 
 .. option:: linearsolver
 
-    The linear solver used for the Crank-Nicolson expansion propagator (from `SciPy`).
-        *Options* : bicg, bicgstab, cg, cgs, gmres, lgmres, minres, qmr
+    The linear solver used for the Crank-Nicolson propagator. The solvers with a name end with `-scipy` are from the `SciPy` package and should be used in serial calculations only. 
+        *Options* : bicg, bicgstab, cg, bicg-scipy, bicgstab-scipy, cg-scipy, cgs-scipy, gmres-scipy, lgmres-scipy, minres-scipy, qmr-scipy
 
-        *Default* : bicgstab
+        *Default* : cg
 
 .. option:: tol
 
-    The tolerance for the linear solver used for the Crank-Nicolson expansion propagator.
-        *Options* :
+    The relative tolerance for the linear solver used for the Crank-Nicolson propagator.
+        *Options* : 
 
         *Default* : 1e-10
 
 .. option:: maxiter
 
-    The max amount of iteration steps for the linear solver used for the Crank-Nicolson expansion propagator.
-        *Options* :
+    The max amount of iteration steps for the linear solver used for the Crank-Nicolson propagator.
+        *Options* : 
 
         *Default* : 100
 
+.. option:: atol
+
+    The absolute tolerance for the linear solver used for the Crank-Nicolson propagator.
+        *Options* : 
+
+        *Default* : None
+
 
 TD
---
+----------
 
     Control the TDDFT parameters that lie outside the propagator class.
 
 .. option:: outfile
 
     The prefix of the output files.
-        *Options* :
+        *Options* : 
 
         *Default* : td_out
+
+.. option:: timestep
+
+    The time step in atomic units.
+        *Options* : 
+
+        *Default* : 0.001
 
 .. option:: tmax
 
     The total amount of time in atomic units.
-        *Options* :
-
-        *Default* : 1.0
-
-.. option:: order
-
-    The max amount of order of the prediction correction steps.
-        *Options* :
+        *Options* : 
 
         *Default* : 1
+
+.. option:: max_pc
+
+    The max amount of the predictor-corrector steps.
+        *Options* : 
+
+        *Default* : 1
+
+.. option:: tol_pc
+
+    The relative tolerance for the predictor-corrector.
+        *Options* : 
+
+        *Default* : 1e-08
+
+.. option:: atol_pc
+
+    The absolute tolerance for the predictor-corrector.
+        *Options* : 
+
+        *Default* : 1e-10
 
 .. option:: direc
 
     The direction of the initial kick.
-        *Options* : x, y, z
+        *Options* : 
 
-        *Default* : x
+        *Default* : 0
 
 .. option:: strength
 
     The strength of the initial kick in atomic units.
-        *Options* :
+        *Options* : 
 
-        *Default* : 1.0e-3
+        *Default* : 0.001
+
+.. option:: dynamic_potential
+
+    Include dynamic potential. (See Eq. (15) of `paper <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.98.144302>`_.
+        *Options* : True, False
+
+        *Default* : False
+
+.. option:: max_runtime
+
+    Max amount of running time in seconds before the program saves the intermediate result and quitting.
+        *Options* : 
+
+        *Default* : 0
+
+.. option:: restart
+
+    Restart the propagation from a previously saved intermediate result.
+        *Options* : True, False
+
+        *Default* : False
+
+
+CASIDA
+----------
+
+.. option:: numeig
+
+    Number of eigenstates used in constructing casida matrix.
+        *Options* : 
+
+        *Default* : None
+
+.. option:: diagonize
+
+    If true, diagonize the Hamiltonian before construct the Casida matrix. If false, read the eigenstates from a saved file.
+        *Options* : True, False
+
+        *Default* : True
+
+.. option:: tda
+
+    Use Tamm-Dancoff approximation.
+        *Options* : True, False
+
+        *Default* : False
+
+
+INVERSION
+----------
+
+.. option:: rho_in
+
+    Input file for the density.
+        *Options* : 
+
+        *Default* : None
+
+.. option:: v_out
+
+    Output file for the potential.
+        *Options* : 
+
+        *Default* : None
 
 
 .. _pylibxc: https://tddft.org/programs/libxc/

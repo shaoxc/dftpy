@@ -12,6 +12,7 @@ def main():
             f.write('\n')
             for key in configentries[section]:
                 f.write(configentries[section][key].gen_doc(key))
+            f.write('\n')
 
 if __name__ == "__main__":
     main()

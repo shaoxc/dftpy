@@ -22,7 +22,7 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     #tracemalloc.start()
 
     outfile = config["TD"]["outfile"]
-    int_t = config["TD"]["int_t"]
+    int_t = config["TD"]["timestep"]
     t_max = config["TD"]["tmax"]
     max_pred_corr = config["TD"]["max_pc"]
     tol = config["TD"]["tol_pc"]
