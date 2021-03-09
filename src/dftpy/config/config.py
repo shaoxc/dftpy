@@ -47,10 +47,7 @@ def default_json():
     return configentries
 
 def DefaultOption():
-    import os
-    fileJSON = os.path.join(os.path.dirname(__file__), 'configentries.json')
-    configentries = readJSON(fileJSON)
-    return DefaultOptionFromEntries(configentries)
+    return DefaultOptionFromEntries(default_json())
 
 
 def ConfSpecialFormat(conf):
@@ -100,27 +97,6 @@ def PrintConf(conf, comm = None):
         pretty_dict_str = pprint.pformat(conf)
     sprint(pretty_dict_str, comm = comm)
     return pretty_dict_str
-
-
-def ReadConfbak(infile):
-    config = configparser.ConfigParser()
-    config.read(infile)
-
-    import os
-    fileJSON = os.path.join(os.path.dirname(__file__), 'configentries.json')
-    configentries = readJSON(fileJSON)
-    pp_entry = ConfigEntry(type='str')
-    conf = DefaultOptionFromEntries(configentries)
-    for section in config.sections():
-        for key in config.options(section):
-            if section != 'PP' and key not in conf[section]:
-                sprint('!WARN : "%s.%s" not in the dictionary' % (section, key))
-            elif section == 'PP':
-                conf['PP'][key.capitalize()] = pp_entry.format(config.get(section, key))
-            else:
-                conf[section][key] = configentries[section][key].format(config.get(section, key))
-    conf = ConfSpecialFormat(conf)
-    return conf
 
 
 def ReadConf(infile):
