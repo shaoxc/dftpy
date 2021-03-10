@@ -1,27 +1,33 @@
 import numpy as np
+from dftpy.mpi import mp, sprint, MPIFile
+from dftpy.field import DirectField
 from dftpy.functionals import TotalEnergyAndPotential
 from dftpy.td.propagator import Propagator
 from dftpy.td.hamiltonian import Hamiltonian
 from dftpy.td.casida import Casida
 # from dftpy.td.sternheimer import Sternheimer
-from dftpy.field import DirectField, ReciprocalField
-from dftpy.grid import DirectGrid, ReciprocalGrid
 from dftpy.system import System
 from dftpy.utils import calc_rho, calc_j
 from dftpy.dynamic_functionals_utils import DynamicPotential
 from dftpy.formats.xsf import XSF
+from dftpy.formats import npy
 from dftpy.time_data import TimeData
 from dftpy.constants import SPEED_OF_LIGHT
+from dftpy.linear_solver import _get_atol
 import time
+#import tracemalloc
 import os
 
 
 def RealTimeRunner(config, rho0, E_v_Evaluator):
+    #tracemalloc.start()
 
     outfile = config["TD"]["outfile"]
-    int_t = config["PROPAGATOR"]["int_t"]
+    int_t = config["TD"]["timestep"]
     t_max = config["TD"]["tmax"]
-    order = config["TD"]["order"]
+    max_pred_corr = config["TD"]["max_pc"]
+    tol = config["TD"]["tol_pc"]
+    atol = config["TD"]["atol_pc"]
     direc = config["TD"]["direc"]
     k = config["TD"]["strength"]
     dynamic = config["TD"]["dynamic_potential"]
@@ -30,15 +36,19 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     num_t = int(t_max / int_t)
 
     hamiltonian = Hamiltonian()
-    prop = Propagator(hamiltonian, interval=int_t, type=config["PROPAGATOR"]["type"], optional_kwargs=config["PROPAGATOR"])
+    prop = Propagator(hamiltonian, **config["PROPAGATOR"])
 
     #E_v_Evaluator.UpdateFunctional(keysToRemove=["PSEUDO"])
     #print(E_v_Evaluator.funcDict)
 
     if restart:
-        with open('./tmp/restart_data.npy', 'rb') as f:
-            i_t0 = np.load(f)+1
-            psi = np.load(f)
+        fname = './tmp/restart_data.npy'
+        if mp.size > 1 :
+            f = MPIFile(fname, mp, amode = mp.MPI.MODE_RDONLY)
+        else :
+            f = open(fname, "rb")
+        i_t0 = npy.read(f, single = True)+1
+        psi = npy.read(f, grid = rho0.grid)
         psi = DirectField(grid=rho0.grid, rank=1, griddata_3d=psi, cplx=True)
     else:
         #x = rho0.grid.r[direc]
@@ -58,22 +68,27 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     delta_rho = rho - rho0
     delta_mu = (delta_rho * delta_rho.grid.r).integral()
     j_int = j.integral()
-    eps = 1e-8
     Omega = psi.grid.Volume
+    atol_rho = _get_atol(tol, atol, rho.norm())
 
     if not restart:
-        with open(outfile + "_mu", "w") as fmu:
-            fmu.write("{0:17.10e} {1:17.10e} {2:17.10e}\n".format(delta_mu[0], delta_mu[1], delta_mu[2]))
-        with open(outfile + "_j", "w") as fj:
-            fj.write("{0:17.10e} {1:17.10e} {2:17.10e}\n".format(j_int[0], j_int[1], j_int[2]))
-        with open(outfile + "_A", "w") as fj:
-            fj.write("{0:17.10e} {1:17.10e} {2:17.10e}\n".format(A_t[0], A_t[1], A_t[2]))
-        with open(outfile + "_E", "w") as fE:
-            pass
+        if mp.is_root:
+            with open(outfile + "_mu", "w") as fmu:
+                sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(delta_mu[0], delta_mu[1], delta_mu[2]), fileobj=fmu)
+            with open(outfile + "_j", "w") as fj:
+                sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(j_int[0], j_int[1], j_int[2]), fileobj=fj)
+            with open(outfile + "_A", "w") as fA:
+                sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(A[0], A[1], A[2]), fileobj=fA)
+            with open(outfile + "_E", "w") as fE:
+                pass
 
-    print("{:20s}{:30s}{:24s}".format('Iter', 'Num. of Predictor-corrector', 'Total Cost(s)'))
+    sprint("{:20s}{:30s}{:24s}".format('Iter', 'Num. of Predictor-corrector', 'Total Cost(s)'))
     begin_t = time.time()
     for i_t in range(i_t0, num_t):
+        
+        #current_mem, peak_mem = tracemalloc.get_traced_memory()
+        #print(f"Current memory usage is {current_mem / 1.0e6}MB; Peak was {peak_mem / 1.0e6}MB")
+
         t = int_t * i_t
         func = E_v_Evaluator.ComputeEnergyPotential(rho, calcType=["V"])
         prop.hamiltonian.v = func.potential
@@ -83,19 +98,22 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
         E = np.real(np.conj(psi) * prop.hamiltonian(psi)).integral()
         E += Omega/8.0/np.pi/SPEED_OF_LIGHT**2*(np.dot((A_t-A_tm1),(A_t-A_tm1))/int_t/int_t)
 
-        for i_cn in range(order):
-            if i_cn > 0:
+        for i_pred_corr in range(max_pred_corr):
+            if i_pred_corr > 0:
                 old_rho_pred = rho_pred
                 old_j_pred = j_pred
                 old_A_t_pred = A_t_pred
-            psi_pred, info = prop(psi)
+            else:
+                atol_j = _get_atol(tol, atol, np.max(j.norm()))
+                atol_A = _get_atol(tol, atol, np.max(A_t.norm()))
+            psi_pred, info = prop(psi, int_t)
             rho_pred = calc_rho(psi_pred)
             j_pred = calc_j(psi_pred)
             #A_t_pred = np.real(2*A_t - A_tm1 + 4*np.pi*N*A_t/Omega*int_t*int_t + 4.0j*np.pi*SPEED_OF_LIGHT*N/Omega*(np.conj(psi_pred)*psi_pred.gradient(flag = "supersmooth", force_real=False)).integral())
             A_t_pred = np.real(2*A_t - A_tm1 - 4*np.pi*N*A_t/Omega*int_t*int_t - 4.0*np.pi*SPEED_OF_LIGHT*N/Omega*psi_pred.para_current(sigma=0.025)*int_t*int_t)
             #A_t_pred = np.real(2*A_t - A_tm1 + 4.0*np.pi*SPEED_OF_LIGHT*N/Omega*psi_pred.para_current(sigma=0.025)*int_t*int_t)
 
-            if i_cn > 0 and np.max(np.abs(old_rho_pred - rho_pred)) < eps and np.max(np.abs(old_j_pred - j_pred)) < eps and np.max(np.abs(old_A_t_pred - A_t_pred)) < eps:
+            if i_pred_corr > 0 and (old_rho_pred - rho_pred).norm() < atol_rho and np.max((old_j_pred - j_pred).norm()) < atol_j and np.max((old_A_t_pred - A_t_pred).norm()) < atol_A:
                 break
 
             rho_corr = (rho + rho_pred) * 0.5
@@ -110,7 +128,7 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
         psi = psi_pred
         rho = rho_pred
         j = j_pred
-        print(psi_pred.para_current(sigma=0.025)[0], j_pred.integral()[0])
+        #print(psi_pred.para_current(sigma=0.025)[0], j_pred.integral()[0])
         A_tm1 = A_t
         A_t = A_t_pred
 
@@ -118,27 +136,36 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
         delta_mu = (delta_rho * delta_rho.grid.r).integral()
         j_int = j.integral()
 
-        with open(outfile + "_mu", "a") as fmu:
-            fmu.write("{0:17.10e} {1:17.10e} {2:17.10e}\n".format(delta_mu[0], delta_mu[1], delta_mu[2]))
-        with open(outfile + "_j", "a") as fj:
-            fj.write("{0:17.10e} {1:17.10e} {2:17.10e}\n".format(j_int[0], j_int[1], j_int[2]))
-        with open(outfile + "_A", "a") as fj:
-            fj.write("{0:17.10e} {1:17.10e} {2:17.10e}\n".format(A_t[0], A_t[1], A_t[2]))
-        with open(outfile + "_E", "a") as fE:
-            fE.write("{0:17.10e}\n".format(E))
+        if mp.is_root:
+            with open(outfile + "_mu", "a") as fmu:
+                sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(delta_mu[0], delta_mu[1], delta_mu[2]), fileobj=fmu)
+            with open(outfile + "_j", "a") as fj:
+                sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(j_int[0], j_int[1], j_int[2]), fileobj=fj)
+            with open(outfile + "_A", "a") as fA:
+                sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(A[0], A[1], A[2]), fileobj=fA)
+            with open(outfile + "_E", "a") as fE:
+                sprint("{0:17.10e}".format(E), fileobj=fE)
 
         cost_t = time.time() - begin_t
-        print("{:<20d}{:<30d}{:<24.4f}".format(i_t+1, i_cn, cost_t))
+        sprint("{:<20d}{:<30d}{:<24.4f}".format(i_t+1, i_pred_corr, cost_t))
+        
         if info:
             break
+
         if max_runtime > 0 and cost_t > max_runtime:
-            print('Maximum run time reached. Clean exitting.')
+            sprint('Maximum run time reached. Clean exitting.')
             if not os.path.isdir('./tmp'):
                 os.mkdir('./tmp')
-            with open('./tmp/restart_data.npy', 'wb') as f:
-                np.save(f, i_t)
-                np.save(f, psi)
+            fname = './tmp/restart_data.npy'
+            if mp.size > 1:
+                f = MPIFile(fname, mp, amode = mp.MPI.MODE_CREATE | mp.MPI.MODE_WRONLY)
+            else :
+                f = open(fname, "wb")
+            npy.write(f, i_t, single = True)
+            npy.write(f, psi, grid = psi.grid)
             break
+
+    #tracemalloc.stop()
 
 
 def CasidaRunner(config, rho0, E_v_Evaluator):
@@ -151,18 +178,18 @@ def CasidaRunner(config, rho0, E_v_Evaluator):
     if diagonize:
         potential = E_v_Evaluator(rho0, calcType=['V']).potential
         hamiltonian = Hamiltonian(potential)
-        print('Start diagonizing Hamlitonian.')
+        sprint('Start diagonizing Hamlitonian.')
         eigs, psi_list = hamiltonian.diagonize(numeig)
-        print('Diagonizing Hamlitonian done.')
+        sprint('Diagonizing Hamlitonian done.')
     else:
         raise Exception("diagonize must be true.")
 
     E_v_Evaluator.UpdateFunctional(keysToRemove = ['HARTREE', 'PSEUDO'])
     casida = Casida(rho0, E_v_Evaluator)
 
-    print('Start buildling matrix.')
+    sprint('Start buildling matrix.')
     casida.build_matrix(numeig, eigs, psi_list, build_ab = tda)
-    print('Building matrix done.')
+    sprint('Building matrix done.')
 
     if tda:
         omega, f = casida.tda()
@@ -189,9 +216,9 @@ def DiagonizeRunner(config, struct, E_v_Evaluator):
 
     potential = E_v_Evaluator(struct.field, calcType=['V']).potential
     hamiltonian = Hamiltonian(potential)
-    print('Start diagonizing Hamlitonian.')
+    sprint('Start diagonizing Hamlitonian.')
     eigs, psi_list = hamiltonian.diagonize(numeig)
-    print('Diagonizing Hamlitonian done.')
+    sprint('Diagonizing Hamlitonian done.')
 
     np.savetxt(eigfile, eigs, fmt='%15.8e')
 

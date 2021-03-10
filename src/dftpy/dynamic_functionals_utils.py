@@ -1,6 +1,4 @@
 import numpy as np
-from .field import DirectField, ReciprocalField
-from .grid import DirectGrid, ReciprocalGrid
 
 
 def DynamicPotential(rho, j, rhotwothirds_cutoff = 1.0e-4):

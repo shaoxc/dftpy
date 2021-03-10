@@ -2,6 +2,7 @@ from json import JSONEncoder
 import re
 import numpy as np
 import ast
+from collections import OrderedDict
 
 try:
     from numexpr import evaluate
@@ -28,10 +29,31 @@ def format_str(expression):
 def format_cstr(expression):
     return expression.capitalize()
 
+def format_slice(expression):
+    if ':' in expression :
+        ls = expression.split(':')
+        l = [None,] * 3
+        for i, item in enumerate(ls):
+            if item.lstrip('-+').isdigit():
+                l[i] = int(item)
+        return slice(*l)
+    else :
+        return int(expression)
+
 def format_intlist(expression):
     if ':' in expression :
-        l = map(int,expression.split(':'))
-        return np.arange(*l)
+        items = expression.split()
+        if len(items) == 1 :
+            return format_slice(items[0])
+        ints = []
+        for item in items :
+            s = format_slice(item)
+            if ':' in item:
+                a = np.arange(0, s.stop)[s].tolist()
+                ints.extend(a)
+            else :
+                ints.append(s)
+        return ints
     else :
         return list(map(int, expression.split()))
 
@@ -57,7 +79,15 @@ def format_direction(expression):
 
 def format_cdict(expression):
     vk = ast.literal_eval(expression)
-    return {v.capitalize():k for v, k in vk.items()}
+    return OrderedDict((v.capitalize(),k) for v, k in vk.items())
+
+def format_cfdict(expression):
+    vk = ast.literal_eval(expression)
+    return OrderedDict((v.capitalize(),float(k)) for v, k in vk.items())
+
+def format_cidict(expression):
+    vk = ast.literal_eval(expression)
+    return OrderedDict((v.capitalize(),int(k)) for v, k in vk.items())
 
 class ConfigEntry(object):
 
@@ -82,9 +112,23 @@ class ConfigEntry(object):
             "cstrlist": format_cstrlist,
             "direction": format_direction,
             "cdict": format_cdict,
+            "cfdict": format_cfdict,
+            "cidict": format_cidict,
         }
         expression = re.split('#|!', string)[0]
         return format_dict[self.type](expression)
+
+    def gen_doc(self, key):
+        output = []
+        output.append(".. option:: {0:}".format(key))
+        output.append("")
+        output.append("    {0:}".format(self.comment))
+        output.append("        *Options* : {0:}".format(self.options))
+        output.append("")
+        output.append("        *Default* : {0:}".format(self.default))
+        output.append("")
+        output.append("")
+        return '\n'.join(output)
 
 
 class ConfigEntryEncoder(JSONEncoder):

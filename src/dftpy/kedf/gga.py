@@ -1,14 +1,13 @@
 # Collection of semilocal functionals
 
 import numpy as np
-from dftpy.field import DirectField, ReciprocalField
 from dftpy.functional_output import Functional
-from dftpy.math_utils import PowerInt
-from dftpy.time_data import TimeData
-from dftpy.kedf.tf import TF
+# from dftpy.math_utils import PowerInt
+# from dftpy.time_data import TimeData
+# from dftpy.kedf.tf import TF
 import scipy.special as sp
 
-__all__ = ["GGA", "GGA_KEDF_list", "GGAStress"]
+__all__ = ["GGA", "GGAFs", "GGA_KEDF_list", "GGAStress"]
 
 GGA_KEDF_list = [
     "LKT",
@@ -43,11 +42,12 @@ GGA_KEDF_list = [
     "VT84F",
     "LKT-PADE46",
     "SMP",
-    "TF", 
-    "VW", 
-    "X_TF_Y_VW", 
+    "TF",
+    "VW",
+    "X_TF_Y_VW",
     "TFVW",     # same as `X_TF_Y_VW`
-    "STV", 
+    "STV",
+    "TEST-TF-APBEK",
 ]
 
 
@@ -87,11 +87,11 @@ def GGAStress(rho, functional="LKT", energy=None, potential=None, **kwargs):
 
 
 def GGAFs(s, functional="LKT", calcType=["E","V"], params=None, gga_remove_vw = None, **kwargs):
-    """
+    r"""
     ckf = (3\pi^2)^{1/3}
     cTF = (3/10) * (3\pi^2)^{2/3} = (3/10) * ckf^2
     bb = 2^{4/3} * ckf = 2^{1/3} * tkf0
-    x = (5/27) * ss * ss 
+    x = (5/27) * ss * ss
 
     In DFTpy, default we use following definitions :
     tkf0 = 2 * ckf
@@ -110,7 +110,7 @@ def GGAFs(s, functional="LKT", calcType=["E","V"], params=None, gga_remove_vw = 
           title={Kinetic energy density study of some representative semilocal kinetic energy functionals}}
         @article{gotz2009performance,
           title={Performance of kinetic energy functionals for interaction energies in a subsystem formulation of density functional theory}}
-        @article{lacks1994tests, 
+        @article{lacks1994tests,
           title = {Tests of nonlocal kinetic energy functionals}}
         @misc{hfofke,
           url = {http://www.qtp.ufl.edu/ofdft/research/KE_refdata_27ii18/Explanatory_Post_HF_OFKE.pdf}}
@@ -431,7 +431,7 @@ def GGAFs(s, functional="LKT", calcType=["E","V"], params=None, gga_remove_vw = 
         Fb3 = Fb * Fb * Fb
         F = 1.0 + params[1] * s2 / Fb + params[2] * s4 / Fb2 + params[3] * s6 / Fb3
         if "V" in calcType:
-            dFds2 = 2.0 * params[1] / Fb2 + 4 * params[2] * s2 / (Fb3) + 4 * params[3] * s4 / (Fb3 * Fb)
+            dFds2 = 2.0 * params[1] / Fb2 + 4 * params[2] * s2 / (Fb3) + 6 * params[3] * s4 / (Fb3 * Fb)
             dFds2 /= tkf0 * tkf0
 
     elif functional == "P82":  # \cite{hfofke} (9)
@@ -655,6 +655,28 @@ def GGAFs(s, functional="LKT", calcType=["E","V"], params=None, gga_remove_vw = 
         if "V" in calcType :
             dFds2[:] = 5.0 / 3.0 * params[1] * (2.0/Fb - 2.0 * s2 * params[2]/(Fb * Fb))
             dFds2 /= tkf0 ** 2
+
+    elif functional == "TEST-TF-APBEK" :
+        params0 = [1.3, 0.23889, 1.245]
+        if not params:
+            params = params0
+        else :
+            params0[:len(params)] = params
+            params = params0
+        ss = s / tkf0
+        s2 = ss * ss
+
+        Fx, dFds2 = GGAFx(ss, s2, calcType=calcType, params=params, **kwargs)
+
+        Fa = params[1] * s2
+        Fb = 1.0 + params[1] / params[2] * s2
+        F = 1.0 + Fa / Fb * (1 - Fx)
+        if "V" in calcType:
+            dFds2_rest = 2.0 * params[1] / (Fb * Fb)
+
+            dFds2 = (1.0 - Fx) * dFds2_rest - dFds2 * Fa/Fb
+
+            dFds2 /= tkf0 ** 2
     #-----------------------------------------------------------------------
     if gga_remove_vw is not None and gga_remove_vw :
         if isinstance(gga_remove_vw, (int, float)):
@@ -669,14 +691,37 @@ def GGAFs(s, functional="LKT", calcType=["E","V"], params=None, gga_remove_vw = 
 
     return F, dFds2
 
+def _GGAFx(ss, s2, functional="LKT", calcType=["E","V"], params=None, **kwargs):
+    if not params:
+        params = [1.3]
+    mask1 = ss > 100.0
+    mask2 = ss < 1e-5
+    mask = np.invert(np.logical_or(mask1, mask2))
+
+    Fx = np.empty_like(ss)  # Interpolating function
+    Fx[mask] = 1.0 / np.cosh(params[0] * ss[mask])
+    Fx[mask1] = 0.0
+    Fx[mask2] = 1.0 -0.5 * params[0] ** 2 * s2[mask2] + 5.0 / 24.0 * params[0] ** 4 * s2[mask2] ** 2
+
+    if "V" in calcType:
+        dFds2 = np.empty_like(ss)  # Interpolating function
+        dFds2[mask] = - params[0] * np.sinh(params[0] * ss[mask]) / np.cosh(params[0] * ss[mask]) ** 2 / ss[mask]
+        dFds2[mask1] = 0.0
+        dFds2[mask2] = (- params[0] ** 2 + 5.0 / 6.0 * params[0] ** 4 * s2[mask2]
+            - 61.0 / 120.0 * params[0] ** 6 * s2[mask2] ** 2)
+    else :
+        dFds2 = None
+
+    return Fx, dFds2
+
 
 def GGA(rho, functional="LKT", calcType=["E","V"], split=False, params = None, **kwargs):
     """
-    Interface to compute GGAs internally to DFTpy. 
+    Interface to compute GGAs internally to DFTpy.
     This is the default way, even though DFTpy can generate some of the GGAs with LibXC.
-    Nota Bene: gradient and divergence is done brute force here and in a non-smooth way. 
-               while the LibXC implementation can be numerically smoothed by changing 
-               flag='standard' to flag='smooth'. The results with smooth math are 
+    Nota Bene: gradient and divergence is done brute force here and in a non-smooth way.
+               while the LibXC implementation can be numerically smoothed by changing
+               flag='standard' to flag='smooth'. The results with smooth math are
                slightly different.
     """
     sigma = kwargs.get('sigma', None)
@@ -708,9 +753,11 @@ def GGA(rho, functional="LKT", calcType=["E","V"], split=False, params = None, *
     F, dFds2 = GGAFs(s, functional=functional, calcType=calcType, params = params, **kwargs)
     OutFunctional = Functional(name="GGA-" + str(functional))
 
-    if 'E' in calcType:
-        ene = np.einsum("ijk, ijk -> ", tf, F) * rhom.grid.dV
-        OutFunctional.energy = ene
+    if 'E' in calcType or 'D' in calcType :
+        energydensity = tf * F
+        if 'D' in calcType:
+            OutFunctional.energydensity = energydensity
+        OutFunctional.energy = energydensity.sum() * rhom.grid.dV
 
     if 'V' in calcType:
         pot = 5.0 / 3.0 * cTF * rho23 * F

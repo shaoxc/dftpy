@@ -2,7 +2,7 @@
 # functional class (output handler) in output
 
 # local imports
-from dftpy.field import DirectField
+# from dftpy.mpi import sprint
 from dftpy.functional_output import Functional
 from dftpy.semilocal_xc import PBE, LDA, LibXC
 from dftpy.hartree import HartreeFunctional
@@ -13,7 +13,6 @@ from dftpy.external_potential import ExternalPotential
 
 # general python imports
 from abc import ABC, abstractmethod
-import numpy as np
 
 
 class AbstractFunctional(ABC):
@@ -63,22 +62,22 @@ class AbstractFunctional(ABC):
 class FunctionalClass(AbstractFunctional):
     """
     Object handling evaluation of a DFT functional
-    
+
     Attributes
     ----------
     name: string
         The name of the functional
 
     type: string
-        The functional type (XC, KEDF, HARTREE, PSEUDO) 
+        The functional type (XC, KEDF, HARTREE, PSEUDO)
 
     is_nonlocal: logical
-        Is the functional a nonlocal functional? 
-        
+        Is the functional a nonlocal functional?
+
     optional_kwargs: dict
         set of kwargs for the different functional types/names
 
- 
+
     Example
     -------
      XC = FunctionalClass(type='XC',name='LDA')
@@ -91,8 +90,8 @@ class FunctionalClass(AbstractFunctional):
         """
         Functional class is callable
 
-        Attributes 
-        ----------  
+        Attributes
+        ----------
           rho: DirectField
              The input density
 
@@ -113,7 +112,7 @@ class FunctionalClass(AbstractFunctional):
     def __init__(self, type=None, name=None, PSEUDO = None, is_nonlocal=None, optional_kwargs=None, **kwargs):
         # init the class
 
-        # This is compatible for PSEUDO FunctionalClass 
+        # This is compatible for PSEUDO FunctionalClass
 
         if optional_kwargs is None:
             self.optional_kwargs = {}
@@ -187,12 +186,7 @@ class FunctionalClass(AbstractFunctional):
     def ComputeEnergyPotential(self, rho, calcType=["E","V"], **kwargs):
         self.optional_kwargs.update(kwargs)
         if self.type == "KEDF":
-            if self.name != "LIBXC_KEDF":
-                return self.KEDF(rho, calcType=calcType, **self.optional_kwargs)
-                # return KEDFunctional(rho, self.name, calcType=calcType, **self.optional_kwargs)
-            else:
-                k_str = self.optional_kwargs.get("k_str", "gga_k_lc94")
-                return LibXC(density=rho, k_str=k_str, calcType=calcType)
+            return self.KEDF(rho, calcType=calcType, **self.optional_kwargs)
         elif self.type == "XC":
             if self.name == "LDA":
                 return LDA(rho, calcType=calcType)
@@ -223,7 +217,7 @@ class FunctionalClass(AbstractFunctional):
 
 class TotalEnergyAndPotential(AbstractFunctional):
     """
-     Object handling energy evaluation for the 
+     Object handling energy evaluation for the
      purposes of optimizing the electron density
 
      Attributes
@@ -278,7 +272,7 @@ class TotalEnergyAndPotential(AbstractFunctional):
 
         self.UpdateNameType()
 
-    def __call__(self, rho, calcType=["E","V"],  **kwargs):
+    def __call__(self, rho, calcType=["E","V"], **kwargs):
         return self.ComputeEnergyPotential(rho, calcType, **kwargs)
 
     def UpdateNameType(self):
@@ -315,20 +309,22 @@ class TotalEnergyAndPotential(AbstractFunctional):
         for key, evalfunctional in self.funcDict.items():
             if Obj is None :
                 Obj = evalfunctional(rho, calcType)
-                # print('key', key, Obj.energy)
             else :
                 Obj += evalfunctional(rho, calcType)
-                # sss = evalfunctional(rho, calcType)
-                # print('key', key, sss.energy)
+            # sss = evalfunctional(rho, ["E","V"])
+            # sss.energy = rho.mp.vsum(sss.energy)
+            # sprint('key', key, sss.energy)
+        # sprint('-' * 80)
         if Obj is None :
             Obj = Functional(name = 'NONE')
+        if 'E' in calcType :
+            Obj.energy = rho.mp.vsum(Obj.energy)
         return Obj
 
     def Energy(self, rho, ions, usePME=False, calcType=["E"]):
         from .ewald import ewald
 
         ewald_ = ewald(rho=rho, ions=ions, PME=usePME)
-        print('Ewald :', ewald_.energy)
         total_e = self.ComputeEnergyPotential(rho, calcType=["E"])
-        return ewald_.energy + total_e.energy
-
+        ewald_energy = rho.mp.vsum(ewald_.energy)
+        return ewald_energy + total_e.energy

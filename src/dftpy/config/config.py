@@ -1,6 +1,7 @@
 import numpy as np
 import copy
 import configparser
+from dftpy.mpi import sprint
 from dftpy.constants import ENERGY_CONV, LEN_CONV
 from dftpy.config.config_entry import ConfigEntry
 
@@ -46,10 +47,7 @@ def default_json():
     return configentries
 
 def DefaultOption():
-    import os
-    fileJSON = os.path.join(os.path.dirname(__file__), 'configentries.json')
-    configentries = readJSON(fileJSON)
-    return DefaultOptionFromEntries(configentries)
+    return DefaultOptionFromEntries(default_json())
 
 
 def ConfSpecialFormat(conf):
@@ -87,39 +85,18 @@ def ConfSpecialFormat(conf):
     return conf
 
 
-def PrintConf(conf):
+def PrintConf(conf, comm = None):
     if not isinstance(conf, dict):
         raise TypeError("conf must be dict")
     try:
         import json
-        print(json.dumps(conf, indent=4, sort_keys=True))
+        pretty_dict_str = json.dumps(conf, indent=4, sort_keys=True)
     except Exception:
         import pprint
-
-        pprint.pprint(conf)
+        # pprint.pprint(conf)
         pretty_dict_str = pprint.pformat(conf)
-        return pretty_dict_str
-
-
-def ReadConfbak(infile):
-    config = configparser.ConfigParser()
-    config.read(infile)
-
-    import os
-    fileJSON = os.path.join(os.path.dirname(__file__), 'configentries.json')
-    configentries = readJSON(fileJSON)
-    pp_entry = ConfigEntry(type='str')
-    conf = DefaultOptionFromEntries(configentries)
-    for section in config.sections():
-        for key in config.options(section):
-            if section != 'PP' and key not in conf[section]:
-                print('!WARN : "%s.%s" not in the dictionary' % (section, key))
-            elif section == 'PP':
-                conf['PP'][key.capitalize()] = pp_entry.format(config.get(section, key))
-            else:
-                conf[section][key] = configentries[section][key].format(config.get(section, key))
-    conf = ConfSpecialFormat(conf)
-    return conf
+    sprint(pretty_dict_str, comm = comm)
+    return pretty_dict_str
 
 
 def ReadConf(infile):
@@ -130,7 +107,7 @@ def ReadConf(infile):
     for section in config.sections():
         for key in config.options(section):
             if section != 'PP' and key not in conf[section]:
-                print('!WARN : "%s.%s" not in the dictionary' % (section, key))
+                sprint('!WARN : "%s.%s" not in the dictionary' % (section, key))
             elif section == 'PP':
                 conf['PP'][key.capitalize()] = config.get(section, key)
             else:

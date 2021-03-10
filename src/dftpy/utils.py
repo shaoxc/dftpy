@@ -1,5 +1,5 @@
-import warnings
 import numpy as np
+import gc
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.grid import ReciprocalGrid
 
@@ -75,6 +75,9 @@ def grid_map_index(nr, nr2, full = False):
     return index, lfine
 
 def grid_map_data(data, nr = None, direct = True, index = None, grid = None):
+    """
+    Only support for serial.
+    """
     if hasattr(data, 'fft'):
         value = data.fft()
     else :
@@ -99,7 +102,7 @@ def grid_map_data(data, nr = None, direct = True, index = None, grid = None):
     if lfine :
         value2[index[0], index[1], index[2]] = value[:bd[0], :bd[1], :bd[2]].ravel()
     else :
-        value2[:bd[0], :bd[1], :bd[2]] = value[index[0], index[1], index[2]].reshape(nr2_g)
+        value2[:bd[0], :bd[1], :bd[2]] = value[index[0], index[1], index[2]].reshape(bd)
 
     if direct :
         results = value2.ifft(force_real=True)
@@ -115,6 +118,9 @@ def grid_map_data(data, nr = None, direct = True, index = None, grid = None):
 
 
 def coarse_to_fine(data, nr_fine, direct = True, index = None):
+    """
+    Only support for serial.
+    """
     if hasattr(data, 'fft'):
         value = data.fft()
     else :
@@ -134,6 +140,9 @@ def coarse_to_fine(data, nr_fine, direct = True, index = None):
     return results
 
 def fine_to_coarse(data, nr_coarse, direct = True, index = None):
+    """
+    Only support for serial.
+    """
     if hasattr(data, 'fft'):
         value = data.fft()
     else :
@@ -151,3 +160,8 @@ def fine_to_coarse(data, nr_coarse, direct = True, index = None):
     else :
         results = value_g
     return results
+
+def clean_variables(*args):
+    for item in args :
+        del item
+    gc.collect()

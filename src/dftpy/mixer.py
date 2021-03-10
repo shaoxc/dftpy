@@ -4,7 +4,6 @@ from scipy import ndimage
 from scipy.optimize import minpack2
 from scipy import optimize as sopt
 import time
-from dftpy.constants import FFTLIB
 
 from abc import ABC, abstractmethod
 import warnings

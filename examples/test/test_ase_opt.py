@@ -28,7 +28,7 @@ class Test(unittest.TestCase):
         path = os.environ.get('DFTPY_DATA_PATH')
         atoms = read(path+'/'+'fcc.vasp')
         calc = DFTpyCalculator(config = conf)
-        atoms.set_calculator(calc)
+        atoms.calc = calc
         af = StrainFilter(atoms)
         opt = SciPyFminCG(af)
         opt.run(fmax = 0.001)

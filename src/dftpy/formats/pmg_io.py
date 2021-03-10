@@ -14,6 +14,7 @@ def pmg_read(infile, index=None, format=None, **kwargs):
     struct = pmg.Structure.from_file(infile)
     lattice = struct.lattice.matrix
     lattice = np.asarray(lattice).T / BOHR2ANG
+    lattice = np.ascontiguousarray(lattice)
     labels = [item.symbol for item in struct.species]
     cell = DirectCell(lattice)
     pos = struct.cart_coords / BOHR2ANG

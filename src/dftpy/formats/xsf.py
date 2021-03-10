@@ -34,7 +34,7 @@ def read_xsf(infile, kind="All", full=False, pbc=True, units='Angstrom', **kwarg
                 l = list(map(float, fr.readline().split()))
                 lattice.append(l)
             lattice = np.asarray(lattice) / LEN_CONV["Bohr"][xsf_units[0]]
-            lattice = lattice.T  # cell = [a, b, c]
+            lattice = np.ascontiguousarray(lattice.T)  # cell = [a, b, c]
             line = readline()
 
         label = []
@@ -93,7 +93,7 @@ def read_xsf(infile, kind="All", full=False, pbc=True, units='Angstrom', **kwarg
             elif npbc == 2:
                 vlat[2] = np.cross(vlat[0], vlat[1])
                 vlat[2] = vlat[2] / np.sqrt(np.dot(vlat[2], vlat[2]))
-            data_lat = vlat.T  # cell = [a, b, c]
+            data_lat = np.ascontiguousarray(vlat.T)  # cell = [a, b, c]
             data_lat /= LEN_CONV["Bohr"][xsf_units[0]]
             # for speed, we assume in the data block no blank line
             for line in fr:
@@ -127,6 +127,9 @@ def read_xsf(infile, kind="All", full=False, pbc=True, units='Angstrom', **kwarg
         plot = DirectField(grid=grid, griddata_3d=data, rank=1)
         # plot = DirectField(grid=grid, griddata_F=data, rank=1)
         return System(atoms, grid, name="xsf", field=plot)
+
+def write_xsf(filexsf, system, field = None, **kwargs):
+    return XSF(filexsf).write(system, field, **kwargs)
 
 
 class XSF(object):
@@ -163,7 +166,7 @@ class XSF(object):
             self._write_coord(fileout, ions)
             self._write_datagrid(fileout, field)
 
-        return 0
+        return
 
     def read(self, kind="All", full=False, **kwargs):
         return read_xsf(self.filexsf, kind=kind, full=full, **kwargs)

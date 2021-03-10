@@ -1,11 +1,11 @@
 import numpy as np
-import scipy.special as sp
 from scipy import ndimage, interpolate
 from scipy.optimize import minpack2
 from scipy import optimize as sopt
-from dftpy.constants import FFTLIB
+import dftpy.mpi.mp_serial as mps
+from dftpy.constants import environ
 
-if FFTLIB == "pyfftw":
+if environ["FFTLIB"] == "pyfftw":
     """
     pyfftw.config.NUM_THREADS  =  multiprocessing.cpu_count()
     print('threads', pyfftw.config.NUM_THREADS)
@@ -121,13 +121,13 @@ def LineSearchDcsrchVector(func, alpha0=None, func0=None, c1=1e-4, c2=0.9, amax=
         resA.append(g1)
         direction = get_direction_CG(resA, dirA=dirA, method="CG-PR")
         dirA.append(direction)
-        grad = np.sum(g1 * direction)
+        grad = (g1 * direction).asum()
         if grad > 0.0 :
             direction = -g1
-            grad = np.sum(g1 * direction)
+            grad = (g1 * direction).asum()
 
         task = b"START"
-        factor = np.max(np.abs(direction))
+        factor = (np.abs(direction).amax())
         beta = min(0.1, 0.1 * np.pi/factor)
         # stop
         for j in range(maxiter):
@@ -138,14 +138,14 @@ def LineSearchDcsrchVector(func, alpha0=None, func0=None, c1=1e-4, c2=0.9, amax=
                 func1 = func(alpha1)
                 x1 = func1[0]
                 g1 = func1[1]
-                grad = np.sum(g1 * direction)
+                grad = (g1 * direction).asum()
             else:
                 break
         else:
             alpha1 = None
         if task[:5] == b"ERROR" or task[:4] == b"WARN":
             alpha1 = None  # failed
-        if alpha1 is None or np.sum(g1 * g1) < econv :
+        if alpha1 is None or (g1 * g1).asum() < econv :
             break
     return alpha1, x1, g1, task, it, func1
 
@@ -177,7 +177,7 @@ class pyfftwFFTW(FFTWObj):
 
 def PYfft(grid, cplx=False, threads=1):
     global FFT_SAVE
-    if FFTLIB == "pyfftw":
+    if environ["FFTLIB"] == "pyfftw":
         nr = grid.nr
         if np.all(nr == FFT_SAVE["FFT_Grid"][cplx]):
             fft_object = FFT_SAVE["FFT_OBJ"][cplx]
@@ -199,7 +199,7 @@ def PYfft(grid, cplx=False, threads=1):
 
 def PYifft(grid, cplx=False, threads=1):
     global FFT_SAVE
-    if FFTLIB == "pyfftw":
+    if environ["FFTLIB"] == "pyfftw":
         nr = grid.nrR
         if np.all(nr == FFT_SAVE["IFFT_Grid"][cplx]):
             fft_object = FFT_SAVE["IFFT_OBJ"][cplx]
@@ -237,71 +237,18 @@ def PowerInt(x, numerator, denominator=1):
     return y
 
 
-def bestFFTsize(N, max_prime = 13, scale = 0.99, even = True, prime_factors = None, **kwargs):
-    """
-    http ://www.fftw.org/fftw3_doc/Complex-DFTs.html#Complex-DFTs
-    "FFTW is best at handling sizes of the form 2^a 3^b 5^c 7^d 11^e 13^f,  where e+f is either 0 or 1,  and the other exponents are arbitrary."
-    """
-    prime_factors_multi = [2, 3, 5, 7]
-    prime_factors_one = [11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97]
-
-    if prime_factors is None :
-        prime_factors = prime_factors_multi
+def bestFFTsize(n, nproc = 1, opt = True, **kwargs):
+    if opt :
+        n_l = n/nproc
     else :
-        for item in prime_factors :
-            if item not in prime_factors_multi :
-                prime_factors_one.insert(0, item)
+        n_l = n
+    n_l = mps.best_fft_size(n_l, **kwargs)
 
-    a = int(np.ceil(np.log2(N))) + 1
-    b = int(np.ceil(np.log(N) / np.log(3))) + 1
-    c = int(np.ceil(np.log(N) / np.log(5))) + 1
-    d = int(np.ceil(np.log(N) / np.log(7))) + 1
-
-    if 3 not in prime_factors :
-        b = 1
-    if 5 not in prime_factors :
-        c = 1
-    if 7 not in prime_factors :
-        d = 1
-
-    if even:
-        istart = 1
-    else:
-        istart = 0
-
-    if max_prime == 2 :
-        mgrid = np.arange(istart, a).reshape(1, -1)
-        arr0 = 2 ** mgrid[0]
-    elif max_prime == 3 :
-        mgrid = np.mgrid[istart:a, :b].reshape(2, -1)
-        arr0 = 2 ** mgrid[0] * 3 ** mgrid[1]
-    elif max_prime == 5 :
-        mgrid = np.mgrid[istart:a, :b, :c].reshape(3, -1)
-        arr0 = 2 ** mgrid[0] * 3 ** mgrid[1] * 5 ** mgrid[2]
-    elif max_prime > 5 :
-        mgrid = np.mgrid[istart:a, :b, :c, :d].reshape(4, -1)
-        arr0 = 2 ** mgrid[0] * 3 ** mgrid[1] * 5 ** mgrid[2] * 7 ** mgrid[3]
-
-    if N < 100:
-        arr1 = arr0[np.logical_and(arr0 > N / (max_prime + 1), arr0 < 2 * N)]
-    else:
-        arr1 = arr0[np.logical_and(arr0 > N / (max_prime + 1), arr0 < 1.2 * N)]
-
-    arrAll = []
-    arrAll.extend(arr1)
-    for item in prime_factors_one :
-        if max_prime < item :
-            continue
-        else :
-            arrAll.extend(arr1 * item)
-
-    arrAll = np.asarray(arrAll)
-    if scale is None :
-        bestN = np.min(arrAll[arrAll > N-1])
+    if opt :
+        n_best = n_l * nproc
     else :
-        bestN = np.min(arrAll[arrAll > np.ceil(scale * N) - 1])
-    return bestN
-
+        n_best = n_l
+    return n_best
 
 def interpolation_3d(arr, nr_new, interp="map"):
     nr = np.array(arr.shape)
@@ -409,6 +356,7 @@ def ecut2nr(ecut, lattice, optfft = True, spacing = None, **kwargs):
     for i in range(3):
         # nr[i] = np.ceil(np.sqrt(metric[i, i])/spacings[i])
         nr[i] = int(np.sqrt(metric[i, i])/spacings[i])
+        nr[i] += nr[i] %2
         if optffts[i] :
             nr[i] = bestFFTsize(nr[i], **kwargs)
     return nr
@@ -435,10 +383,7 @@ class LBFGS(object):
             self.rho.pop(0)
         self.s.append(dx)
         self.y.append(dg)
-        try :
-            rho = 1.0 / np.einsum("..., ...->", dg, dx, optimize = 'optimal')
-        except Exception :
-            rho = 1.0 / np.sum(dg * dx)
+        rho = 1.0 / (dg * dx).asum()
 
         self.rho.append(rho)
 
@@ -452,23 +397,20 @@ def get_direction_CG(resA, dirA=None, method="CG-HS", **kwargs):
     if len(resA) == 1:
         beta = 0.0
     elif method == "CG-HS" and len(dirA) > 0:  # Maybe the best of the CG.
-        beta = np.sum(resA[-1] * (resA[-1] - resA[-2])) / np.sum(
-            dirA[-1] * (resA[-1] - resA[-2])
-        )
-        # print('beta', beta)
+        beta = (resA[-1] * (resA[-1] - resA[-2])).asum() / (dirA[-1] * (resA[-1] - resA[-2])).asum()
     elif method == "CG-FR":
-        beta = np.sum(resA[-1] ** 2) / np.sum(resA[-2] ** 2)
+        beta = (resA[-1] ** 2).asum() / (resA[-2] ** 2).asum()
     elif method == "CG-PR":
-        beta = np.sum(resA[-1] * (resA[-1] - resA[-2])) / np.sum(resA[-2] ** 2)
+        beta = (resA[-1] * (resA[-1] - resA[-2])).asum() / (resA[-2] ** 2).asum()
         beta = max(beta, 0.0)
     elif method == "CG-DY" and len(dirA) > 0:
-        beta = np.sum(resA[-1] ** 2) / np.sum(dirA[-1] * (resA[-1] - resA[-2]))
+        beta = (resA[-1] ** 2).asum() / (dirA[-1] * (resA[-1] - resA[-2])).asum()
     elif method == "CG-CD" and len(dirA) > 0:
-        beta = -np.sum(resA[-1] ** 2) / np.sum(dirA[-1] * resA[-2])
+        beta = -(resA[-1] ** 2).asum() / (dirA[-1] * resA[-2]).asum()
     elif method == "CG-LS" and len(dirA) > 0:
-        beta = np.sum(resA[-1] * (resA[-1] - resA[-2])) / np.sum(dirA[-1] * resA[-2])
+        beta = (resA[-1] * (resA[-1] - resA[-2])).asum() / (dirA[-1] * resA[-2]).asum()
     else:
-        beta = np.sum(resA[-1] ** 2) / np.sum(resA[-2] ** 2)
+        beta = (resA[-1] ** 2).asum() / (resA[-2] ** 2).asum()
 
     if dirA is None or len(dirA) == 0:
         direction = -resA[-1]
@@ -488,7 +430,7 @@ def get_direction_LBFGS(resA, lbfgs=None, **kwargs):
     q = -resA[-1]
     alphaList = np.zeros(len(lbfgs.s))
     for i in range(len(lbfgs.s) - 1, 0, -1):
-        alpha = lbfgs.rho[i] * np.sum(lbfgs.s[i] * q)
+        alpha = lbfgs.rho[i] * (lbfgs.s[i] * q).asum()
         alphaList[i] = alpha
         q -= alpha * lbfgs.y[i]
 
@@ -496,13 +438,13 @@ def get_direction_LBFGS(resA, lbfgs=None, **kwargs):
         if len(lbfgs.s) < 1:
             gamma = 1.0
         else:
-            gamma = np.sum(lbfgs.s[-1] * lbfgs.y[-1]) / np.sum(lbfgs.y[-1] * lbfgs.y[-1])
+            gamma = (lbfgs.s[-1] * lbfgs.y[-1]).asum() / (lbfgs.y[-1] * lbfgs.y[-1]).asum()
         direction = gamma * q
     else:
         direction = lbfgs.H0 * q
 
     for i in range(len(lbfgs.s)):
-        beta = lbfgs.rho[i] * np.sum(lbfgs.y[i] * direction)
+        beta = lbfgs.rho[i] * (lbfgs.y[i] * direction).asum()
         direction += lbfgs.s[i] * (alphaList[i] - beta)
 
     return direction
@@ -518,4 +460,3 @@ def quartic_interpolation(f, dx):
     else :
         raise AttributeError("Error : Not implemented yet")
     return results
-

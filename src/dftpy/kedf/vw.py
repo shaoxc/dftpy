@@ -3,7 +3,6 @@
 import numpy as np
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.functional_output import Functional
-from dftpy.math_utils import PowerInt
 from dftpy.time_data import TimeData
 from dftpy.kedf.tf import TF
 
@@ -110,14 +109,17 @@ def vonWeizsackerStress(rho, y=1.0, energy=None, **kwargs):
 def vW(rho, y=1.0, sigma=None, calcType=["E","V"], split=False, **kwargs):
     TimeData.Begin("vW")
     pot = vonWeizsackerPotential(rho, sigma, **kwargs)
+    OutFunctional = Functional(name="vW")
     if "E" in calcType:
         ene = vonWeizsackerEnergy(rho, pot, **kwargs)
-    else:
-        ene = 0.0
+        OutFunctional.energy = ene * y
 
-    OutFunctional = Functional(name="vW")
-    OutFunctional.potential = pot * y
-    OutFunctional.energy = ene * y
+    if "V" in calcType:
+        OutFunctional.potential = pot * y
+
+    if 'D' in calcType:
+        OutFunctional.energydensity = pot * y
+
     TimeData.End("vW")
     if split:
         return {"vW": OutFunctional}
@@ -128,11 +130,17 @@ def vW(rho, y=1.0, sigma=None, calcType=["E","V"], split=False, **kwargs):
 def x_TF_y_vW(rho, x=1.0, y=1.0, sigma=None, calcType=["E","V"], split=False, **kwargs):
     xTF = TF(rho, x=x, calcType=calcType)
     yvW = vW(rho, y=y, sigma=sigma, calcType=calcType, **kwargs)
-    pot = xTF.potential + yvW.potential
-    ene = xTF.energy + yvW.energy
     OutFunctional = Functional(name=str(x) + "_TF_" + str(y) + "_vW")
-    OutFunctional.potential = pot
-    OutFunctional.energy = ene
+
+    if 'E' in calcType :
+        OutFunctional.energy = xTF.energy + yvW.energy
+
+    if 'V' in calcType :
+        OutFunctional.potential = xTF.potential + yvW.potential
+
+    if 'D' in calcType :
+        OutFunctional.energydensity = xTF.energydensity + yvW.energydensity
+
     if split:
         return {"TF": xTF, "vW": yvW}
     else:

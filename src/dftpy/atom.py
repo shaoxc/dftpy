@@ -19,27 +19,60 @@ class Atom(object):
         else:
             self.Zval = Zval
         # self.pos = Coord(pos, cell, basis='Cartesian')
-        self.pos = Coord(pos, cell, basis=basis).to_cart()
+        self._pos = Coord(pos, cell, basis=basis).to_cart()
         self.nat = len(pos)
         self.Z = Z
+        self._ncharge = None
 
         # check label
+        self.labels = []
         if label is not None:
-            self.labels = label
-            for i in range(len(self.labels)):
-                if self.labels[i].isdigit():
-                    self.labels[i] = z2lab[int(self.labels[i])]
+            self.labels = []
+            for i, item in enumerate(label):
+                if str(item).isdigit():
+                    self.labels.append(z2lab[int(item)])
+                else :
+                    self.labels.append(item)
             if self.Z is None:
                 self.Z = []
                 for item in self.labels:
                     self.Z.append(z2lab.index(item))
         else :
-            self.labels = []
             for item in self.Z:
                 self.labels.append(z2lab[item])
 
         self.labels = np.asarray(self.labels)
         self.Z = np.asarray(self.Z)
+        self.nsymbols, self.typ = np.unique(self.labels, return_counts=True)
+
+    @property
+    def pos(self):
+        return self._pos
+
+    @pos.setter
+    def pos(self, value):
+        self._pos = value
+        self.nat = len(self._pos)
+        if self._ncharge is not None :
+            self._ncharge = self.get_ncharge()
+
+    @property
+    def symbols(self):
+        return self.labels
+
+    @property
+    def ncharge(self):
+        if self._ncharge is None :
+            self._ncharge = self.get_ncharge()
+        return self._ncharge
+
+    def get_ncharge(self):
+        if self.Zval is None:
+            raise Exception("Must set 'Zval' first")
+        ncharge = 0
+        for item, n in zip(*np.unique(self.labels, return_counts=True)):
+            ncharge += self.Zval[item] * n
+        return ncharge
 
     def set_Zval(self, labels=None):
         if self.Zval is None:
@@ -57,10 +90,12 @@ class Atom(object):
         return a
 
     def __getitem__(self, i):
+        if i is None : i = slice(None)
         atoms = self.__class__(Z=self.Z[i].copy(), Zval=self.Zval, label=self.labels[i].copy(), pos=self.pos[i].copy(), cell = self.pos.cell, basis = self.pos.basis)
         return atoms
 
     def __delitem__(self, i):
+        if i is None : i = slice(None)
         mask = np.ones_like(self.labels, dtype = bool)
         mask[i] = False
         self.labels = self.labels[mask]
@@ -68,8 +103,8 @@ class Atom(object):
         self.Z = self.Z[mask]
         self.nat = len(self.pos)
 
-    def __str__(self): 
-        return '\n'.join(['%20s : %s' % item for item in self.__dict__.items()]) 
+    def __str__(self):
+        return '\n'.join(['%20s : %s' % item for item in self.__dict__.items()])
 
     def repeat(self, reps=1):
         reps = np.ones(3, dtype='int')*reps

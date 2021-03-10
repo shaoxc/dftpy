@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.special as sp
 from scipy.interpolate import interp1d, splrep, splev
+from dftpy.mpi import sprint
 from dftpy.functional_output import Functional
 from dftpy.field import DirectField
 from dftpy.kedf.tf import TF
@@ -44,8 +45,8 @@ def guess_kf_bound(kf, kfmin = None, kfmax = None, kftol = 1E-3, ke_kernel_saved
     if kfmin is not None and kfmax is not None :
         return [kfmin, kfmax]
 
-    kf_l = np.min(kf)
-    kf_r = np.max(kf)
+    kf_l = kf.amin()
+    kf_r = kf.amax()
 
     if kfmin_prev is None :
         kfmin_prev = 10
@@ -89,11 +90,11 @@ def LWTPotentialEnergy(
     beta=5.0 / 6.0,
     interp="linear",
     calcType=["E","V"],
-    kfmin = None, 
-    kfmax = None, 
-    ldw = None, 
+    kfmin = None,
+    kfmax = None,
+    ldw = None,
     ke_kernel_saved = None,
-    **kwargs 
+    **kwargs
 ):
     """
     ldw : local density weight
@@ -102,19 +103,33 @@ def LWTPotentialEnergy(
     KE_kernel_saved = ke_kernel_saved
     savetol = 1e-16
     q = rho.grid.get_reciprocal().q
-    rho0 = np.mean(rho)
+    rho0 = rho.amean()
     kf0 = 2.0 * np.cbrt(3.0 * np.pi ** 2 * rho0)
     kf = 2.0 * np.cbrt(3.0 * np.pi ** 2 * rho)
+    kf =DirectField(grid=rho.grid, memo=rho.memo, rank=rho.rank, griddata_3d=kf, cplx=rho.cplx)
     # gamma = 1.0
-    # rhomod = (0.5 * (rho **gamma + rho0 ** gamma)) ** (1.0/gamma) 
+    # rhomod = (0.5 * (rho **gamma + rho0 ** gamma)) ** (1.0/gamma)
     # kf = 2.0 * (3.0 * np.pi ** 2 * rhomod) ** (1.0 / 3.0)
 
     ### HEG
-    if abs(np.max(kf) - np.min(kf)) < 1e-8:
-        return np.zeros_like(rho), 0.0
+    if abs(kf.amax() - kf.amin()) < 1e-8:
+        NL = Functional(name="NL", energy = 0.0)
+        if 'D' in calcType:
+            energydensity = DirectField(grid=rho.grid, memo=rho.memo, rank=rho.rank, cplx=rho.cplx)
+            NL.energydensity = energydensity
+        if 'V' in calcType :
+            pot = DirectField(grid=rho.grid, memo=rho.memo, rank=rho.rank, cplx=rho.cplx)
+            NL.potential = pot
+        return NL
 
     kfmin, kfmax = guess_kf_bound(kf, kfmin, kfmax, ke_kernel_saved = ke_kernel_saved)
     kfBound = [kfmin, kfmax]
+
+    if 'V' in calcType :
+        vcalc = True
+    else :
+        vcalc = False
+        kdd = 1
 
     # ----------------Test WT------------------------------------------------
     # kfBound = [kf0, kf0]
@@ -127,24 +142,16 @@ def LWTPotentialEnergy(
     mask2 = kf > kfBound[1]
     kf[mask2] = kfBound[1]
     if kfmin is None :
-        kfMin = max(np.min(kf), kfBound[0])
+        kfMin = max(kf.amin(), kfBound[0])
     else :
         kfMin = kfmin
 
     if kfmax is None :
-        kfMax = np.max(kf)
+        kfMax = kf.amax()
     else :
         kfMax = kfmax
 
-    if nsp is None:
-        nsp = int(np.ceil(np.log(kfMax / kfMin) / np.log(ratio))) + 1
-        kflists = kfMin * ratio ** np.arange(nsp)
-        # kflists = np.geomspace(kfMin, kfMax, nsp)
-    elif delta is not None:
-        # delta = 0.10
-        nsp = int(np.ceil((kfMax - kfMin) / delta)) + 1
-        kflists = np.linspace(kfMin, kfMax, nsp)
-    else:
+    if nsp is not None:
         # kflists = kfMin + (kfMax - kfMin)/(nsp - 1) * np.arange(nsp)
         if kfMax - kfMin < 1e-3:
             kflists = [kfMin, kfMax]
@@ -152,9 +159,16 @@ def LWTPotentialEnergy(
         else:
             kflists = kfMin + (kfMax - kfMin) / (nsp - 1) * np.arange(nsp)
         kflists = np.asarray(kflists)
+    elif delta is not None: # delta = 0.10
+        nsp = int(np.ceil((kfMax - kfMin) / delta)) + 1
+        kflists = np.linspace(kfMin, kfMax, nsp)
+    else:
+        nsp = int(np.ceil(np.log(kfMax / kfMin) / np.log(ratio))) + 1
+        kflists = kfMin * ratio ** np.arange(nsp)
+        # kflists = np.geomspace(kfMin, kfMax, nsp)
     kflists[0] -= savetol  # for numerical safe
     kflists[-1] += savetol  # for numerical safe
-    print('nsp', nsp, kfMax, kfMin, kf0, np.max(kflists), np.min(kflists))
+    sprint('nsp', nsp, kfMax, kfMin, kf0, np.max(kflists), np.min(kflists), comm = rho.mp.comm, level=1)
     # -----------------------------------------------------------------------
     kernel0 = np.empty_like(q)
     kernel1 = np.empty_like(q)
@@ -162,7 +176,6 @@ def LWTPotentialEnergy(
     kernelDeriv1 = np.empty_like(q)
     Rmask = np.empty_like(rho)
     pot1 = np.zeros_like(rho)
-    # pot2G = np.zeros_like(q, dtype = 'complex128')
     pot2G = None
     pot3 = np.zeros_like(rho)
     # pot4 = np.zeros_like(rho)
@@ -181,10 +194,10 @@ def LWTPotentialEnergy(
         rhoBeta = rho ** beta
         rhoBeta1 = rhoBeta / rho
     rhoBetaG = rhoBeta.fft()
-    if abs(alpha - beta) < 1e-8:
-        rhoAlphaG = rhoBetaG
-    else:
-        rhoAlphaG = rhoAlpha.fft()
+    # if abs(alpha - beta) < 1e-8:
+        # rhoAlphaG = rhoBetaG
+    # else:
+        # rhoAlphaG = rhoAlpha.fft()
 
     rho[mask2] = rho_saved
     #-----------------------------------------------------------------------
@@ -196,8 +209,6 @@ def LWTPotentialEnergy(
         mcalc = True
     else:
         mcalc = False
-    # print('interp', interp, mcalc)
-    # print('interp', interp, np.sum(rhoBeta), alpha, beta)
     # -----------------------------------------------------------------------
     for i in range(nsp - 1):
         if i == 0:
@@ -290,36 +301,44 @@ def LWTPotentialEnergy(
         mgpe = (MGPKernelE * rhoBetaG).ifft(force_real=True)
         pot1 += mgpe
 
-    if pot2G is not None:
-        pot2 = pot2G.ifft(force_real=True)
-        if MGPKernelE is not None:
-            pot2 += mgpe
-    else:
-        pot2 = pot1.copy()
+    if vcalc :
+        if pot2G is not None:
+            pot2 = pot2G.ifft(force_real=True)
+            if MGPKernelE is not None:
+                pot2 += mgpe
+        else:
+            pot2 = pot1.copy()
     #-----------------------------------------------------------------------
     if ldw is None :
         ldw = 1.0/6.0
-    rhov = np.max(rho)
     factor = np.ones_like(rho)
+    rhov = rho.amax()
     mask = rho < 1E-6
     ld = max(0.1, ldw)
     factor[mask] = np.abs(rho[mask])** ld /(rhov ** ld)
     factor[rho < 0] = 0.0
     pot1 *= factor
-    pot2 *= factor
-    pot3 *= factor
     #-----------------------------------------------------------------------
-    ene = np.einsum("ijk, ijk ->", rhoAlpha, pot1) * rho.grid.dV
+    NL = Functional(name="NL")
+    # if 'E' in calcType or 'D' in calcType :
+    energydensity = rhoAlpha * pot1
+    NL.energy = energydensity.sum() * rho.grid.dV
+    if 'D' in calcType:
+        NL.energydensity = energydensity
     #-----------------------------------------------------------------------
+    if vcalc :
+        pot2 *= factor
+        pot3 *= factor
 
-    pot1 *= alpha * rhoAlpha1
-    pot2 *= beta * rhoBeta1
-    pot3 *= (kf / 3.0) * rhoAlpha1
-    pot1 += pot2 + pot3
-    pot = pot1
-    print('lwt', ene)
+        pot1 *= alpha * rhoAlpha1
+        pot2 *= beta * rhoBeta1
+        pot3 *= (kf / 3.0) * rhoAlpha1
+        pot1 += pot2 + pot3
+        pot = pot1
+        sprint('lwt', NL.energy, pot.amin(), pot.amax(), comm = rho.mp.comm, level=1)
+        NL.potential = pot
 
-    return pot, ene
+    return NL
 
 
 def LWTLineIntegral(
@@ -334,10 +353,10 @@ def LWTLineIntegral(
     nt = 500,
     interp="linear",
     calcType=["E","V"],
-    kfmin = None, 
-    kfmax = None, 
+    kfmin = None,
+    kfmax = None,
     ke_kernel_saved = None,
-    **kwargs 
+    **kwargs
 ):
 
     KE_kernel_saved = ke_kernel_saved
@@ -371,26 +390,32 @@ def LWTLineIntegral(
 
     ### HEG
     if abs(kfMax - kfMin) < 1e-8:
-        return np.zeros_like(rho), 0.0
+        NL = Functional(name="NL", energy = 0.0)
+        if 'D' in calcType:
+            energydensity = DirectField(grid=rho.grid, memo=rho.memo, rank=rho.rank, cplx=rho.cplx)
+            NL.energydensity = energydensity
+        if 'V' in calcType :
+            pot = DirectField(grid=rho.grid, memo=rho.memo, rank=rho.rank, cplx=rho.cplx)
+            NL.potential = pot
+        return NL
 
-    if nsp is None:
-        nsp = int(np.ceil(np.log(kfMax / kfMin) / np.log(ratio))) + 1
-        # kflists = kfMin * ratio ** np.arange(nsp)
-        kflists = np.geomspace(kfMin, kfMax, nsp)
-    elif delta is not None:
-        # delta = 0.10
-        nsp = int(np.ceil((kfMax - kfMin) / delta)) + 1
-        kflists = np.linspace(kfMin, kfMax, nsp)
-    else:
+    if nsp is not None:
         # kflists = kfMin + (kfMax - kfMin)/(nsp - 1) * np.arange(nsp)
         if kfMax - kfMin < 1e-3:
             kflists = [kfMin, kfMax]
+            nsp = 2
         else:
             kflists = kfMin + (kfMax - kfMin) / (nsp - 1) * np.arange(nsp)
         kflists = np.asarray(kflists)
+    elif delta is not None: # delta = 0.10
+        nsp = int(np.ceil((kfMax - kfMin) / delta)) + 1
+        kflists = np.linspace(kfMin, kfMax, nsp)
+    else:
+        nsp = int(np.ceil(np.log(kfMax / kfMin) / np.log(ratio))) + 1
+        kflists = kfMin * ratio ** np.arange(nsp)
+        # kflists = np.geomspace(kfMin, kfMax, nsp)
     kflists[0] -= 1e-16  # for numerical safe
     kflists[-1] += 1e-16  # for numerical safe
-    # print('nsp', nsp, kfMax, kfMin, kf0, np.max(kflists))
     # -----------------------------------------------------------------------
     kernel0 = np.empty_like(q)
     kernel1 = np.empty_like(q)
@@ -436,7 +461,7 @@ def LWTLineIntegral(
         for kf, trhoi in zip(kfLI, trhoAlpha1):
             mask = np.logical_and(
                 kf > kflists[i], kf < kflists[i + 1] + 1e-18
-            )  
+            )
             Dkf = kflists[i + 1] - kflists[i]
             t = (kf - kflists[i]) / Dkf
             if interp == "newton" or interp == "linear":
@@ -464,12 +489,13 @@ def LWTLineIntegral(
     # -----------------------------------------------------------------------
     ene = np.einsum("ijk, ijk ->", rho, pot1) * rho.grid.dV * dt * alpha
     # ene2 = np.einsum("ijk, ijk ->", rho, pot) * rho.grid.dV
-    # print('ene', ene, ene2)
+    # sprint('ene', ene, ene2, level=1)
     # -----------------------------------------------------------------------
     pot *= alpha
     # pot *= alpha * rhoAlpha1
+    NL = Functional(name="NL", potential=pot, energy=ene)
 
-    return pot, ene
+    return NL
 
 
 def LWT(
@@ -500,27 +526,27 @@ def LWT(
     TimeData.Begin("LWT")
     # Only performed once for each grid
     q = rho.grid.get_reciprocal().q
-    rho0 = np.mean(rho)
+    rho0 = rho.amean()
     if ke_kernel_saved is None :
         KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
     else :
         KE_kernel_saved = ke_kernel_saved
     # if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
-    if np.shape(rho) != KE_kernel_saved["shape"]:
-        print('Re-calculate %s KernelTable ' %kerneltype, np.shape(rho))
+    if tuple(rho.grid.nrR) != KE_kernel_saved["shape"]:
+        sprint('Re-calculate %s KernelTable ' %kerneltype, rho.grid.nrR, comm=rho.mp.comm, level=1)
         eta = np.linspace(0, etamax, neta)
         if kerneltype == "WT":
             KernelTable = WTKernelTable(eta, x, y, alpha, beta)
         elif kerneltype == "MGP":
-            KernelTable = MGPKernelTable(eta, q, maxpoints=maxpoints, symmetrization=symmetrization)
+            KernelTable = MGPKernelTable(eta, maxpoints=maxpoints, symmetrization=symmetrization, mp = rho.grid.mp)
         elif kerneltype == "MGPA":
-            KernelTable = MGPKernelTable(eta, q, maxpoints=maxpoints, symmetrization="Arithmetic")
+            KernelTable = MGPKernelTable(eta, maxpoints=maxpoints, symmetrization="Arithmetic", mp = rho.grid.mp)
         elif kerneltype == "MGPG":
-            KernelTable = MGPKernelTable(eta, q, maxpoints=maxpoints, symmetrization="Geometric")
+            KernelTable = MGPKernelTable(eta, maxpoints=maxpoints, symmetrization="Geometric", mp = rho.grid.mp)
         # Add MGP kinetic electron
         if lumpfactor is not None:
-            # print('Calculate MGP kinetic electron(%f)' %lumpfactor)
-            Ne = rho0 * np.size(rho) * rho.grid.dV
+            # sprint('Calculate MGP kinetic electron({})'.format(lumpfactor), rho.mp.comm, level=1)
+            Ne = rho0 * rho.grid.Volume
             MGPKernelE = MGPOmegaE(q, Ne, lumpfactor)
             KE_kernel_saved["MGPKernelE"] = MGPKernelE
         # Different method to interpolate the kernel
@@ -534,11 +560,10 @@ def LWT(
             KE_kernel_saved["KernelTable"] = KernelTable
             KE_kernel_saved["KernelDeriv"] = KernelDerivTable
         KE_kernel_saved["etamax"] = etamax
-        KE_kernel_saved["shape"] = np.shape(rho)
+        KE_kernel_saved["shape"] = tuple(rho.grid.nrR)
         KE_kernel_saved["rho0"] = rho0
-    pot, ene = LWTPotentialEnergy(rho, alpha=alpha, beta=beta, etamax=etamax, ratio=ratio, nsp=nsp, kdd=kdd, delta=delta, interp=interp, calcType=calcType, ke_kernel_saved = KE_kernel_saved, **kwargs)
-    # pot, ene = LWTLineIntegral(rho, alpha=alpha, beta=beta, etamax=etamax, ratio=ratio, nsp=nsp, kdd=kdd, delta=delta, interp=interp, calcType=calcType, ke_kernel_saved = KE_kernel_saved, **kwargs)
-    NL = Functional(name="NL", potential=pot, energy=ene)
+    NL = LWTPotentialEnergy(rho, alpha=alpha, beta=beta, etamax=etamax, ratio=ratio, nsp=nsp, kdd=kdd, delta=delta, interp=interp, calcType=calcType, ke_kernel_saved = KE_kernel_saved, **kwargs)
+    # NL = LWTLineIntegral(rho, alpha=alpha, beta=beta, etamax=etamax, ratio=ratio, nsp=nsp, kdd=kdd, delta=delta, interp=interp, calcType=calcType, ke_kernel_saved = KE_kernel_saved, **kwargs)
     TimeData.End("LWT")
     return NL
 

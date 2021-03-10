@@ -1,8 +1,10 @@
 import os
 import numpy as np
-from scipy.interpolate import interp1d, splrep, splev
+from scipy.interpolate import splrep, splev
 import scipy.special as sp
-from dftpy.base import Coord
+import importlib.util
+
+from dftpy.mpi import sprint
 from dftpy.field import ReciprocalField, DirectField
 from dftpy.functional_output import Functional
 from dftpy.constants import LEN_CONV, ENERGY_CONV
@@ -10,9 +12,12 @@ from dftpy.ewald import CBspline
 from dftpy.time_data import TimeData
 from dftpy.atom import Atom
 from abc import ABC, abstractmethod
-from dftpy.grid import DirectGrid, ReciprocalGrid
-import warnings
+from dftpy.grid import DirectGrid
 from dftpy.math_utils import quartic_interpolation
+from dftpy.pseudo.upf import UPF, UPFJSON
+from dftpy.pseudo.usp import USP
+from dftpy.pseudo.psp import PSP
+from dftpy.pseudo.recpot import RECPOT
 
 
 # NEVER TOUCH THIS CLASS
@@ -76,13 +81,17 @@ class LocalPseudo(AbstractLocalPseudo):
         else:
             raise AttributeError("Must specify PP_list for Pseudopotentials")
         # Read PP first, then initialize other variables.
-        readPP = ReadPseudo(PP_list)
+        if grid is None :
+            comm = None
+        else :
+            comm = grid.mp.comm
+        readPP = ReadPseudo(PP_list, comm=comm, **kwargs)
         self.readpp = readPP
 
         self.restart(grid, ions, full=True)
 
-        if not PME :
-            warnings.warn("Using N^2 method for strf!")
+        # if not PME :
+            # sprint("Using N^2 method for strf!")
 
         self.usePME = PME
 
@@ -94,7 +103,7 @@ class LocalPseudo(AbstractLocalPseudo):
     def restart(self, grid=None, ions=None, full=False):
         """
         Clean all private data and resets the ions and grid.
-        This will prompt the computation of a new pseudo 
+        This will prompt the computation of a new pseudo
         without recomputing the local pp on the atoms.
         """
         if full:
@@ -127,7 +136,7 @@ class LocalPseudo(AbstractLocalPseudo):
     @property
     def ions(self):
         if self._ions is not None:
-            return self._ions 
+            return self._ions
         else:
             raise AttributeError("Must specify ions for Pseudopotentials")
 
@@ -136,13 +145,13 @@ class LocalPseudo(AbstractLocalPseudo):
         if not isinstance(value, (Atom)):
             raise TypeError("Ions must be an array of Atom classes")
         for key in set(value.labels[:]):
-            if key not in self.PP_list.keys():
+            if key not in self.PP_list :
                 raise ValueError("There is no pseudopotential for {:4s} atom".format(key))
         self._ions = value
         # update Zval in ions
         self.readpp.get_Zval(self._ions)
 
-    def __call__(self, density=None, calcType=["E", "V"]):
+    def __call__(self, density=None, calcType=["E", "V"], **kwargs):
         if self._vreal is None:
             self.local_PP()
         pot = self._vreal
@@ -180,9 +189,10 @@ class LocalPseudo(AbstractLocalPseudo):
         if not isinstance(rho, (DirectField)):
             raise TypeError("rho must be DirectField")
         if self.usePME:
-            return self._StressPME(rho, energy)
+            s = self._StressPME(rho, energy)
         else:
-            return self._Stress(rho, energy)
+            s = self._Stress(rho, energy)
+        return s
 
     def force(self, rho):
         if rho is None:
@@ -190,9 +200,10 @@ class LocalPseudo(AbstractLocalPseudo):
         if not isinstance(rho, (DirectField)):
             raise TypeError("rho must be DirectField")
         if self.usePME:
-            return self._ForcePME(rho)
+            f = self._ForcePME(rho)
         else:
-            return self._Force(rho)
+            f = self._Force(rho)
+        return f
 
     @property
     def vreal(self):
@@ -222,9 +233,8 @@ class LocalPseudo(AbstractLocalPseudo):
         if not self._vlines:
             reciprocal_grid = self.grid.get_reciprocal()
             q = reciprocal_grid.q
-            gg = reciprocal_grid.gg
             vloc = np.empty_like(q)
-            for key in self._vloc_interp.keys():
+            for key in sorted(self._vloc_interp) :
                 vloc_interp = self._vloc_interp[key]
                 vloc[:] = 0.0
                 mask = q < self._gp[key][-1]
@@ -248,7 +258,7 @@ class LocalPseudo(AbstractLocalPseudo):
         reciprocal_grid = self.grid.get_reciprocal()
         q = reciprocal_grid.q
         v = np.zeros_like(q, dtype=np.complex128)
-        for key in self._vloc_interp.keys():
+        for key in sorted(self._vloc_interp):
             for i in range(len(self.ions.pos)):
                 if self.ions.labels[i] == key:
                     strf = self.ions.strf(reciprocal_grid, i)
@@ -264,14 +274,14 @@ class LocalPseudo(AbstractLocalPseudo):
         q = reciprocal_grid.q
         v = np.zeros_like(q, dtype=np.complex128)
         QA = np.empty(self.grid.nr)
-        for key in self._vloc_interp.keys():
+        for key in sorted(self._vloc_interp):
             QA[:] = 0.0
             for i in range(len(self.ions.pos)):
                 if self.ions.labels[i] == key:
                     QA = self.Bspline.get_PME_Qarray(i, QA)
             Qarray = DirectField(grid=self.grid, griddata_3d=QA, rank=1)
             v = v + self.vlines[key] * Qarray.fft()
-        v = v * self.Bspline.Barray * self.grid.nnr / self.grid.volume
+        v = v * self.Bspline.Barray * self.grid.nnrR / self.grid.volume
         self._v = v
         TimeData.End("Vion_PME")
         return "PP successfully interpolated"
@@ -290,7 +300,7 @@ class LocalPseudo(AbstractLocalPseudo):
         v = np.zeros_like(q, dtype=np.complex128)
         vloc_deriv = np.empty_like(q, dtype=np.complex128)
         if labels is None:
-            labels = self._gp.keys()
+            labels = sorted(self._gp)
         for key in labels:
             vloc_interp = self._vloc_interp[key]
             vloc_deriv[:] = 0.0
@@ -310,14 +320,12 @@ class LocalPseudo(AbstractLocalPseudo):
             energy = self(density=rho, calcType=["E"]).energy
         reciprocal_grid = self.grid.get_reciprocal()
         g = reciprocal_grid.g
-        # gg= reciprocal_grid.gg
         mask = reciprocal_grid.mask
-        q = reciprocal_grid.q
-        q[0, 0, 0] = 1.0
+        invq = reciprocal_grid.invq
         rhoG = rho.fft()
         stress = np.zeros((3, 3))
         v_deriv = self._PP_Derivative()
-        rhoGV_q = rhoG * v_deriv / q
+        rhoGV_q = rhoG * v_deriv * invq
         for i in range(3):
             for j in range(i, 3):
                 # den = (g[i]*g[j])[np.newaxis] * rhoGV_q
@@ -327,7 +335,6 @@ class LocalPseudo(AbstractLocalPseudo):
                 if i == j:
                     stress[i, j] -= energy
         stress /= self.grid.volume
-        q[0, 0, 0] = 0.0
         return stress
 
     def _Force(self, density):
@@ -359,38 +366,38 @@ class LocalPseudo(AbstractLocalPseudo):
         Barray = Bspline.Barray
         Barray = np.conjugate(Barray)
         denG = rhoG * Barray
-        nr = self.grid.nr
+        nrR = self.grid.nrR
         # cell_inv = np.linalg.inv(self.ions.pos[0].cell.lattice)
         cell_inv = reciprocal_grid.lattice.T / 2 / np.pi
         Forces = np.zeros((self.ions.nat, 3))
         ixyzA = np.mgrid[: self.BsplineOrder, : self.BsplineOrder, : self.BsplineOrder].reshape((3, -1))
         Q_derivativeA = np.zeros((3, self.BsplineOrder * self.BsplineOrder * self.BsplineOrder))
-        for key in self.ions.Zval.keys():
+        for key in sorted(self.ions.Zval):
             denGV = denG * self.vlines[key]
             denGV[0, 0, 0] = 0.0 + 0.0j
             rhoPB = denGV.ifft(force_real=True)
             for i in range(self.ions.nat):
                 if self.ions.labels[i] == key:
-                    Up = np.array(self.ions.pos[i].to_crys()) * nr
+                    Up = np.array(self.ions.pos[i].to_crys()) * nrR
+                    if self.Bspline.check_out_cell(Up):
+                        continue
                     Mn = []
                     Mn_2 = []
                     for j in range(3):
                         Mn.append(Bspline.calc_Mn(Up[j] - np.floor(Up[j])))
                         Mn_2.append(Bspline.calc_Mn(Up[j] - np.floor(Up[j]), order=self.BsplineOrder - 1))
-                    Q_derivativeA[0] = nr[0] * np.einsum(
+                    Q_derivativeA[0] = nrR[0] * np.einsum(
                         "i, j, k -> ijk", Mn_2[0][1:] - Mn_2[0][:-1], Mn[1][1:], Mn[2][1:]
                     ).reshape(-1)
-                    Q_derivativeA[1] = nr[1] * np.einsum(
+                    Q_derivativeA[1] = nrR[1] * np.einsum(
                         "i, j, k -> ijk", Mn[0][1:], Mn_2[1][1:] - Mn_2[1][:-1], Mn[2][1:]
                     ).reshape(-1)
-                    Q_derivativeA[2] = nr[2] * np.einsum(
+                    Q_derivativeA[2] = nrR[2] * np.einsum(
                         "i, j, k -> ijk", Mn[0][1:], Mn[1][1:], Mn_2[2][1:] - Mn_2[2][:-1]
                     ).reshape(-1)
-                    l123A = np.mod(1 + np.floor(Up).astype(np.int32).reshape((3, 1)) - ixyzA, nr.reshape((3, 1)))
-                    Forces[i] = -np.sum(
-                        np.matmul(Q_derivativeA.T, cell_inv) * rhoPB[l123A[0], l123A[1], l123A[2]][:, np.newaxis],
-                        axis=0,
-                    )
+                    l123A = np.mod(1 + np.floor(Up).astype(np.int32).reshape((3, 1)) - ixyzA, nrR.reshape((3, 1)))
+                    mask = self.Bspline.get_Qarray_mask(l123A)
+                    Forces[i] = -np.sum(np.matmul(Q_derivativeA.T, cell_inv)[mask] * rhoPB[l123A[0][mask], l123A[1][mask], l123A[2][mask]][:, np.newaxis], axis=0)
         return Forces
 
     def _StressPME(self, density, energy=None):
@@ -404,8 +411,7 @@ class LocalPseudo(AbstractLocalPseudo):
         rhoG = rho.fft()
         reciprocal_grid = self.grid.get_reciprocal()
         g = reciprocal_grid.g
-        q = reciprocal_grid.q
-        q[0, 0, 0] = 1.0
+        invq = reciprocal_grid.invq
         mask = reciprocal_grid.mask
         Bspline = self.Bspline
         Barray = Bspline.Barray
@@ -413,7 +419,7 @@ class LocalPseudo(AbstractLocalPseudo):
         nr = self.grid.nr
         stress = np.zeros((3, 3))
         QA = np.empty(nr)
-        for key in self.ions.Zval.keys():
+        for key in sorted(self.ions.Zval):
             rhoGBV = rhoGB * self._PP_Derivative_One(key=key)
             QA[:] = 0.0
             for i in range(self.ions.nat):
@@ -423,15 +429,14 @@ class LocalPseudo(AbstractLocalPseudo):
             rhoGBV = rhoGBV * Qarray.fft()
             for i in range(3):
                 for j in range(i, 3):
-                    den = (g[i][mask] * g[j][mask]) * rhoGBV[mask] / q[mask]
+                    den = (g[i][mask] * g[j][mask]) * rhoGBV[mask] * invq[mask]
                     stress[i, j] -= (np.einsum("i->", den)).real / self.grid.volume ** 2
-        stress *= 2.0 * self.grid.nnr
+        stress *= 2.0 * self.grid.nnrR
         for i in range(3):
             for j in range(i, 3):
                 stress[j, i] = stress[i, j]
             stress[i, i] -= energy
         stress /= self.grid.volume
-        q[0, 0, 0] = 0.0
         return stress
 
 
@@ -440,52 +445,69 @@ class ReadPseudo(object):
     Support class for LocalPseudo.
     """
 
-    def __init__(self, PP_list=None, MaxPoints = 15000, Gmax = 30, Rmax = 10):
+    def __init__(self, PP_list=None, MaxPoints = 10000, Gmax = 30, Gmin = 1E-4, Rmax = 10, comm = None):
         self._gp = {}  # 1D PP grid g-space
         self._vp = {}  # PP on 1D PP grid
-        self._vloc_interp = {}  # Interpolates recpot PP
+        self._r = {}  # 1D PP grid r-space
+        self._v = {}  # PP on 1D PP grid r-space
         self._info = {}
+        self._vloc_interp = {}  # Interpolates recpot PP
+        self._core_density = {}  # the radial core charge density for the non-linear core correction
 
         self.PP_list = PP_list
-        self.PP_type = {}
+        self.comm = comm
 
         for key in self.PP_list:
-            print("setting key: " + key)
+            sprint("setting key: {} -> {}".format(key, self.PP_list[key]), comm = comm)
             if not os.path.isfile(self.PP_list[key]):
-                raise Exception("PP file for atom type " + str(key) + " not found")
+                raise FileNotFoundError("'{}' PP file for atom type {} not found".format(self.PP_list[key], key))
             if PP_list[key].lower().endswith("recpot"):
-                self.PP_type[key] = "recpot"
                 self._init_PP_recpot(key)
-            elif PP_list[key].lower().endswith("usp"):
-                self.PP_type[key] = "usp"
+            elif PP_list[key].lower().endswith(("usp", "uspcc", "uspso")):
                 self._init_PP_usp(key)
-            elif PP_list[key].lower().endswith("uspcc"):
-                self.PP_type[key] = "usp"
-                self._init_PP_usp(key)
-            elif PP_list[key].lower().endswith("uspso"):
-                self.PP_type[key] = "uspso"
-                self._init_PP_usp(key, 'uspso')
             elif PP_list[key].lower().endswith("upf"):
-                self.PP_type[key] = "upf"
-                self._init_PP_upf(key, MaxPoints, Gmax)
+                self._init_PP_upf(key, MaxPoints = MaxPoints, Gmax = Gmax, Gmin = Gmin)
             elif PP_list[key].lower().endswith(("psp", "psp8")):
-                self.PP_type[key] = "psp"
-                self._init_PP_psp(key, MaxPoints, Gmax)
+                self._init_PP_psp(key, MaxPoints = MaxPoints, Gmax = Gmax, Gmin = Gmin)
             else:
-                raise Exception("Pseudopotential not supported")
+                raise AttributeError("Pseudopotential not supported")
+
+            self.get_vloc_interp(key)
+
+    def get_vloc_interp(self, key, k = 3):
+        """get the representation of PP
+
+        Args:
+            key: Atomic symbol
+            k: The degree of the spline fit of splrep, should keep use 3.
+        """
+        vloc_interp = splrep(self._gp[key][1:], self._vp[key][1:], k=k)
+        self._vloc_interp[key] = vloc_interp
 
     @staticmethod
-    def _real2recip(r, v, zval, MaxPoints=15000, Gmax=30):
-        gp = np.linspace(start=0, stop=Gmax, num=MaxPoints)
+    def _real2recip(r, v, zval, MaxPoints=10000, Gmax=30, Gmin=1E-4, method='simpson'):
+        gp = np.logspace(np.log10(Gmin), np.log10(Gmax), num = MaxPoints)
         vp = np.empty_like(gp)
-        dr = np.empty_like(r)
-        dr[1:] = r[1:]-r[:-1]
-        dr[0] = r[0]
-        vr = (v * r + zval) * r * dr
-        for k in range(1, len(gp)):
-            vp[k] = (4.0 * np.pi) * np.sum(sp.spherical_jn(0, gp[k] * r) * vr)
+        if method == 'simpson' :
+            try:
+                #new version of scipy=1.6.0 change the name to simpson
+                from scipy.integrate import simpson
+            except Exception :
+                from scipy.integrate import simps as simpson
+            vr = (v * r + zval) * r
+            for k in range(1, len(gp)):
+                y = sp.spherical_jn(0, gp[k] * r) * vr
+                vp[k] = (4.0 * np.pi) * simpson(y, r)
+            vp[0] = (4.0 * np.pi) * simpson(vr, r)
+        else :
+            dr = np.empty_like(r)
+            dr[1:] = r[1:]-r[:-1]
+            dr[0] = r[0]
+            vr = (v * r + zval) * r * dr
+            for k in range(1, len(gp)):
+                vp[k] = (4.0 * np.pi) * np.sum(sp.spherical_jn(0, gp[k] * r) * vr)
+            vp[0] = (4.0 * np.pi) * np.sum(vr)
         vp[1:] -= 4.0 * np.pi * zval / (gp[1:] ** 2)
-        vp[0] = (4.0 * np.pi) * np.sum(vr)
         return gp, vp
 
     @staticmethod
@@ -513,244 +535,89 @@ class ReadPseudo(object):
         return rhop
 
     def get_Zval(self, ions):
-        for key in self._gp.keys():
-            if self.PP_type[key] == "upf":
-                ions.Zval[key] = self._info[key]["pseudo_potential"]["header"]["z_valence"]
-            elif self.PP_type[key] == "psp":
-                ions.Zval[key] = self._info[key]["Zval"]
-            elif self.PP_type[key] in ["recpot", "usp", "uspso"] :
-                gp = self._gp[key]
-                vp = self._vp[key]
-                val = (vp[0] - vp[1]) * (gp[1] ** 2) / (4.0 * np.pi)
-                # val = (vp[0] - vp[1]) * (gp[-1] / (gp.size - 1)) ** 2 / (4.0 * np.pi)
-                ions.Zval[key] = round(val)
+        for key in self._gp :
+                ions.Zval[key] = self._info[key].zval
         self.zval = ions.Zval.copy()
-
-    def _init_PP_recpot(self, key):
-        """
-        This is a private method used only in this specific class. 
-        """
-
-        def set_PP(Single_PP_file):
-            """Reads CASTEP-like recpot PP file
-            Returns tuple (g, v)"""
-            # HARTREE2EV = 27.2113845
-            # BOHR2ANG   = 0.529177211
-            HARTREE2EV = ENERGY_CONV["Hartree"]["eV"]
-            BOHR2ANG = LEN_CONV["Bohr"]["Angstrom"]
-            with open(Single_PP_file, "r") as outfil:
-                lines = outfil.readlines()
-
-            ibegin = 0
-            for i in range(0, len(lines)):
-                line = lines[i]
-                if "END COMMENT" in line:
-                    ibegin = i + 3
-                elif ibegin > 1 and (line.strip() == "1000" or len(line.strip()) == 1) :
-                    iend = i
-                    break
-
-            line = " ".join([line.strip() for line in lines[ibegin:iend]])
-
-            if "1000" in lines[iend] or len(lines[iend].strip()) == 1 :
-                print("Recpot pseudopotential " + Single_PP_file + " loaded")
-            else:
-                return Exception
-            gmax = np.float(lines[ibegin - 1].strip()) * BOHR2ANG
-            v = np.array(line.split()).astype(np.float) / HARTREE2EV / BOHR2ANG ** 3
-            g = np.linspace(0, gmax, num=len(v))
-            # self._recip2real(g, v)
-            return g, v
-
-        gp, vp = set_PP(self.PP_list[key])
-        self._gp[key] = gp
-        self._vp[key] = vp
-        vloc_interp = splrep(gp, vp)
-        self._vloc_interp[key] = vloc_interp
-
-    def _init_PP_usp(self, key, ext = 'usp'):
-        """
-        !!! NOT FULL TEST !!! 
-        This is a private method used only in this specific class. 
-        """
-
-        def set_PP(Single_PP_file):
-            """Reads CASTEP-like usp PP file
-            Returns tuple (g, v)"""
-            HARTREE2EV = ENERGY_CONV["Hartree"]["eV"]
-            BOHR2ANG = LEN_CONV["Bohr"]["Angstrom"]
-            with open(Single_PP_file, "r") as outfil:
-                lines = outfil.readlines()
-
-            ibegin = 0
-            for i in range(0, len(lines)):
-                line = lines[i]
-                if ext == 'usp' :
-                    if "END COMMENT" in line:
-                        ibegin = i + 4
-                    elif ibegin > 1 and (line.strip() == "1000" or len(line.strip()) == 1) and i - ibegin > 4:
-                        iend = i
-                        break
-                elif ext == 'uspso' :
-                    if "END COMMENT" in line:
-                        ibegin = i + 5
-                    elif ibegin > 1 and (line.strip() == "1000" or len(line.strip()) == 5) and i - ibegin > 4:
-                        iend = i
-                        break
-
-            line = " ".join([line.strip() for line in lines[ibegin:iend]])
-            info = {}
-
-            Zval = np.float(lines[ibegin - 2].strip())
-            info['Zval'] = Zval
-
-            if "1000" in lines[iend] or len(lines[iend].strip()) == 1 or len(lines[iend].strip()) == 5 :
-                print("Recpot pseudopotential " + Single_PP_file + " loaded")
-            else:
-                raise AttributeError("Error : Check the PP file")
-            gmax = np.float(lines[ibegin - 1].split()[0]) * BOHR2ANG
-                
-            # v = np.array(line.split()).astype(np.float) / (HARTREE2EV*BOHR2ANG ** 3 * 4.0 * np.pi)
-            v = np.array(line.split()).astype(np.float) / (HARTREE2EV*BOHR2ANG ** 3)
-            g = np.linspace(0, gmax, num=len(v))
-            v[1:] -= Zval * 4.0 * np.pi / g[1:] ** 2
-            #-----------------------------------------------------------------------
-            nlcc = int(lines[ibegin - 1].split()[1])
-            if nlcc == 2 and ext == 'usp' :
-                #num_projectors
-                for i in range(iend, len(lines)):
-                    l = lines[i].split()
-                    if len(l) == 2 and all([item.isdigit() for item in l]):
-                        ibegin = i + 1
-                        ngrid = int(l[1])
-                        break
-                core_grid = []
-                for i in range(ibegin, len(lines)):
-                    l = list(map(float, lines[i].split()))
-                    core_grid.extend(l)
-                    if len(core_grid) >= ngrid :
-                        core_grid = core_grid[:ngrid]
-                        break
-                info['core_grid'] = np.asarray(core_grid) * BOHR2ANG
-                line = " ".join([line.strip() for line in lines[ibegin:]])
-                data = np.array(line.split()).astype(np.float)
-                info['core_value'] = data[-ngrid:]
-            #-----------------------------------------------------------------------
-            return g, v, info
-
-        gp, vp, self._info[key] = set_PP(self.PP_list[key])
-        self._gp[key] = gp
-        self._vp[key] = vp
-        vloc_interp = splrep(gp, vp)
-        self._vloc_interp[key] = vloc_interp
-
-    def _init_PP_upf(self, key, MaxPoints=15000, Gmax=30):
-        """
-        This is a private method used only in this specific class. 
-        """
-
-        def set_PP(Single_PP_file):
-            """Reads QE UPF type PP"""
-            import importlib.util
-
-            upf2json = importlib.util.find_spec("upf_to_json")
-            found = upf2json is not None
-            if found:
-                from upf_to_json import upf_to_json
-            else:
-                raise ModuleNotFoundError("Must pip install upf_to_json")
-            with open(Single_PP_file, "r") as outfil:
-                upf = upf_to_json(upf_str=outfil.read(), fname=Single_PP_file)
-            r = np.array(upf["pseudo_potential"]["radial_grid"], dtype=np.float64)
-            # v = np.array(upf["pseudo_potential"]["local_potential"], dtype=np.float64) 
-            v = np.array(upf["pseudo_potential"]["local_potential"], dtype=np.float64)
-            return r, v, upf
-
-        r, vr, self._info[key] = set_PP(self.PP_list[key])
-        zval = self._info[key]["pseudo_potential"]["header"]["z_valence"]
-        gp, vp = self._real2recip(r, vr, zval, MaxPoints, Gmax)
-        self._gp[key] = gp
-        self._vp[key] = vp
-        vloc_interp = splrep(gp, vp)
-        self._vloc_interp[key] = vloc_interp
 
     def _self_energy(self, r, vr, rhop):
         dr = np.empty_like(r)
         dr[1:] = r[1:]-r[:-1]
         dr[0] = r[0]
         ene = np.sum(r *r * vr * rhop * dr) * 4 * np.pi
-        print('Ne ', np.sum(r *r * rhop * dr) * 4 * np.pi)
+        # sprint('Ne ', np.sum(r *r * rhop * dr) * 4 * np.pi)
         return ene
 
-    # def _init_PP_psp(self, MaxPoints=15000, Gmax=30):
-    def _init_PP_psp(self, key, MaxPoints=200000, Gmax=30):
+    def _init_PP_recpot(self, key):
+        self._info[key] = RECPOT(self.PP_list[key])
+        self._gp[key] = self._info[key].r_g
+        self._vp[key] = self._info[key].v_g
+
+    def _init_PP_usp(self, key):
         """
+        !!! NOT FULL TEST !!!
         """
+        self._info[key] = USP(self.PP_list[key])
+        self._gp[key] = self._info[key].r_g
+        self._vp[key] = self._info[key].v_g
 
-        def set_PP(Single_PP_file):
-            # Only support psp8 format
-            # HARTREE2EV = ENERGY_CONV["Hartree"]["eV"]
-            # BOHR2ANG = LEN_CONV["Bohr"]["Angstrom"]
-            with open(Single_PP_file, "r") as outfil:
-                lines = outfil.readlines()
-            info = {}
+    def _init_PP_upf(self, key, **kwargs):
+        """
+        Note :
+            Prefer xmltodict which is more robust
+            xmltodict not work for UPF v1
+        """
+        has_xml = importlib.util.find_spec("xmltodict")
+        has_json = importlib.util.find_spec("upf_to_json")
+        if has_xml :
+            try :
+                self._info[key] = UPF(self.PP_list[key])
+            except :
+                if has_json :
+                    try :
+                        self._info[key] = UPFJSON(self.PP_list[key])
+                    except :
+                        raise ModuleNotFoundError("Please use standard 'UPF' file")
+        elif has_json :
+            try :
+                self._info[key] = UPFJSON(self.PP_list[key])
+            except :
+                raise ModuleNotFoundError("Maybe you can try install xmltodict or use standard 'UPF' file")
+        else :
+            raise ModuleNotFoundError("Must pip install xmltodict or upf_to_json")
 
-            # line 2 :atomic number, pseudoion charge, date
-            values = lines[1].split()
-            atomicnum = int(float(values[0]))
-            Zval = float(values[1])
-            # line 3 :pspcod,pspxc,lmax,lloc,mmax,r2well
-            values = lines[2].split()
-            if int(values[0]) != 8 :
-                raise AttributeError("Only support psp8 format pseudopotential with psp")
-            info['info'] = lines[:6]
-            info['atomicnum'] = atomicnum
-            info['Zval'] = Zval
-            info['pspcod'] = 8
-            info['pspxc'] = int(values[1])
-            info['lmax'] = int(values[2])
-            info['lloc'] = int(values[3])
-            info['r2well'] = int(values[5])
-            # pspxc = int(value[1])
-            mmax = int(values[4])
+        self._r[key] = self._info[key].r
+        self._v[key] = self._info[key].v
+        self._gp[key], self._vp[key] = self._real2recip(self._r[key], self._v[key], self._info[key].zval, **kwargs)
+        self._core_density[key] = self._info[key].core_density
 
-            ibegin = 7
-            iend = ibegin + mmax
-            # line = " ".join([line for line in lines[ibegin:iend]])
-            # data = np.fromstring(line, dtype=float, sep=" ")
-            # data = np.array(line.split()).astype(np.float) / HARTREE2EV / BOHR2ANG ** 3
-            data = [line.split()[1:3] for line in lines[ibegin:iend]]
-            data = np.asarray(data, dtype = float)
-
-            r = data[:, 0] 
-            v = data[:, 1] 
-            print("psp pseudopotential " + Single_PP_file + " loaded")
-            info['grid'] = r
-            info['local_potential'] = v
-            return r, v, info
-
-        r, v, self._info[key] = set_PP(self.PP_list[key])
-        zval = self._info[key]['Zval']
-        gp, vp = self._real2recip(r, v, zval, MaxPoints, Gmax)
-        self._gp[key] = gp
-        self._vp[key] = vp
-        vloc_interp = splrep(gp, vp)
-        self._vloc_interp[key] = vloc_interp
+    def _init_PP_psp(self, key, **kwargs):
+        self._info[key] = PSP(self.PP_list[key])
+        self._r[key] = self._info[key].r
+        self._v[key] = self._info[key].v
+        self._gp[key], self._vp[key] = self._real2recip(self._r[key], self._v[key], self._info[key].zval, **kwargs)
 
     @property
     def vloc_interp(self):
         if not self._vloc_interp:
-            raise Exception("Must init ReadPseudo")
+            raise AttributeError("Must init ReadPseudo")
         return self._vloc_interp
 
     @property
     def gp(self):
         if not self._gp:
-            raise Exception("Must init ReadPseudo")
+            raise AttributeError("Must init ReadPseudo")
         return self._gp
 
     @property
     def vp(self):
         if not self._vp:
-            raise Exception("Must init ReadPseudo")
+            raise AttributeError("Must init ReadPseudo")
         return self._vp
+
+    @property
+    def info(self):
+        return self._info
+
+    @info.setter
+    def info(self, value):
+        self._info = value

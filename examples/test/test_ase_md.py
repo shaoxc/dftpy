@@ -31,7 +31,7 @@ class Test(unittest.TestCase):
         atoms = read(filename=dftpy_data_path + '/initial_atoms_md.traj',
                      format='traj',
                      index=-1)
-        atoms.set_calculator(calc)
+        atoms.calc = calc
         dyn = VelocityVerlet(atoms, 2 * units.fs)
         dyn.run(3)
         atoms_fin = read(filename=dftpy_data_path + '/md.traj', index=-1)

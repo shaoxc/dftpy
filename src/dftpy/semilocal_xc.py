@@ -5,6 +5,50 @@ from dftpy.field import DirectField
 from dftpy.functional_output import Functional
 from dftpy.time_data import TimeData
 
+class XC :
+    def __init__(self, xc = 'LDA', core_density = None, libxc = True, **kwargs):
+        self.options = {'xc': xc}
+        self.options.update(kwargs)
+        self._core_density = core_density
+        if libxc :
+            self.xcfun = LibXC
+        else :
+            self.xcfun = LDA
+
+    @property
+    def core_density(self):
+        return self._core_density
+
+    @core_density.setter
+    def core_density(self, value):
+        self._core_density = value
+
+    def __call__(self, density, calcType=["E","V"], **kwargs):
+        return self.compute(density, calcType=calcType, **kwargs)
+
+    def compute(self, density, calcType=["E","V"], **kwargs):
+        self.options.update(kwargs)
+        core_density = self.core_density
+        if core_density is None :
+            new_density = density
+        elif density.rank == core_density.rank :
+            new_density = density + core_density
+        elif density.rank == 2 and core_density.rank == 1 :
+            new_density = density.copy()
+            new_density[0] += 0.5 * core_density
+            new_density[1] += 0.5 * core_density
+
+        xc = self.options.get('xc', None)
+        if xc == 'PBE' :
+            xc_kwargs = {"x_str":"gga_x_pbe", "c_str":"gga_c_pbe"}
+        elif xc == 'LDA' :
+            xc_kwargs = {"x_str":"lda_x", "c_str":"lda_c_pz"}
+        else :
+            xc_kwargs = {}
+        self.options.update(xc_kwargs)
+
+        functional = self.xcfun(new_density, calcType = calcType, **self.options)
+        return functional
 
 def CheckLibXC():
     import importlib.util
@@ -149,16 +193,17 @@ def Get_LibXC_Output(out, density):
             rho = np.sum(density, axis = 0)
         else :
             rho = density
-        edens = out["zk"].reshape(np.shape(rho))
-        ene = np.einsum("ijk, ijk->", edens, rho) * density.grid.dV
+        edens = rho * out["zk"].reshape(np.shape(rho))
+        ene = edens.sum() * density.grid.dV
         OutFunctional.energy = ene
+        OutFunctional.energydensity = edens
 
     return OutFunctional
 
 
 def LibXC(density, k_str=None, x_str=None, c_str=None, calcType=["E","V"], **kwargs):
     """
-     Output: 
+     Output:
         - out_functional: a functional evaluated with LibXC
      Input:
         - density: a DirectField (rank=1)
@@ -196,7 +241,7 @@ def LibXC(density, k_str=None, x_str=None, c_str=None, calcType=["E","V"], **kwa
 
     inp = Get_LibXC_Input(density, do_sigma=do_sigma)
     kargs = {'do_exc': False, 'do_vxc': False}
-    if 'E' in calcType:
+    if 'E' in calcType or 'D' in calcType:
         kargs.update({'do_exc': True})
     if 'V' in calcType:
         kargs.update({'do_vxc': True})
@@ -209,7 +254,9 @@ def LibXC(density, k_str=None, x_str=None, c_str=None, calcType=["E","V"], **kwa
 
     for key, value in func_str.items():
         func = LibXCFunctional(value, polarization)
+        TimeData.Begin("libxc_eval")
         out = func.compute(inp, **kargs)
+        TimeData.End("libxc_eval")
         if 'out_functional' in locals():
             out_functional += Get_LibXC_Output(out, density)
             out_functional.name += "_" + value
@@ -294,15 +341,15 @@ def LDAStress(rho, energy=None, potential=None, **kwargs):
     TimeData.Begin("LDA_Stress")
     if energy is None:
         EnergyPotential = LDA(rho, calcType=["E","V"])
-        energy = EnergyPotential.energy
         potential = EnergyPotential.potential
+        energy = EnergyPotential.energy
     elif potential is None :
         potential = LDA(rho, calcType=["V"]).potential
     stress = np.zeros((3, 3))
     try:
         Etmp = energy - np.einsum("..., ...-> ", potential, rho, optimize = 'optimal') * rho.grid.dV
     except Exception :
-        Etmp = energy - np.sum(potential * rho) * rho.grid.dV
+        Etmp = energy - np.asum(potential * rho) * rho.grid.dV
     for i in range(3):
         stress[i, i] = Etmp / rho.grid.volume
     TimeData.End("LDA_Stress")
@@ -347,7 +394,7 @@ def _LDAStress(density, xc_str='lda_x', energy=None, flag='standard', **kwargs):
     try :
         P = energy - np.einsum("..., ...-> ", v, rho, optimize = 'optimal') * rho.grid.dV
     except Exception :
-        P = energy - np.sum(v*rho) * rho.grid.dV
+        P = energy - np.asum(v*rho) * rho.grid.dV
     stress = np.eye(3)*P
     return stress/ rho.grid.volume
 
