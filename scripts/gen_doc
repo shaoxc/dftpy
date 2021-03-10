@@ -1,0 +1,19 @@
+#!/usr/bin/env python3
+
+from dftpy.config.config_entry import ConfigEntry
+from dftpy.config.config import default_json
+
+def main():
+    configentries = default_json()
+    with open('../doc/source/tutorials/config.rst1', 'w') as f:
+        for section in configentries:
+            f.write('{0:}\n'.format(section))
+            f.write('----------\n')
+            f.write('\n')
+            for key in configentries[section]:
+                f.write(configentries[section][key].gen_doc(key))
+            f.write('\n')
+
+if __name__ == "__main__":
+    main()
+

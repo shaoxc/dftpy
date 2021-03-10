@@ -4,7 +4,7 @@
       "type": "cstr",
       "default": "Optdensity",
       "comment": "The task to be performed.",
-      "options": "Optdensity, Calculation"
+      "options": "Optdensity, Calculation, Propagate, Casida, Diagonize, Inversion"
     },
     "calctype": {
       "type": "cstrlist",
@@ -306,85 +306,122 @@
   "PROPAGATOR": {
     "type": {
       "type": "str",
-      "default": "crank-nicolson"
-    },
-    "int_t": {
-      "type": "float",
-      "default": 0.001
+      "default": "crank-nicolson",
+      "comment": "The type of propagator.",
+      "options": "crank-nicolson, taylor, rk4 (experimental)"
     },
     "order": {
       "type": "int",
-      "default": 20
+      "default": 20,
+      "comment": "The order used for the Taylor expansion propagator."
     },
     "linearsolver": {
       "type": "str",
-      "default": "bicgstab"
+      "default": "cg",
+      "comment": "The linear solver used for the Crank-Nicolson propagator. The solvers with a name end with `-scipy` are from the `SciPy` package and should be used in serial calculations only. ",
+      "options": "bicg, bicgstab, cg, bicg-scipy, bicgstab-scipy, cg-scipy, cgs-scipy, gmres-scipy, lgmres-scipy, minres-scipy, qmr-scipy"
     },
     "tol": {
       "type": "float",
-      "default": 1e-10
+      "default": 1e-10,
+      "comment": "The relative tolerance for the linear solver used for the Crank-Nicolson propagator."
     },
     "maxiter": {
       "type": "int",
-      "default": 100
+      "default": 100,
+      "comment": "The max amount of iteration steps for the linear solver used for the Crank-Nicolson propagator."
+    },
+    "atol": {
+      "type": "float",
+      "default": null,
+      "comment": "The absolute tolerance for the linear solver used for the Crank-Nicolson propagator."
     }
   },
   "TD": {
     "outfile": {
       "type": "str",
-      "default": "td_out"
+      "default": "td_out",
+      "comment": "The prefix of the output files."
+    },
+    "timestep": {
+      "type": "float",
+      "default": 0.001,
+      "comment": "The time step in atomic units."
     },
     "tmax": {
       "type": "float",
-      "default": 1
+      "default": 1,
+      "comment": "The total amount of time in atomic units."
     },
-    "order": {
+    "max_pc": {
       "type": "int",
-      "default": 1
+      "default": 1,
+      "comment": "The max amount of the predictor-corrector steps."
+    },
+    "tol_pc": {
+      "type": "float",
+      "default": 1e-8,
+      "comment": "The relative tolerance for the predictor-corrector."
+    },
+    "atol_pc": {
+      "type": "float",
+      "default": 1e-10,
+      "comment": "The absolute tolerance for the predictor-corrector."
     },
     "direc": {
       "type": "direction",
-      "default": 0
+      "default": 0,
+      "comment": "The direction of the initial kick.",
+      "opitions": "0 or x, 1 or y, 2 or z"
     },
     "strength": {
       "type": "float",
-      "default": 0.001
+      "default": 0.001,
+      "comment": "The strength of the initial kick in atomic units."
     },
     "dynamic_potential": {
       "type": "bool",
-      "default": false
+      "default": false,
+      "comment": "Include dynamic potential. (See Eq. (15) of `paper <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.98.144302>`_."
     },
     "max_runtime": {
       "type": "float",
-      "default": 0
+      "default": 0,
+      "comment": "Max amount of running time in seconds before the program saves the intermediate result and quitting."
     },
     "restart": {
       "type": "bool",
-      "default": false
+      "default": false,
+      "comment": "Restart the propagation from a previously saved intermediate result."
     }
   },
   "CASIDA": {
     "numeig": {
       "type": "int",
-      "default": null
+      "default": null,
+      "comment": "Number of eigenstates used in constructing casida matrix."
     },
     "diagonize": {
       "type": "bool",
-      "default": true
+      "default": true,
+      "comment": "If true, diagonize the Hamiltonian before construct the Casida matrix. If false, read the eigenstates from a saved file."
     },
     "tda": {
       "type": "bool",
-      "default": false
+      "default": false,
+      "comment": "Use Tamm-Dancoff approximation."
     }
   },
   "INVERSION": {
     "rho_in": {
       "type": "str",
-      "default": null
+      "default": null,
+      "comment": "Input file for the density."
     },
     "v_out": {
       "type": "str",
-      "default": null
+      "default": null,
+      "comment": "Output file for the potential."
     }
   }
 }
