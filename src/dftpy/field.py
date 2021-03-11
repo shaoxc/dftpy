@@ -305,7 +305,7 @@ class DirectField(BaseField):
         div.rank = 1
         return div
 
-    def gradient(self, flag="smooth", ipol=None, force_real=True, sigma=10.0):
+    def gradient(self, flag="smooth", ipol=None, force_real=True, sigma=0.025):
         if self.rank > 1 and ipol is None:
             raise Exception("gradient is only implemented for scalar fields")
         if flag == "standard":
