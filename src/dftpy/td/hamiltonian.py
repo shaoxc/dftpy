@@ -32,7 +32,7 @@ class Hamiltonian(object):
     @v.setter
     def A(self, new_A):
         if new_A is None:
-            self._A = new_A
+            self._A = None
         else:
             self._A = np.asarray(new_A)
             if np.size(new_A) !=3:
@@ -47,7 +47,7 @@ class Hamiltonian(object):
                     force_real = True
                 else:
                     force_real = False
-            if self.A is None:
+            if self._A is None:
                 return -0.5 * psi.laplacian(force_real = force_real, sigma=sigma) + self.v * psi
             else:
                 psi_fft = psi.fft()
