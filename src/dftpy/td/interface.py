@@ -52,7 +52,7 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
         psi = DirectField(grid=rho0.grid, rank=1, griddata_3d=psi, cplx=True)
     else:
         #x = rho0.grid.r[direc]
-        psi = np.sqrt(rho0)
+        psi = np.complex128(np.sqrt(rho0))
         psi.cplx = True
         i_t0 = 0
         A_t = np.zeros(3)
@@ -78,7 +78,7 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
             with open(outfile + "_j", "w") as fj:
                 sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(j_int[0], j_int[1], j_int[2]), fileobj=fj)
             with open(outfile + "_A", "w") as fA:
-                sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(A[0], A[1], A[2]), fileobj=fA)
+                sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(A_t[0], A_t[1], A_t[2]), fileobj=fA)
             with open(outfile + "_E", "w") as fE:
                 pass
 
@@ -105,7 +105,7 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
                 old_A_t_pred = A_t_pred
             else:
                 atol_j = _get_atol(tol, atol, np.max(j.norm()))
-                atol_A = _get_atol(tol, atol, np.max(A_t.norm()))
+                atol_A = _get_atol(tol, atol, np.linalg.norm(A_t))
             psi_pred, info = prop(psi, int_t)
             rho_pred = calc_rho(psi_pred)
             j_pred = calc_j(psi_pred)
@@ -113,7 +113,7 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
             A_t_pred = np.real(2*A_t - A_tm1 - 4*np.pi*N*A_t/Omega*int_t*int_t - 4.0*np.pi*SPEED_OF_LIGHT*N/Omega*psi_pred.para_current(sigma=0.025)*int_t*int_t)
             #A_t_pred = np.real(2*A_t - A_tm1 + 4.0*np.pi*SPEED_OF_LIGHT*N/Omega*psi_pred.para_current(sigma=0.025)*int_t*int_t)
 
-            if i_pred_corr > 0 and (old_rho_pred - rho_pred).norm() < atol_rho and np.max((old_j_pred - j_pred).norm()) < atol_j and np.max((old_A_t_pred - A_t_pred).norm()) < atol_A:
+            if i_pred_corr > 0 and (old_rho_pred - rho_pred).norm() < atol_rho and np.max((old_j_pred - j_pred).norm()) < atol_j and np.linalg.norm(old_A_t_pred - A_t_pred) < atol_A:
                 break
 
             rho_corr = (rho + rho_pred) * 0.5
@@ -142,7 +142,7 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
             with open(outfile + "_j", "a") as fj:
                 sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(j_int[0], j_int[1], j_int[2]), fileobj=fj)
             with open(outfile + "_A", "a") as fA:
-                sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(A[0], A[1], A[2]), fileobj=fA)
+                sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(A_t[0], A_t[1], A_t[2]), fileobj=fA)
             with open(outfile + "_E", "a") as fE:
                 sprint("{0:17.10e}".format(E), fileobj=fE)
 

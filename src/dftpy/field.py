@@ -584,14 +584,11 @@ class DirectField(BaseField):
         """
         reciprocal_self = self.fft()
         reciprocal_self_conj = np.conj(self).fft()
-        nr = 3, *reciprocal_self.grid.nr
-        j_p = np.empty(nr, dtype='complex128')
         j_p = (
             reciprocal_self.grid.g
             * (- reciprocal_self * reciprocal_self_conj)
             * np.exp(-reciprocal_self.grid.gg * (sigma / 2.0) ** 2)
         )
-        j_p = ReciprocalField(grid=self.grid.get_reciprocal(), rank=3, griddata_3d=j_p)
         return j_p.integral()
 
     @property
