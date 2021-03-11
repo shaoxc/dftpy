@@ -387,8 +387,8 @@ def LWTKernelKf(q, kf, KernelTable, etamax=1000.0, out=None):
     else:
         raise AttributeError("Wrong type of KernelTable")
     Kernel[cond1] = limit
-    if q[0, 0, 0] < ZERO :
-        Kernel[0, 0, 0] = 0.0
+    # if q[0, 0, 0] < ZERO :
+    #     Kernel[0, 0, 0] = 0.0
     TimeData.End("LWTKernelKf")
     return Kernel
 
@@ -466,6 +466,7 @@ def hc_ode_deriv(kernel, eta, beta = 2.0/3.0):
     # deriv = -5.0/3.0 * (feta - 3 * eta ** 2 - 1) + (5.0-3.0 * beta) * beta * kernel
     lindg = LindhardFunction(eta, 1, 1)
     deriv = -5.0/3.0 * lindg + (5.0-3.0 * beta) * beta * kernel
+    # deriv = -5.0/3.0 * lindg + (7.0-3.0 * beta) * beta * kernel
     cond = eta > 1E-20
     if isinstance(eta, (np.ndarray, np.generic)):
         deriv[cond] /= beta*eta[cond]
@@ -480,7 +481,8 @@ def HCKernelXi(q, xi, KernelTable, KernelDeriv, etamax=1000.0, out=None, out2 = 
     TimeData.Begin("HCKernelXi")
     kernel = LWTKernelKf(q, xi, KernelTable, etamax = etamax, out = out)
     kernelD = LWTKernelKf(q, xi, KernelDeriv, etamax = etamax, out = out2)
-    kernelD = -(kernelD - 3 * kernel)/(8 * xi ** 3)
-    kernel /= (8 * xi ** 3)
+    kernelD = (kernelD - 3 * kernel)/(xi ** 3)
+    # kernelD = (kernelD - 1 * kernel)/(xi ** 3)
+    kernel /= (xi ** 3)
     TimeData.End("HCKernelXi")
     return kernel, kernelD

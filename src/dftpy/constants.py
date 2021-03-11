@@ -36,7 +36,10 @@ ZERO = 1E-30
 
 environ = {} # You can change it anytime you want
 environ['STDOUT'] = sys.stdout # file descriptor of sprint
-environ['LOGLEVEL'] = 2 # The level of sprint
+try:
+    environ['LOGLEVEL'] = int(os.environ.get('DFTPY_LOGLEVEL', 2)) # The level of sprint
+except Exception :
+    environ['LOGLEVEL'] = 2 # The level of sprint
 """
     0 : all
     1 : debug

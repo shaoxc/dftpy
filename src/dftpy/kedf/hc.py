@@ -11,58 +11,44 @@ from dftpy.time_data import TimeData
 
 __all__ = ["HC"]
 
-def guess_kf_bound(kf, kfmin = None, kfmax = None, kftol = 1E-3, ke_kernel_saved = None):
-    if ke_kernel_saved is not None :
-        kfmin_prev = ke_kernel_saved['kfmin']
-        kfmax_prev = ke_kernel_saved['kfmax']
-    else :
-        kfmin_prev = None
-        kfmax_prev = None
+def get_kflist(kf, kf0 = None, ratio=1.2, nsp=None, delta=None, kfmin = None, kfmax = None, savetol = 1E-16, **kwargs):
 
-    if kfmin is not None and kfmax is not None :
-        return [kfmin, kfmax]
+    if kfmin is None :
+        kfmin = max(kf.amin(), 1E-3)
+        n = int(np.floor(np.log(kfmin/kf0)/np.log(ratio)))
+        kfmin = kf0 * ratio ** n
 
-    kf_l = kf.amin()
-    kf_r = kf.amax()
+    if kfmax is None :
+        kfmax = min(kf.amax(), 100)
+        n = int(np.ceil(np.log(kfmax/kf0)/np.log(ratio)))
+        kfmax = kf0 * ratio ** n
 
-    if kfmin_prev is None :
-        kfmin_prev = 10
-        if kfmin is None : kfmin = kf_l
+    if nsp is not None:
+        if kfmax - kfmin < 1e-3:
+            kflists = [kfmin, kfmax]
+            nsp = 2
+        else:
+            kflists = kfmin + (kfmax - kfmin) / (nsp - 1) * np.arange(nsp)
+        kflists = np.asarray(kflists)
+    elif delta is not None: # delta = 0.10
+        nsp = int(np.ceil((kfmax - kfmin) / delta)) + 1
+        kflists = np.linspace(kfmin, kfmax, nsp)
+    else:
+        nsp = int(np.ceil(np.log(kfmax / kfmin) / np.log(ratio))) + 1
+        kflists = kfmin * ratio ** np.arange(nsp)
+        # kflists = np.geomspace(kfmin, kfmax, nsp)
 
-    if kfmax_prev is None :
-        kfmax_prev = 1.0
-        if kfmax is None : kfmax = kf_r
-
-    if kfmin is None or kfmin > kfmin_prev : kfmin = kfmin_prev
-    if kfmax is None or kfmax < kfmax_prev : kfmax = kfmax_prev
-
-    if kfmin > kf_l :
-        kfl = [1E-5, 1E-4, 5E-3, 1E-3, 5E-3, 1E-2, 5E-2, 0.1, 0.5, 1.0]
-        ratio = kf_l/kfmin
-        for i in range(len(kfl)-1, 0, -1):
-            if ratio > kfl[i] :
-                kfmin *= kfl[i]
-                break
-    if kfmin < kftol : kfmin = kftol
-
-    if kfmax < kf_r :
-        dk = kf_r - kfmax
-        kfmax += (np.round(dk/0.5)+1) * 0.5
-
-    if ke_kernel_saved is not None :
-        ke_kernel_saved['kfmin'] = kfmin
-        ke_kernel_saved['kfmax'] = kfmax
-
-    kfBound = [kfmin, kfmax]
-    return kfBound
+    kflists[0] -= savetol  # for numerical safe
+    kflists[-1] += savetol  # for numerical safe
+    sprint('nsp', len(kflists), np.max(kflists), np.min(kflists), kf0, comm = kf.mp.comm, level=1)
+    return kflists
 
 def one_point_potential_energy(
     rho,
     etamax=100.0,
-    ratio=1.1,
+    ratio=1.2,
     nsp=None,
     delta=None,
-    kdd=1,
     alpha=5.0 / 6.0,
     beta=5.0 / 6.0,
     interp="linear",
@@ -70,6 +56,7 @@ def one_point_potential_energy(
     kfmin = None,
     kfmax = None,
     ldw = None,
+    rho0 = None,
     ke_kernel_saved = None,
     k_str = 'REVAPBEK',
     params = None,
@@ -78,9 +65,6 @@ def one_point_potential_energy(
     """
     ldw : local density weight
     """
-
-    KE_kernel_saved = ke_kernel_saved
-    savetol = 1e-16
     #-----------------------------------------------------------------------
     mask = rho > 0
     mask2 = np.invert(mask)
@@ -113,16 +97,16 @@ def one_point_potential_energy(
         item = (grhoG).ifft(force_real=True)
         rhoGrad.append(item)
     s = np.sqrt(rhoGrad[0] ** 2 + rhoGrad[1] ** 2 + rhoGrad[2] ** 2) / rho43
+    # GGAFs use s /= 2*(3*\pi^2)^{1/3}, which is 38.283120002509214 for s^2
     F, dFds2 = GGAFs(s, functional=k_str.upper(), calcType=calcType, params = params, **kwargs)
     rho[mask2] = rho_saved
     #-----------------------------------------------------------------------
     q = rho.grid.get_reciprocal().q
-    kf = 2.0 * np.cbrt(3.0 * np.pi ** 2 * rho)
-    kf *= F
+    kf_std = 2.0 * np.cbrt(3.0 * np.pi ** 2 * rho)
+    kf = F * kf_std
     kf =DirectField(grid=rho.grid, memo=rho.memo, rank=rho.rank, griddata_3d=kf, cplx=rho.cplx)
 
     ### HEG
-    print('params', params, k_str)
     if abs(kf.amax() - kf.amin()) < 1e-8:
         NL = Functional(name="NL", energy = 0.0)
         if 'D' in calcType:
@@ -133,44 +117,24 @@ def one_point_potential_energy(
             NL.potential = pot
         return NL
 
-    kfmin, kfmax = guess_kf_bound(kf, kfmin, kfmax, ke_kernel_saved = ke_kernel_saved)
-    kfBound = [kfmin, kfmax]
+    if rho0 is None : rho0 = rho.amean()
+    if abs(ke_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != ke_kernel_saved["shape"]:
+        sprint("Re-calculate KE_kernel", np.shape(rho), rho0, level=1)
+        ke_kernel_saved["rho0"] = rho0
+        ke_kernel_saved["shape"] = np.shape(rho)
+    else :
+        rho0 = ke_kernel_saved["rho0"]
+    kf0 = 2.0 * np.cbrt(3.0 * np.pi ** 2 * rho0)
+    kflists = get_kflist(kf, kf0, ratio=ratio, nsp=nsp, delta=delta, rho0 = rho0, kfmin = kfmin, kfmax = kfmax, **kwargs)
+
+    mask = kf > kflists[-1]
+    kf[mask] = kflists[-1]
+    nsp = len(kflists)
 
     if 'V' in calcType :
         vcalc = True
     else :
         vcalc = False
-
-    mask2 = kf > kfBound[1]
-    kf[mask2] = kfBound[1]
-    if kfmin is None :
-        kfMin = max(kf.amin(), kfBound[0])
-    else :
-        kfMin = kfmin
-
-    if kfmax is None :
-        kfMax = kf.amax()
-    else :
-        kfMax = kfmax
-
-    if nsp is not None:
-        # kflists = kfMin + (kfMax - kfMin)/(nsp - 1) * np.arange(nsp)
-        if kfMax - kfMin < 1e-3:
-            kflists = [kfMin, kfMax]
-            nsp = 2
-        else:
-            kflists = kfMin + (kfMax - kfMin) / (nsp - 1) * np.arange(nsp)
-        kflists = np.asarray(kflists)
-    elif delta is not None: # delta = 0.10
-        nsp = int(np.ceil((kfMax - kfMin) / delta)) + 1
-        kflists = np.linspace(kfMin, kfMax, nsp)
-    else:
-        nsp = int(np.ceil(np.log(kfMax / kfMin) / np.log(ratio))) + 1
-        kflists = kfMin * ratio ** np.arange(nsp)
-        # kflists = np.geomspace(kfMin, kfMax, nsp)
-    kflists[0] -= savetol  # for numerical safe
-    kflists[-1] += savetol  # for numerical safe
-    sprint('nsp', nsp, kfMax, kfMin, np.max(kflists), np.min(kflists), comm = rho.mp.comm, level=1)
     # -----------------------------------------------------------------------
     kernel0 = np.empty_like(q)
     kernel1 = np.empty_like(q)
@@ -182,9 +146,8 @@ def one_point_potential_energy(
     pot3 = np.zeros_like(rho)
     # pot4 = np.zeros_like(rho)
     #-----------------------------------------------------------------------
-    KernelTable = KE_kernel_saved["KernelTable"]
-    KernelDeriv = KE_kernel_saved["KernelDeriv"]
-    MGPKernelE = KE_kernel_saved["MGPKernelE"]
+    KernelTable = ke_kernel_saved["KernelTable"]
+    KernelDeriv = ke_kernel_saved["KernelDeriv"]
     # -----------------------------------------------------------------------
     for i in range(nsp - 1):
         if i == 0:
@@ -216,8 +179,7 @@ def one_point_potential_energy(
                 rhoU = rhoAlpha * Rmask
                 if pot2G is None:
                     pot2G = kernel0 * (rhoU * t).fft()
-                if kdd == 3:
-                    pot3[mask] = m0[mask] * t[mask]
+                pot3[mask] = m0[mask] * t[mask]
         # -----------------------------------------------------------------------
         Rmask[:] = 0.0
         Rmask[mask] = 1.0
@@ -226,12 +188,12 @@ def one_point_potential_energy(
         t = (kf - kflists[i]) / Dkf
         if interp == "newton" or interp == "linear":
             t0 = 1 - t
-            pot1[mask] = p0[mask] * t0[mask] + p1[mask] * t[mask]
+            pot1[mask] += p0[mask] * t0[mask] + p1[mask] * t[mask]
             if pot2G is None:
                 pot2G = kernel0 * (rhoU * t0).fft() + kernel1 * (rhoU * t).fft()
             else:
                 pot2G += kernel0 * (rhoU * t0).fft() + kernel1 * (rhoU * t).fft()
-            pot3[mask] = m0[mask] * t0[mask] + m1[mask] * t[mask]
+            pot3[mask] += m0[mask] * t0[mask] + m1[mask] * t[mask]
 
         elif interp == "hermite":
             t2 = t * t
@@ -265,15 +227,14 @@ def one_point_potential_energy(
 
     pot2 = pot2G.ifft(force_real=True)
     #-----------------------------------------------------------------------
-    # if ldw is None :
-    #     ldw = 1.0/6.0
-    # factor = np.ones_like(rho)
-    # rhov = rho.amax()
-    # mask = rho < 1E-6
-    # ld = max(0.1, ldw)
-    # factor[mask] = np.abs(rho[mask])** ld /(rhov ** ld)
-    # factor[rho < 0] = 0.0
-    # pot1 *= factor
+    if ldw is None :
+        ldw = 1.0/6.0
+    factor = np.ones_like(rho)
+    rhov = rho.amax()
+    mask = rho < 1E-6
+    ld = max(0.1, ldw)
+    factor[mask] = np.abs(rho[mask])** ld /(rhov ** ld)
+    factor[rho < 0] = 0.0
     #-----------------------------------------------------------------------
     NL = Functional(name="NL")
     energydensity = rhoAlpha * pot1
@@ -282,18 +243,13 @@ def one_point_potential_energy(
         NL.energydensity = energydensity
     #-----------------------------------------------------------------------
     if vcalc :
-        # pot2 *= factor
-        # pot3 *= factor
-
         pot1 *= alpha * rhoAlpha1
         pot2 *= beta * rhoBeta1
         pot3 *= rhoAlpha
         #-----------------------------------------------------------------------
         # pxi/pn
-        # pot3_1 = kf/(3 * rho) * (1.0-7.0 * hc_lambda * s*s) * pot3
-        # pot_dn = 2.0 * kf * hc_lambda/rho83 * pot3
-        pot3_1 = kf/(3 * rho) * (F - 4 * dFds2 * s * s) * pot3
-        pot_dn = kf *dFds2/rho83 * pot3
+        pot3_1 = kf_std/(3 * rho) * (F - 4 * dFds2 * s * s) * pot3
+        pot_dn = kf_std *dFds2/rho83 * pot3
         #-----------------------------------------------------------------------
         # pxi/pdn
         p3 = []
@@ -304,8 +260,16 @@ def one_point_potential_energy(
         pot3_2 = (1j * pot3G).ifft(force_real=True)
         #-----------------------------------------------------------------------
         pot1 += pot2 + pot3_1 - pot3_2
-        # pot1 += pot2
-        sprint('HC', NL.energy, pot1.amin(), pot1.amax(), comm = rho.mp.comm, level=3)
+        sprint('HC', NL.energy, pot1.amin(), pot1.amax(), comm = rho.mp.comm, level=1)
+        #-----------------------------------------------------------------------
+        if ldw is None :
+            ldw = 1.0/6.0
+        factor = np.ones_like(rho)
+        rhov = rho.amax()
+        mask = rho < 1E-6
+        ld = max(0.1, ldw)
+        factor[mask] = np.abs(rho[mask])** ld /(rhov ** ld)
+        factor[rho < 0] = 0.0
         NL.potential = pot1
     #-----------------------------------------------------------------------
     return NL
@@ -344,7 +308,8 @@ def HC(
         KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
     else :
         KE_kernel_saved = ke_kernel_saved
-    # if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
+
+    kerneltype = 'HC'
     if tuple(rho.grid.nrR) != KE_kernel_saved["shape"]:
         sprint('Re-calculate %s KernelTable ' %kerneltype, rho.grid.nrR, comm=rho.mp.comm, level=1)
         eta = np.linspace(0, etamax, neta)
@@ -357,10 +322,10 @@ def HC(
         elif kerneltype == "MGPG":
             KernelTable = MGPKernelTable(eta, maxpoints=maxpoints, symmetrization="Geometric", mp = rho.grid.mp)
         elif kerneltype == "HC":
-            KernelTable = HCKernelTable(eta, maxpoints=maxpoints, symmetrization="Geometric", mp = rho.grid.mp)
+            KernelTable = HCKernelTable(eta, mp = rho.grid.mp)
         # Add MGP kinetic electron
         if lumpfactor is not None:
-            # sprint('Calculate MGP kinetic electron({})'.format(lumpfactor), rho.mp.comm, level=1)
+            sprint('Calculate MGP kinetic electron({})'.format(lumpfactor), comm = rho.mp.comm, level=1)
             Ne = rho0 * rho.grid.Volume
             MGPKernelE = MGPOmegaE(q, Ne, lumpfactor)
             KE_kernel_saved["MGPKernelE"] = MGPKernelE
