@@ -5,7 +5,7 @@ from scipy.integrate import odeint
 from functools import partial
 from dftpy.time_data import TimeData
 from dftpy.constants import ZERO
-from dftpy.mpi import MP
+from dftpy.mpi import MP, sprint
 
 def LindhardFunction(eta, lbda, mu, tol = 1E-10):
     """
@@ -387,8 +387,8 @@ def LWTKernelKf(q, kf, KernelTable, etamax=1000.0, out=None):
     else:
         raise AttributeError("Wrong type of KernelTable")
     Kernel[cond1] = limit
-    # if q[0, 0, 0] < ZERO :
-    #     Kernel[0, 0, 0] = 0.0
+    if q[0, 0, 0] < ZERO :
+        Kernel[0, 0, 0] = 0.0
     TimeData.End("LWTKernelKf")
     return Kernel
 
@@ -439,7 +439,7 @@ def SmoothKernel(q, rho0, x=1.0, y=1.0, alpha=5.0 / 6.0, beta=5.0 / 6.0):
     # -----------------------------------------------------------------------
     return LindhardFunction(q / tkf, x, y) * factor
 
-def HCKernelTable(eta, beta = 2.0/3.0, KernelTable=None, mp = None):
+def HCKernelTable(eta, beta = 2.0/3.0, x = 1.0, y = 1.0, KernelTable=None, mp = None):
     """
     The HC Kernel
     """
@@ -450,8 +450,8 @@ def HCKernelTable(eta, beta = 2.0/3.0, KernelTable=None, mp = None):
     kernel_inf = -8.0/3.0 / ((5.0-3.0 * beta) * beta)
     cTF = (3.0 / 10.0) * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
     ctf_hc = cTF * 8.0*3.0*np.pi**2
-    func = partial(hc_ode_deriv, beta = beta)
-    # print('beta', beta, eta[-1], kernel_inf)
+    func = partial(hc_ode_deriv, beta = beta, x = x)
+    sprint('beta', beta, eta[-1], kernel_inf, comm = mp.comm, level=1)
     sol = odeint(func, kernel_inf, eta[::-1])
     kernel = np.empty_like(eta)
     kernel[:] = sol.ravel()[::-1]
@@ -461,10 +461,10 @@ def HCKernelTable(eta, beta = 2.0/3.0, KernelTable=None, mp = None):
     TimeData.End("HCKernelTable")
     return kernel
 
-def hc_ode_deriv(kernel, eta, beta = 2.0/3.0):
+def hc_ode_deriv(kernel, eta, x = 1.0, y = 1.0, beta = 2.0/3.0):
     # feta = LindhardFunction(eta, 0, 0)
     # deriv = -5.0/3.0 * (feta - 3 * eta ** 2 - 1) + (5.0-3.0 * beta) * beta * kernel
-    lindg = LindhardFunction(eta, 1, 1)
+    lindg = LindhardFunction(eta, x, 1)
     deriv = -5.0/3.0 * lindg + (5.0-3.0 * beta) * beta * kernel
     # deriv = -5.0/3.0 * lindg + (7.0-3.0 * beta) * beta * kernel
     cond = eta > 1E-20
@@ -478,6 +478,7 @@ def HCKernelXi(q, xi, KernelTable, KernelDeriv, etamax=1000.0, out=None, out2 = 
     """
     Create the HC kernel for given xi and Kernel Table
     """
+    xi = xi*2
     TimeData.Begin("HCKernelXi")
     kernel = LWTKernelKf(q, xi, KernelTable, etamax = etamax, out = out)
     kernelD = LWTKernelKf(q, xi, KernelDeriv, etamax = etamax, out = out2)

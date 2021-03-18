@@ -8,10 +8,18 @@ from dftpy.kedf.gga import GGAFs
 from dftpy.kedf.kernel import WTKernelTable, WTKernelDerivTable, LWTKernel, LWTKernelKf
 from dftpy.kedf.kernel import MGPKernelTable, MGPOmegaE, HCKernelTable, HCKernelXi
 from dftpy.time_data import TimeData
+from dftpy.constants import ZERO
 
 __all__ = ["HC"]
 
-def get_kflist(kf, kf0 = None, ratio=1.2, nsp=None, delta=None, kfmin = None, kfmax = None, savetol = 1E-16, **kwargs):
+def get_kflist(kf, kf0 = None, ratio=1.2, nsp=None, delta=None, kfmin = None, kfmax = None, savetol = 1E-16, ke_kernel_saved = None, **kwargs):
+
+    if ke_kernel_saved is not None :
+        kfmin_prev = ke_kernel_saved['kfmin']
+        kfmax_prev = ke_kernel_saved['kfmax']
+    else :
+        kfmin_prev = 1E8
+        kfmax_prev = -1E8
 
     if kfmin is None :
         kfmin = max(kf.amin(), 1E-3)
@@ -23,6 +31,11 @@ def get_kflist(kf, kf0 = None, ratio=1.2, nsp=None, delta=None, kfmin = None, kf
         n = int(np.ceil(np.log(kfmax/kf0)/np.log(ratio)))
         kfmax = kf0 * ratio ** n
 
+    if kfmin_prev is not None :
+        if kfmin > kfmin_prev and (kfmin-kfmin_prev) < 0.2 : kfmin = kfmin_prev
+    if kfmax_prev is not None :
+        if kfmax < kfmax_prev and (kfmax_prev-kfmax) < 1 : kfmax = kfmax_prev
+
     if nsp is not None:
         if kfmax - kfmin < 1e-3:
             kflists = [kfmin, kfmax]
@@ -30,17 +43,22 @@ def get_kflist(kf, kf0 = None, ratio=1.2, nsp=None, delta=None, kfmin = None, kf
         else:
             kflists = kfmin + (kfmax - kfmin) / (nsp - 1) * np.arange(nsp)
         kflists = np.asarray(kflists)
-    elif delta is not None: # delta = 0.10
+    elif delta is not None:
         nsp = int(np.ceil((kfmax - kfmin) / delta)) + 1
         kflists = np.linspace(kfmin, kfmax, nsp)
     else:
-        nsp = int(np.ceil(np.log(kfmax / kfmin) / np.log(ratio))) + 1
+        # nsp = int(np.ceil(np.log(kfmax / kfmin) / np.log(ratio)))
+        nsp = int(np.log(kfmax / kfmin) / np.log(ratio)) + 1
         kflists = kfmin * ratio ** np.arange(nsp)
         # kflists = np.geomspace(kfmin, kfmax, nsp)
 
     kflists[0] -= savetol  # for numerical safe
     kflists[-1] += savetol  # for numerical safe
     sprint('nsp', len(kflists), np.max(kflists), np.min(kflists), kf0, comm = kf.mp.comm, level=1)
+    # sprint('nsp', len(kflists), np.max(kflists), np.min(kflists), kf0, comm = kf.mp.comm, level=1)
+    if ke_kernel_saved is not None :
+        ke_kernel_saved['kfmin'] = kfmin
+        ke_kernel_saved['kfmax'] = kfmax
     return kflists
 
 def one_point_potential_energy(
@@ -66,10 +84,9 @@ def one_point_potential_energy(
     ldw : local density weight
     """
     #-----------------------------------------------------------------------
-    mask = rho > 0
-    mask2 = np.invert(mask)
-    rho_saved = rho[mask2]
-    rho[mask2] = 1E-30
+    mask = rho < ZERO
+    rho_saved = rho[mask]
+    rho[mask] = ZERO
 
     rhoAlpha = rho ** alpha
     rhoAlpha1 = rhoAlpha / rho
@@ -97,12 +114,24 @@ def one_point_potential_energy(
         item = (grhoG).ifft(force_real=True)
         rhoGrad.append(item)
     s = np.sqrt(rhoGrad[0] ** 2 + rhoGrad[1] ** 2 + rhoGrad[2] ** 2) / rho43
+    # np.savetxt('1.dat', np.c_[rho.ravel(), s.ravel()])
     # GGAFs use s /= 2*(3*\pi^2)^{1/3}, which is 38.283120002509214 for s^2
-    F, dFds2 = GGAFs(s, functional=k_str.upper(), calcType=calcType, params = params, **kwargs)
-    rho[mask2] = rho_saved
+    if k_str.upper() == 'HC' :
+        """
+        Also can reproduce with k_str = 'TFVW' and  params = 1 hc_lambda*3.0/5.0*38.283120002509214
+        """
+        if params is None :
+            hc_lambda = 0.0
+        else :
+            hc_lambda = params[0]
+        F = 1 + hc_lambda*s*s
+        dFds2 = 2*hc_lambda
+    else :
+        F, dFds2 = GGAFs(s, functional=k_str.upper(), calcType=calcType, params = params, **kwargs)
+    rho[mask] = rho_saved
     #-----------------------------------------------------------------------
     q = rho.grid.get_reciprocal().q
-    kf_std = 2.0 * np.cbrt(3.0 * np.pi ** 2 * rho)
+    kf_std = np.cbrt(3.0 * np.pi ** 2 * rho)
     kf = F * kf_std
     kf =DirectField(grid=rho.grid, memo=rho.memo, rank=rho.rank, griddata_3d=kf, cplx=rho.cplx)
 
@@ -118,14 +147,14 @@ def one_point_potential_energy(
         return NL
 
     if rho0 is None : rho0 = rho.amean()
-    if abs(ke_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != ke_kernel_saved["shape"]:
-        sprint("Re-calculate KE_kernel", np.shape(rho), rho0, level=1)
+    if abs(ke_kernel_saved["rho0"] - rho0) > 1e-6 :
+        sprint("Re-calculate KE_kernel", rho.grid.nrR, rho0, comm=rho.mp.comm, level=1)
         ke_kernel_saved["rho0"] = rho0
-        ke_kernel_saved["shape"] = np.shape(rho)
     else :
         rho0 = ke_kernel_saved["rho0"]
-    kf0 = 2.0 * np.cbrt(3.0 * np.pi ** 2 * rho0)
-    kflists = get_kflist(kf, kf0, ratio=ratio, nsp=nsp, delta=delta, rho0 = rho0, kfmin = kfmin, kfmax = kfmax, **kwargs)
+    # kf0 = 2.0 * np.cbrt(3.0 * np.pi ** 2 * rho0)
+    kf0 = np.cbrt(3.0 * np.pi ** 2 * rho0)
+    kflists = get_kflist(kf, kf0, ratio=ratio, nsp=nsp, delta=delta, rho0 = rho0, kfmin = kfmin, kfmax = kfmax, ke_kernel_saved=ke_kernel_saved, **kwargs)
 
     mask = kf > kflists[-1]
     kf[mask] = kflists[-1]
@@ -238,6 +267,7 @@ def one_point_potential_energy(
     #-----------------------------------------------------------------------
     NL = Functional(name="NL")
     energydensity = rhoAlpha * pot1
+    # energydensity = rhoBeta * pot2
     NL.energy = energydensity.sum() * rho.grid.dV
     if 'D' in calcType:
         NL.energydensity = energydensity
@@ -270,6 +300,7 @@ def one_point_potential_energy(
         ld = max(0.1, ldw)
         factor[mask] = np.abs(rho[mask])** ld /(rhov ** ld)
         factor[rho < 0] = 0.0
+        # NL.potential = pot1*factor
         NL.potential = pot1
     #-----------------------------------------------------------------------
     return NL
@@ -311,7 +342,7 @@ def HC(
 
     kerneltype = 'HC'
     if tuple(rho.grid.nrR) != KE_kernel_saved["shape"]:
-        sprint('Re-calculate %s KernelTable ' %kerneltype, rho.grid.nrR, comm=rho.mp.comm, level=1)
+        sprint('Re-calculate %s KernelTable ' %kerneltype, rho.grid.nrR, KE_kernel_saved["shape"], comm=rho.mp.comm, level=1)
         eta = np.linspace(0, etamax, neta)
         if kerneltype == "WT":
             KernelTable = WTKernelTable(eta, x, y, alpha, beta)
@@ -322,7 +353,7 @@ def HC(
         elif kerneltype == "MGPG":
             KernelTable = MGPKernelTable(eta, maxpoints=maxpoints, symmetrization="Geometric", mp = rho.grid.mp)
         elif kerneltype == "HC":
-            KernelTable = HCKernelTable(eta, mp = rho.grid.mp)
+            KernelTable = HCKernelTable(eta, beta = beta, x = x, y = y, mp = rho.grid.mp)
         # Add MGP kinetic electron
         if lumpfactor is not None:
             sprint('Calculate MGP kinetic electron({})'.format(lumpfactor), comm = rho.mp.comm, level=1)
