@@ -69,6 +69,8 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     delta_mu = (delta_rho * delta_rho.grid.r).integral()
     j_int = j.integral()
     Omega = psi.grid.Volume
+    sprint('Omega:',Omega)
+
     atol_rho = _get_atol(tol, atol, rho.norm())
 
     if not restart:

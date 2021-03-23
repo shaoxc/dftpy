@@ -318,8 +318,8 @@
     "linearsolver": {
       "type": "str",
       "default": "cg",
-      "comment": "The linear solver used for the Crank-Nicolson propagator. The solvers with a name end with `-scipy` are from the `SciPy` package and should be used in serial calculations only. ",
-      "options": "bicg, bicgstab, cg, bicg-scipy, bicgstab-scipy, cg-scipy, cgs-scipy, gmres-scipy, lgmres-scipy, minres-scipy, qmr-scipy"
+      "comment": "The linear solver used for the Crank-Nicolson propagator. The solvers with a name end with `_scipy` are from the `SciPy` package and should be used in serial calculations only. ",
+      "options": "bicg, bicgstab, cg, bicg_scipy, bicgstab_scipy, cg_scipy, cgs_scipy, gmres_scipy, lgmres_scipy, minres_scipy, qmr_scipy"
     },
     "tol": {
       "type": "float",
@@ -371,8 +371,8 @@
     "direc": {
       "type": "direction",
       "default": 0,
-      "comment": "The direction of the initial kick.",
-      "opitions": "0 or x, 1 or y, 2 or z"
+      "comment": "The direction of the initial kick. 0, 1, 2 stands for x-, y-, z-direction, respectively.",
+      "options": "0, 1, 2, x, y, z"
     },
     "strength": {
       "type": "float",

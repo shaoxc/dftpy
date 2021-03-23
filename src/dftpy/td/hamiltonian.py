@@ -51,10 +51,12 @@ class Hamiltonian(object):
                 return -0.5 * psi.laplacian(force_real = force_real, sigma=sigma) + self.v * psi
             else:
                 psi_fft = psi.fft()
-                intermediate_result = 0.5 * psi_fft.grid.gg * psi_fft - self.a_field.dot(psi_fft.grid.g) * psi_fft
-                intermediate_result *= np.exp(-psi_fft.grid.gg * sigma * sigma / 4.0)
-                return intermediate_result.ifft(force_real = force_real) + 0.5 * self.a_field.dot(self.a_field) * psi + self.v * psi
-                #return -0.5 * psi.laplacian(force_real = force_real, sigma=sigma) + 0.5 * self.a_field.dot(self.a_field) * psi + 1.0j * self.a_field.dot(psi.gradient(flag = "supersmooth", force_real = force_real)) + self.v * psi
+                intermediate_result1 = 0.5 * psi_fft.grid.gg * psi_fft
+                intermediate_result1 *= np.exp(-psi_fft.grid.gg * sigma * sigma / 4.0)
+                intermediate_result2 = - psi_fft.grid.g * psi_fft
+                intermediate_result2 *= np.exp(-psi_fft.grid.gg * sigma * sigma / 4.0)
+                return intermediate_result1.ifft(force_real = force_real) + self.a_field.dot(intermediate_result2.ifft(force_real = force_real)) + 0.5 * self.a_field.dot(self.a_field) * psi + self.v * psi
+                #return -0.5 * psi.laplacian(force_real = force_real, sigma=sigma) + 0.5 * self.a_field.dot(self.a_field) * psi + 1.0j * self.a_field.dot(psi.gradient(flag = "supersmooth", force_real = force_real, sigma=sigma)) + self.v * psi
                 #return -0.5 * psi.laplacian(force_real = force_real, sigma=sigma) + 0.5 * self.a_field.dot(self.a_field) * psi + 0.5j * self.a_field.dot(psi.gradient(force_real = force_real)) + 0.5j * (self.a_field * psi).divergence(force_real=force_real) + self.v * psi
 
         elif isinstance(psi, ReciprocalField):
