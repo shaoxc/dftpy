@@ -49,7 +49,7 @@ JOB
 		  - :ref:`calctype<JOB-calctype>`
 
 
-.. _JOB-task:
+.. _job-task:
 
 **task**
 	The task to be performed.
@@ -59,7 +59,7 @@ JOB
 		*Default* : Optdensity
 
 
-.. _JOB-calctype:
+.. _job-calctype:
 
 **calctype**
 	The property to be calculated.
@@ -81,7 +81,7 @@ PATH
 		  - :ref:`cellpath<PATH-cellpath>`
 
 
-.. _PATH-pppath:
+.. _path-pppath:
 
 **pppath**
 	The path of pseudopotential.
@@ -91,7 +91,7 @@ PATH
 		*Default* : ./
 
 
-.. _PATH-cellpath:
+.. _path-cellpath:
 
 **cellpath**
 	The path of input structure.
@@ -119,7 +119,7 @@ MATH
 		  -
 
 
-.. _MATH-linearii:
+.. _math-linearii:
 
 **linearii**
 	Linear-scaling method to deal with Ion-Ion interactions (PME).
@@ -129,7 +129,7 @@ MATH
 		*Default* : True
 
 
-.. _MATH-linearie:
+.. _math-linearie:
 
 **linearie**
 	Linear-scaling method to deal with Ion-Electron interactions (PME).
@@ -139,17 +139,17 @@ MATH
 		*Default* : True
 
 
-.. _MATH-twostep:
+.. _math-twostep:
 
 **twostep**
-	A two-step method for performing density optimizations. '`True`' is equivalent to :ref:`multistep<MATH-multistep>` = 2.
+	A two-step method for performing density optimizations. '`True`' is equivalent to :ref:`multistep<math-multistep>` = 2.
 
 		*Options* : True, False
 
 		*Default* : False
 
 
-.. _MATH-multistep:
+.. _math-multistep:
 
 **multistep**
 	A multi-step method for performing density optimizations.
@@ -159,7 +159,7 @@ MATH
 		*Default* : 1
 
 
-.. _MATH-reuse:
+.. _math-reuse:
 
 **reuse**
 	Except in the first step, the initial density is given by the optimized density of the previous step.
@@ -194,7 +194,7 @@ CELL
 		  - :ref:`format<CELL-format>`
 
 
-.. _CELL-cellfile:
+.. _cell-cellfile:
 
 **cellfile**
 	The file of input structure. 
@@ -204,7 +204,7 @@ CELL
 		*Default* : POSCAR
 
 
-.. _CELL-elename:
+.. _cell-elename:
 
 **elename**
 	The name of atom.
@@ -214,7 +214,7 @@ CELL
 		*Default* : Al
 
 
-.. _CELL-zval:
+.. _cell-zval:
 
 **zval**
 	The charge of atomic species.
@@ -224,7 +224,7 @@ CELL
 		*Default* : None
 
 
-.. _CELL-format:
+.. _cell-format:
 
 **format**
 	The format of structure file.
@@ -254,7 +254,7 @@ GRID
 		  -
 
 
-.. _GRID-ecut:
+.. _grid-ecut:
 
 **ecut**
 	The kinetic energy cutoff (eV).
@@ -264,17 +264,17 @@ GRID
 		*Default* : 600
 
 
-.. _GRID-spacing:
+.. _grid-spacing:
 
 **spacing**
-	The spacing (or gap) separating nearest real space grid points. If set this, :ref:`ecut<Grid-ecut>` is disabled.
+	The spacing (or gap) separating nearest real space grid points. If set this, :ref:`ecut<grid-ecut>` is disabled.
 
 		*Options* : 
 
 		*Default* : None
 
 
-.. _GRID-gfull:
+.. _grid-gfull:
 
 **gfull**
 	Determines oif the number of grid points in the reciprocal and real space grids are equal. If '`False`' only use half grid, which will be faster.
@@ -286,7 +286,7 @@ GRID
 .. note::
  `gfull=False`' implies that the the number of points of reciprocal space is only half of real space.
 
-.. _GRID-nr:
+.. _grid-nr:
 
 **nr**
 	The number of grid points in the direction of the three lattice vectors.
@@ -299,7 +299,7 @@ GRID
 
 			nr = 32 32 32
 
-.. _GRID-maxprime:
+.. _grid-maxprime:
 
 **maxprime**
 	The max prime of guess best number of grid points for FFT
@@ -309,7 +309,7 @@ GRID
 		*Default* : 13
 
 
-.. _GRID-scale:
+.. _grid-scale:
 
 **scale**
 	The minimum scale for guess the best number of grid points
@@ -319,7 +319,7 @@ GRID
 		*Default* : 0.99
 
 
-.. _GRID-cplx:
+.. _grid-cplx:
 
 **cplx**
 	The type of real space value
@@ -347,7 +347,7 @@ DENSITY
 		  -
 
 
-.. _DENSITY-nspin:
+.. _density-nspin:
 
 **nspin**
 	non/spin-polarized calculation
@@ -357,7 +357,7 @@ DENSITY
 		*Default* : 1
 
 
-.. _DENSITY-magmom:
+.. _density-magmom:
 
 **magmom**
 	Total electronic magnetization.
@@ -367,27 +367,27 @@ DENSITY
 		*Default* : 0
 
 
-.. _DENSITY-densityini:
+.. _density-densityini:
 
 **densityini**
-	The initial density is given by homogeneous electron gas (HEG) or read from :ref:`densityfile<DENSITY-densityfile>`. If set `Read`, must given the :ref:`densityfile<DENSITY-densityfile>`.
+	The initial density is given by homogeneous electron gas (HEG) or read from :ref:`densityfile<density-densityfile>`. If set `Read`, must given the :ref:`densityfile<density-densityfile>`.
 
 		*Options* : HEG, Read
 
 		*Default* : HEG
 
 
-.. _DENSITY-densityfile:
+.. _density-densityfile:
 
 **densityfile**
-	The charge density for initial density, only works when if :ref:`densityini<DENSITY-densityini>` set `Read`.
+	The charge density for initial density, only works when if :ref:`densityini<density-densityini>` set `Read`.
 
 		*Options* : 
 
 		*Default* : None
 
 
-.. _DENSITY-densityoutput:
+.. _density-densityoutput:
 
 **densityoutput**
 	The output file of final density. The default is not output the density.
@@ -410,7 +410,7 @@ EXC
 		  - :ref:`c_str<EXC-c_str>`
 
 
-.. _EXC-xc:
+.. _exc-xc:
 
 **xc**
 	The kind of exchange-correlation functional. If not `LDA`, must have pylibxc_ installed.
@@ -420,7 +420,7 @@ EXC
 		*Default* : LDA
 
 
-.. _EXC-x_str:
+.. _exc-x_str:
 
 **x_str**
 	The type of exchange functional.
@@ -430,7 +430,7 @@ EXC
 		*Default* : lda_x
 
 
-.. _EXC-c_str:
+.. _exc-c_str:
 
 **c_str**
 	The type of correlation functional.
@@ -478,7 +478,7 @@ KEDF
 		  -
 
 
-.. _KEDF-kedf:
+.. _kedf-kedf:
 
 **kedf**
 	The type of KEDF.
@@ -488,7 +488,7 @@ KEDF
 		*Default* : WT
 
 
-.. _KEDF-x:
+.. _kedf-x:
 
 **x**
 	The ratio of TF KEDF.
@@ -498,7 +498,7 @@ KEDF
 		*Default* : 1
 
 
-.. _KEDF-y:
+.. _kedf-y:
 
 **y**
 	The ratio of vW KEDF.
@@ -508,7 +508,7 @@ KEDF
 		*Default* : 1
 
 
-.. _KEDF-alpha:
+.. _kedf-alpha:
 
 **alpha**
 	The alpha parameter typical in  nonlocal KEDF :math:`\rho^{\alpha}`.
@@ -518,7 +518,7 @@ KEDF
 		*Default* : 0.8333333333333333
 
 
-.. _KEDF-beta:
+.. _kedf-beta:
 
 **beta**
 	The beta parameter typical in  nonlocal KEDF :math:`\rho^{\beta}`.
@@ -528,7 +528,7 @@ KEDF
 		*Default* : 0.8333333333333333
 
 
-.. _KEDF-sigma:
+.. _kedf-sigma:
 
 **sigma**
 	A parameter used to smooth with a Gaussian convolution FFTs of problematic functions (e.g., invfft of :math:`{G^2\rho(G)}` ).
@@ -538,17 +538,17 @@ KEDF
 		*Default* : None
 
 
-.. _KEDF-nsp:
+.. _kedf-nsp:
 
 **nsp**
-	The number of :math:`{k_{f}}` points for splining `LWT` like nonlocal KEDFs. There are three options to achieve the same goal, the priority is :ref:`nsp<KEDF-nsp>` -> :ref:`delta<KEDF-delta>` -> :ref:`ratio<KEDF-ratio>`. Default is using :ref:`ratio<KEDF-ratio>`.
+	The number of :math:`{k_{f}}` points for splining `LWT` like nonlocal KEDFs. There are three options to achieve the same goal, the priority is :ref:`nsp<kedf-nsp>` -> :ref:`delta<kedf-delta>` -> :ref:`ratio<kedf-ratio>`. Default is using :ref:`ratio<kedf-ratio>`.
 
 		*Options* : 
 
 		*Default* : None
 
 
-.. _KEDF-interp:
+.. _kedf-interp:
 
 **interp**
 	The interpolation method for `LWT` KEDF's kernel from the kernel table.
@@ -558,7 +558,7 @@ KEDF
 		*Default* : hermite
 
 
-.. _KEDF-kerneltype:
+.. _kedf-kerneltype:
 
 **kerneltype**
 	The kernel for `LWT` KEDF.
@@ -568,7 +568,7 @@ KEDF
 		*Default* : WT
 
 
-.. _KEDF-symmetrization:
+.. _kedf-symmetrization:
 
 **symmetrization**
 	The symmetrization way for `MGP` KEDF. See `paper <https://aip.scitation.org/doi/abs/10.1063/1.5023926>`_.
@@ -578,7 +578,7 @@ KEDF
 		*Default* : None
 
 
-.. _KEDF-lumpfactor:
+.. _kedf-lumpfactor:
 
 **lumpfactor**
 	The kinetic electron for `LWT` KEDF.
@@ -588,7 +588,7 @@ KEDF
 		*Default* : None
 
 
-.. _KEDF-neta:
+.. _kedf-neta:
 
 **neta**
 	The max number of discrete :math:`\eta` for `LWT` KEDF.
@@ -598,7 +598,7 @@ KEDF
 		*Default* : 50000
 
 
-.. _KEDF-etamax:
+.. _kedf-etamax:
 
 **etamax**
 	The max value of \eta for kernel in `LWT` KEDF.
@@ -608,7 +608,7 @@ KEDF
 		*Default* : 50
 
 
-.. _KEDF-order:
+.. _kedf-order:
 
 **order**
 	The order for the interpolation of the kernel in `LWT` KEDF. '0' means using the value of nearest-neighbor point is used.
@@ -618,17 +618,17 @@ KEDF
 		*Default* : 3
 
 
-.. _KEDF-ratio:
+.. _kedf-ratio:
 
 **ratio**
-	The ratio of :math:`{k_{f}}` for spline in `LWT` KEDF. There are three options to do same thing, the priority is :ref:`nsp<KEDF-nsp>` -> :ref:`delta<KEDF-delta>` -> :ref:`ratio<KEDF-ratio>`. Default is using :ref:`ratio<KEDF-ratio>`.
+	The ratio of :math:`{k_{f}}` for spline in `LWT` KEDF. There are three options to do same thing, the priority is :ref:`nsp<kedf-nsp>` -> :ref:`delta<kedf-delta>` -> :ref:`ratio<kedf-ratio>`. Default is using :ref:`ratio<kedf-ratio>`.
 
 		*Options* : 
 
 		*Default* : 1.2
 
 
-.. _KEDF-maxpoints:
+.. _kedf-maxpoints:
 
 **maxpoints**
 	The max number of integration points for the evaluation of the `MGP` kernel.
@@ -638,7 +638,7 @@ KEDF
 		*Default* : 1000
 
 
-.. _KEDF-delta:
+.. _kedf-delta:
 
 **delta**
 	The gap of spline
@@ -648,7 +648,7 @@ KEDF
 		*Default* : None
 
 
-.. _KEDF-kdd:
+.. _kedf-kdd:
 
 **kdd**
 	The kernel density denpendent for `LWT` KEDF: 
@@ -661,7 +661,7 @@ KEDF
 		*Default* : 3
 
 
-.. _KEDF-rho0:
+.. _kedf-rho0:
 
 **rho0**
 	The 'average' density used for the definition of the Fermi momentum. Default is None, which means it calculated based on the total charge and system volume.
@@ -671,7 +671,7 @@ KEDF
 		*Default* : None
 
 
-.. _KEDF-k_str:
+.. _kedf-k_str:
 
 **k_str**
 	Functional type for GGA/LIBXC_KEDF
@@ -683,7 +683,7 @@ KEDF
 .. warning::
  The functional type of GGA and LIBXC_KEDF are different.
 
-.. _KEDF-params:
+.. _kedf-params:
 
 **params**
 	Parameters for GGA KEDF functionals
@@ -693,7 +693,7 @@ KEDF
 		*Default* : None
 
 
-.. _KEDF-kfmin:
+.. _kedf-kfmin:
 
 **kfmin**
 	Lower limit of kf
@@ -703,7 +703,7 @@ KEDF
 		*Default* : None
 
 
-.. _KEDF-kfmax:
+.. _kedf-kfmax:
 
 **kfmax**
 	Upper limit of kf
@@ -713,7 +713,7 @@ KEDF
 		*Default* : None
 
 
-.. _KEDF-rhomax:
+.. _kedf-rhomax:
 
 **rhomax**
 	Maximum/cutoff density
@@ -723,7 +723,7 @@ KEDF
 		*Default* : None
 
 
-.. _KEDF-ldw:
+.. _kedf-ldw:
 
 **ldw**
 	local density weight
@@ -745,7 +745,7 @@ OUTPUT
 		  - :ref:`stress<OUTPUT-stress>`
 
 
-.. _OUTPUT-time:
+.. _output-time:
 
 **time**
 	Output the time information of all parts.
@@ -755,7 +755,7 @@ OUTPUT
 		*Default* : True
 
 
-.. _OUTPUT-stress:
+.. _output-stress:
 
 **stress**
 	Output the stress information of all terms.
@@ -787,7 +787,7 @@ OPT
 		  -
 
 
-.. _OPT-method:
+.. _opt-method:
 
 **method**
 	The density optimization method.
@@ -797,7 +797,7 @@ OPT
 		*Default* : CG-HS
 
 
-.. _OPT-algorithm:
+.. _opt-algorithm:
 
 **algorithm**
 	The direct minimization method : Energy (EMM) or Residual (RMM).
@@ -807,7 +807,7 @@ OPT
 		*Default* : EMM
 
 
-.. _OPT-vector:
+.. _opt-vector:
 
 **vector**
 	The scheme to deal with search direction.
@@ -817,7 +817,7 @@ OPT
 		*Default* : Orthogonalization
 
 
-.. _OPT-c1:
+.. _opt-c1:
 
 **c1**
 	The wolfe parameters `c1`
@@ -827,7 +827,7 @@ OPT
 		*Default* : 0.0001
 
 
-.. _OPT-c2:
+.. _opt-c2:
 
 **c2**
 	The wolfe parameters `c2`
@@ -837,7 +837,7 @@ OPT
 		*Default* : 0.2
 
 
-.. _OPT-maxls:
+.. _opt-maxls:
 
 **maxls**
 	The max steps for line search. 
@@ -847,7 +847,7 @@ OPT
 		*Default* : 10
 
 
-.. _OPT-econv:
+.. _opt-econv:
 
 **econv**
 	The energy convergence for last three steps (a.u./atom).
@@ -857,7 +857,7 @@ OPT
 		*Default* : 1e-06
 
 
-.. _OPT-maxfun:
+.. _opt-maxfun:
 
 **maxfun**
 	The max steps for function calls. For `TN` density optimization method its the max steps for searching direction.
@@ -867,7 +867,7 @@ OPT
 		*Default* : 50
 
 
-.. _OPT-maxiter:
+.. _opt-maxiter:
 
 **maxiter**
 	The max steps for optimization
@@ -877,7 +877,7 @@ OPT
 		*Default* : 100
 
 
-.. _OPT-xtol:
+.. _opt-xtol:
 
 **xtol**
 	Relative tolerance for an acceptable step.
@@ -887,7 +887,7 @@ OPT
 		*Default* : 1e-12
 
 
-.. _OPT-h0:
+.. _opt-h0:
 
 **h0**
 	The initial approximation for the inverse Hessian needed by `LBFGS`.
@@ -919,7 +919,7 @@ PROPAGATOR
 		  -
 
 
-.. _PROPAGATOR-type:
+.. _propagator-type:
 
 **type**
 	The type of propagator.
@@ -929,7 +929,7 @@ PROPAGATOR
 		*Default* : crank-nicolson
 
 
-.. _PROPAGATOR-order:
+.. _propagator-order:
 
 **order**
 	The order used for the Taylor expansion propagator.
@@ -939,7 +939,7 @@ PROPAGATOR
 		*Default* : 20
 
 
-.. _PROPAGATOR-linearsolver:
+.. _propagator-linearsolver:
 
 **linearsolver**
 	The linear solver used for the Crank-Nicolson propagator. The solvers with a name end with `-scipy` are from the `SciPy` package and should be used in serial calculations only. 
@@ -949,7 +949,7 @@ PROPAGATOR
 		*Default* : cg
 
 
-.. _PROPAGATOR-tol:
+.. _propagator-tol:
 
 **tol**
 	The relative tolerance for the linear solver used for the Crank-Nicolson propagator.
@@ -959,7 +959,7 @@ PROPAGATOR
 		*Default* : 1e-10
 
 
-.. _PROPAGATOR-maxiter:
+.. _propagator-maxiter:
 
 **maxiter**
 	The max amount of iteration steps for the linear solver used for the Crank-Nicolson propagator.
@@ -969,7 +969,7 @@ PROPAGATOR
 		*Default* : 100
 
 
-.. _PROPAGATOR-atol:
+.. _propagator-atol:
 
 **atol**
 	The absolute tolerance for the linear solver used for the Crank-Nicolson propagator.
@@ -1001,7 +1001,7 @@ TD
 		  -
 
 
-.. _TD-outfile:
+.. _td-outfile:
 
 **outfile**
 	The prefix of the output files.
@@ -1011,7 +1011,7 @@ TD
 		*Default* : td_out
 
 
-.. _TD-timestep:
+.. _td-timestep:
 
 **timestep**
 	The time step in atomic units.
@@ -1021,7 +1021,7 @@ TD
 		*Default* : 0.001
 
 
-.. _TD-tmax:
+.. _td-tmax:
 
 **tmax**
 	The total amount of time in atomic units.
@@ -1031,7 +1031,7 @@ TD
 		*Default* : 1
 
 
-.. _TD-max_pc:
+.. _td-max_pc:
 
 **max_pc**
 	The max amount of the predictor-corrector steps.
@@ -1041,7 +1041,7 @@ TD
 		*Default* : 1
 
 
-.. _TD-tol_pc:
+.. _td-tol_pc:
 
 **tol_pc**
 	The relative tolerance for the predictor-corrector.
@@ -1051,7 +1051,7 @@ TD
 		*Default* : 1e-08
 
 
-.. _TD-atol_pc:
+.. _td-atol_pc:
 
 **atol_pc**
 	The absolute tolerance for the predictor-corrector.
@@ -1061,7 +1061,7 @@ TD
 		*Default* : 1e-10
 
 
-.. _TD-direc:
+.. _td-direc:
 
 **direc**
 	The direction of the initial kick.
@@ -1071,7 +1071,7 @@ TD
 		*Default* : 0
 
 
-.. _TD-strength:
+.. _td-strength:
 
 **strength**
 	The strength of the initial kick in atomic units.
@@ -1081,7 +1081,7 @@ TD
 		*Default* : 0.001
 
 
-.. _TD-dynamic_potential:
+.. _td-dynamic_potential:
 
 **dynamic_potential**
 	Include dynamic potential. (See Eq. (15) of `paper <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.98.144302>`_.
@@ -1091,7 +1091,7 @@ TD
 		*Default* : False
 
 
-.. _TD-max_runtime:
+.. _td-max_runtime:
 
 **max_runtime**
 	Max amount of running time in seconds before the program saves the intermediate result and quitting.
@@ -1101,7 +1101,7 @@ TD
 		*Default* : 0
 
 
-.. _TD-restart:
+.. _td-restart:
 
 **restart**
 	Restart the propagation from a previously saved intermediate result.
@@ -1124,7 +1124,7 @@ CASIDA
 		  - :ref:`tda<CASIDA-tda>`
 
 
-.. _CASIDA-numeig:
+.. _casida-numeig:
 
 **numeig**
 	Number of eigenstates used in constructing casida matrix.
@@ -1134,7 +1134,7 @@ CASIDA
 		*Default* : None
 
 
-.. _CASIDA-diagonize:
+.. _casida-diagonize:
 
 **diagonize**
 	If true, diagonize the Hamiltonian before construct the Casida matrix. If false, read the eigenstates from a saved file.
@@ -1144,7 +1144,7 @@ CASIDA
 		*Default* : True
 
 
-.. _CASIDA-tda:
+.. _casida-tda:
 
 **tda**
 	Use Tamm-Dancoff approximation.
@@ -1166,7 +1166,7 @@ INVERSION
 		  - :ref:`v_out<INVERSION-v_out>`
 
 
-.. _INVERSION-rho_in:
+.. _inversion-rho_in:
 
 **rho_in**
 	Input file for the density.
@@ -1176,7 +1176,7 @@ INVERSION
 		*Default* : None
 
 
-.. _INVERSION-v_out:
+.. _inversion-v_out:
 
 **v_out**
 	Output file for the potential.

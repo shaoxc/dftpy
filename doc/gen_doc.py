@@ -42,17 +42,6 @@ DFTpy is a set of python modules. However, it can be executed in the old way by 
 .. _pylibxc: https://tddft.org/programs/libxc/
 """
 
-def main():
-    configentries = default_json()
-    with open('../doc/source/tutorials/config.rst1', 'w') as f:
-        for section in configentries:
-            f.write('{0:}\n'.format(section))
-            f.write('----------\n')
-            f.write('\n')
-            for key in configentries[section]:
-                f.write(configentries[section][key].gen_doc(key))
-            f.write('\n')
-
 def gen_list_table(dicts, parent = None, ncol = 4):
     fstr = '\n'
     keys = list(dicts.keys())
@@ -79,7 +68,7 @@ def gen_list_table(dicts, parent = None, ncol = 4):
 
 def gen_config_rst():
     configentries = default_json()
-    with open('../doc/source/tutorials/config.rst', 'w') as f:
+    with open('./source/tutorials/config.rst', 'w') as f:
         f.write(header)
         for section in configentries:
             #-----------------------------------------------------------------------
@@ -102,10 +91,11 @@ def gen_config_rst():
             f.write(fstr)
             f.write(gen_list_table(configentries[section], section))
             #-----------------------------------------------------------------------
+            parent = section.lower()
             for key, item in configentries[section].items() :
                 if key == 'comment' : continue
                 fstr = "\n"
-                fstr += ".. _{0}-{1}:\n\n".format(section, key)
+                fstr += ".. _{0}-{1}:\n\n".format(parent, key)
                 fstr += "**{0}**\n".format(key)
                 # fstr += ".. option:: {0}\n\n".format(key)
                 if item.comment:
