@@ -53,7 +53,7 @@
       "default": true
     },
     "twostep": {
-      "comment": "A two-step method for performing density optimizations. '`True`' is equivalent to :option:`multistep` = 2.",
+      "comment": "A two-step method for performing density optimizations. '`True`' is equivalent to :ref:`multistep<MATH-multistep>` = 2.",
       "type": "bool",
       "options": "True, False",
       "default": false
@@ -122,7 +122,7 @@
       "unit": "Angstrom"
     },
     "spacing": {
-      "comment": "The spacing (or gap) separating nearest real space grid points. If set this, :option:`ecut` is disabled.",
+      "comment": "The spacing (or gap) separating nearest real space grid points. If set this, :ref:`ecut<Grid-ecut>` is disabled.",
       "options": "",
       "type": "float",
       "default": null,
@@ -179,13 +179,13 @@
       "default": 0
     },
     "densityini": {
-      "comment": "The initial density is given by homogeneous electron gas (HEG) or read from :option:`densityfile`. If set `Read`, must given the :option:`densityfile`.",
+      "comment": "The initial density is given by homogeneous electron gas (HEG) or read from :ref:`densityfile<DENSITY-densityfile>`. If set `Read`, must given the :ref:`densityfile<DENSITY-densityfile>`.",
       "options": "HEG, Read",
       "type": "str",
       "default": "HEG"
     },
     "densityfile": {
-      "comment": "The charge density for initial density, only works when if :option:`densityini` set `Read`.",
+      "comment": "The charge density for initial density, only works when if :ref:`densityini<DENSITY-densityini>` set `Read`.",
       "options": "",
       "type": "str",
       "default": null
@@ -263,7 +263,7 @@
       "default": null
     },
     "nsp": {
-      "comment": "The number of :math:`{k_{f}}` points for splining `LWT` like nonlocal KEDFs. There are three options to achieve the same goal, the priority is :option:`nsp` -> :option:`delta` -> :option:`ratio`. Default is using :option:`ratio`.",
+      "comment": "The number of :math:`{k_{f}}` points for splining `LWT` like nonlocal KEDFs. There are three options to achieve the same goal, the priority is :ref:`nsp<KEDF-nsp>` -> :ref:`delta<KEDF-delta>` -> :ref:`ratio<KEDF-ratio>`. Default is using :ref:`ratio<KEDF-ratio>`.",
       "options": "",
       "type": "int",
       "default": null
@@ -311,7 +311,7 @@
       "default": 3
     },
     "ratio": {
-      "comment": "The ratio of :math:`{k_{f}}` for spline in `LWT` KEDF. There are three options to do same thing, the priority is :option:`nsp` -> :option:`delta` -> :option:`ratio`. Default is using :option:`ratio`.",
+      "comment": "The ratio of :math:`{k_{f}}` for spline in `LWT` KEDF. There are three options to do same thing, the priority is :ref:`nsp<KEDF-nsp>` -> :ref:`delta<KEDF-delta>` -> :ref:`ratio<KEDF-ratio>`. Default is using :ref:`ratio<KEDF-ratio>`.",
       "options": "",
       "type": "float",
       "default": 1.2

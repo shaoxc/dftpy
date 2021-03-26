@@ -27,8 +27,8 @@ DFTpy is a set of python modules. However, it can be executed in the old way by 
        - `OPT`_
        - `PROPAGATOR`_
      * - `TD`_
-       -
-       -
+       - `CASIDA`_
+       - `INVERSION`_
        -
 
 .. warning::
@@ -105,14 +105,16 @@ def gen_config_rst():
             for key, item in configentries[section].items() :
                 if key == 'comment' : continue
                 fstr = "\n"
-                fstr += ".. _{0}-{1}:\n".format(section, key)
-                fstr += ".. option:: {0}\n\n".format(key)
+                fstr += ".. _{0}-{1}:\n\n".format(section, key)
+                fstr += "**{0}**\n".format(key)
+                # fstr += ".. option:: {0}\n\n".format(key)
                 if item.comment:
                     lines = str(item.comment)
                     lines = lines.replace('\\\\n', '\n')
                     lines = lines.replace('\\\\t', '\t')
                     # fstr += "\t{0}\n".format(item.comment)
                     fstr += "\t{0}\n".format(lines)
+                fstr += '\n'
                 fstr += "\t\t*Options* : {0}\n\n".format(item.options)
                 fstr += "\t\t*Default* : {0}\n\n".format(item.default)
                 if item.example :
