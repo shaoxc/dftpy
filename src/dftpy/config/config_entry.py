@@ -91,11 +91,14 @@ def format_cidict(expression):
 
 class ConfigEntry(object):
 
-    def __init__(self, type, default=None, comment='', options='', **kwargs):
+    def __init__(self, type = 'str', default=None, comment='', options='', example = None, note = None, warning = None, **kwargs):
         self.type = type
         self.default = default
         self.comment = comment
         self.options = options
+        self.note = note
+        self.example = example
+        self.warning = warning
         if self.type == 'bool' and self.options == '':
             self.options = 'True, False'
 
