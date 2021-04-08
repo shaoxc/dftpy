@@ -32,7 +32,7 @@ class BaseGrid(BaseCell):
         self._nrG = self._nrR.copy()
         if not full :
             self._nrG[-1] = self._nrG[-1] // 2 + 1
-            self._nnrG = np.prod(self._nrG)
+        self._nnrG = np.prod(self._nrG)
         metric = np.dot(lattice.T, lattice)
         latparas = np.zeros(3)
         for i in range(3):
