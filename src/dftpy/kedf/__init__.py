@@ -353,6 +353,12 @@ def kedf2nlgga(name = 'STV+GGA+LMGPA', **kwargs) :
 
     stv = KEDF(name = 'GGA', k_str = 'STV', params = params, sigma = sigma)
     gga = KEDF(name = names[1], k_str = k_str, sigma = sigma)
+    #-----------------------------------------------------------------------
+    if names[2] == 'HC' :
+        kwargs['k_str'] = 'PBE2'
+        kwargs['params'] = [0.1, 0.45]
+        kwargs['delta'] = 0.3
+    #-----------------------------------------------------------------------
     nl = KEDF(name = names[2], **kwargs)
     obj = NLGGA(stv, gga, nl, rhomax = rhomax, name = name)
 

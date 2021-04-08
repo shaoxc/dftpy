@@ -118,7 +118,7 @@ def vW(rho, y=1.0, sigma=None, calcType=["E","V"], split=False, **kwargs):
         OutFunctional.potential = pot * y
 
     if 'D' in calcType:
-        OutFunctional.energydensity = pot * y
+        OutFunctional.energydensity = pot * y * rho
 
     TimeData.End("vW")
     if split:

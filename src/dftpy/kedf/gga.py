@@ -143,7 +143,8 @@ def GGAFs(s, functional="LKT", calcType=["E","V"], params=None, gga_remove_vw = 
     elif isinstance(params, (float, int)):
         params0[0] = params
     else :
-        params0[:len(params)] = params
+        l = min(len(params), len(params0))
+        params0[:l] = params[:l]
 
     params = params0
     if functional == "LKT":  # \cite{luo2018simple}
@@ -723,3 +724,11 @@ def GGA(rho, functional="LKT", calcType=["E","V"], split=False, params = None, *
     # np.savetxt('gga.dat', np.c_[rho.ravel(), pot.ravel(), s.ravel(), F.ravel(), dFds2.ravel()])
 
     return OutFunctional
+
+    # def laplacian(self, check_real = False, force_real = False, sigma = 0.025):
+def get_gga_p(rho, calcType=["E","V"], params = None, **kwargs):
+    sigma = kwargs.get('sigma', None)
+    rho53 = rho ** (5.0 / 3.0)
+    tkf0 = 2.0 * (3.0 * np.pi ** 2) ** (1.0 / 3.0)
+    p = rho.laplacian(sigma = sigma)/(tkf0**2*rho53)
+    return p

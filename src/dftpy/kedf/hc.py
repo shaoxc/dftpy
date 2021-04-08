@@ -9,6 +9,7 @@ from dftpy.kedf.kernel import WTKernelTable, WTKernelDerivTable, LWTKernel, LWTK
 from dftpy.kedf.kernel import MGPKernelTable, MGPOmegaE, HCKernelTable, HCKernelXi
 from dftpy.time_data import TimeData
 from dftpy.constants import ZERO
+from dftpy.formats import io
 
 __all__ = ["HC"]
 
@@ -55,7 +56,6 @@ def get_kflist(kf, kf0 = None, ratio=1.2, nsp=None, delta=None, kfmin = None, kf
     kflists[0] -= savetol  # for numerical safe
     kflists[-1] += savetol  # for numerical safe
     sprint('nsp', len(kflists), np.max(kflists), np.min(kflists), kf0, comm = kf.mp.comm, level=1)
-    # sprint('nsp', len(kflists), np.max(kflists), np.min(kflists), kf0, comm = kf.mp.comm, level=1)
     if ke_kernel_saved is not None :
         ke_kernel_saved['kfmin'] = kfmin
         ke_kernel_saved['kfmax'] = kfmax
@@ -84,9 +84,9 @@ def one_point_potential_energy(
     ldw : local density weight
     """
     #-----------------------------------------------------------------------
-    mask = rho < ZERO
-    rho_saved = rho[mask]
-    rho[mask] = ZERO
+    mask_zero = rho < ZERO
+    rho_saved = rho[mask_zero]
+    rho[mask_zero] = ZERO
 
     rhoAlpha = rho ** alpha
     rhoAlpha1 = rhoAlpha / rho
@@ -114,7 +114,9 @@ def one_point_potential_energy(
         item = (grhoG).ifft(force_real=True)
         rhoGrad.append(item)
     s = np.sqrt(rhoGrad[0] ** 2 + rhoGrad[1] ** 2 + rhoGrad[2] ** 2) / rho43
-    # np.savetxt('1.dat', np.c_[rho.ravel(), s.ravel()])
+    #-----------------------------------------------------------------------
+    # np.savetxt('s.dat', np.c_[rho.ravel(), s.ravel()])
+    #-----------------------------------------------------------------------
     # GGAFs use s /= 2*(3*\pi^2)^{1/3}, which is 38.283120002509214 for s^2
     if k_str.upper() == 'HC' :
         """
@@ -128,15 +130,22 @@ def one_point_potential_energy(
         dFds2 = 2*hc_lambda
     else :
         F, dFds2 = GGAFs(s, functional=k_str.upper(), calcType=calcType, params = params, **kwargs)
-    rho[mask] = rho_saved
     #-----------------------------------------------------------------------
     q = rho.grid.get_reciprocal().q
     kf_std = np.cbrt(3.0 * np.pi ** 2 * rho)
     kf = F * kf_std
     kf =DirectField(grid=rho.grid, memo=rho.memo, rank=rho.rank, griddata_3d=kf, cplx=rho.cplx)
 
+    # if rho0 is None :
+    #     rho0 = ke_kernel_saved.get('rho0', None)
+    # if rho0 is not None and rho0 > ZERO :
+    #     kf0 = np.cbrt(3.0 * np.pi ** 2 * rho0)
+    kf0 = 1.0
+    kflists = get_kflist(kf, kf0, ratio=ratio, nsp=nsp, delta=delta, rho0 = rho0, kfmin = kfmin, kfmax = kfmax, ke_kernel_saved=ke_kernel_saved, **kwargs)
+    nsp = len(kflists)
+
     ### HEG
-    if abs(kf.amax() - kf.amin()) < 1e-8:
+    if abs(kf.amax() - kf.amin()) < 1e-8 or nsp < 3 :
         NL = Functional(name="NL", energy = 0.0)
         if 'D' in calcType:
             energydensity = DirectField(grid=rho.grid, memo=rho.memo, rank=rho.rank, cplx=rho.cplx)
@@ -146,19 +155,8 @@ def one_point_potential_energy(
             NL.potential = pot
         return NL
 
-    if rho0 is None : rho0 = rho.amean()
-    if abs(ke_kernel_saved["rho0"] - rho0) > 1e-6 :
-        sprint("Re-calculate KE_kernel", rho.grid.nrR, rho0, comm=rho.mp.comm, level=1)
-        ke_kernel_saved["rho0"] = rho0
-    else :
-        rho0 = ke_kernel_saved["rho0"]
-    # kf0 = 2.0 * np.cbrt(3.0 * np.pi ** 2 * rho0)
-    kf0 = np.cbrt(3.0 * np.pi ** 2 * rho0)
-    kflists = get_kflist(kf, kf0, ratio=ratio, nsp=nsp, delta=delta, rho0 = rho0, kfmin = kfmin, kfmax = kfmax, ke_kernel_saved=ke_kernel_saved, **kwargs)
-
     mask = kf > kflists[-1]
     kf[mask] = kflists[-1]
-    nsp = len(kflists)
 
     if 'V' in calcType :
         vcalc = True
@@ -255,16 +253,6 @@ def one_point_potential_energy(
             pot3[mask] = (h00D * p0[mask] + h01D * p1[mask]) / Dkf + h10D * m0[mask] + h11D * m1[mask]
 
     pot2 = pot2G.ifft(force_real=True)
-    #-----------------------------------------------------------------------
-    if ldw is None :
-        ldw = 1.0/6.0
-    factor = np.ones_like(rho)
-    rhov = rho.amax()
-    mask = rho < 1E-6
-    ld = max(0.1, ldw)
-    factor[mask] = np.abs(rho[mask])** ld /(rhov ** ld)
-    factor[rho < 0] = 0.0
-    #-----------------------------------------------------------------------
     NL = Functional(name="NL")
     energydensity = rhoAlpha * pot1
     # energydensity = rhoBeta * pot2
@@ -300,8 +288,13 @@ def one_point_potential_energy(
         ld = max(0.1, ldw)
         factor[mask] = np.abs(rho[mask])** ld /(rhov ** ld)
         factor[rho < 0] = 0.0
-        # NL.potential = pot1*factor
+        pot1 *= factor
         NL.potential = pot1
+        sprint('HC2', NL.energy, NL.potential.amin(), NL.potential.amax(), comm = rho.mp.comm, level=1)
+        # np.savetxt('pot.dat', np.c_[rho.ravel(), pot1.ravel()])
+        # sprint('density', np.max(rho), np.min(rho), rho.integral(), comm = rho.mp.comm, level=1)
+    #-----------------------------------------------------------------------
+    rho[mask_zero] = rho_saved
     #-----------------------------------------------------------------------
     return NL
 
@@ -374,5 +367,10 @@ def HC(
         KE_kernel_saved["shape"] = tuple(rho.grid.nrR)
         KE_kernel_saved["rho0"] = rho0
     NL = one_point_potential_energy(rho, alpha=alpha, beta=beta, etamax=etamax, ratio=ratio, nsp=nsp, kdd=kdd, delta=delta, interp=interp, calcType=calcType, ke_kernel_saved = KE_kernel_saved, **kwargs)
+    #-----------------------------------------------------------------------
+    # kwargs['k_str'] = 'HC'
+    # kwargs['params'] = [0.01]
+    # one_point_potential_energy(rho, alpha=alpha, beta=beta, etamax=etamax, ratio=ratio, nsp=nsp, kdd=kdd, delta=delta, interp=interp, calcType=calcType, ke_kernel_saved = KE_kernel_saved, **kwargs)
+    #-----------------------------------------------------------------------
     TimeData.End("HC")
     return NL

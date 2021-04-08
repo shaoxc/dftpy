@@ -3,12 +3,16 @@ from dftpy.mpi import sprint
 from dftpy.functional_output import Functional
 from dftpy.kedf.kernel import WTKernel, LindhardDerivative
 from dftpy.time_data import TimeData
+from dftpy.constants import ZERO
 
 __all__ = ["WT", "WTStress"]
 
 def WTPotential(rho, rho0, Kernel, alpha, beta):
     alphaMinus1 = alpha - 1.0
     betaMinus1 = beta - 1.0
+    mask = rho < ZERO
+    rho_saved = rho[mask]
+    rho[mask] = ZERO
     if abs(beta - alpha) < 1e-9:
         rhoBeta = rho ** beta
         rhoAlpha1 = rhoBeta / rho
@@ -17,6 +21,7 @@ def WTPotential(rho, rho0, Kernel, alpha, beta):
     else:
         pot = alpha * rho ** alphaMinus1 * ((rho ** beta).fft() * Kernel).ifft(force_real=True)
         pot += beta * rho ** betaMinus1 * ((rho ** alpha).fft() * Kernel).ifft(force_real=True)
+    rho[mask] = rho_saved
 
     return pot
 
@@ -34,6 +39,9 @@ def WTEnergy(rho, rho0, Kernel, alpha, beta):
     return energy
 
 def WTEnergyDensity(rho, rho0, Kernel, alpha, beta):
+    mask = rho < ZERO
+    rho_saved = rho[mask]
+    rho[mask] = ZERO
     rhoBeta = rho ** beta
     if abs(beta - alpha) < 1e-9:
         rhoAlpha = rhoBeta
@@ -41,6 +49,7 @@ def WTEnergyDensity(rho, rho0, Kernel, alpha, beta):
         rhoAlpha = rho ** alpha
     pot1 = (rhoBeta.fft() * Kernel).ifft(force_real=True)
     energydensity = pot1 * rhoAlpha
+    rho[mask] = rho_saved
     return energydensity
 
 
