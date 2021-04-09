@@ -94,8 +94,11 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
             rho1 = calc_rho(psi1)
             j1 = calc_j(psi1)
             
-            if i_pred_corr > 0 and (old_rho1 - rho1).norm() < atol_rho and np.max((old_j1 - j1).norm()) < atol_j:
+            diff_rho = (old_rho1 - rho1).norm()
+            diff_j = np.max((old_j1 - j1).norm())
+            if i_pred_corr > 0 and diff_rho < atol_rho and diff_j < atol_j:
                 break
+
             rho_half = (rho + rho1) * 0.5
             func = E_v_Evaluator.ComputeEnergyPotential(rho_half, calcType=["V"])
             prop.hamiltonian.v = func.potential
@@ -104,9 +107,9 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
                 prop.hamiltonian.v += DynamicPotential(rho_half, j_half)
         else:
             sprint('Convergence not reached for Predictor-corrector')
-            if (diff_rho := (old_rho1 - rho1).norm()) >= atol_rho:
+            if diff_rho >= atol_rho:
                 sprint('Diff in rho: {0:10.2e} > {1:10.2e}'.format(diff_rho, atol_rho))
-            if (diff_j := np.max((old_j1 - j1).norm())) >= atol_j:
+            if diff_j >= atol_j:
                 sprint('Diff in j: {0:10.2e} > {1:10.2e}'.format(diff_j, atol_j))
 
         psi = psi1
