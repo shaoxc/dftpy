@@ -102,6 +102,13 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
             if dynamic:
                 j_half = (j + j1) * 0.5
                 prop.hamiltonian.v += DynamicPotential(rho_half, j_half)
+        else:
+            sprint('Convergence not reached for Predictor-corrector')
+            if (diff_rho := (old_rho1 - rho1).norm()) >= atol_rho:
+                sprint('Diff in rho: {0:10.2e} > {1:10.2e}'.format(diff_rho, atol_rho))
+            if (diff_j := np.max((old_j1 - j1).norm())) >= atol_j:
+                sprint('Diff in j: {0:10.2e} > {1:10.2e}'.format(diff_j, atol_j))
+
         psi = psi1
         rho = rho1
         j = j1

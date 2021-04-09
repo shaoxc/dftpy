@@ -57,5 +57,10 @@ def RunJob(args):
 
 
 if __name__ == "__main__":
+    import sys
+    from dftpy.mpi.utils import sprint
+    if sys.version_info < (3,8):
+        sprint('Please upgrade your python to version 3.8 or higher.')
+        sys.exit()
     args = GetConf()
     RunJob(args)
