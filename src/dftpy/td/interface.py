@@ -93,11 +93,12 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
             psi1, info = prop(psi, int_t)
             rho1 = calc_rho(psi1)
             j1 = calc_j(psi1)
-            
-            diff_rho = (old_rho1 - rho1).norm()
-            diff_j = np.max((old_j1 - j1).norm())
-            if i_pred_corr > 0 and diff_rho < atol_rho and diff_j < atol_j:
-                break
+           
+            if i_pred_corr > 0:
+                diff_rho = (old_rho1 - rho1).norm()
+                diff_j = np.max((old_j1 - j1).norm())
+                if diff_rho < atol_rho and diff_j < atol_j:
+                    break
 
             rho_half = (rho + rho1) * 0.5
             func = E_v_Evaluator.ComputeEnergyPotential(rho_half, calcType=["V"])
