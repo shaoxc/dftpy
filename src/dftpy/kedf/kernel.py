@@ -252,7 +252,8 @@ def MGPKernel(q, rho0, lumpfactor=0.2, maxpoints=1000, symmetrization=None, Kern
     """
     tkf = 2.0 * (3.0 * rho0 * np.pi ** 2) ** (1.0 / 3.0)
     eta = q / tkf
-    mp = q.mp if hasattr(q, 'mp') else MP()
+    # mp = q.mp if hasattr(q, 'mp') else MP()
+    mp = MP()
     kernel = MGPKernelTable(eta, maxpoints, symmetrization, KernelTable, mp)
     if q[0, 0, 0] < ZERO :
         kernel[0, 0, 0] = 0.0
@@ -288,7 +289,7 @@ def MGPKernelTable(eta, maxpoints=1000, symmetrization=None, KernelTable=None, m
     #-----------------------------------------------------------------------
     if mp is None :
         mp = MP()
-    kernel = None
+    kernel = np.zeros_like(eta)
     for i in range(1, maxpoints + 1):
         if i % mp.size != mp.rank : continue
         t = i * dt
