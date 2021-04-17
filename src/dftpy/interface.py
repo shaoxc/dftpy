@@ -21,6 +21,7 @@ from dftpy.system import System
 from dftpy.inverter import Inverter
 from dftpy.formats.xsf import XSF
 from dftpy.formats.qepp import PP
+from dftpy.properties import get_electrostatic_potential
 
 
 def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = None):
@@ -300,6 +301,11 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2 = None):
         outfile = config["DENSITY"]["densityoutput"]
         write(outfile, rho, ions = ions)
     ############################## Output ##############################
+    if config["OUTPUT"]["electrostatic_potential"]:
+        sprint("Write electrostatic potential...")
+        outfile = config["OUTPUT"]["electrostatic_potential"]
+        v = get_electrostatic_potential(rho, E_v_Evaluator)
+        write(outfile, v, ions = ions)
     results = {}
     results["density"] = rho
     results["energypotential"] = energypotential

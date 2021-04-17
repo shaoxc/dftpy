@@ -394,6 +394,12 @@
       "options": "True, False",
       "type": "bool",
       "default": true
+    },
+    "electrostatic_potential": {
+      "comment": "Output of electrostatic potential",
+      "options": "",
+      "type": "str",
+      "default": null
     }
   },
   "OPT": {
