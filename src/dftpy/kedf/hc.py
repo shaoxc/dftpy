@@ -24,12 +24,12 @@ def get_kflist(kf, kf0 = None, ratio=1.2, nsp=None, delta=None, kfmin = None, kf
 
     if kfmin is None :
         kfmin = max(kf.amin(), 1E-3)
-        n = int(np.floor(np.log(kfmin/kf0)/np.log(ratio)))
+        n = int(np.floor(np.log(kfmin/kf0)/np.log(ratio))) - 1
         kfmin = kf0 * ratio ** n
 
     if kfmax is None :
         kfmax = min(kf.amax(), 100)
-        n = int(np.ceil(np.log(kfmax/kf0)/np.log(ratio)))
+        n = int(np.ceil(np.log(kfmax/kf0)/np.log(ratio))) + 1
         kfmax = kf0 * ratio ** n
 
     if kfmin_prev is not None :
