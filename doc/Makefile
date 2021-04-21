@@ -33,3 +33,6 @@ help:
 
 browse:
 	x-www-browser build/html/index.html
+
+upload: html
+	scp -r ./build/html/* web@dftpy.rutgers.edu:/home/web/dftpy/html/
