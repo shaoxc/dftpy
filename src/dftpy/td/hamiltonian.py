@@ -1,7 +1,9 @@
 import numpy as np
 from scipy.sparse.linalg import LinearOperator, eigsh
+
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.time_data import TimeData
+
 
 class Hamiltonian(object):
 
@@ -23,22 +25,23 @@ class Hamiltonian(object):
         else:
             raise TypeError("v must be a DFTpy DirectField.")
 
-    def __call__(self, psi, force_real=None, sigma = 0.025):
+    def __call__(self, psi, force_real=None, sigma=0.025):
         if isinstance(psi, DirectField):
             if force_real is None:
                 if np.isrealobj(psi):
                     force_real = True
                 else:
                     force_real = False
-            return -0.5 * psi.laplacian(force_real = force_real, sigma=sigma) + self.v * psi
+            return -0.5 * psi.laplacian(force_real=force_real, sigma=sigma) + self.v * psi
         elif isinstance(psi, ReciprocalField):
             return 0.5 * psi.grid.gg * psi + (self.v * psi.ifft()).fft
         else:
             raise TypeError("psi must be a DFTpy DirectField or ReciprocalField.")
 
-    def matvecUtil(self, reciprocal = False):
+    def matvecUtil(self, reciprocal=False):
         if reciprocal:
             reci_grid = self.grid.get_reciprocal()
+
         def matvec(psi_):
             if reciprocal:
                 psi = ReciprocalField(reci_grid, rank=1, griddata_3d=np.reshape(psi_, reci_grid.nr))
@@ -46,10 +49,11 @@ class Hamiltonian(object):
                 psi = DirectField(self.grid, rank=1, griddata_3d=np.reshape(psi_, self.grid.nr))
             prod = self(psi)
             return prod.ravel()
+
         return matvec
 
-    def diagonize(self, numeig, return_eigenvectors = True, reciprocal = False):
-        TimeData.Begin('Diagonize')
+    def diagonalize(self, numeig, return_eigenvectors=True, reciprocal=False):
+        TimeData.Begin('Diagonalize')
 
         if reciprocal:
             reci_grid = self.grid.get_reciprocal()
@@ -66,14 +70,14 @@ class Hamiltonian(object):
             psi_list = []
             for i in range(numeig):
                 if reciprocal:
-                    psi = ReciprocalField(reci_grid, rank=1, griddata_3d=np.reshape(psis[:,i], reci_grid.nr))
+                    psi = ReciprocalField(reci_grid, rank=1, griddata_3d=np.reshape(psis[:, i], reci_grid.nr))
                 else:
-                    psi = DirectField(self.grid, rank=1, griddata_3d=np.reshape(psis[:,i], self.grid.nr))
+                    psi = DirectField(self.grid, rank=1, griddata_3d=np.reshape(psis[:, i], self.grid.nr))
                 psi = psi / np.sqrt((np.real(psi) * np.real(psi) + np.imag(psi) * np.imag(psi)).integral())
                 psi_list.append(psi)
-            TimeData.End('Diagonize')
+            TimeData.End('Diagonalize')
             return Es, psi_list
         else:
             Es, psis = eigsh(A, k=numeig, which='SA', return_eigenvectors=return_eigenvectors)
-            TimeData.End('Diagonize')
+            TimeData.End('Diagonalize')
             return Es

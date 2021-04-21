@@ -1,8 +1,11 @@
-import numpy as np
-from dftpy.mpi import MP, sprint
 from copy import deepcopy
 
-__all__ = ['cg','bicg','bicgstab']
+import numpy as np
+
+from dftpy.mpi import MP
+
+__all__ = ['cg', 'bicg', 'bicgstab']
+
 
 def _get_atol(tol, atol, bnrm2):
     tol = float(tol)
@@ -15,11 +18,13 @@ def _get_atol(tol, atol, bnrm2):
 
     return max(float(atol), tol * float(bnrm2))
 
+
 def _get_norm(x, mp):
     return np.sqrt(np.real(mp.asum(np.conj(x) * x)))
 
-def cg(A, b, x0, tol, maxiter, atol = None, mp = None):
-    if mp is None :
+
+def cg(A, b, x0, tol, maxiter, atol=None, mp=None):
+    if mp is None:
         mp = MP()
 
     atol = _get_atol(tol, atol, _get_norm(b, mp))
@@ -31,19 +36,20 @@ def cg(A, b, x0, tol, maxiter, atol = None, mp = None):
     x = deepcopy(x0)
     while k < maxiter:
         v = A(p[-1])
-        alpha = mp.asum(res[-1]*res[-1]) / mp.asum(p[-1]*v)
+        alpha = mp.asum(res[-1] * res[-1]) / mp.asum(p[-1] * v)
         x += alpha * p[-1]
         res.append(res[-1] - alpha * v)
-        #sprint(k, mp.amax(np.abs(res[-1])))
+        # sprint(k, mp.amax(np.abs(res[-1])))
         if _get_norm(res[-1], mp) < atol:
             return x, 0
-        beta = mp.asum(res[-1]*res[-1]) / mp.asum(res[-2]*res[-2])
+        beta = mp.asum(res[-1] * res[-1]) / mp.asum(res[-2] * res[-2])
         p.append(res[-1] + beta * p[-1])
         k += 1
     return x, 1
 
-def bicg(A, b, x0, tol, maxiter, atol = None, mp = None):
-    if mp is None :
+
+def bicg(A, b, x0, tol, maxiter, atol=None, mp=None):
+    if mp is None:
         mp = MP()
 
     atol = _get_atol(tol, atol, _get_norm(b, mp))
@@ -55,19 +61,20 @@ def bicg(A, b, x0, tol, maxiter, atol = None, mp = None):
     x = deepcopy(x0)
     while k < maxiter:
         v = A(p[-1])
-        alpha = mp.asum(np.conj(res[-1])*res[-1]) / mp.asum(np.conj(p[-1])*v)
+        alpha = mp.asum(np.conj(res[-1]) * res[-1]) / mp.asum(np.conj(p[-1]) * v)
         x += alpha * p[-1]
         res.append(res[-1] - alpha * v)
-        #sprint(k, mp.amax(np.abs(res[-1])))
+        # sprint(k, mp.amax(np.abs(res[-1])))
         if _get_norm(res[-1], mp) < atol:
             return x, 0
-        beta = mp.asum(np.conj(res[-1])*res[-1]) / mp.asum(np.conj(res[-2])*res[-2])
+        beta = mp.asum(np.conj(res[-1]) * res[-1]) / mp.asum(np.conj(res[-2]) * res[-2])
         p.append(res[-1] + beta * p[-1])
         k += 1
     return x, 1
 
-def bicgstab(A, b, x0, tol, maxiter, atol = None, mp = None):
-    if mp is None :
+
+def bicgstab(A, b, x0, tol, maxiter, atol=None, mp=None):
+    if mp is None:
         mp = MP()
 
     atol = _get_atol(tol, atol, _get_norm(b, mp))
@@ -77,28 +84,28 @@ def bicgstab(A, b, x0, tol, maxiter, atol = None, mp = None):
     rho = [1.0]
     omega = 1.0
     alpha = 1.0
-    v = [0*b]
+    v = [0 * b]
     p = [v[0]]
     k = 0
     x = deepcopy(x0)
     res = deepcopy(r[0])
     while k < maxiter:
-        rho.append(mp.asum(r[0]*r[-1]))
-        beta = rho[-1]/rho[-2]*alpha/omega
-        p.append(r[-1] + beta*(p[-1]-omega*v[-1]))
+        rho.append(mp.asum(r[0] * r[-1]))
+        beta = rho[-1] / rho[-2] * alpha / omega
+        p.append(r[-1] + beta * (p[-1] - omega * v[-1]))
         v.append(A(p[-1]))
-        alpha = rho[-1] / mp.asum(r[0]*v[-1])
+        alpha = rho[-1] / mp.asum(r[0] * v[-1])
         h = x + alpha * p[-1]
         res = res - alpha * v[-1]
-        #sprint(k, mp.amax(np.abs(res)))
+        # sprint(k, mp.amax(np.abs(res)))
         if _get_norm(res, mp) < atol:
             return h, 0
         s = r[-1] - alpha * v[-1]
         t = A(s)
-        omega = mp.asum(t*s)/mp.asum(t*t)
+        omega = mp.asum(t * s) / mp.asum(t * t)
         x = h + omega * s
         res = res - omega * t
-        #sprint(k, mp.amax(np.abs(res)))
+        # sprint(k, mp.amax(np.abs(res)))
         if _get_norm(res, mp) < atol:
             return x, 0
         r.append(s - omega * t)
