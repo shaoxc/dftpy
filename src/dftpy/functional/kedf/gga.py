@@ -107,15 +107,15 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
 
     Ref:
         @article{garcia2007kinetic,
-          title={Kinetic energy density study of some representative semilocal kinetic energy functional}}
+          title={Kinetic energy density study of some representative semilocal kinetic energy functionals}}
         @article{gotz2009performance,
           title={Performance of kinetic energy functional for interaction energies in a subsystem formulation of density functional theory}}
         @article{lacks1994tests,
-          title = {Tests of nonlocal kinetic energy functional}}
+          title = {Tests of nonlocal kinetic energy functionals}}
         @misc{hfofke,
           url = {http://www.qtp.ufl.edu/ofdft/research/KE_refdata_27ii18/Explanatory_Post_HF_OFKE.pdf}}
         @article{xia2015single,
-          title={Single-point kinetic energy density functional: A pointwise kinetic energy density analysis and numerical convergence investigation}}
+          title={Single-point kinetic energy density functionals: A pointwise kinetic energy density analysis and numerical convergence investigation}}
         @article{luo2018simple,
           title={A simple generalized gradient approximation for the noninteracting kinetic energy density functional},
     """

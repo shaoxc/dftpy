@@ -5,7 +5,7 @@ from dftpy.functional.kedf.kernel import SMKernel
 from dftpy.time_data import TimeData
 
 """
-E. Smargiassi and P.A. Madden : Orbital-free kinetic-energy functional for first-principles molecular dynamics.
+E. Smargiassi and P.A. Madden : Orbital-free kinetic-energy functionals for first-principles molecular dynamics.
 Phys.Rev.B 49,  5220 (1994).
 Tips : In the SM paper, $\Delta\rho = \rho - \rho_{0}$, but $\Delta\rho^{\alpha} = ?$?
        I think it should be $\Delta\rho^{\alpha} = \rho^{\alpha} - \rho_{0}^{\alpha}$.

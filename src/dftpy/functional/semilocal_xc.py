@@ -187,7 +187,7 @@ def Get_LibXC_Output(out, density):
                 OutFunctional.v2rho2 = OutFunctional.v2rho2 + v2rhosigma + v2sigma2
 
         if hasattr(OutFunctional, 'v3rho3') or hasattr(OutFunctional, 'v4rho4'):
-            raise Exception('3rd and higher order derivative for GGA functional has not implemented yet.')
+            raise Exception('3rd and higher order derivative for GGA functionals has not implemented yet.')
 
     if "zk" in out.keys():
         if density.rank > 1 :
@@ -221,10 +221,10 @@ def LibXC(density, k_str=None, x_str=None, c_str=None, calcType={"E","V"}, **kwa
         if key in ["k_str", "x_str", "c_str"] and value is not None:
             if not isinstance(value, str):
                 raise AttributeError(
-                    "{} must be LibXC functional. Check pylibxc.util.xc_available_functional_names()".format(key)
+                    "{} must be LibXC functionals. Check pylibxc.util.xc_available_functional_names()".format(key)
                 )
             if value.startswith('hyb') or value.startswith('mgga'):
-                raise AttributeError('Hybrid and Meta-GGA functional have not been implemented yet')
+                raise AttributeError('Hybrid and Meta-GGA functionals have not been implemented yet')
             if value.startswith('gga'):
                 do_sigma = True
             func_str[key] = value
