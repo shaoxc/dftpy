@@ -106,7 +106,7 @@ def vonWeizsackerStress(rho, y=1.0, energy=None, **kwargs):
     return stress
 
 
-def vW(rho, y=1.0, sigma=None, calcType=["E","V"], split=False, **kwargs):
+def vW(rho, y=1.0, sigma=None, calcType={"E","V"}, split=False, **kwargs):
     TimeData.Begin("vW")
     pot = vonWeizsackerPotential(rho, sigma, **kwargs)
     OutFunctional = Functional(name="vW")
@@ -127,7 +127,7 @@ def vW(rho, y=1.0, sigma=None, calcType=["E","V"], split=False, **kwargs):
         return OutFunctional
 
 
-def x_TF_y_vW(rho, x=1.0, y=1.0, sigma=None, calcType=["E","V"], split=False, **kwargs):
+def x_TF_y_vW(rho, x=1.0, y=1.0, sigma=None, calcType={"E","V"}, split=False, **kwargs):
     xTF = TF(rho, x=x, calcType=calcType)
     yvW = vW(rho, y=y, sigma=sigma, calcType=calcType, **kwargs)
     OutFunctional = Functional(name=str(x) + "_TF_" + str(y) + "_vW")

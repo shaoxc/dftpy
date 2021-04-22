@@ -60,7 +60,7 @@ def FPStress(rho, energy=None):
     pass
 
 
-def FP_origin(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType=["E","V"],
+def FP_origin(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType={"E","V"},
         ke_kernel_saved = None, **kwargs):
     TimeData.Begin("FP")
     q = rho.grid.get_reciprocal().q
@@ -103,7 +103,7 @@ def FP_origin(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType=["E",
     return OutFunctional
 
 
-def FP0(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType=["E","V"], split=False,
+def FP0(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType={"E","V"}, split=False,
         ke_kernel_saved = None, **kwargs):
     TimeData.Begin("FP")
     # Only performed once for each grid
@@ -144,7 +144,7 @@ def FP0(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType=["E","V"], 
     return NL
 
 
-def FP(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, rho0=None, calcType=["E","V"], split=False,
+def FP(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, rho0=None, calcType={"E","V"}, split=False,
         ke_kernel_saved = None, **kwargs):
     TimeData.Begin("FP")
     q = rho.grid.get_reciprocal().q

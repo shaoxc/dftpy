@@ -67,7 +67,7 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     begin_t = time.time()
     for i_t in range(i_t0, num_t):
 
-        func = E_v_Evaluator.ComputeEnergyPotential(rho, calcType=["V"])
+        func = E_v_Evaluator.ComputeEnergyPotential(rho, calcType={"V"})
         prop.hamiltonian.v = func.potential
         if dynamic:
             prop.hamiltonian.v += DynamicPotential(rho, j)
@@ -147,7 +147,7 @@ def CasidaRunner(config, rho0, E_v_Evaluator):
     tda = config["CASIDA"]["tda"]
 
     if diagonalize:
-        potential = E_v_Evaluator(rho0, calcType=['V']).potential
+        potential = E_v_Evaluator(rho0, calcType={'V'}).potential
         hamiltonian = Hamiltonian(potential)
         sprint('Start diagonalizing Hamiltonian.')
         eigs, psi_list = hamiltonian.diagonalize(numeig)
@@ -184,7 +184,7 @@ def DiagonalizeRunner(config, struct, E_v_Evaluator):
     eigfile = config["TD"]["outfile"]
     direct_to_psi = './xsf'
 
-    potential = E_v_Evaluator(struct.field, calcType=['V']).potential
+    potential = E_v_Evaluator(struct.field, calcType={'V'}).potential
     hamiltonian = Hamiltonian(potential)
     sprint('Start diagonalizing Hamiltonian.')
     eigs, psi_list = hamiltonian.diagonalize(numeig)

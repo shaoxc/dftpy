@@ -9,7 +9,7 @@ from dftpy.time_data import TimeData
 __all__ = ["MGP", "MGPStress", "MGPA", "MGPG"]
 
 
-def MGPStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, calcType=["E","V"]):
+def MGPStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, calcType={"E","V"}):
     pass
 
 
@@ -23,7 +23,7 @@ def MGP(
     lumpfactor=0.2,
     maxpoint=1000,
     symmetrization=None,
-    calcType=["E","V"],
+    calcType={"E","V"},
     split=False,
     ke_kernel_saved = None,
     **kwargs
@@ -78,7 +78,7 @@ def MGPA(
     lumpfactor=0.2,
     maxpoint=1000,
     symmetrization="Arithmetic",
-    calcType=["E","V"],
+    calcType={"E","V"},
     split=False,
     **kwargs
 ):
@@ -95,7 +95,7 @@ def MGPG(
     lumpfactor=0.2,
     maxpoint=1000,
     symmetrization="Geometric",
-    calcType=["E","V"],
+    calcType={"E","V"},
     split=False,
     **kwargs
 ):

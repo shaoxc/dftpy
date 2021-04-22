@@ -5,7 +5,7 @@ from dftpy.functional_output import Functional
 from dftpy.time_data import TimeData
 
 
-def HartreeFunctional(density, calcType=["E","V"]):
+def HartreeFunctional(density, calcType={"E","V"}):
     TimeData.Begin("Hartree_Func")
     invgg = density.grid.get_reciprocal().invgg
     if density.rank > 1 :
@@ -40,7 +40,7 @@ def HartreePotentialReciprocalSpace(density):
 def HartreeFunctionalStress(density, energy=None):
     TimeData.Begin("Hartree_Stress")
     if energy is None:
-        energy = HartreeFunctional(density, calcType=["E"]).energy
+        energy = HartreeFunctional(density, calcType={"E"}).energy
 
     if density.rank > 1 :
         rho = np.sum(density, axis = 0)
