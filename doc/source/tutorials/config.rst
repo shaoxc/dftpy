@@ -655,9 +655,9 @@ CASIDA
 
         *Default* : None
 
-.. option:: diagonize
+.. option:: diagonalize
 
-    If true, diagonize the Hamiltonian before construct the Casida matrix. If false, read the eigenstates from a saved file.
+    If true, diagonalize the Hamiltonian before construct the Casida matrix. If false, read the eigenstates from a saved file.
         *Options* : True, False
 
         *Default* : True
