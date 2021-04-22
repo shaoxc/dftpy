@@ -74,26 +74,26 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
         E = np.real(np.conj(psi) * prop.hamiltonian(psi)).integral()
         for i_pred_corr in range(max_pred_corr):
             if i_pred_corr > 0:
-                old_rho1 = rho1
-                old_j1 = j1
+                old_rho_pred = rho_pred
+                old_j_pred = j_pred
             else:
                 atol_j = _get_atol(tol, atol, np.max(j.norm()))
-            psi1, info = prop(psi, int_t)
-            rho1 = calc_rho(psi1)
-            j1 = calc_j(psi1)
+            psi_pred, info = prop(psi, int_t)
+            rho_pred = calc_rho(psi_pred)
+            j_pred = calc_j(psi_pred)
 
             if i_pred_corr > 0:
-                diff_rho = (old_rho1 - rho1).norm()
-                diff_j = np.max((old_j1 - j1).norm())
+                diff_rho = (old_rho_pred - rho_pred).norm()
+                diff_j = np.max((old_j_pred - j_pred).norm())
                 if diff_rho < atol_rho and diff_j < atol_j:
                     break
 
-            rho_half = (rho + rho1) * 0.5
-            func = E_v_Evaluator.ComputeEnergyPotential(rho_half, calcType=["V"])
+            rho_corr = (rho + rho_pred) * 0.5
+            func = E_v_Evaluator.ComputeEnergyPotential(rho_corr, calcType={"V"})
             prop.hamiltonian.v = func.potential
             if dynamic:
-                j_half = (j + j1) * 0.5
-                prop.hamiltonian.v += DynamicPotential(rho_half, j_half)
+                j_corr = (j + j_pred) * 0.5
+                prop.hamiltonian.v += DynamicPotential(rho_corr, j_corr)
         else:
             if max_pred_corr > 1:
                 sprint('Convergence not reached for Predictor-corrector')
@@ -102,9 +102,9 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
                 if diff_j >= atol_j:
                     sprint('Diff in j: {0:10.2e} > {1:10.2e}'.format(diff_j, atol_j))
 
-        psi = psi1
-        rho = rho1
-        j = j1
+        psi = psi_pred
+        rho = rho_pred
+        j = j_pred
 
         delta_rho = rho - rho0
         delta_mu = (delta_rho * delta_rho.grid.r).integral()
