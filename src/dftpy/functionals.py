@@ -10,6 +10,7 @@ from dftpy.hartree import HartreeFunctional
 from dftpy.kedf import KEDF
 from dftpy.pseudo import LocalPseudo
 from dftpy.external_potential import ExternalPotential
+from dftpy.nonadiabatic import Dynamic
 
 # general python imports
 from abc import ABC, abstractmethod
@@ -120,10 +121,7 @@ class FunctionalClass(AbstractFunctional):
             self.optional_kwargs = optional_kwargs
         self.optional_kwargs.update(kwargs)
 
-        self.FunctionalNameList = []
-        self.FunctionalTypeList = []
-
-        self.FunctionalTypeList = ["XC", "KEDF", "PSEUDO", "HARTREE","EXT"]
+        self.FunctionalTypeList = ["XC", "KEDF", "PSEUDO", "HARTREE", "EXT", "DYNAMIC"]
         XCNameList = ["LDA", "PBE", "LIBXC_XC", "CUSTOM_XC"]
         KEDFNameList = ["TF", "vW", "x_TF_y_vW", "LC94", "revAPBEK", "TFvW", "LIBXC_KEDF", "CUSTOM_KEDF"]
         KEDFNLNameList = [
@@ -150,8 +148,9 @@ class FunctionalClass(AbstractFunctional):
         HNameList = ["HARTREE"]
         PPNameList = ["PSEUDO"]
         EXTNameList = ["EXT"]
+        DYNAMICNameList = ["WCDHC", "JP1"]
 
-        self.FunctionalNameList = XCNameList + KEDFNameList + KEDFNLNameList + HNameList + PPNameList + EXTNameList
+        self.FunctionalNameList = XCNameList + KEDFNameList + KEDFNLNameList + HNameList + PPNameList + EXTNameList + DYNAMICNameList
 
         if type is None:
             raise AttributeError("Must assign type to FunctionalClass")
@@ -172,16 +171,17 @@ class FunctionalClass(AbstractFunctional):
         if not self.CheckFunctional():
             raise Exception("Functional check failed")
 
-        if self.name == 'PSEUDO' :
+        if self.type == 'PSEUDO' :
             if PSEUDO is None :
                 self.PSEUDO = LocalPseudo(**kwargs)
             else :
                 self.PSEUDO = PSEUDO
-        elif self.name == 'EXT':
+        elif self.type == 'EXT':
             self.EXT = ExternalPotential(**kwargs)
-
-        if self.type == 'KEDF' :
+        elif self.type == 'KEDF' :
             self.KEDF = KEDF(self.name, **kwargs)
+        elif self.type == 'DYNAMIC':
+            self.DYNAMIC = Dynamic(self.name, **kwargs)
 
     def ComputeEnergyPotential(self, rho, calcType=["E","V"], **kwargs):
         self.optional_kwargs.update(kwargs)
@@ -202,6 +202,8 @@ class FunctionalClass(AbstractFunctional):
             return self.PSEUDO(density=rho, calcType=calcType)
         elif self.type == "EXT":
             return self.EXT(density=rho, calcType=calcType)
+        elif self.type == "DYNAMIC":
+            return self.DYNAMIC(rho, calcType = calcType, **kwargs)
 
     def force(self, rho, **kwargs):
         if self.type != 'PSEUDO' :
@@ -266,7 +268,7 @@ class TotalEnergyAndPotential(AbstractFunctional):
         self.funcDict = {}
         self.funcDict.update(kwargs)
         # remove useless key
-        for key, evalfunctional in self.funcDict.items():
+        for key, evalfunctional in list(self.funcDict.items()):
             if evalfunctional is None:
                 del self.funcDict[key]
 
@@ -308,9 +310,9 @@ class TotalEnergyAndPotential(AbstractFunctional):
         Obj = None
         for key, evalfunctional in self.funcDict.items():
             if Obj is None :
-                Obj = evalfunctional(rho, calcType)
+                Obj = evalfunctional(rho, calcType, **kwargs)
             else :
-                Obj += evalfunctional(rho, calcType)
+                Obj += evalfunctional(rho, calcType, **kwargs)
             # sss = evalfunctional(rho, ["E","V"])
             # sss.energy = rho.mp.vsum(sss.energy)
             # sprint('key', key, sss.energy)

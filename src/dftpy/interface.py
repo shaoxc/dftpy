@@ -103,6 +103,11 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
     ############################## XC and Hartree ##############################
     HARTREE = FunctionalClass(type="HARTREE")
     XC = FunctionalClass(type="XC", name=config["EXC"]["xc"], **config["EXC"])
+    if config["NONADIABATIC"]["nonadiabatic"] is None:
+        DYNAMIC = None
+    else:
+        DYNAMIC = FunctionalClass(type="DYNAMIC", name=config["NONADIABATIC"]["nonadiabatic"], **config["NONADIABATIC"])
+    E_v_Evaluator = TotalEnergyAndPotential(KineticEnergyFunctional=KE, XCFunctional=XC, HARTREE=HARTREE, PSEUDO=PSEUDO, DYNAMIC=DYNAMIC)
     ############################## Initial density ##############################
     zerosA = np.empty(grid.nnr, dtype=float)
     rho_ini = DirectField(grid=grid, griddata_C=zerosA, rank=1)
@@ -138,7 +143,6 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
         rho_ini = DirectField(grid=grid, griddata_3d=rho_spin, rank=nspin)
     #-----------------------------------------------------------------------
     struct = System(ions, grid, name='density', field=rho_ini)
-    E_v_Evaluator = TotalEnergyAndPotential(KineticEnergyFunctional=KE, XCFunctional=XC, HARTREE=HARTREE, PSEUDO=PSEUDO)
     # The last is a dictionary, which return some properties are used for different situations.
     others = {
         "struct": struct,

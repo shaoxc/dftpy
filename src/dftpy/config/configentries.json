@@ -379,11 +379,6 @@
       "default": 0.001,
       "comment": "The strength of the initial kick in atomic units."
     },
-    "dynamic_potential": {
-      "type": "bool",
-      "default": false,
-      "comment": "Include dynamic potential. (See Eq. (15) of `paper <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.98.144302>`_."
-    },
     "max_runtime": {
       "type": "float",
       "default": 0,
@@ -393,6 +388,14 @@
       "type": "bool",
       "default": false,
       "comment": "Restart the propagation from a previously saved intermediate result."
+    },
+    "correction": {
+      "type": "bool",
+      "default": false
+    },
+    "correct_potential": {
+      "type": "str",
+      "default": null
     }
   },
   "CASIDA": {
@@ -410,6 +413,13 @@
       "type": "bool",
       "default": false,
       "comment": "Use Tamm-Dancoff approximation."
+    }
+  },
+  "NONADIABATIC": {
+    "nonadiabatic": {
+      "type": "str",
+      "default": null,
+      "comment": "Name of nonadiabatic Pauli potential."
     }
   },
   "INVERSION": {

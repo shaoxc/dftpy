@@ -3,10 +3,10 @@ import time
 
 import numpy as np
 
-from dftpy.dynamic_functionals_utils import DynamicPotential
 from dftpy.field import DirectField
 from dftpy.formats import npy
 from dftpy.formats.xsf import XSF
+from dftpy.functionals import FunctionalClass
 from dftpy.linear_solver import _get_atol
 from dftpy.mpi import mp, sprint, MPIFile
 from dftpy.td.casida import Casida
@@ -24,9 +24,10 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     atol = config["TD"]["atol_pc"]
     direc = config["TD"]["direc"]
     k = config["TD"]["strength"]
-    dynamic = config["TD"]["dynamic_potential"]
     max_runtime = config["TD"]["max_runtime"]
     restart = config["TD"]["restart"]
+    correction = config["TD"]["correction"]
+    correct_potential_name = config["TD"]["correct_potential"]
     num_t = int(t_max / int_t)
 
     hamiltonian = Hamiltonian()
@@ -47,12 +48,16 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
         psi.cplx = True
         i_t0 = 0
 
+    N0 = rho0.integral()
     rho = calc_rho(psi)
     j = calc_j(psi)
     delta_rho = rho - rho0
     delta_mu = (delta_rho * delta_rho.grid.r).integral()
     j_int = j.integral()
     atol_rho = _get_atol(tol, atol, rho.norm())
+
+    if correction:
+        correct_potential = FunctionalClass(type='DYNAMIC', name=correct_potential_name)
 
     if not restart:
         if mp.is_root:
@@ -62,15 +67,19 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
                 sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(j_int[0], j_int[1], j_int[2]), fileobj=fj)
             with open(outfile + "_E", "w") as fE:
                 pass
+            # if correction:
+            #     with open(outfile + "_cor_mu", "w") as fmu:
+            #         sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(delta_mu[0], delta_mu[1], delta_mu[2]),
+            #                fileobj=fmu)
+            #     with open(outfile + "_cor_j", "w") as fj:
+            #         sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(j_int[0], j_int[1], j_int[2]), fileobj=fj)
 
     sprint("{:20s}{:30s}{:24s}".format('Iter', 'Num. of Predictor-corrector', 'Total Cost(s)'))
     begin_t = time.time()
     for i_t in range(i_t0, num_t):
 
-        func = E_v_Evaluator.ComputeEnergyPotential(rho, calcType=["V"])
+        func = E_v_Evaluator.ComputeEnergyPotential(rho, calcType=["V"], current=j)
         prop.hamiltonian.v = func.potential
-        if dynamic:
-            prop.hamiltonian.v += DynamicPotential(rho, j)
         E = np.real(np.conj(psi) * prop.hamiltonian(psi)).integral()
         for i_pred_corr in range(max_pred_corr):
             if i_pred_corr > 0:
@@ -89,11 +98,9 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
                     break
 
             rho_half = (rho + rho1) * 0.5
-            func = E_v_Evaluator.ComputeEnergyPotential(rho_half, calcType=["V"])
+            j_half = (j + j1) * 0.5
+            func = E_v_Evaluator.ComputeEnergyPotential(rho_half, calcType=["V"], current=j_half)
             prop.hamiltonian.v = func.potential
-            if dynamic:
-                j_half = (j + j1) * 0.5
-                prop.hamiltonian.v += DynamicPotential(rho_half, j_half)
         else:
             if max_pred_corr > 1:
                 sprint('Convergence not reached for Predictor-corrector')
@@ -101,6 +108,23 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
                     sprint('Diff in rho: {0:10.2e} > {1:10.2e}'.format(diff_rho, atol_rho))
                 if diff_j >= atol_j:
                     sprint('Diff in j: {0:10.2e} > {1:10.2e}'.format(diff_j, atol_j))
+
+        if correction:
+            pot = correct_potential(rho, calcType=['V'], current=j).potential
+            psi1 = psi1 - 1.0j * int_t * pot * psi
+            psi1.normalize(N=N0)
+            rho1 = calc_rho(psi1)
+            j1 = calc_j(psi1)
+            # delta_rho2 = rho1 - rho0
+            # delta_mu2 = (delta_rho2 * delta_rho2.grid.r).integral()
+            # j2_int = j1.integral()
+            #
+            # if mp.is_root:
+            #     with open(outfile + "_cor_mu", "a") as fmu:
+            #         sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(delta_mu2[0], delta_mu2[1], delta_mu2[2]),
+            #                fileobj=fmu)
+            #     with open(outfile + "_cor_j", "a") as fj:
+            #         sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(j2_int[0], j2_int[1], j2_int[2]), fileobj=fj)
 
         psi = psi1
         rho = rho1
@@ -136,8 +160,6 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
             npy.write(f, i_t, single=True)
             npy.write(f, psi, grid=psi.grid)
             break
-
-    # tracemalloc.stop()
 
 
 def CasidaRunner(config, rho0, E_v_Evaluator):
@@ -212,3 +234,4 @@ def DiagonalizeRunner(config, struct, E_v_Evaluator):
 #     with open(outfile, 'w') as fw:
 #         for i in range(len(omega)):
 #             fw.write('{0:15.8e} {1:15.8e}\n'.format(omega[i], f[i]))
+
