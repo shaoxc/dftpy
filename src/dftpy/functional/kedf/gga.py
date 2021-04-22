@@ -1,7 +1,7 @@
 # Collection of semilocal functionals
 
 import numpy as np
-from dftpy.functional_output import Functional
+from dftpy.functional.functional_output import FunctionalOutput
 # from dftpy.math_utils import PowerInt
 # from dftpy.time_data import TimeData
 # from dftpy.kedf.tf import TF
@@ -107,15 +107,15 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
 
     Ref:
         @article{garcia2007kinetic,
-          title={Kinetic energy density study of some representative semilocal kinetic energy functionals}}
+          title={Kinetic energy density study of some representative semilocal kinetic energy functional}}
         @article{gotz2009performance,
-          title={Performance of kinetic energy functionals for interaction energies in a subsystem formulation of density functional theory}}
+          title={Performance of kinetic energy functional for interaction energies in a subsystem formulation of density functional theory}}
         @article{lacks1994tests,
-          title = {Tests of nonlocal kinetic energy functionals}}
+          title = {Tests of nonlocal kinetic energy functional}}
         @misc{hfofke,
           url = {http://www.qtp.ufl.edu/ofdft/research/KE_refdata_27ii18/Explanatory_Post_HF_OFKE.pdf}}
         @article{xia2015single,
-          title={Single-point kinetic energy density functionals: A pointwise kinetic energy density analysis and numerical convergence investigation}}
+          title={Single-point kinetic energy density functional: A pointwise kinetic energy density analysis and numerical convergence investigation}}
         @article{luo2018simple,
           title={A simple generalized gradient approximation for the noninteracting kinetic energy density functional},
     """
@@ -751,7 +751,7 @@ def GGA(rho, functional="LKT", calcType={"E","V"}, split=False, params = None, *
         rhoGrad.append(item)
     s = np.sqrt(rhoGrad[0] ** 2 + rhoGrad[1] ** 2 + rhoGrad[2] ** 2) / rho43
     F, dFds2 = GGAFs(s, functional=functional, calcType=calcType, params = params, **kwargs)
-    OutFunctional = Functional(name="GGA-" + str(functional))
+    OutFunctional = FunctionalOutput(name="GGA-" + str(functional))
 
     if 'E' in calcType or 'D' in calcType :
         energydensity = tf * F

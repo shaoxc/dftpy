@@ -1,21 +1,19 @@
 import numpy as np
-import time
 import os
 from dftpy.mpi import sprint
 from dftpy.optimization import Optimization
-from dftpy.functionals import FunctionalClass, TotalEnergyAndPotential
-from dftpy.constants import LEN_CONV, ENERGY_CONV, FORCE_CONV, STRESS_CONV
+from dftpy.functional import FunctionalClass
+from dftpy.functional.total_functional import TotalFunctional
+from dftpy.constants import LEN_CONV, ENERGY_CONV, STRESS_CONV
 from dftpy.formats.io import read, read_density, write
 from dftpy.ewald import ewald
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
 from dftpy.math_utils import bestFFTsize, interpolation_3d
-from dftpy.time_data import TimeData
-from dftpy.functional_output import Functional
-from dftpy.semilocal_xc import LDAStress, PBEStress, XCStress
-from dftpy.pseudo import LocalPseudo
-from dftpy.kedf import KEDFStress
-from dftpy.hartree import HartreeFunctionalStress
+from dftpy.functional.functional_output import FunctionalOutput
+from dftpy.functional.semilocal_xc import LDAStress, PBEStress, XCStress
+from dftpy.functional.kedf import KEDFStress
+from dftpy.functional.hartree import HartreeFunctionalStress
 from dftpy.config.config import PrintConf, ReadConf
 from dftpy.system import System
 from dftpy.inverter import Inverter
@@ -138,7 +136,7 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
         rho_ini = DirectField(grid=grid, griddata_3d=rho_spin, rank=nspin)
     #-----------------------------------------------------------------------
     struct = System(ions, grid, name='density', field=rho_ini)
-    E_v_Evaluator = TotalEnergyAndPotential(KineticEnergyFunctional=KE, XCFunctional=XC, HARTREE=HARTREE, PSEUDO=PSEUDO)
+    E_v_Evaluator = TotalFunctional(KineticEnergyFunctional=KE, XCFunctional=XC, HARTREE=HARTREE, PSEUDO=PSEUDO)
     # The last is a dictionary, which return some properties are used for different situations.
     others = {
         "struct": struct,
@@ -220,7 +218,7 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2 = None):
         )
     elif "Density" in config["JOB"]["calctype"]:
         sprint("Only return density...")
-        energypotential = {'TOTAL' : Functional(name = 'TOTAL', energy = 0.0)}
+        energypotential = {'TOTAL' : FunctionalOutput(name ='TOTAL', energy = 0.0)}
     else:
         sprint("Calculate Energy...")
         energypotential = GetEnergyPotential(
@@ -316,7 +314,7 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2 = None):
 def GetEnergyPotential(ions, rho, EnergyEvaluator, calcType=["E","V"], linearii=True, linearie=True):
     energypotential = {}
     ewaldobj = ewald(rho=rho, ions=ions, PME=linearii)
-    energypotential["II"] = Functional(name="Ewald", potential=np.zeros_like(rho), energy=ewaldobj.energy)
+    energypotential["II"] = FunctionalOutput(name="Ewald", potential=np.zeros_like(rho), energy=ewaldobj.energy)
 
     energypotential["TOTAL"] = energypotential["II"].copy()
     funcDict = EnergyEvaluator.funcDict

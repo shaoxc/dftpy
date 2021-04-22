@@ -3,8 +3,7 @@ import os
 import unittest
 import numpy as np
 
-from dftpy.functionals import FunctionalClass
-from dftpy.constants import LEN_CONV
+from dftpy.functional import FunctionalClass
 from dftpy.formats.qepp import PP
 
 

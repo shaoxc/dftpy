@@ -2,11 +2,14 @@
 
 import numpy as np
 from dftpy.field import DirectField
-from dftpy.functional_output import Functional
+from dftpy.functional.functional_output import FunctionalOutput
+from dftpy.functional.abstract_functional import AbstractFunctional
 from dftpy.time_data import TimeData
 
-class XC :
-    def __init__(self, xc = 'LDA', core_density = None, libxc = True, **kwargs):
+class XC(AbstractFunctional):
+    def __init__(self, xc = 'LDA', core_density = None, libxc = True, name = None, **kwargs):
+        self.type = 'XC'
+        self.name = name
         self.options = {'xc': xc}
         self.options.update(kwargs)
         self._core_density = core_density
@@ -23,10 +26,8 @@ class XC :
     def core_density(self, value):
         self._core_density = value
 
-    def __call__(self, density, calcType={"E","V"}, **kwargs):
-        return self.compute(density, calcType=calcType, **kwargs)
-
     def compute(self, density, calcType={"E","V"}, **kwargs):
+
         self.options.update(kwargs)
         core_density = self.core_density
         if core_density is None :
@@ -80,7 +81,7 @@ def Get_LibXC_Output(out, density):
     if not isinstance(out, (dict)):
         raise TypeError("LibXC output must be a dictionary")
 
-    OutFunctional = Functional(name="LibXC")
+    OutFunctional = FunctionalOutput(name="LibXC")
 
     rank_dict = {
         "vrho": 2,
@@ -186,7 +187,7 @@ def Get_LibXC_Output(out, density):
                 OutFunctional.v2rho2 = OutFunctional.v2rho2 + v2rhosigma + v2sigma2
 
         if hasattr(OutFunctional, 'v3rho3') or hasattr(OutFunctional, 'v4rho4'):
-            raise Exception('3rd and higher order derivative for GGA functionals has not implemented yet.')
+            raise Exception('3rd and higher order derivative for GGA functional has not implemented yet.')
 
     if "zk" in out.keys():
         if density.rank > 1 :
@@ -220,10 +221,10 @@ def LibXC(density, k_str=None, x_str=None, c_str=None, calcType={"E","V"}, **kwa
         if key in ["k_str", "x_str", "c_str"] and value is not None:
             if not isinstance(value, str):
                 raise AttributeError(
-                    "{} must be LibXC functionals. Check pylibxc.util.xc_available_functional_names()".format(key)
+                    "{} must be LibXC functional. Check pylibxc.util.xc_available_functional_names()".format(key)
                 )
             if value.startswith('hyb') or value.startswith('mgga'):
-                raise AttributeError('Hybrid and Meta-GGA functionals have not been implemented yet')
+                raise AttributeError('Hybrid and Meta-GGA functional have not been implemented yet')
             if value.startswith('gga'):
                 do_sigma = True
             func_str[key] = value
@@ -286,7 +287,7 @@ def LDA(rho, calcType={"E","V"}, **kwargs):
     if rho.rank > 1 :
         return LDA_XC(rho, calcType)
     TimeData.Begin("LDA")
-    OutFunctional = Functional(name="XC")
+    OutFunctional = FunctionalOutput(name="XC")
     a = (0.0311, 0.01555)
     b = (-0.048, -0.0269)
     c = (0.0020, 0.0007)

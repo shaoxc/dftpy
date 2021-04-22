@@ -1,11 +1,11 @@
 import numpy as np
 from dftpy.mpi import sprint
-from dftpy.functional_output import Functional
-from dftpy.kedf.kernel import SMKernel
+from dftpy.functional.functional_output import FunctionalOutput
+from dftpy.functional.kedf.kernel import SMKernel
 from dftpy.time_data import TimeData
 
 """
-E. Smargiassi and P.A. Madden : Orbital-free kinetic-energy functionals for first-principles molecular dynamics.
+E. Smargiassi and P.A. Madden : Orbital-free kinetic-energy functional for first-principles molecular dynamics.
 Phys.Rev.B 49,  5220 (1994).
 Tips : In the SM paper, $\Delta\rho = \rho - \rho_{0}$, but $\Delta\rho^{\alpha} = ?$?
        I think it should be $\Delta\rho^{\alpha} = \rho^{\alpha} - \rho_{0}^{\alpha}$.
@@ -103,7 +103,7 @@ def SM(rho, x=1.0, y=1.0, sigma=None, alpha=0.5, beta=0.5, rho0=None, calcType={
     else:
         KE_kernel = KE_kernel_saved["Kernel"]
 
-    NL = Functional(name="NL")
+    NL = FunctionalOutput(name="NL")
 
     if "E" in calcType or "D" in calcType :
         energydensity = SMEnergyDensity(rho, rho0, KE_kernel, alpha, beta)

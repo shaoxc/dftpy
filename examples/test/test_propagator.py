@@ -3,14 +3,12 @@ import os
 import unittest
 import numpy as np
 
-from dftpy.functionals import FunctionalClass, TotalEnergyAndPotential
-from dftpy.pseudo import LocalPseudo
+from dftpy.functional import FunctionalClass
+from dftpy.functional.total_functional import TotalFunctional
+from dftpy.functional.pseudo import LocalPseudo
 from dftpy.td.propagator import Propagator
 from dftpy.td.hamiltonian import Hamiltonian
-from dftpy.utils import calc_rho, calc_j
-from dftpy.field import DirectField, ReciprocalField
-from dftpy.grid import DirectGrid, ReciprocalGrid
-from dftpy.system import System
+from dftpy.utils import calc_rho
 from dftpy.formats.xsf import read_xsf
 from dftpy.constants import LEN_CONV
 ang2bohr = LEN_CONV["Angstrom"]["Bohr"]
@@ -40,7 +38,7 @@ class TestPropagator(unittest.TestCase):
         PPlist = {'Ga':dftpy_data_path+'/Ga_lda.oe04.recpot',
             'As':dftpy_data_path+'/As_lda.oe04.recpot'}
         PSEUDO = LocalPseudo(grid=sys.cell, ions=sys.ions, PP_list=PPlist)
-        E_v_Evaluator = TotalEnergyAndPotential(
+        E_v_Evaluator = TotalFunctional(
             KineticEnergyFunctional=KE,
             XCFunctional=XC,
             HARTREE=HARTREE,
@@ -53,14 +51,14 @@ class TestPropagator(unittest.TestCase):
         psi0.cplx = True
 
         psi = psi0
-        func = E_v_Evaluator.ComputeEnergyPotential(rho0, calcType=["V"])
+        func = E_v_Evaluator.Compute(rho0, calcType=["V"])
         self.hamiltonian.v = func.potential
         E0 = np.real(np.conj(psi) * self.hamiltonian(psi)).integral()
         int_t = 1e-3
         for i_t in range(10):
             psi, info = self.taylor(psi, int_t)
             rho = calc_rho(psi)
-            func = E_v_Evaluator.ComputeEnergyPotential(rho, calcType=["V"])
+            func = E_v_Evaluator.Compute(rho, calcType=["V"])
             self.hamiltonian.v = func.potential
 
         E = np.real(np.conj(psi) * self.hamiltonian(psi)).integral()
@@ -72,12 +70,12 @@ class TestPropagator(unittest.TestCase):
         self.assertTrue(np.isclose(delta_mu[0], -1.1458e-02, rtol=1e-3))
 
         psi = psi0
-        func = E_v_Evaluator.ComputeEnergyPotential(rho0, calcType=["V"])
+        func = E_v_Evaluator.Compute(rho0, calcType=["V"])
         self.hamiltonian.v = func.potential
         for i_t in range(10):
             psi, info = self.cn(psi, int_t)
             rho = calc_rho(psi)
-            func = E_v_Evaluator.ComputeEnergyPotential(rho, calcType=["V"])
+            func = E_v_Evaluator.Compute(rho, calcType=["V"])
             self.hamiltonian.v = func.potential
 
         E = np.real(np.conj(psi) * self.hamiltonian(psi)).integral()

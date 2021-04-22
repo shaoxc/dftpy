@@ -3,11 +3,9 @@ import os
 import unittest
 import numpy as np
 
-from dftpy.functionals import FunctionalClass
-from dftpy.constants import LEN_CONV
 from dftpy.formats.qepp import PP
 from dftpy.ewald import ewald
-from dftpy.pseudo import LocalPseudo
+from dftpy.functional.pseudo import LocalPseudo
 
 
 class Test(unittest.TestCase):

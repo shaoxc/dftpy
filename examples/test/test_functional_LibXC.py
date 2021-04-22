@@ -4,9 +4,8 @@ import unittest
 import pytest
 import numpy as np
 
-from dftpy.functionals import FunctionalClass
-from dftpy.constants import LEN_CONV
-from dftpy.semilocal_xc import LibXC, PBE
+from dftpy.functional import FunctionalClass
+from dftpy.functional.semilocal_xc import LibXC, PBE
 from dftpy.formats.qepp import PP
 
 
@@ -19,7 +18,7 @@ class Test(unittest.TestCase):
         thefuncclass = FunctionalClass(type='XC',
                                        name='LDA',
                                        is_nonlocal=False)
-        func2 = thefuncclass.ComputeEnergyPotential(rho=rho_r)
+        func2 = thefuncclass.Compute(rho=rho_r)
         func1 = LibXC(density=rho_r,
                    x_str='lda_x',
                    c_str='lda_c_pz')

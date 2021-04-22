@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
 
-import os
-import numpy as np
-from scipy.interpolate import interp1d, splrep, splev
-import scipy.special as sp
 from dftpy.constants import LEN_CONV, ENERGY_CONV
-from dftpy.pseudo import ReadPseudo
+from dftpy.functional.pseudo import ReadPseudo
 import argparse
 
 

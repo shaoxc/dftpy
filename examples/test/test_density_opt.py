@@ -4,11 +4,12 @@ import unittest
 import numpy as np
 import dftpy.formats.io as dftpy_io
 from dftpy.optimization import Optimization
-from dftpy.functionals import FunctionalClass, TotalEnergyAndPotential
+from dftpy.functional import FunctionalClass
+from dftpy.functional.total_functional import TotalFunctional
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
 from dftpy.math_utils import bestFFTsize
-from dftpy.pseudo import LocalPseudo
+from dftpy.functional.pseudo import LocalPseudo
 
 
 class Test(unittest.TestCase):
@@ -43,7 +44,7 @@ class Test(unittest.TestCase):
         for i in range(ions.nat):
             charge_total += ions.Zval[ions.labels[i]]
         rho_ini[:] = charge_total / ions.pos.cell.volume
-        E_v_Evaluator = TotalEnergyAndPotential(
+        E_v_Evaluator = TotalFunctional(
             KineticEnergyFunctional=KE, XCFunctional=XC, HARTREE=HARTREE, PSEUDO=PSEUDO,
         )
         optimization_options = {

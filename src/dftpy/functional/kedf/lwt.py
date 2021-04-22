@@ -1,13 +1,10 @@
 import numpy as np
-import scipy.special as sp
-from scipy.interpolate import interp1d, splrep, splev
+from scipy.interpolate import splrep, splev
 from dftpy.mpi import sprint
-from dftpy.functional_output import Functional
+from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.field import DirectField
-from dftpy.kedf.tf import TF
-from dftpy.kedf.vw import vW
-from dftpy.kedf.kernel import WTKernelTable, WTKernelDerivTable, LWTKernel, LWTKernelKf
-from dftpy.kedf.kernel import MGPKernelTable, MGPOmegaE
+from dftpy.functional.kedf.kernel import WTKernelTable, LWTKernelKf
+from dftpy.functional.kedf.kernel import MGPKernelTable, MGPOmegaE
 from dftpy.time_data import TimeData
 
 __all__ = ["LWT", "LWTStress", "LMGP", "LMGPA", "LMGPG"]
@@ -113,7 +110,7 @@ def LWTPotentialEnergy(
 
     ### HEG
     if abs(kf.amax() - kf.amin()) < 1e-8:
-        NL = Functional(name="NL", energy = 0.0)
+        NL = FunctionalOutput(name="NL", energy = 0.0)
         if 'D' in calcType:
             energydensity = DirectField(grid=rho.grid, memo=rho.memo, rank=rho.rank, cplx=rho.cplx)
             NL.energydensity = energydensity
@@ -319,7 +316,7 @@ def LWTPotentialEnergy(
     factor[rho < 0] = 0.0
     pot1 *= factor
     #-----------------------------------------------------------------------
-    NL = Functional(name="NL")
+    NL = FunctionalOutput(name="NL")
     # if 'E' in calcType or 'D' in calcType :
     energydensity = rhoAlpha * pot1
     NL.energy = energydensity.sum() * rho.grid.dV
@@ -390,7 +387,7 @@ def LWTLineIntegral(
 
     ### HEG
     if abs(kfMax - kfMin) < 1e-8:
-        NL = Functional(name="NL", energy = 0.0)
+        NL = FunctionalOutput(name="NL", energy = 0.0)
         if 'D' in calcType:
             energydensity = DirectField(grid=rho.grid, memo=rho.memo, rank=rho.rank, cplx=rho.cplx)
             NL.energydensity = energydensity
@@ -493,7 +490,7 @@ def LWTLineIntegral(
     # -----------------------------------------------------------------------
     pot *= alpha
     # pot *= alpha * rhoAlpha1
-    NL = Functional(name="NL", potential=pot, energy=ene)
+    NL = FunctionalOutput(name="NL", potential=pot, energy=ene)
 
     return NL
 

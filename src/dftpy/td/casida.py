@@ -2,7 +2,7 @@ import numpy as np
 from scipy.linalg import eigh
 
 from dftpy.field import DirectField
-from dftpy.functionals import FunctionalClass
+from dftpy.functional import FunctionalClass
 from dftpy.time_data import TimeData
 
 
