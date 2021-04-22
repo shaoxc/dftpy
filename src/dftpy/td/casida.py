@@ -179,15 +179,15 @@ class Casida(object):
             f[i] = f[i] * 2.0 / 3.0 * self.N
 
         if calc_triplet:
-            omega, x_list = eigh(self.a_tri)
+            omega_tri, x_list = eigh(self.a_tri)
 
             f_tri = np.empty(num_modes, dtype=np.float64)
             for i in range(num_modes):
                 tmp = np.sum(self.x * self.sqrtomega * self.sqrtomega * x_list[:, i])
                 f_tri[i] = tmp * tmp
-                tmp = np.sum(self.y * self.sqrtomega * self.sqrtomega * y_list[:, i])
+                tmp = np.sum(self.y * self.sqrtomega * self.sqrtomega * x_list[:, i])
                 f_tri[i] += tmp * tmp
-                tmp = np.sum(self.z * self.sqrtomega * self.sqrtomega * z_list[:, i])
+                tmp = np.sum(self.z * self.sqrtomega * self.sqrtomega * x_list[:, i])
                 f_tri[i] += tmp * tmp
 
                 f_tri[i] = f_tri[i] * 2.0 / 3.0 * self.N

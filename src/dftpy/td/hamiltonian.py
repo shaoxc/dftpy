@@ -9,6 +9,10 @@ class Hamiltonian(object):
 
     def __init__(self, v=None):
         self.v = v
+        if self.v is None:
+            self.grid = None
+        else:
+            self.grid = v.grid
 
     @property
     def v(self):
