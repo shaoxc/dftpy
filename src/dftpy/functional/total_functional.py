@@ -1,6 +1,7 @@
 from dftpy.functional.abstract_functional import AbstractFunctional
 from dftpy.functional.functional_output import FunctionalOutput
 
+
 class TotalFunctional(AbstractFunctional):
     """
      Object handling energy evaluation for the
@@ -30,7 +31,7 @@ class TotalFunctional(AbstractFunctional):
 
      or given a dict
      funcdict = {
-         "KineticEnegyFunctional": KE,
+         "KineticEnergyFunctional": KE,
          "XCFunctional": XC,
          "PSEUDO": PSEUDO,
          "HARTREE": HARTREE
@@ -82,17 +83,17 @@ class TotalFunctional(AbstractFunctional):
     def compute(self, rho, calcType={"E", "V"}, **kwargs):
         Obj = None
         for key, evalfunctional in self.funcDict.items():
-            if Obj is None :
-                Obj = evalfunctional(rho, calcType)
-            else :
-                Obj += evalfunctional(rho, calcType)
+            if Obj is None:
+                Obj = evalfunctional(rho, calcType=calcType)
+            else:
+                Obj += evalfunctional(rho, calcType=calcType)
             # sss = evalfunctional(rho, ["E","V"])
             # sss.energy = rho.mp.vsum(sss.energy)
             # sprint('key', key, sss.energy)
         # sprint('-' * 80)
-        if Obj is None :
-            Obj = FunctionalOutput(name ='NONE')
-        if 'E' in calcType :
+        if Obj is None:
+            Obj = FunctionalOutput(name='NONE')
+        if 'E' in calcType:
             Obj.energy = rho.mp.vsum(Obj.energy)
         return Obj
 
