@@ -18,7 +18,7 @@ class Test(unittest.TestCase):
         thefuncclass = FunctionalClass(type='XC',
                                        name='LDA',
                                        is_nonlocal=False)
-        func2 = thefuncclass.Compute(rho=rho_r)
+        func2 = thefuncclass.compute(rho=rho_r)
         func1 = LibXC(density=rho_r,
                    x_str='lda_x',
                    c_str='lda_c_pz')

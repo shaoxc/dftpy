@@ -15,10 +15,10 @@ class AbstractFunctional(ABC):
         pass
 
     def __call__(self, rho, **kwargs):
-        return self.Compute(rho, **kwargs)
+        return self.compute(rho, **kwargs)
 
     @abstractmethod
-    def Compute(self, rho, **kwargs):
+    def compute(self, rho, **kwargs):
         # returns energy and potential
         pass
 
@@ -91,13 +91,13 @@ class AbstractFunctional(ABC):
 #           Functional: functional output handler
 #              The output is a Functional class
 #         """
-#         self._outfunctional = self.Compute(rho, calcType, **kwargs)
+#         self._outfunctional = self.compute(rho, calcType, **kwargs)
 #         return self._outfunctional
 #
 #     @property
 #     def GetFunctional(self, rho, calcType ={"E","V"}):
 #         if self._outfunctional is None:
-#             self._outfunctional = self.Compute(rho, calcType)
+#             self._outfunctional = self.compute(rho, calcType)
 #         return self._outfunctional
 #
 #     def __init__(self, type=None, name=None, PSEUDO = None, is_nonlocal=None, optional_kwargs=None, **kwargs):
@@ -174,7 +174,7 @@ class AbstractFunctional(ABC):
 #         if self.type == 'KEDF' :
 #             self.KEDF = KEDF(self.name, **kwargs)
 #
-#     def Compute(self, rho, calcType={"E","V"}, **kwargs):
+#     def compute(self, rho, calcType={"E","V"}, **kwargs):
 #         self.optional_kwargs.update(kwargs)
 #         if self.type == "KEDF":
 #             return self.KEDF(rho, calcType=calcType, **self.optional_kwargs)

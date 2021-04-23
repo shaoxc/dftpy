@@ -51,14 +51,14 @@ class TestPropagator(unittest.TestCase):
         psi0.cplx = True
 
         psi = psi0
-        func = E_v_Evaluator.Compute(rho0, calcType=["V"])
+        func = E_v_Evaluator.compute(rho0, calcType=["V"])
         self.hamiltonian.v = func.potential
         E0 = np.real(np.conj(psi) * self.hamiltonian(psi)).integral()
         int_t = 1e-3
         for i_t in range(10):
             psi, info = self.taylor(psi, int_t)
             rho = calc_rho(psi)
-            func = E_v_Evaluator.Compute(rho, calcType=["V"])
+            func = E_v_Evaluator.compute(rho, calcType=["V"])
             self.hamiltonian.v = func.potential
 
         E = np.real(np.conj(psi) * self.hamiltonian(psi)).integral()
@@ -70,12 +70,12 @@ class TestPropagator(unittest.TestCase):
         self.assertTrue(np.isclose(delta_mu[0], -1.1458e-02, rtol=1e-3))
 
         psi = psi0
-        func = E_v_Evaluator.Compute(rho0, calcType=["V"])
+        func = E_v_Evaluator.compute(rho0, calcType=["V"])
         self.hamiltonian.v = func.potential
         for i_t in range(10):
             psi, info = self.cn(psi, int_t)
             rho = calc_rho(psi)
-            func = E_v_Evaluator.Compute(rho, calcType=["V"])
+            func = E_v_Evaluator.compute(rho, calcType=["V"])
             self.hamiltonian.v = func.potential
 
         E = np.real(np.conj(psi) * self.hamiltonian(psi)).integral()

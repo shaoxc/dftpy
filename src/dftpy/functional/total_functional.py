@@ -41,7 +41,7 @@ class TotalFunctional(AbstractFunctional):
      E = EnergyEvaluator.Energy(rho,ions)
 
      [total energy and potential:]
-     out = EnergyEvaluator.Compute(rho)
+     out = EnergyEvaluator.compute(rho)
 
      [time for optimization of density:]
      in_for_scipy_minimize = EnergyEvaluator(phi)
@@ -79,7 +79,7 @@ class TotalFunctional(AbstractFunctional):
         subdict = dict((key, self.funcDict[key]) for key in keys)
         return TotalFunctional(**subdict)
 
-    def Compute(self, rho, calcType={"E", "V"}, **kwargs):
+    def compute(self, rho, calcType={"E", "V"}, **kwargs):
         Obj = None
         for key, evalfunctional in self.funcDict.items():
             if Obj is None :
@@ -100,6 +100,6 @@ class TotalFunctional(AbstractFunctional):
         from dftpy.ewald import ewald
 
         ewald_ = ewald(rho=rho, ions=ions, PME=usePME)
-        total_e = self.Compute(rho, calcType={"E"})
+        total_e = self.compute(rho, calcType={"E"})
         ewald_energy = rho.mp.vsum(ewald_.energy)
         return ewald_energy + total_e.energy

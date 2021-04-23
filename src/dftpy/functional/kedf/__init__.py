@@ -226,7 +226,7 @@ def KEDFStress(rho, name="WT", energy=None, **kwargs):
     return stress
 
 
-class NLGGA:
+class NLGGA(AbstractFunctional):
     def __init__(self, stv = None, gga = None, nl = None, rhomax = None, name = 'STV+GGA+LMGPA') :
         self.stv = stv
         self.gga = gga
@@ -235,8 +235,6 @@ class NLGGA:
         self.level = 3 # if smaller than 3 only use gga to guess the rhomax
         self.name = name
 
-    def __call__(self, density, calcType={"E","V"}, **kwargs):
-        return self.compute(density, calcType=calcType, **kwargs)
 
     def compute(self, density, calcType={"E","V"}, **kwargs):
         calcType = {"E","V"}
@@ -389,15 +387,13 @@ def kedf2mixkedf(name = 'MIX_TF+GGA', first_high = True, **kwargs) :
 
     return obj
 
-class MIXGGAS:
+class MIXGGAS(AbstractFunctional):
     def __init__(self, stv = None, gga = None, rhomax = None, name = 'MIX_TF+GGA') :
         self.stv = stv
         self.gga = gga
         self.rhomax = rhomax
         self.name = name
 
-    def __call__(self, density, calcType={"E","V"}, **kwargs):
-        return self.compute(density, calcType=calcType, **kwargs)
 
     def compute(self, density, calcType={"E","V"}, **kwargs):
         calcType = {"E","V"}
