@@ -14,12 +14,12 @@ FunctionalTypeDict = {
     'EXT':ExternalPotential,
 }
 
-def FunctionalClass(type=None, name=None, optional_kwargs=None, **kwargs):
+def FunctionalClass(type=None, optional_kwargs=None, **kwargs):
 
     if optional_kwargs is not None:
         kwargs.update(optional_kwargs)
 
     try:
-        return FunctionalTypeDict[type](name=name, **kwargs)
+        return FunctionalTypeDict[type](**kwargs)
     except KeyError:
         raise AttributeError("Unknown functional type: {type}.")
