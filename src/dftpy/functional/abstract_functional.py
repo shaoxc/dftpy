@@ -50,7 +50,7 @@ class AbstractFunctional(ABC):
     #     return True
 
 
-# class FunctionalClass(AbstractFunctional):
+# class Functional(AbstractFunctional):
 #     """
 #     Object handling evaluation of a DFT functional
 #
@@ -71,7 +71,7 @@ class AbstractFunctional(ABC):
 #
 #     Example
 #     -------
-#      XC = FunctionalClass(type='XC',name='LDA')
+#      XC = Functional(type='XC',name='LDA')
 #      outXC = XC(rho)
 #      outXC.energy --> the energy
 #      outXC.potential     --> the pot
@@ -103,7 +103,7 @@ class AbstractFunctional(ABC):
 #     def __init__(self, type=None, name=None, PSEUDO = None, is_nonlocal=None, optional_kwargs=None, **kwargs):
 #         # init the class
 #
-#         # This is compatible for PSEUDO FunctionalClass
+#         # This is compatible for PSEUDO Functional
 #
 #         if optional_kwargs is None:
 #             self.optional_kwargs = {}
@@ -145,7 +145,7 @@ class AbstractFunctional(ABC):
 #         self.FunctionalNameList = XCNameList + KEDFNameList + KEDFNLNameList + HNameList + PPNameList + EXTNameList
 #
 #         if type is None:
-#             raise AttributeError("Must assign type to FunctionalClass")
+#             raise AttributeError("Must assign type to Functional")
 #         else:
 #             self.type = type
 #
@@ -153,7 +153,7 @@ class AbstractFunctional(ABC):
 #             if type in ["HARTREE", "PSEUDO", "EXT"] :
 #                 self.name = self.type
 #             else :
-#                 raise AttributeError("Must assign name to FunctionalClass")
+#                 raise AttributeError("Must assign name to Functional")
 #         else:
 #             self.name = name
 #

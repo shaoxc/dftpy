@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 import dftpy.formats.io as dftpy_io
 from dftpy.optimization import Optimization
-from dftpy.functional import FunctionalClass
+from dftpy.functional import Functional
 from dftpy.functional.total_functional import TotalFunctional
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
@@ -36,9 +36,9 @@ class Test(unittest.TestCase):
         PP_list = {"Ga": path_pp + file1, "As": path_pp + file2}
         PSEUDO = LocalPseudo(grid=grid, ions=ions, PP_list=PP_list, PME=True)
         optional_kwargs = {}
-        KE = FunctionalClass(type="KEDF", name="WT", optional_kwargs=optional_kwargs)
-        XC = FunctionalClass(type="XC", name="LDA")
-        HARTREE = FunctionalClass(type="HARTREE")
+        KE = Functional(type="KEDF", name="WT", optional_kwargs=optional_kwargs)
+        XC = Functional(type="XC", name="LDA")
+        HARTREE = Functional(type="HARTREE")
 
         charge_total = 0.0
         for i in range(ions.nat):

@@ -10,17 +10,17 @@ class TotalFunctional(AbstractFunctional):
      Attributes
      ----------
 
-     KineticEnergyFunctional, XCFunctional, PSEUDO, HARTREE: FunctionalClass
+     KineticEnergyFunctional, XCFunctional, PSEUDO, HARTREE: Functional
          Instances of functional class needed for the computation
          of the chemical potential, total potential and total energy.
 
      Example
      -------
 
-     KE = FunctionalClass(type='KEDF',name='TF')
-     XC = FunctionalClass(type='XC',name='LDA')
-     PSEUDO = FunctionalClass(type='PSEUDO', kwargs)
-     HARTREE = FunctionalClass(type='HARTREE')
+     KE = Functional(type='KEDF',name='TF')
+     XC = Functional(type='XC',name='LDA')
+     PSEUDO = Functional(type='PSEUDO', kwargs)
+     HARTREE = Functional(type='HARTREE')
 
      EnergyEvaluator = TotalEnergyAndPotential(
          KineticEnergyFunctional = KE,

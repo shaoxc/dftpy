@@ -2,7 +2,7 @@ import numpy as np
 import os
 from dftpy.mpi import sprint
 from dftpy.optimization import Optimization
-from dftpy.functional import FunctionalClass
+from dftpy.functional import Functional
 from dftpy.functional.total_functional import TotalFunctional
 from dftpy.constants import LEN_CONV, ENERGY_CONV, STRESS_CONV
 from dftpy.formats.io import read, read_density, write
@@ -87,17 +87,17 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
     linearie = config["MATH"]["linearie"]
     if pseudo is None:
         # PSEUDO = LocalPseudo(grid=grid, ions=ions, PP_list=PPlist, PME=linearie)
-        PSEUDO = FunctionalClass(type = 'PSEUDO', grid=grid, ions=ions, PP_list=PPlist, PME=linearie)
+        PSEUDO = Functional(type ='PSEUDO', grid=grid, ions=ions, PP_list=PPlist, PME=linearie)
     else:
         PSEUDO = pseudo
 
         PSEUDO.restart(full=False)
         PSEUDO.grid = grid
         PSEUDO.ions = ions
-    KE = FunctionalClass(type="KEDF", name=config["KEDF"]["kedf"], **config["KEDF"])
+    KE = Functional(type="KEDF", name=config["KEDF"]["kedf"], **config["KEDF"])
     ############################## XC and Hartree ##############################
-    HARTREE = FunctionalClass(type="HARTREE")
-    XC = FunctionalClass(type="XC", name=config["EXC"]["xc"], **config["EXC"])
+    HARTREE = Functional(type="HARTREE")
+    XC = Functional(type="XC", name=config["EXC"]["xc"], **config["EXC"])
     ############################## Initial density ##############################
     zerosA = np.empty(grid.nnr, dtype=float)
     rho_ini = DirectField(grid=grid, griddata_C=zerosA, rank=1)

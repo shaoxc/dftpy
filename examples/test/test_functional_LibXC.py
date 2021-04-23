@@ -4,7 +4,7 @@ import unittest
 import pytest
 import numpy as np
 
-from dftpy.functional import FunctionalClass
+from dftpy.functional import Functional
 from dftpy.functional.semilocal_xc import LibXC, PBE
 from dftpy.formats.qepp import PP
 
@@ -15,9 +15,9 @@ class Test(unittest.TestCase):
         dftpy_data_path = os.environ.get('DFTPY_DATA_PATH')
         mol = PP(filepp=dftpy_data_path + "/Al_fde_rho.pp").read()
         rho_r = mol.field
-        thefuncclass = FunctionalClass(type='XC',
-                                       name='LDA',
-                                       is_nonlocal=False)
+        thefuncclass = Functional(type='XC',
+                                  name='LDA',
+                                  is_nonlocal=False)
         func2 = thefuncclass.compute(rho_r)
         func1 = LibXC(density=rho_r,
                    x_str='lda_x',

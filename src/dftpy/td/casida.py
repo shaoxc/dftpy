@@ -2,7 +2,7 @@ import numpy as np
 from scipy.linalg import eigh
 
 from dftpy.field import DirectField
-from dftpy.functional import FunctionalClass
+from dftpy.functional import Functional
 from dftpy.time_data import TimeData
 
 
@@ -45,7 +45,7 @@ class Casida(object):
 
     def build_matrix(self, num_psi, eigs, psi_list, calc_triplet=False, build_ab=False):
         TimeData.Begin('Casida Matrix')
-        hartree = FunctionalClass(type='HARTREE')
+        hartree = Functional(type='HARTREE')
         self.c = np.empty([num_psi - 1, num_psi - 1], dtype=np.float64)
         if build_ab:
             self.a = np.empty([num_psi - 1, num_psi - 1], dtype=np.float64)

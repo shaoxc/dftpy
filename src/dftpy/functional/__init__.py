@@ -14,7 +14,7 @@ FunctionalTypeDict = {
     'EXT':ExternalPotential,
 }
 
-def FunctionalClass(type=None, optional_kwargs=None, **kwargs):
+def Functional(type=None, optional_kwargs=None, **kwargs):
 
     if optional_kwargs is not None:
         kwargs.update(optional_kwargs)

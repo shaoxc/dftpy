@@ -3,7 +3,7 @@ import os
 import unittest
 import numpy as np
 
-from dftpy.functional import FunctionalClass
+from dftpy.functional import Functional
 from dftpy.functional.total_functional import TotalFunctional
 from dftpy.functional.pseudo import LocalPseudo
 from dftpy.td.propagator import Propagator
@@ -32,9 +32,9 @@ class TestPropagator(unittest.TestCase):
         sys = read_xsf(dftpy_data_path+'/GaAs_random.xsf',full=True)
         sys.field *= ang2bohr ** 3
 
-        KE = FunctionalClass(type='KEDF', name='TF')
-        XC = FunctionalClass(type='XC', name='LDA')
-        HARTREE = FunctionalClass(type="HARTREE")
+        KE = Functional(type='KEDF', name='TF')
+        XC = Functional(type='XC', name='LDA')
+        HARTREE = Functional(type="HARTREE")
         PPlist = {'Ga':dftpy_data_path+'/Ga_lda.oe04.recpot',
             'As':dftpy_data_path+'/As_lda.oe04.recpot'}
         PSEUDO = LocalPseudo(grid=sys.cell, ions=sys.ions, PP_list=PPlist)

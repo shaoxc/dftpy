@@ -1,6 +1,6 @@
 import numpy as np
 from dftpy.optimization import Optimization
-from dftpy.functional import FunctionalClass
+from dftpy.functional import Functional
 from dftpy.functional.total_functional import TotalFunctional
 from dftpy.constants import ENERGY_CONV
 # from dftpy.formats.qepp import PP
@@ -34,11 +34,11 @@ def test_optim():
     PP_list = {'Al': path_pp+file1}
     PSEUDO = LocalPseudo(grid = grid, ions=ions,PP_list=PP_list,PME=True)
     optional_kwargs = {}
-    # KE = FunctionalClass(type='KEDF',name='x_TF_y_vW',optional_kwargs=optional_kwargs)
-    KE = FunctionalClass(type='KEDF',name='WT',optional_kwargs=optional_kwargs)
+    # KE = Functional(type='KEDF',name='x_TF_y_vW',optional_kwargs=optional_kwargs)
+    KE = Functional(type='KEDF', name='WT', optional_kwargs=optional_kwargs)
     optional_kwargs = {"x_str":'lda_x','c_str':'lda_c_pz'}
-    XC = FunctionalClass(type='XC',name='LDA')
-    HARTREE = FunctionalClass(type='HARTREE')
+    XC = Functional(type='XC', name='LDA')
+    HARTREE = Functional(type='HARTREE')
 
     charge_total = 0.0
     for i in range(ions.nat) :
