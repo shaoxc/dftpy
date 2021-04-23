@@ -89,10 +89,7 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
         # PSEUDO = LocalPseudo(grid=grid, ions=ions, PP_list=PPlist, PME=linearie)
         PSEUDO = FunctionalClass(type = 'PSEUDO', grid=grid, ions=ions, PP_list=PPlist, PME=linearie)
     else:
-        if isinstance(pseudo, FunctionalClass):
-            PSEUDO = pseudo.PSEUDO
-        else :
-            PSEUDO = pseudo
+        PSEUDO = pseudo
 
         PSEUDO.restart(full=False)
         PSEUDO.grid = grid
@@ -184,11 +181,7 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2 = None):
             rho_ini *= charge_total / (np.sum(rho_ini) * rho_ini.grid.dV)
             # ions.restart()
             if hasattr(E_v_Evaluator, 'PSEUDO'):
-                pseudo=E_v_Evaluator.PSEUDO
-                if isinstance(pseudo, FunctionalClass):
-                    PSEUDO = pseudo.PSEUDO
-                else :
-                    PSEUDO = pseudo
+                PSEUDO=E_v_Evaluator.PSEUDO
                 PSEUDO.restart(full=False, ions=PSEUDO.ions, grid=grid2)
             opt = Optimization(
                 EnergyEvaluator=E_v_Evaluator,
