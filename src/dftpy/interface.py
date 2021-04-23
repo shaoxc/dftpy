@@ -311,22 +311,21 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2 = None):
     return results
 
 
-def GetEnergyPotential(ions, rho, EnergyEvaluator, calcType=["E","V"], linearii=True, linearie=True):
+def GetEnergyPotential(ions, rho, EnergyEvaluator, calcType={"E","V"}, linearii=True, linearie=True):
     energypotential = {}
     ewaldobj = ewald(rho=rho, ions=ions, PME=linearii)
     energypotential["II"] = FunctionalOutput(name="Ewald", potential=np.zeros_like(rho), energy=ewaldobj.energy)
 
     energypotential["TOTAL"] = energypotential["II"].copy()
     funcDict = EnergyEvaluator.funcDict
-    for key in funcDict :
-        func = getattr(EnergyEvaluator, key)
-        if func.type == "KEDF" :
-            results = func(rho, calcType, split=True)
-            for key2 in results :
+    for key, func in funcDict.items():
+        if func.type == "KEDF":
+            results = func(rho, calcType=calcType, split=True)
+            for key2 in results:
                 energypotential["TOTAL"] += results[key2]
                 energypotential["KEDF-" + key2] = results[key2]
         else :
-            results = func(rho, calcType)
+            results = func(rho, calcType=calcType)
             energypotential["TOTAL"] += results
             energypotential[func.type] = results
 
