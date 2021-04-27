@@ -105,7 +105,7 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
                     break
 
             rho_corr = (rho + rho_pred) * 0.5
-            func = E_v_Evaluator.ComputeEnergyPotential(rho_corr, calcType=["V"])
+            func = E_v_Evaluator.compute(rho_corr, calcType=["V"])
             prop.hamiltonian.v = func.potential
             if dynamic:
                 j_corr = (j + j_pred) * 0.5
