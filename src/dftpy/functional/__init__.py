@@ -7,15 +7,15 @@ from dftpy.functional.total_functional import TotalFunctional
 from dftpy.functional.functional_output import FunctionalOutput
 
 FunctionalTypeDict = {
-    'KEDF':KEDF,
-    'PSEUDO':LocalPseudo,
-    'HARTREE':Hartree,
-    'XC':XC,
-    'EXT':ExternalPotential,
+    'KEDF': KEDF,
+    'PSEUDO': LocalPseudo,
+    'HARTREE': Hartree,
+    'XC': XC,
+    'EXT': ExternalPotential,
 }
 
-def Functional(type=None, optional_kwargs=None, **kwargs):
 
+def Functional(type=None, optional_kwargs=None, **kwargs):
     if optional_kwargs is not None:
         kwargs.update(optional_kwargs)
 
