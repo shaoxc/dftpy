@@ -1,8 +1,7 @@
-# Collection of local and semilocal functionals
+# Collection of local and semilocal functional
 
 import numpy as np
-from dftpy.field import DirectField, ReciprocalField
-from dftpy.functional_output import Functional
+from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.math_utils import PowerInt
 from dftpy.time_data import TimeData
 
@@ -49,7 +48,7 @@ def ThomasFermiStress(rho, x=1.0, energy=None, **kwargs):
     The Thomas-Fermi Stress
     """
     if energy is None:
-        energy = TF(rho, x=x, calcType=["E"]).energy
+        energy = TF(rho, x=x, calcType={"E"}).energy
     Etmp = -2.0 / 3.0 * energy / rho.grid.volume
     stress = np.zeros((3, 3))
     for i in range(3):
@@ -57,9 +56,9 @@ def ThomasFermiStress(rho, x=1.0, energy=None, **kwargs):
     return stress
 
 
-def TF(rho, x=1.0, calcType=["E","V"], split=False, **kwargs):
+def TF(rho, x=1.0, calcType={"E","V"}, split=False, **kwargs):
     TimeData.Begin("TF")
-    OutFunctional = Functional(name="TF")
+    OutFunctional = FunctionalOutput(name="TF")
     if "E" in calcType or "D" in calcType :
         energydensity = ThomasFermiEnergyDensity(rho)
         ene = energydensity.sum() * rho.grid.dV

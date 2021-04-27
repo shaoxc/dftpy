@@ -6,7 +6,7 @@ import numpy as np
 import copy
 
 
-class Functional(object):
+class FunctionalOutput(object):
     """
     Object handling DFT functional output
     
@@ -57,7 +57,7 @@ class Functional(object):
             name = self.name
         else:
             name = self.name + other.name
-        result = Functional(name=name)
+        result = FunctionalOutput(name=name)
         for key, value in self:
             if hasattr(other, key):
                 setattr(result, key, value + getattr(other, key))

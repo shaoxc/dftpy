@@ -1,15 +1,14 @@
 import numpy as np
-from scipy.interpolate import interp1d, splrep, splev
 from dftpy.mpi import sprint
-from dftpy.functional_output import Functional
-from dftpy.kedf.wt import WTPotential, WTEnergyDensity
-from dftpy.kedf.kernel import MGPKernel, MGPOmegaE, LindhardDerivative
+from dftpy.functional.functional_output import FunctionalOutput
+from dftpy.functional.kedf.wt import WTPotential, WTEnergyDensity
+from dftpy.functional.kedf.kernel import MGPKernel, MGPOmegaE
 from dftpy.time_data import TimeData
 
 __all__ = ["MGP", "MGPStress", "MGPA", "MGPG"]
 
 
-def MGPStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, calcType=["E","V"]):
+def MGPStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, calcType={"E","V"}):
     pass
 
 
@@ -23,7 +22,7 @@ def MGP(
     lumpfactor=0.2,
     maxpoint=1000,
     symmetrization=None,
-    calcType=["E","V"],
+    calcType={"E","V"},
     split=False,
     ke_kernel_saved = None,
     **kwargs
@@ -56,7 +55,7 @@ def MGP(
     else:
         KE_kernel = KE_kernel_saved["Kernel"]
 
-    NL = Functional(name="NL")
+    NL = FunctionalOutput(name="NL")
     if "E" in calcType or 'D' in calcType:
         energydensity = WTEnergyDensity(rho, rho0, KE_kernel, alpha, beta)
         NL.energy = energydensity.sum() * rho.grid.dV
@@ -78,7 +77,7 @@ def MGPA(
     lumpfactor=0.2,
     maxpoint=1000,
     symmetrization="Arithmetic",
-    calcType=["E","V"],
+    calcType={"E","V"},
     split=False,
     **kwargs
 ):
@@ -95,7 +94,7 @@ def MGPG(
     lumpfactor=0.2,
     maxpoint=1000,
     symmetrization="Geometric",
-    calcType=["E","V"],
+    calcType={"E","V"},
     split=False,
     **kwargs
 ):

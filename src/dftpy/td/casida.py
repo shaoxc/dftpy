@@ -1,8 +1,10 @@
 import numpy as np
 from scipy.linalg import eigh
+
 from dftpy.field import DirectField
-from dftpy.functionals import FunctionalClass, TotalEnergyAndPotential
+from dftpy.functional import Functional
 from dftpy.time_data import TimeData
+
 
 class Casida(object):
 
@@ -13,7 +15,7 @@ class Casida(object):
             self.rho0 = rho0
             self.polarized = True
         elif rho0.rank == 1:
-            self.rho0 = DirectField(rho0.grid, rank=2, griddata_3d=np.stack([rho0/2, rho0/2], axis=0))
+            self.rho0 = DirectField(rho0.grid, rank=2, griddata_3d=np.stack([rho0 / 2, rho0 / 2], axis=0))
             self.polarized = False
         else:
             raise AttributeError("rho0 must be an rank-1 or -2 DFTpy DirectField.")
@@ -24,82 +26,82 @@ class Casida(object):
 
     def calc_k(self, psi_i, psi_j, vh):
         if not self.polarized:
-            fkxc = DirectField(self.grid, rank=1, griddata_3d=(self.fkxc[0]+self.fkxc[1])/2.0)
-            return (psi_i*(vh+fkxc*psi_j)).integral()
+            fkxc = DirectField(self.grid, rank=1, griddata_3d=(self.fkxc[0] + self.fkxc[1]) / 2.0)
+            return (psi_i * (vh + fkxc * psi_j)).integral()
         else:
             raise Exception('Spin polarized Casida is not implemented')
 
     def calc_k_tri(self, psi_i, psi_j):
         if not self.polarized:
-            fkxc = DirectField(self.grid, rank=1, griddata_3d=(self.fkxc[0]-self.fkxc[1])/2.0)
-            return (psi_i*fkxc*psi_j).integral()
+            fkxc = DirectField(self.grid, rank=1, griddata_3d=(self.fkxc[0] - self.fkxc[1]) / 2.0)
+            return (psi_i * fkxc * psi_j).integral()
         else:
             raise Exception('Spin polarized Casida is not implemented')
-    
+
     def calc_mu(self, psi_1, psi_2, direc=0):
         x = psi_1.grid.r[direc]
-        mu = (psi_1*x*psi_2).integral()
+        mu = (psi_1 * x * psi_2).integral()
         return mu
 
-    def build_matrix(self, num_psi, eigs, psi_list, calc_triplet=False, build_ab = False):
+    def build_matrix(self, num_psi, eigs, psi_list, calc_triplet=False, build_ab=False):
         TimeData.Begin('Casida Matrix')
-        hartree = FunctionalClass(type='HARTREE')
-        self.c = np.empty([num_psi-1, num_psi-1], dtype = np.float64)
+        hartree = Functional(type='HARTREE')
+        self.c = np.empty([num_psi - 1, num_psi - 1], dtype=np.float64)
         if build_ab:
-            self.a = np.empty([num_psi-1, num_psi-1], dtype = np.float64)
-            self.b = np.empty([num_psi-1, num_psi-1], dtype = np.float64)
+            self.a = np.empty([num_psi - 1, num_psi - 1], dtype=np.float64)
+            self.b = np.empty([num_psi - 1, num_psi - 1], dtype=np.float64)
         if calc_triplet:
-            self.c_tri = np.empty([num_psi-1, num_psi-1], dtype = np.float64)
+            self.c_tri = np.empty([num_psi - 1, num_psi - 1], dtype=np.float64)
             if build_ab:
-                self.a_tri = np.empty([num_psi-1, num_psi-1], dtype = np.float64)
-                self.b_tri = np.empty([num_psi-1, num_psi-1], dtype = np.float64)
-        omega = eigs[1:]-eigs[0]
+                self.a_tri = np.empty([num_psi - 1, num_psi - 1], dtype=np.float64)
+                self.b_tri = np.empty([num_psi - 1, num_psi - 1], dtype=np.float64)
+        omega = eigs[1:] - eigs[0]
         for j in range(1, num_psi):
             psi_j = psi_list[0] * psi_list[j]
-            vh = hartree(psi_j, calcType = ['V']).potential
+            vh = hartree(psi_j, calcType=['V']).potential
             for i in range(j, num_psi):
                 psi_i = psi_list[0] * psi_list[i]
                 k = self.calc_k(psi_i, psi_j, vh)
-                self.c[i-1,j-1] = k * self.N * 2.0 * np.sqrt(omega[i-1]*omega[j-1])
+                self.c[i - 1, j - 1] = k * self.N * 2.0 * np.sqrt(omega[i - 1] * omega[j - 1])
                 if build_ab:
-                    self.a[i-1,j-1] = k * self.N
-                    self.b[i-1,j-1] = k * self.N
+                    self.a[i - 1, j - 1] = k * self.N
+                    self.b[i - 1, j - 1] = k * self.N
                 if calc_triplet:
                     k_tri = self.calc_k_tri(psi_i, psi_j)
-                    self.c_tri[i-1,j-1] = k_tri * self.N * 2.0 * np.sqrt(omega[i-1]*omega[j-1])
+                    self.c_tri[i - 1, j - 1] = k_tri * self.N * 2.0 * np.sqrt(omega[i - 1] * omega[j - 1])
                     if build_ab:
-                        self.a_tri[i-1,j-1] = k_tri * self.N
-                        self.b_tri[i-1,j-1] = k_tri * self.N
+                        self.a_tri[i - 1, j - 1] = k_tri * self.N
+                        self.b_tri[i - 1, j - 1] = k_tri * self.N
                 if not i == j:
-                    self.c[j-1, i-1] = self.c[i-1, j-1]
+                    self.c[j - 1, i - 1] = self.c[i - 1, j - 1]
                     if build_ab:
-                        self.a[j-1, i-1] = self.a[i-1, j-1]
-                        self.b[j-1, i-1] = self.b[i-1, j-1]
+                        self.a[j - 1, i - 1] = self.a[i - 1, j - 1]
+                        self.b[j - 1, i - 1] = self.b[i - 1, j - 1]
                     if calc_triplet:
-                        self.c_tri[j-1, i-1] = self.c_tri[i-1, j-1]
+                        self.c_tri[j - 1, i - 1] = self.c_tri[i - 1, j - 1]
                         if build_ab:
-                            self.a_tri[j-1, i-1] = self.a_tri[i-1, j-1]
-                            self.b_tri[j-1, i-1] = self.b_tri[i-1, j-1]
+                            self.a_tri[j - 1, i - 1] = self.a_tri[i - 1, j - 1]
+                            self.b_tri[j - 1, i - 1] = self.b_tri[i - 1, j - 1]
 
-        self.c +=  np.identity(num_psi-1) * (omega * omega)
+        self.c += np.identity(num_psi - 1) * (omega * omega)
         if build_ab:
-            self.a +=  np.identity(num_psi-1) * omega
+            self.a += np.identity(num_psi - 1) * omega
         if calc_triplet:
-            self.c_tri +=  np.identity(num_psi-1) * (omega * omega)
+            self.c_tri += np.identity(num_psi - 1) * (omega * omega)
             if build_ab:
-                self.a_tri +=  np.identity(num_psi-1) * omega
+                self.a_tri += np.identity(num_psi - 1) * omega
         self.sqrtomega = np.sqrt(omega)
-        #sprint(self.sqrtomega)
-        #sprint(self.c)
-        #sprint(self.c_tri)
+        # sprint(self.sqrtomega)
+        # sprint(self.c)
+        # sprint(self.c_tri)
 
-        self.x = np.empty(num_psi-1, dtype = np.float64)
-        self.y = np.empty(num_psi-1, dtype = np.float64)
-        self.z = np.empty(num_psi-1, dtype = np.float64)
+        self.x = np.empty(num_psi - 1, dtype=np.float64)
+        self.y = np.empty(num_psi - 1, dtype=np.float64)
+        self.z = np.empty(num_psi - 1, dtype=np.float64)
         for i in range(1, num_psi):
-            self.x[i-1] = self.calc_mu(psi_list[0], psi_list[i])
-            self.y[i-1] = self.calc_mu(psi_list[0], psi_list[i], direc=1)
-            self.z[i-1] = self.calc_mu(psi_list[0], psi_list[i], direc=2)
+            self.x[i - 1] = self.calc_mu(psi_list[0], psi_list[i])
+            self.y[i - 1] = self.calc_mu(psi_list[0], psi_list[i], direc=1)
+            self.z[i - 1] = self.calc_mu(psi_list[0], psi_list[i], direc=2)
         TimeData.End('Casida Matrix')
 
     def __call__(self, calc_triplet=False):
@@ -116,36 +118,36 @@ class Casida(object):
 
         x_minus_y_list = []
 
-        f = np.empty(num_modes, dtype = np.float64)
+        f = np.empty(num_modes, dtype=np.float64)
         for i in range(num_modes):
-            tmp = np.sum(self.x * self.sqrtomega * z_list[:,i])
+            tmp = np.sum(self.x * self.sqrtomega * z_list[:, i])
             f[i] = tmp * tmp
-            tmp = np.sum(self.y * self.sqrtomega * z_list[:,i])
+            tmp = np.sum(self.y * self.sqrtomega * z_list[:, i])
             f[i] += tmp * tmp
-            tmp = np.sum(self.z * self.sqrtomega * z_list[:,i])
+            tmp = np.sum(self.z * self.sqrtomega * z_list[:, i])
             f[i] += tmp * tmp
 
             f[i] = f[i] * 2.0 / 3.0 * self.N
 
-            x_minus_y_list.append(z_list[:,i] / self.sqrtomega)
+            x_minus_y_list.append(z_list[:, i] / self.sqrtomega)
 
         if calc_triplet:
             omega2, z_list = eigh(self.c_tri)
             omega_tri = np.sqrt(omega2)
             omega_tri = np.real(omega_tri)
 
-            f_tri = np.empty(num_modes, dtype = np.float64)
+            f_tri = np.empty(num_modes, dtype=np.float64)
             for i in range(num_modes):
-                tmp = np.sum(self.x * self.sqrtomega * z_list[:,i])
+                tmp = np.sum(self.x * self.sqrtomega * z_list[:, i])
                 f_tri[i] = tmp * tmp
-                tmp = np.sum(self.y * self.sqrtomega * z_list[:,i])
+                tmp = np.sum(self.y * self.sqrtomega * z_list[:, i])
                 f_tri[i] += tmp * tmp
-                tmp = np.sum(self.z * self.sqrtomega * z_list[:,i])
+                tmp = np.sum(self.z * self.sqrtomega * z_list[:, i])
                 f_tri[i] += tmp * tmp
 
                 f_tri[i] = f_tri[i] * 2.0 / 3.0 * self.N
 
-                x_minus_y_list.append(z_list[:,i] / self.sqrtomega)
+                x_minus_y_list.append(z_list[:, i] / self.sqrtomega)
 
             omega = np.real(np.concatenate((omega, omega_tri)))
             f = np.concatenate((f, f_tri))
@@ -162,30 +164,30 @@ class Casida(object):
 
         omega, x_list = eigh(self.a)
 
-        f = np.empty(num_modes, dtype = np.float64)
+        f = np.empty(num_modes, dtype=np.float64)
         for i in range(num_modes):
-            #tmp = np.sum(self.x * self.sqrtomega * self.sqrtomega * x_list[:,i])
-            tmp = np.sum(self.x * np.matmul(self.a, x_list[:,i]))
+            # tmp = np.sum(self.x * self.sqrtomega * self.sqrtomega * x_list[:,i])
+            tmp = np.sum(self.x * np.matmul(self.a, x_list[:, i]))
             f[i] = tmp * tmp
-            #tmp = np.sum(self.y * self.sqrtomega * self.sqrtomega * x_list[:,i])
-            tmp = np.sum(self.y * np.matmul(self.a, x_list[:,i]))
+            # tmp = np.sum(self.y * self.sqrtomega * self.sqrtomega * x_list[:,i])
+            tmp = np.sum(self.y * np.matmul(self.a, x_list[:, i]))
             f[i] += tmp * tmp
-            #tmp = np.sum(self.z * self.sqrtomega * self.sqrtomega * x_list[:,i])
-            tmp = np.sum(self.z * np.matmul(self.a, x_list[:,i]))
+            # tmp = np.sum(self.z * self.sqrtomega * self.sqrtomega * x_list[:,i])
+            tmp = np.sum(self.z * np.matmul(self.a, x_list[:, i]))
             f[i] += tmp * tmp
 
             f[i] = f[i] * 2.0 / 3.0 * self.N
 
         if calc_triplet:
-            omega, x_list = eigh(self.a_tri)
+            omega_tri, x_list = eigh(self.a_tri)
 
-            f_tri = np.empty(num_modes, dtype = np.float64)
+            f_tri = np.empty(num_modes, dtype=np.float64)
             for i in range(num_modes):
-                tmp = np.sum(self.x * self.sqrtomega * self.sqrtomega * x_list[:,i])
+                tmp = np.sum(self.x * self.sqrtomega * self.sqrtomega * x_list[:, i])
                 f_tri[i] = tmp * tmp
-                tmp = np.sum(self.y * self.sqrtomega * self.sqrtomega * y_list[:,i])
+                tmp = np.sum(self.y * self.sqrtomega * self.sqrtomega * x_list[:, i])
                 f_tri[i] += tmp * tmp
-                tmp = np.sum(self.z * self.sqrtomega * self.sqrtomega * z_list[:,i])
+                tmp = np.sum(self.z * self.sqrtomega * self.sqrtomega * x_list[:, i])
                 f_tri[i] += tmp * tmp
 
                 f_tri[i] = f_tri[i] * 2.0 / 3.0 * self.N

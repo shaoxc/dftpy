@@ -238,8 +238,11 @@ def MGPKernel(q, rho0, lumpfactor=0.2, maxpoints=1000, symmetrization=None, Kern
     """
     tkf = 2.0 * (3.0 * rho0 * np.pi ** 2) ** (1.0 / 3.0)
     eta = q / tkf
-    return MGPKernelTable(eta, maxpoints, symmetrization, KernelTable)
-
+    mp = q.mp if hasattr(q, 'mp') else MP()
+    kernel = MGPKernelTable(eta, maxpoints, symmetrization, KernelTable, mp)
+    if q[0, 0, 0] < ZERO :
+        kernel[0, 0, 0] = 0.0
+    return kernel
 
 def MGPKernelTable(eta, maxpoints=1000, symmetrization=None, KernelTable=None, mp = None):
     """
@@ -255,9 +258,17 @@ def MGPKernelTable(eta, maxpoints=1000, symmetrization=None, KernelTable=None, m
     coe = 4.0 / 5.0 * cTF * 5.0 / 6.0 * dt
     cWT = 4.0 / 5.0 * 0.3 * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
     #-----------------------------------------------------------------------
-    kernel0 = LindhardFunction(np.zeros(1), 1.0, 1.0)[0]
+    # kernel0 = LindhardFunction(np.zeros(1), 1.0, 1.0)[0]
     if KernelTable is None:
-        gp = np.logspace(np.log10(eta[1]/10), np.log10(eta[-1]+2), num = eta.size)
+        if len(eta.shape) > 1 :
+            eta_min = 1E-4
+            eta_max = 52
+            num = 10000
+        else :
+            eta_min = eta[1]/10
+            eta_max = eta[-1]+2
+            num = eta.size
+        gp = np.logspace(np.log10(eta_min), np.log10(eta_max), num = num)
         k = LindhardFunction(gp, 1.0, 1.0)
         KernelTable = splrep(gp, k)
     #-----------------------------------------------------------------------
@@ -275,7 +286,6 @@ def MGPKernelTable(eta, maxpoints=1000, symmetrization=None, KernelTable=None, m
             t16 = t ** (1.0 / 6.0)
         if KernelTable is not None:
             Gt = splev(eta2, KernelTable, ext=3)
-            Gt[0] = kernel0
         else:
             Gt = LindhardFunction(eta2, 1.0, 1.0)
         if kernel is None :

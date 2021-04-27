@@ -1,7 +1,7 @@
 # Collection of semilocal functionals
 
 import numpy as np
-from dftpy.functional_output import Functional
+from dftpy.functional.functional_output import FunctionalOutput
 # from dftpy.math_utils import PowerInt
 # from dftpy.time_data import TimeData
 # from dftpy.kedf.tf import TF
@@ -73,7 +73,7 @@ def GGAStress(rho, functional="LKT", energy=None, potential=None, **kwargs):
     stress = np.zeros((3, 3))
 
     if potential is None:
-        gga = GGA(rho, functional=functional, calcType=["E","V"], **kwargs)
+        gga = GGA(rho, functional=functional, calcType={"E","V"}, **kwargs)
         energy = gga.energy
         potential = gga.potential
 
@@ -86,7 +86,7 @@ def GGAStress(rho, functional="LKT", energy=None, potential=None, **kwargs):
             stress[j, i] = stress[i, j]
 
 
-def GGAFs(s, functional="LKT", calcType=["E","V"], params=None, gga_remove_vw = None, **kwargs):
+def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = None, **kwargs):
     r"""
     ckf = (3\pi^2)^{1/3}
     cTF = (3/10) * (3\pi^2)^{2/3} = (3/10) * ckf^2
@@ -109,7 +109,7 @@ def GGAFs(s, functional="LKT", calcType=["E","V"], params=None, gga_remove_vw = 
         @article{garcia2007kinetic,
           title={Kinetic energy density study of some representative semilocal kinetic energy functionals}}
         @article{gotz2009performance,
-          title={Performance of kinetic energy functionals for interaction energies in a subsystem formulation of density functional theory}}
+          title={Performance of kinetic energy functional for interaction energies in a subsystem formulation of density functional theory}}
         @article{lacks1994tests,
           title = {Tests of nonlocal kinetic energy functionals}}
         @misc{hfofke,
@@ -691,7 +691,7 @@ def GGAFs(s, functional="LKT", calcType=["E","V"], params=None, gga_remove_vw = 
 
     return F, dFds2
 
-def _GGAFx(ss, s2, functional="LKT", calcType=["E","V"], params=None, **kwargs):
+def _GGAFx(ss, s2, functional="LKT", calcType={"E","V"}, params=None, **kwargs):
     if not params:
         params = [1.3]
     mask1 = ss > 100.0
@@ -715,7 +715,7 @@ def _GGAFx(ss, s2, functional="LKT", calcType=["E","V"], params=None, **kwargs):
     return Fx, dFds2
 
 
-def GGA(rho, functional="LKT", calcType=["E","V"], split=False, params = None, **kwargs):
+def GGA(rho, functional="LKT", calcType={"E","V"}, split=False, params = None, **kwargs):
     """
     Interface to compute GGAs internally to DFTpy.
     This is the default way, even though DFTpy can generate some of the GGAs with LibXC.
@@ -751,7 +751,7 @@ def GGA(rho, functional="LKT", calcType=["E","V"], split=False, params = None, *
         rhoGrad.append(item)
     s = np.sqrt(rhoGrad[0] ** 2 + rhoGrad[1] ** 2 + rhoGrad[2] ** 2) / rho43
     F, dFds2 = GGAFs(s, functional=functional, calcType=calcType, params = params, **kwargs)
-    OutFunctional = Functional(name="GGA-" + str(functional))
+    OutFunctional = FunctionalOutput(name="GGA-" + str(functional))
 
     if 'E' in calcType or 'D' in calcType :
         energydensity = tf * F

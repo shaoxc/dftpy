@@ -1,8 +1,8 @@
 import numpy as np
 from dftpy.mpi import sprint
 from dftpy.math_utils import PowerInt
-from dftpy.functional_output import Functional
-from dftpy.kedf.kernel import SMKernel, WTKernel
+from dftpy.functional.functional_output import FunctionalOutput
+from dftpy.functional.kedf.kernel import SMKernel, WTKernel
 from dftpy.time_data import TimeData
 
 """
@@ -60,7 +60,7 @@ def FPStress(rho, energy=None):
     pass
 
 
-def FP_origin(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType=["E","V"],
+def FP_origin(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType={"E","V"},
         ke_kernel_saved = None, **kwargs):
     TimeData.Begin("FP")
     q = rho.grid.get_reciprocal().q
@@ -96,14 +96,14 @@ def FP_origin(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType=["E",
         dPrho = 5.0 / 6.0 * (nu - (nuMinus1 * rho0) / rho) * rhoFiveSixth / rho
         pot *= 2.0 * dPrho
 
-    OutFunctional = Functional(name="FP")
+    OutFunctional = FunctionalOutput(name="FP")
     OutFunctional.potential = pot
     OutFunctional.energy = ene
     TimeData.End("FP")
     return OutFunctional
 
 
-def FP0(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType=["E","V"], split=False,
+def FP0(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType={"E","V"}, split=False,
         ke_kernel_saved = None, **kwargs):
     TimeData.Begin("FP")
     # Only performed once for each grid
@@ -140,11 +140,11 @@ def FP0(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType=["E","V"], 
         # dPrho = 5.0/6.0 * Mr * rhoFiveSixth/rho;# pot *= 2.0 * dPrho
         pot *= (5.0 / 3.0) * Mr * rhoFiveSixth / rho
 
-    NL = Functional(name="NL", potential=pot, energy=ene)
+    NL = FunctionalOutput(name="NL", potential=pot, energy=ene)
     return NL
 
 
-def FP(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, rho0=None, calcType=["E","V"], split=False,
+def FP(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, rho0=None, calcType={"E","V"}, split=False,
         ke_kernel_saved = None, **kwargs):
     TimeData.Begin("FP")
     q = rho.grid.get_reciprocal().q
@@ -175,7 +175,7 @@ def FP(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, rho0=None, calcType=[
     Prho = Mr * rhoFiveSixth
     pot = (Prho.fft() * KE_kernel).ifft(force_real=True)
     # -----------------------------------------------------------------------
-    NL = Functional(name="NL")
+    NL = FunctionalOutput(name="NL")
 
     if "E" in calcType or "D" in calcType :
         energydensity = pot * Prho

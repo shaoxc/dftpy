@@ -1,7 +1,7 @@
 import numpy as np
 from dftpy.mpi import sprint
-from dftpy.functional_output import Functional
-from dftpy.kedf.kernel import WTKernel, LindhardDerivative
+from dftpy.functional.functional_output import FunctionalOutput
+from dftpy.functional.kedf.kernel import WTKernel, LindhardDerivative
 from dftpy.time_data import TimeData
 
 __all__ = ["WT", "WTStress"]
@@ -89,7 +89,7 @@ def WTStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, ene
     return stress
 
 
-def WT(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, rho0=None, calcType=["E","V"], split=False,
+def WT(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, rho0=None, calcType={"E","V"}, split=False,
         ke_kernel_saved = None, **kwargs):
     TimeData.Begin("WT")
     q = rho.grid.get_reciprocal().q
@@ -110,7 +110,7 @@ def WT(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, rho0=None
     else:
         KE_kernel = KE_kernel_saved["Kernel"]
 
-    NL = Functional(name="NL")
+    NL = FunctionalOutput(name="NL")
 
     if "V" in calcType:
         pot = WTPotential(rho, rho0, KE_kernel, alpha, beta)

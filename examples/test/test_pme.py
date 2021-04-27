@@ -3,11 +3,9 @@ import os
 import unittest
 import numpy as np
 
-from dftpy.functionals import FunctionalClass
-from dftpy.constants import LEN_CONV
 from dftpy.formats.qepp import PP
 from dftpy.ewald import ewald
-from dftpy.pseudo import LocalPseudo
+from dftpy.functional.pseudo import LocalPseudo
 
 
 class Test(unittest.TestCase):
@@ -23,13 +21,13 @@ class Test(unittest.TestCase):
         rho = mol.field
 
         PSEUDO = LocalPseudo(grid=grid, ions=ions, PP_list=PP_list, PME=False)
-        func = PSEUDO(density=mol.field)
+        func = PSEUDO(mol.field)
         IE_Energy = func.energy
         IE_Force = PSEUDO.force(rho)
         IE_Stress = PSEUDO.stress(rho, energy=IE_Energy)
 
         PSEUDO = LocalPseudo(grid=grid, ions=ions, PP_list=PP_list, PME=True)
-        func = PSEUDO(density=mol.field)
+        func = PSEUDO(mol.field)
         IE_Energy_PME = func.energy
         IE_Force_PME = PSEUDO.force(rho)
         IE_Stress_PME = PSEUDO.stress(rho, energy=IE_Energy_PME)

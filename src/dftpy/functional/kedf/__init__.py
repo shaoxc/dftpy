@@ -1,18 +1,17 @@
 # Collection of Kinetic Energy Density Functionals
-import numpy as np
 import copy
 from dftpy.mpi import sprint
-from dftpy.field import DirectField
-from dftpy.kedf.tf import *
-from dftpy.kedf.vw import *
-from dftpy.kedf.wt import *
-from dftpy.kedf.lwt import *
-from dftpy.kedf.fp import *
-from dftpy.kedf.sm import *
-from dftpy.kedf.mgp import *
-from dftpy.kedf.gga import *
-from dftpy.functional_output import Functional
-from dftpy.semilocal_xc import LibXC
+from dftpy.functional.kedf.tf import *
+from dftpy.functional.kedf.vw import *
+from dftpy.functional.kedf.wt import *
+from dftpy.functional.kedf.lwt import *
+from dftpy.functional.kedf.fp import *
+from dftpy.functional.kedf.sm import *
+from dftpy.functional.kedf.mgp import *
+from dftpy.functional.kedf.gga import *
+from dftpy.functional.functional_output import FunctionalOutput
+from dftpy.functional.semilocal_xc import LibXC
+from dftpy.functional.abstract_functional import AbstractFunctional
 
 __all__ = ["KEDF", "KEDFunctional", "KEDFStress"]
 
@@ -41,8 +40,9 @@ KEDF_Stress_Dict = {
     "WT": WTStress,
 }
 
-class KEDF:
+class KEDF(AbstractFunctional):
     def __init__(self, name = "WT", **kwargs):
+        self.type = 'KEDF'
         self.name = name
         self.kwargs = kwargs
         self.ke_kernel_saved = {
@@ -65,12 +65,7 @@ class KEDF:
         else :
             return super(KEDF, cls).__new__(cls)
 
-    def __call__(self, density, calcType=["E","V"], name=None, **kwargs):
-        if name is None :
-            name = self.name
-        return self.compute(density, name=name, calcType=calcType, **kwargs)
-
-    def compute(self, density, calcType=["E","V"], name=None, split = False, **kwargs):
+    def compute(self, density, calcType={"E","V"}, name=None, split = False, **kwargs):
         if name is None :
             name = self.name
         ke_kwargs = copy.deepcopy(self.kwargs)
@@ -87,7 +82,7 @@ class KEDF:
                     functional += out
         return functional
 
-def KEDFunctional(rho, name="WT", calcType=["E","V"], split=False, nspin = 1, **kwargs):
+def KEDFunctional(rho, name="WT", calcType={"E","V"}, split=False, nspin = 1, **kwargs):
     """
     KEDF interface
     """
@@ -125,7 +120,7 @@ def KEDFunctional(rho, name="WT", calcType=["E","V"], split=False, nspin = 1, **
         return ke
     #-----------------------------------------------------------------------
     if name.upper() == "NONE" :
-        OutFunctional = Functional(name="NONE", energy = 0.0)
+        OutFunctional = FunctionalOutput(name="NONE", energy = 0.0)
         if 'D' in calcType:
             OutFunctional.energydensity = DirectField(grid=rho.grid, rank=nspin)
         if 'V' in calcType:
@@ -172,12 +167,12 @@ def KEDFunctional(rho, name="WT", calcType=["E","V"], split=False, nspin = 1, **
                 s = x
             xTF = TF(rho, x=s, calcType=calcType)
         else :
-            xTF = Functional(name="ZERO", energy = 0.0)
+            xTF = FunctionalOutput(name="ZERO", energy = 0.0)
 
         if abs(y) > 1e-8 :
             yvW = vW(rho, calcType=calcType, **kwargs)
         else :
-            yvW = Functional(name="ZERO", energy = 0.0)
+            yvW = FunctionalOutput(name="ZERO", energy = 0.0)
         if nspin > 1 and 'E' in calcType :
             xTF.energy /= nspin
             yvW.energy /= nspin
@@ -231,7 +226,7 @@ def KEDFStress(rho, name="WT", energy=None, **kwargs):
     return stress
 
 
-class NLGGA:
+class NLGGA(AbstractFunctional):
     def __init__(self, stv = None, gga = None, nl = None, rhomax = None, name = 'STV+GGA+LMGPA') :
         self.stv = stv
         self.gga = gga
@@ -240,16 +235,14 @@ class NLGGA:
         self.level = 3 # if smaller than 3 only use gga to guess the rhomax
         self.name = name
 
-    def __call__(self, density, calcType=["E","V"], **kwargs):
-        return self.compute(density, calcType=calcType, **kwargs)
 
-    def compute(self, density, calcType=["E","V"], **kwargs):
-        calcType = ["E","V"]
+    def compute(self, density, calcType={"E","V"}, **kwargs):
+        calcType = {"E","V"}
         # T_{s}[n]=\int \epsilon[n](\br) d\br=\int W[n](\br)\left[\epsilon_{NL} [n] + \epsilon_{STV}(n)\right] + \bigg(1-W[n](\br)\bigg)\epsilon_{GGA} d\br
         if 'V' in calcType :
-            calc = ['D', 'V']
+            calc = {'D', 'V'}
         elif 'E' in calcType :
-            calc = ['D']
+            calc = {'D'}
 
         rhomax_w = density.amax()
 
@@ -280,7 +273,7 @@ class NLGGA:
 
         wn = density_trunc / nmax
 
-        obj = Functional(name = 'NLGGA')
+        obj = FunctionalOutput(name ='NLGGA')
 
         if 'V' in calcType :
             # V_{STV} = W[n]v_{STV} + \frac{\epsilon_{STV}}{n_{max}}
@@ -394,28 +387,26 @@ def kedf2mixkedf(name = 'MIX_TF+GGA', first_high = True, **kwargs) :
 
     return obj
 
-class MIXGGAS:
+class MIXGGAS(AbstractFunctional):
     def __init__(self, stv = None, gga = None, rhomax = None, name = 'MIX_TF+GGA') :
         self.stv = stv
         self.gga = gga
         self.rhomax = rhomax
         self.name = name
 
-    def __call__(self, density, calcType=["E","V"], **kwargs):
-        return self.compute(density, calcType=calcType, **kwargs)
 
-    def compute(self, density, calcType=["E","V"], **kwargs):
-        calcType = ["E","V"]
+    def compute(self, density, calcType={"E","V"}, **kwargs):
+        calcType = {"E","V"}
         if 'V' in calcType :
-            calc = ['D', 'V']
+            calc = {'D', 'V'}
         elif 'E' in calcType :
-            calc = ['D']
+            calc = {'D'}
 
         func_stv = self.stv(density, calcType = calc, **kwargs)
 
         func_gga = self.gga(density, calcType = calc, **kwargs)
 
-        obj = Functional(name = 'MIXGGAS')
+        obj = FunctionalOutput(name ='MIXGGAS')
 
         self.interpfunc(density, calcType = calcType, **kwargs)
         interpolate_f = self.interpolate_f
@@ -434,7 +425,7 @@ class MIXGGAS:
 
         return obj
 
-    def interpfunc(self, rho, calcType=["E","V"], **kwargs):
+    def interpfunc(self, rho, calcType={"E","V"}, **kwargs):
         if self.rhomax is None or self.rhomax < 1E-30 :
             self.interpolate_f = 1.0
             self.interpolate_df = 0.0
@@ -449,7 +440,7 @@ class MIXGGAS:
             self.interpolate_df[mask] = 0.0
         return
 
-    def _interp_lkt(self, rho, calcType=["E","V"], **kwargs):
+    def _interp_lkt(self, rho, calcType={"E","V"}, **kwargs):
         sigma = kwargs.get('sigma', None)
         rhom = rho.copy()
         tol = 1e-16

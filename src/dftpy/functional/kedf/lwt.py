@@ -1,13 +1,10 @@
 import numpy as np
-import scipy.special as sp
-from scipy.interpolate import interp1d, splrep, splev
+from scipy.interpolate import splrep, splev
 from dftpy.mpi import sprint
-from dftpy.functional_output import Functional
+from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.field import DirectField
-from dftpy.kedf.tf import TF
-from dftpy.kedf.vw import vW
-from dftpy.kedf.kernel import WTKernelTable, WTKernelDerivTable, LWTKernel, LWTKernelKf
-from dftpy.kedf.kernel import MGPKernelTable, MGPOmegaE
+from dftpy.functional.kedf.kernel import WTKernelTable, LWTKernelKf
+from dftpy.functional.kedf.kernel import MGPKernelTable, MGPOmegaE
 from dftpy.time_data import TimeData
 
 __all__ = ["LWT", "LWTStress", "LMGP", "LMGPA", "LMGPG"]
@@ -27,7 +24,7 @@ def LWTStress(
     etamax=50.0,
     neta=50000,
     order=3,
-    calcType=["E","V"],
+    calcType={"E","V"},
     energy=None,
     ke_kernel_saved = None,
     **kwargs
@@ -89,7 +86,7 @@ def LWTPotentialEnergy(
     alpha=5.0 / 6.0,
     beta=5.0 / 6.0,
     interp="linear",
-    calcType=["E","V"],
+    calcType={"E","V"},
     kfmin = None,
     kfmax = None,
     ldw = None,
@@ -113,7 +110,7 @@ def LWTPotentialEnergy(
 
     ### HEG
     if abs(kf.amax() - kf.amin()) < 1e-8:
-        NL = Functional(name="NL", energy = 0.0)
+        NL = FunctionalOutput(name="NL", energy = 0.0)
         if 'D' in calcType:
             energydensity = DirectField(grid=rho.grid, memo=rho.memo, rank=rho.rank, cplx=rho.cplx)
             NL.energydensity = energydensity
@@ -319,7 +316,7 @@ def LWTPotentialEnergy(
     factor[rho < 0] = 0.0
     pot1 *= factor
     #-----------------------------------------------------------------------
-    NL = Functional(name="NL")
+    NL = FunctionalOutput(name="NL")
     # if 'E' in calcType or 'D' in calcType :
     energydensity = rhoAlpha * pot1
     NL.energy = energydensity.sum() * rho.grid.dV
@@ -352,7 +349,7 @@ def LWTLineIntegral(
     beta=5.0 / 6.0,
     nt = 500,
     interp="linear",
-    calcType=["E","V"],
+    calcType={"E","V"},
     kfmin = None,
     kfmax = None,
     ke_kernel_saved = None,
@@ -390,7 +387,7 @@ def LWTLineIntegral(
 
     ### HEG
     if abs(kfMax - kfMin) < 1e-8:
-        NL = Functional(name="NL", energy = 0.0)
+        NL = FunctionalOutput(name="NL", energy = 0.0)
         if 'D' in calcType:
             energydensity = DirectField(grid=rho.grid, memo=rho.memo, rank=rho.rank, cplx=rho.cplx)
             NL.energydensity = energydensity
@@ -493,7 +490,7 @@ def LWTLineIntegral(
     # -----------------------------------------------------------------------
     pot *= alpha
     # pot *= alpha * rhoAlpha1
-    NL = Functional(name="NL", potential=pot, energy=ene)
+    NL = FunctionalOutput(name="NL", potential=pot, energy=ene)
 
     return NL
 
@@ -518,7 +515,7 @@ def LWT(
     delta=None,
     neta=50000,
     order=3,
-    calcType=["E","V"],
+    calcType={"E","V"},
     split=False,
     ke_kernel_saved = None,
     **kwargs
@@ -588,7 +585,7 @@ def LMGP(
     delta=None,
     neta=50000,
     order=3,
-    calcType=["E","V"],
+    calcType={"E","V"},
     split=False,
     **kwargs
 ):
@@ -638,7 +635,7 @@ def LMGPA(
     delta=None,
     neta=50000,
     order=3,
-    calcType=["E","V"],
+    calcType={"E","V"},
     split=False,
     **kwargs
 ):
@@ -688,7 +685,7 @@ def LMGPG(
     delta=None,
     neta=50000,
     order=3,
-    calcType=["E","V"],
+    calcType={"E","V"},
     split=False,
     **kwargs
 ):
