@@ -28,6 +28,7 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     dynamic = config["TD"]["dynamic_potential"]
     max_runtime = config["TD"]["max_runtime"]
     restart = config["TD"]["restart"]
+    vector_potential = config["TD"]['vector_potential']
     num_t = int(t_max / int_t)
 
     hamiltonian = Hamiltonian()
@@ -42,14 +43,20 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
         i_t0 = npy.read(f, single=True) + 1
         psi = npy.read(f, grid=rho0.grid)
         psi = DirectField(grid=rho0.grid, rank=1, griddata_3d=psi, cplx=True)
+        if vector_potential:
+            A_t = npy.read(f, single=True)
+            A_tm1 = npy.read(f, single=True)
     else:
-        # x = rho0.grid.r[direc]
-        psi = np.complex128(np.sqrt(rho0))
-        psi.cplx = True
         i_t0 = 0
-        A_t = np.zeros(3)
-        A_t[direc] = k * SPEED_OF_LIGHT
-        A_tm1 = A_t
+        if vector_potential:
+            psi = np.complex128(np.sqrt(rho0))
+            A_t = np.zeros(3)
+            A_t[direc] = k * SPEED_OF_LIGHT
+            A_tm1 = A_t
+        else:
+            x = rho0.grid.r[direc]
+            psi = np.sqrt(rho0) * np.exp(1j * k * x)
+        psi.cplx = True
 
     rho = calc_rho(psi)
     N = rho.integral()
@@ -57,21 +64,21 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     delta_rho = rho - rho0
     delta_mu = (delta_rho * delta_rho.grid.r).integral()
     j_int = j.integral()
-    Omega = psi.grid.Volume
-    sprint('Omega:', Omega)
+    if vector_potential:
+        Omega = psi.grid.Volume
 
     atol_rho = _get_atol(tol, atol, rho.norm())
 
-    if not restart:
-        if mp.is_root:
-            with open(outfile + "_mu", "w") as fmu:
-                sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(delta_mu[0], delta_mu[1], delta_mu[2]), fileobj=fmu)
-            with open(outfile + "_j", "w") as fj:
-                sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(j_int[0], j_int[1], j_int[2]), fileobj=fj)
+    if not restart and mp.is_root:
+        with open(outfile + "_mu", "w") as fmu:
+            sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(delta_mu[0], delta_mu[1], delta_mu[2]), fileobj=fmu)
+        with open(outfile + "_j", "w") as fj:
+            sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(j_int[0], j_int[1], j_int[2]), fileobj=fj)
+        with open(outfile + "_E", "w") as fE:
+            pass
+        if vector_potential:
             with open(outfile + "_A", "w") as fA:
                 sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(A_t[0], A_t[1], A_t[2]), fileobj=fA)
-            with open(outfile + "_E", "w") as fE:
-                pass
 
     sprint("{:20s}{:30s}{:24s}".format('Iter', 'Num. of Predictor-corrector', 'Total Cost(s)'))
     begin_t = time.time()
@@ -81,9 +88,11 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
         prop.hamiltonian.v = func.potential
         if dynamic:
             prop.hamiltonian.v += DynamicPotential(rho, j)
-        prop.hamiltonian.A = A_t
+        if vector_potential:
+            prop.hamiltonian.A = A_t
         E = np.real(np.conj(psi) * prop.hamiltonian(psi)).integral()
-        E += Omega / 8.0 / np.pi / SPEED_OF_LIGHT ** 2 * (np.dot((A_t - A_tm1), (A_t - A_tm1)) / int_t / int_t)
+        if vector_potential:
+            E += Omega / 8.0 / np.pi / SPEED_OF_LIGHT ** 2 * (np.dot((A_t - A_tm1), (A_t - A_tm1)) / int_t / int_t)
 
         for i_pred_corr in range(max_pred_corr):
             if i_pred_corr > 0:
@@ -94,9 +103,10 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
             psi_pred, info = prop(psi, int_t)
             rho_pred = calc_rho(psi_pred)
             j_pred = calc_j(psi_pred)
-            A_t_pred = np.real(
-                2 * A_t - A_tm1 - 4 * np.pi * N * A_t / Omega * int_t * int_t - 4.0 * np.pi * SPEED_OF_LIGHT * N / Omega * psi_pred.para_current(
-                    sigma=0.025) * int_t * int_t)
+            if vector_potential:
+                A_t_pred = np.real(
+                    2 * A_t - A_tm1 - 4 * np.pi * N * A_t / Omega * int_t * int_t - 4.0 * np.pi * SPEED_OF_LIGHT * N / Omega * psi_pred.para_current(
+                        sigma=0.025) * int_t * int_t)
 
             if i_pred_corr > 0:
                 diff_rho = (old_rho_pred - rho_pred).norm()
@@ -110,8 +120,9 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
             if dynamic:
                 j_corr = (j + j_pred) * 0.5
                 prop.hamiltonian.v += DynamicPotential(rho_corr, j_corr)
-            A_t_corr = (A_t + A_t_pred) * 0.5
-            prop.hamiltonian.A = A_t_corr
+            if vector_potential:
+                A_t_corr = (A_t + A_t_pred) * 0.5
+                prop.hamiltonian.A = A_t_corr
         else:
             if max_pred_corr > 1:
                 sprint('Convergence not reached for Predictor-corrector')
@@ -124,8 +135,9 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
         rho = rho_pred
         j = j_pred
         # print(psi_pred.para_current(sigma=0.025)[0], j_pred.integral()[0])
-        A_tm1 = A_t
-        A_t = A_t_pred
+        if vector_potential:
+            A_tm1 = A_t
+            A_t = A_t_pred
 
         delta_rho = rho - rho0
         delta_mu = (delta_rho * delta_rho.grid.r).integral()
@@ -136,10 +148,11 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
                 sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(delta_mu[0], delta_mu[1], delta_mu[2]), fileobj=fmu)
             with open(outfile + "_j", "a") as fj:
                 sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(j_int[0], j_int[1], j_int[2]), fileobj=fj)
-            with open(outfile + "_A", "a") as fA:
-                sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(A_t[0], A_t[1], A_t[2]), fileobj=fA)
             with open(outfile + "_E", "a") as fE:
                 sprint("{0:17.10e}".format(E), fileobj=fE)
+            if vector_potential:
+                with open(outfile + "_A", "a") as fA:
+                    sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(A_t[0], A_t[1], A_t[2]), fileobj=fA)
 
         cost_t = time.time() - begin_t
         sprint("{:<20d}{:<30d}{:<24.4f}".format(i_t + 1, i_pred_corr, cost_t))
@@ -158,6 +171,9 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
                 f = open(fname, "wb")
             npy.write(f, i_t, single=True)
             npy.write(f, psi, grid=psi.grid)
+            if vector_potential:
+                npy.write(f, A_t, single=True)
+                npy.write(f, A_tm1, single=True)
             break
 
     # tracemalloc.stop()
