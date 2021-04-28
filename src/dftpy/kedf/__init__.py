@@ -67,12 +67,12 @@ class KEDF:
         else :
             return super(KEDF, cls).__new__(cls)
 
-    def __call__(self, density, calcType=["E","V"], name=None, **kwargs):
+    def __call__(self, density, calcType={"E","V"}, name=None, **kwargs):
         if name is None :
             name = self.name
         return self.compute(density, name=name, calcType=calcType, **kwargs)
 
-    def compute(self, density, calcType=["E","V"], name=None, split = False, **kwargs):
+    def compute(self, density, calcType={"E","V"}, name=None, split = False, **kwargs):
         if name is None :
             name = self.name
         ke_kwargs = copy.deepcopy(self.kwargs)
@@ -89,7 +89,7 @@ class KEDF:
                     functional += out
         return functional
 
-def KEDFunctional(rho, name="WT", calcType=["E","V"], split=False, nspin = 1, **kwargs):
+def KEDFunctional(rho, name="WT", calcType={"E","V"}, split=False, nspin = 1, **kwargs):
     """
     KEDF interface
     """
@@ -184,9 +184,6 @@ def KEDFunctional(rho, name="WT", calcType=["E","V"], split=False, nspin = 1, **
             xTF.energy /= nspin
             yvW.energy /= nspin
             NL.energy /= nspin
-        if hasattr(NL, 'potential'):
-            mask = (NL.potential > 0.0) & (rho < 1E-3)
-            NL.potential[mask] = -1.0*xTF.potential[mask]
         OutFunctional = NL + xTF + yvW
         OutFunctional.name = name
         OutFunctionalDict = {"TF": xTF, "vW": yvW, "NL": NL}
@@ -245,16 +242,16 @@ class NLGGA:
         self.level = 3 # if smaller than 3 only use gga to guess the rhomax
         self.name = name
 
-    def __call__(self, density, calcType=["E","V"], **kwargs):
+    def __call__(self, density, calcType={"E","V"}, **kwargs):
         return self.compute(density, calcType=calcType, **kwargs)
 
-    def compute(self, density, calcType=["E","V"], **kwargs):
-        calcType = ["E","V"]
+    def compute(self, density, calcType={"E","V"}, **kwargs):
+        calcType = {"E","V"}
         # T_{s}[n]=\int \epsilon[n](\br) d\br=\int W[n](\br)\left[\epsilon_{NL} [n] + \epsilon_{STV}(n)\right] + \bigg(1-W[n](\br)\bigg)\epsilon_{GGA} d\br
         if 'V' in calcType :
-            calc = ['D', 'V']
+            calc = {'D', 'V'}
         elif 'E' in calcType :
-            calc = ['D']
+            calc = {'D'}
 
         rhomax_w = density.amax()
 

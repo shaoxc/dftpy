@@ -1,11 +1,13 @@
 import numpy as np
-from dftpy.mpi import sprint
-from scipy.sparse.linalg import LinearOperator
 import scipy.sparse.linalg as linalg
+from scipy.sparse.linalg import LinearOperator
+
+import dftpy.linear_solver as linear_solver
 from dftpy.field import DirectField, ReciprocalField
+from dftpy.mpi import sprint
 from dftpy.td.hamiltonian import Hamiltonian
 from dftpy.time_data import TimeData
-import dftpy.linear_solver as linear_solver
+
 
 class Propagator(object):
     """
@@ -45,10 +47,10 @@ class Propagator(object):
             "rk4",
         ]
 
-        if not type in TypeList:
-            raise AttributeError("{0:s} is not a supported propagator type".format(type))
-        else:
+        if type in TypeList:
             self.type = type
+        else:
+            raise AttributeError("{0:s} is not a supported propagator type".format(type))
 
         if isinstance(hamiltonian, Hamiltonian):
             self.hamiltonian = hamiltonian
@@ -56,7 +58,6 @@ class Propagator(object):
             raise TypeError("hamiltonian must be a DFTpy Hamiltonian.")
 
         self.optional_kwargs = kwargs
-
 
     def __call__(self, psi, interval):
 
@@ -71,7 +72,6 @@ class Propagator(object):
             return self.CrankNicolson(psi, interval, linearsolver=linearsolver, tol=tol, maxiter=maxiter, atol=atol)
         elif self.type == "rk4":
             return self.RK4(psi, interval)
-
 
     def Taylor(self, psi0, interval, order=1):
 
@@ -96,10 +96,10 @@ class Propagator(object):
 
         return psi1, 0
 
-
-    def cnMatvecUtil(self, dt, reciprocal = False):
+    def cnMatvecUtil(self, dt, reciprocal=False):
         if reciprocal:
             reci_grid = self.hamiltonian.grid.get_reciprocal()
+
         def cnMatvec(psi_):
             if reciprocal:
                 psi = ReciprocalField(
@@ -121,30 +121,32 @@ class Propagator(object):
 
         return A_Matvec
 
-    def CrankNicolson(self, psi0, interval, linearsolver="cg", tol=1e-8, maxiter=100, atol = None):
+    def CrankNicolson(self, psi0, interval, linearsolver="cg", tol=1e-8, maxiter=100, atol=None):
 
         TimeData.Begin('Crank-Nicolson')
-        
+
         if linearsolver not in self.LinearSolverDict:
             raise AttributeError("{0:s} is not a linear solver".format(linearsolver))
-        
+
         if self.LinearSolverDict[linearsolver]["scipy"]:
             size = self.hamiltonian.grid.nnr
             b = (psi0 + 1j * self.hamiltonian(psi0) * interval / 2.0).ravel()
             A = LinearOperator((size, size), dtype=psi0.dtype, matvec=self.cnMatvecUtil(interval))
-            psi1_, info = self.LinearSolverDict[linearsolver]["func"](A, b, x0=psi0.ravel(), tol=tol, maxiter=maxiter, atol=atol)
-            psi1 = DirectField(grid=self.hamiltonian.grid, rank=1, griddata_3d=np.reshape(psi1_, self.hamiltonian.grid.nr), cplx=True)
+            psi1_, info = self.LinearSolverDict[linearsolver]["func"](A, b, x0=psi0.ravel(), tol=tol, maxiter=maxiter,
+                                                                      atol=atol)
+            psi1 = DirectField(grid=self.hamiltonian.grid, rank=1,
+                               griddata_3d=np.reshape(psi1_, self.hamiltonian.grid.nr), cplx=True)
         else:
             b = psi0 + 1j * self.hamiltonian(psi0) * interval / 2.0
-            psi1, info = self.LinearSolverDict[linearsolver]["func"](self.A_MatvecUtil(interval), b, psi0, tol, maxiter, atol=atol, mp = psi0.mp)
-        
+            psi1, info = self.LinearSolverDict[linearsolver]["func"](self.A_MatvecUtil(interval), b, psi0, tol, maxiter,
+                                                                     atol=atol, mp=psi0.mp)
+
         if info:
             sprint("Linear solver did not converge. Info: {0:d}".format(info))
-        
+
         TimeData.End('Crank-Nicolson')
 
         return psi1, info
-
 
     def RK4(self, psi0, interval):
 

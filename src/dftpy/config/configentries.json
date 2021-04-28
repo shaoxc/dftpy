@@ -8,7 +8,7 @@
       "type": "cstr",
       "default": "Optdensity",
       "comment": "The task to be performed.",
-      "options": "Optdensity, Calculation, Propagate, Casida, Diagonize, Inversion"
+      "options": "Optdensity, Calculation, Propagate, Casida, Diagonalize, Inversion"
     },
     "calctype": {
       "type": "cstrlist",
@@ -327,6 +327,10 @@
       "options": "",
       "default": null,
       "comment": "The gap of spline"
+    },
+    "fd": {
+      "type": "int",
+      "default": 0
     },
     "kdd": {
       "type": "int",

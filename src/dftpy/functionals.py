@@ -86,7 +86,7 @@ class FunctionalClass(AbstractFunctional):
      outXC.potential     --> the pot
     """
 
-    def __call__(self, rho, calcType=["E","V"], **kwargs):
+    def __call__(self, rho, calcType={"E","V"}, **kwargs):
         """
         Functional class is callable
 
@@ -104,7 +104,7 @@ class FunctionalClass(AbstractFunctional):
         return self._outfunctional
 
     @property
-    def GetFunctional(self, rho, calcType =["E","V"]):
+    def GetFunctional(self, rho, calcType ={"E","V"}):
         if self._outfunctional is None:
             self._outfunctional = self.ComputeEnergyPotential(rho, calcType)
         return self._outfunctional
@@ -184,7 +184,7 @@ class FunctionalClass(AbstractFunctional):
         if self.type == 'KEDF' :
             self.KEDF = KEDF(self.name, **kwargs)
 
-    def ComputeEnergyPotential(self, rho, calcType=["E","V"], **kwargs):
+    def ComputeEnergyPotential(self, rho, calcType={"E","V"}, **kwargs):
         self.optional_kwargs.update(kwargs)
         if self.type == "KEDF":
             return self.KEDF(rho, calcType=calcType, **self.optional_kwargs)
@@ -267,13 +267,13 @@ class TotalEnergyAndPotential(AbstractFunctional):
         self.funcDict = {}
         self.funcDict.update(kwargs)
         # remove useless key
-        for key, evalfunctional in self.funcDict.items():
+        for key, evalfunctional in list(self.funcDict.items()):
             if evalfunctional is None:
                 del self.funcDict[key]
 
         self.UpdateNameType()
 
-    def __call__(self, rho, calcType=["E","V"], **kwargs):
+    def __call__(self, rho, calcType={"E","V"}, **kwargs):
         return self.ComputeEnergyPotential(rho, calcType, **kwargs)
 
     def UpdateNameType(self):
@@ -305,7 +305,7 @@ class TotalEnergyAndPotential(AbstractFunctional):
         subdict = dict((key, self.funcDict[key]) for key in keys)
         return TotalEnergyAndPotential(**subdict)
 
-    def ComputeEnergyPotential(self, rho, calcType=["E","V"], **kwargs):
+    def ComputeEnergyPotential(self, rho, calcType={"E","V"}, **kwargs):
         Obj = None
         for key, evalfunctional in self.funcDict.items():
             if Obj is None :
@@ -322,10 +322,10 @@ class TotalEnergyAndPotential(AbstractFunctional):
             Obj.energy = rho.mp.vsum(Obj.energy)
         return Obj
 
-    def Energy(self, rho, ions, usePME=False, calcType=["E"]):
+    def Energy(self, rho, ions, usePME=False):
         from .ewald import ewald
 
         ewald_ = ewald(rho=rho, ions=ions, PME=usePME)
-        total_e = self.ComputeEnergyPotential(rho, calcType=["E"])
+        total_e = self.ComputeEnergyPotential(rho, calcType={"E"})
         ewald_energy = rho.mp.vsum(ewald_.energy)
         return ewald_energy + total_e.energy
