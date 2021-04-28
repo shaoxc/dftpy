@@ -82,7 +82,7 @@ class TotalFunctional(AbstractFunctional):
 
     def compute(self, rho, calcType={"E", "V"}, **kwargs):
         Obj = None
-        for key, evalfunctional in self.funcDict.items():
+        for key, evalfunctional in list(self.funcDict.items()):
             if Obj is None:
                 Obj = evalfunctional(rho, calcType=calcType)
             else:
