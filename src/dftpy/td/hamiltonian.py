@@ -1,14 +1,16 @@
 import numpy as np
 from scipy.sparse.linalg import LinearOperator, eigsh
 
+from dftpy.constants import SPEED_OF_LIGHT
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.time_data import TimeData
 
 
 class Hamiltonian(object):
 
-    def __init__(self, v=None):
+    def __init__(self, v=None, A=None):
         self.v = v
+        self.A = A
         if self.v is None:
             self.grid = None
         else:
@@ -17,6 +19,10 @@ class Hamiltonian(object):
     @property
     def v(self):
         return self._v
+
+    @property
+    def A(self):
+        return self._A
 
     @v.setter
     def v(self, new_v):
@@ -29,6 +35,18 @@ class Hamiltonian(object):
         else:
             raise TypeError("v must be a DFTpy DirectField.")
 
+    @v.setter
+    def A(self, new_A):
+        if new_A is None:
+            self._A = None
+        else:
+            self._A = np.asarray(new_A)
+            if np.size(new_A) != 3:
+                raise AttributeError('Size of the A must be 3.')
+            ones = np.ones(self.grid.nr)
+            self.a_field = DirectField(self.grid, rank=3, griddata_3d=np.asarray(
+                [self._A[0] * ones, self._A[1] * ones, self._A[2] * ones]) / SPEED_OF_LIGHT)
+
     def __call__(self, psi, force_real=None, sigma=0.025):
         if isinstance(psi, DirectField):
             if force_real is None:
@@ -36,7 +54,20 @@ class Hamiltonian(object):
                     force_real = True
                 else:
                     force_real = False
-            return -0.5 * psi.laplacian(force_real=force_real, sigma=sigma) + self.v * psi
+            if self._A is None:
+                return -0.5 * psi.laplacian(force_real=force_real, sigma=sigma) + self.v * psi
+            else:
+                psi_fft = psi.fft()
+                intermediate_result1 = 0.5 * psi_fft.grid.gg * psi_fft
+                intermediate_result1 *= np.exp(-psi_fft.grid.gg * sigma * sigma / 4.0)
+                intermediate_result2 = - psi_fft.grid.g * psi_fft
+                intermediate_result2 *= np.exp(-psi_fft.grid.gg * sigma * sigma / 4.0)
+                return intermediate_result1.ifft(force_real=force_real) + self.a_field.dot(
+                    intermediate_result2.ifft(force_real=force_real)) + 0.5 * self.a_field.dot(
+                    self.a_field) * psi + self.v * psi
+                # return -0.5 * psi.laplacian(force_real = force_real, sigma=sigma) + 0.5 * self.a_field.dot(self.a_field) * psi + 1.0j * self.a_field.dot(psi.gradient(flag = "supersmooth", force_real = force_real, sigma=sigma)) + self.v * psi
+                # return -0.5 * psi.laplacian(force_real = force_real, sigma=sigma) + 0.5 * self.a_field.dot(self.a_field) * psi + 0.5j * self.a_field.dot(psi.gradient(force_real = force_real)) + 0.5j * (self.a_field * psi).divergence(force_real=force_real) + self.v * psi
+
         elif isinstance(psi, ReciprocalField):
             return 0.5 * psi.grid.gg * psi + (self.v * psi.ifft()).fft
         else:

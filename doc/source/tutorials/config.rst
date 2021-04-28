@@ -22,8 +22,8 @@ DFTpy is a set of python modules. However, it can be executed in the 'ol way by 
        - `OPT`_
        - `PROPAGATOR`_
      * - `TD`_
-       -
-       -
+       - `CASIDA`_
+       - `INVERSION`_
        -
 
 .. warning:: 
@@ -535,8 +535,8 @@ where :math:`{v_s = v_{xc} + v_H + v_{T_s} - v_{vW} + v_{dyn}}`, See `paper <htt
 
 .. option:: linearsolver
 
-    The linear solver used for the Crank-Nicolson propagator. The solvers with a name end with `-scipy` are from the `SciPy` package and should be used in serial calculations only. 
-        *Options* : bicg, bicgstab, cg, bicg-scipy, bicgstab-scipy, cg-scipy, cgs-scipy, gmres-scipy, lgmres-scipy, minres-scipy, qmr-scipy
+    The linear solver used for the Crank-Nicolson propagator. The solvers with a name end with `_scipy` are from the `SciPy` package and should be used in serial calculations only. 
+        *Options* : bicg, bicgstab, cg, bicg_scipy, bicgstab_scipy, cg_scipy, cgs_scipy, gmres_scipy, lgmres_scipy, minres_scipy, qmr_scipy
 
         *Default* : cg
 
@@ -611,8 +611,8 @@ TD
 
 .. option:: direc
 
-    The direction of the initial kick.
-        *Options* : 
+    The direction of the initial kick. 0, 1, 2 stands for x-, y-, z-direction, respectively.
+        *Options* : 0, 1, 2, x, y, z
 
         *Default* : 0
 
