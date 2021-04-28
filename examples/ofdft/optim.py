@@ -1,18 +1,15 @@
 import numpy as np
-from dftpy.formats.qepp import PP
 from dftpy.optimization import Optimization
-from dftpy.functionals import FunctionalClass, TotalEnergyAndPotential
-from dftpy.constants import LEN_CONV, ENERGY_CONV
+from dftpy.functional import Functional
+from dftpy.functional.total_functional import TotalFunctional
+from dftpy.constants import ENERGY_CONV
 # from dftpy.formats.qepp import PP
 from dftpy.formats import io
-from dftpy.ewald import ewald
-from dftpy.grid import DirectGrid, ReciprocalGrid
-from dftpy.field import DirectField, ReciprocalField
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
 from dftpy.math_utils import bestFFTsize
 from dftpy.time_data import TimeData
-from dftpy.pseudo import LocalPseudo
+from dftpy.functional.pseudo import LocalPseudo
 
 def test_optim():
     path_pp='../DATA/'
@@ -37,11 +34,11 @@ def test_optim():
     PP_list = {'Al': path_pp+file1}
     PSEUDO = LocalPseudo(grid = grid, ions=ions,PP_list=PP_list,PME=True)
     optional_kwargs = {}
-    # KE = FunctionalClass(type='KEDF',name='x_TF_y_vW',optional_kwargs=optional_kwargs)
-    KE = FunctionalClass(type='KEDF',name='WT',optional_kwargs=optional_kwargs)
+    # KE = Functional(type='KEDF',name='x_TF_y_vW',optional_kwargs=optional_kwargs)
+    KE = Functional(type='KEDF', name='WT', optional_kwargs=optional_kwargs)
     optional_kwargs = {"x_str":'lda_x','c_str':'lda_c_pz'}
-    XC = FunctionalClass(type='XC',name='LDA')
-    HARTREE = FunctionalClass(type='HARTREE')
+    XC = Functional(type='XC', name='LDA')
+    HARTREE = Functional(type='HARTREE')
 
     charge_total = 0.0
     for i in range(ions.nat) :
@@ -56,7 +53,7 @@ def test_optim():
     funcDict = {'KE' :KE, 'XC' :XC, 'HARTREE' :HARTREE, 'PSEUDO' :PSEUDO}
     # E_v_Evaluator = TotalEnergyAndPotential(KineticEnergyFunctional=KE,
                                     # XCFunctional=XC,**funcDict)
-    E_v_Evaluator = TotalEnergyAndPotential(**funcDict)
+    E_v_Evaluator = TotalFunctional(**funcDict)
     optimization_options = {
             'econv' : 1e-6, # Energy Convergence (a.u./atom)
             'maxfun' : 50,  # For TN method, it's the max steps for searching direction

@@ -6,23 +6,23 @@ import importlib.util
 
 from dftpy.mpi import sprint
 from dftpy.field import ReciprocalField, DirectField
-from dftpy.functional_output import Functional
-from dftpy.constants import LEN_CONV, ENERGY_CONV
+from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.ewald import CBspline
 from dftpy.time_data import TimeData
 from dftpy.atom import Atom
-from abc import ABC, abstractmethod
+from dftpy.functional.abstract_functional import AbstractFunctional
 from dftpy.grid import DirectGrid
 from dftpy.math_utils import quartic_interpolation
-from dftpy.pseudo.upf import UPF, UPFJSON
-from dftpy.pseudo.usp import USP
-from dftpy.pseudo.psp import PSP
-from dftpy.pseudo.recpot import RECPOT
+from dftpy.functional.pseudo.upf import UPF, UPFJSON
+from dftpy.functional.pseudo.usp import USP
+from dftpy.functional.pseudo.psp import PSP
+from dftpy.functional.pseudo.recpot import RECPOT
 
+from abc import abstractmethod
 
 # NEVER TOUCH THIS CLASS
 # NEVER TOUCH THIS CLASS
-class AbstractLocalPseudo(ABC):
+class AbstractLocalPseudo(AbstractFunctional):
     """
     This is a pseudo potential template class and should never be touched.
     """
@@ -32,7 +32,7 @@ class AbstractLocalPseudo(ABC):
         pass
 
     @abstractmethod
-    def __call__(self):
+    def compute(self):
         pass
 
     @abstractmethod
@@ -75,6 +75,9 @@ class LocalPseudo(AbstractLocalPseudo):
     """
 
     def __init__(self, grid=None, ions=None, PP_list=None, PME=True, **kwargs):
+
+        self.type = 'PSEUDO'
+        self.name = 'PSEUDO'
 
         if PP_list is not None:
             self.PP_list = PP_list
@@ -151,7 +154,7 @@ class LocalPseudo(AbstractLocalPseudo):
         # update Zval in ions
         self.readpp.get_Zval(self._ions)
 
-    def __call__(self, density=None, calcType={"E", "V"}, **kwargs):
+    def compute(self, density, calcType={"E", "V"}, **kwargs):
         if self._vreal is None:
             self.local_PP()
         pot = self._vreal
@@ -166,7 +169,7 @@ class LocalPseudo(AbstractLocalPseudo):
 
         if density.rank > 1 :
             pot = np.tile(pot, (density.rank, 1, 1, 1))
-        return Functional(name="eN", energy=ene, potential=pot)
+        return FunctionalOutput(name="eN", energy=ene, potential=pot)
 
     def local_PP(self, BsplineOrder=10):
         """
@@ -317,7 +320,7 @@ class LocalPseudo(AbstractLocalPseudo):
         else :
             rho = density
         if energy is None:
-            energy = self(density=rho, calcType={"E"}).energy
+            energy = self(rho, calcType={"E"}).energy
         reciprocal_grid = self.grid.get_reciprocal()
         g = reciprocal_grid.g
         mask = reciprocal_grid.mask
@@ -407,7 +410,7 @@ class LocalPseudo(AbstractLocalPseudo):
             rho = density
 
         if energy is None:
-            energy = self(density=rho, calcType={"E"}).energy
+            energy = self(rho, calcType={"E"}).energy
         rhoG = rho.fft()
         reciprocal_grid = self.grid.get_reciprocal()
         g = reciprocal_grid.g

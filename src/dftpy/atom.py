@@ -1,11 +1,5 @@
-import os
 import numpy as np
-from scipy.interpolate import interp1d, splrep, splev
 from dftpy.base import Coord,DirectCell
-from dftpy.field import ReciprocalField, DirectField
-from dftpy.functional_output import Functional
-from dftpy.constants import LEN_CONV, ENERGY_CONV
-from dftpy.ewald import CBspline
 
 
 class Atom(object):

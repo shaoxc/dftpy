@@ -78,7 +78,7 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     begin_t = time.time()
     for i_t in range(i_t0, num_t):
 
-        func = E_v_Evaluator.ComputeEnergyPotential(rho, calcType=["V"], current=j)
+        func = E_v_Evaluator.compute(rho, calcType=["V"], current=j)
         prop.hamiltonian.v = func.potential
         E = np.real(np.conj(psi) * prop.hamiltonian(psi)).integral()
         for i_pred_corr in range(max_pred_corr):
@@ -99,7 +99,7 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
 
             rho_corr = (rho + rho_pred) * 0.5
             j_corr = (j + j_pred) * 0.5
-            func = E_v_Evaluator.ComputeEnergyPotential(rho_corr, calcType=["V"], current=j_corr)
+            func = E_v_Evaluator.compute(rho_corr, calcType=["V"], current=j_corr)
             prop.hamiltonian.v = func.potential
         else:
             if max_pred_corr > 1:

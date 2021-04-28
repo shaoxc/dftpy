@@ -1,7 +1,7 @@
 import numpy as np
 
-from dftpy.external_potential import ExternalPotential
-from dftpy.functionals import FunctionalClass
+from dftpy.functional.external_potential import ExternalPotential
+from dftpy.functional import Functional
 from dftpy.optimization import Optimization
 
 
@@ -21,7 +21,7 @@ class Inverter(object):
         phi = np.sqrt(rho_in)
         v = phi.laplacian(force_real=True) / phi / 2.0
         v_of = EnergyEvaluator(rho_in, calcType={'V'}).potential
-        vw = FunctionalClass(type='KEDF', name='vW')
+        vw = Functional(type='KEDF', name='vW')
         v_vw = vw(rho_in, calcType={'V'}).potential
         v_ext = v - v_of + v_vw
         ext = ExternalPotential(v_ext)

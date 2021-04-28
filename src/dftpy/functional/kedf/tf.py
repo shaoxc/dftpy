@@ -1,8 +1,7 @@
-# Collection of local and semilocal functionals
+# Collection of local and semilocal functional
 
 import numpy as np
-from dftpy.field import DirectField, ReciprocalField
-from dftpy.functional_output import Functional
+from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.math_utils import PowerInt
 from dftpy.time_data import TimeData
 
@@ -59,7 +58,7 @@ def ThomasFermiStress(rho, x=1.0, energy=None, **kwargs):
 
 def TF(rho, x=1.0, calcType={"E","V"}, split=False, **kwargs):
     TimeData.Begin("TF")
-    OutFunctional = Functional(name="TF")
+    OutFunctional = FunctionalOutput(name="TF")
     if "E" in calcType or "D" in calcType :
         energydensity = ThomasFermiEnergyDensity(rho)
         ene = energydensity.sum() * rho.grid.dV

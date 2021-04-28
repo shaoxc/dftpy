@@ -1,7 +1,9 @@
-import numpy as np
-from dftpy.functional_output import Functional
-from dftpy.field import DirectField
 from typing import List
+
+import numpy as np
+
+from dftpy.field import DirectField
+from dftpy.functional.functional_output import FunctionalOutput
 
 
 def WCDHCPotential(rho: DirectField, j: DirectField, rhotwothirds_cutoff: float = 0, **kwargs) -> DirectField:
@@ -21,8 +23,8 @@ def WCDHCPotential(rho: DirectField, j: DirectField, rhotwothirds_cutoff: float 
     return np.pi ** (5.0 / 3.0) / (2.0 * 3.0 ** (2.0 / 3.0) * rhotwothirds) * temp.ifft(force_real=True)
 
 
-def WCDHC(rho: DirectField, j: DirectField, calcType: List[str], **kwargs) -> Functional:
-    functional = Functional(name = "WCDHC")
+def WCDHC(rho: DirectField, j: DirectField, calcType: List[str], **kwargs) -> FunctionalOutput:
+    functional = FunctionalOutput(name = "WCDHC")
     if "V" in calcType:
         functional.potential = WCDHCPotential(rho, j, **kwargs)
     return functional

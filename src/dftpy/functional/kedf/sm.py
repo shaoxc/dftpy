@@ -1,7 +1,7 @@
 import numpy as np
 from dftpy.mpi import sprint
-from dftpy.functional_output import Functional
-from dftpy.kedf.kernel import SMKernel
+from dftpy.functional.functional_output import FunctionalOutput
+from dftpy.functional.kedf.kernel import SMKernel
 from dftpy.time_data import TimeData
 
 """
@@ -103,7 +103,7 @@ def SM(rho, x=1.0, y=1.0, sigma=None, alpha=0.5, beta=0.5, rho0=None, calcType={
     else:
         KE_kernel = KE_kernel_saved["Kernel"]
 
-    NL = Functional(name="NL")
+    NL = FunctionalOutput(name="NL")
 
     if "E" in calcType or "D" in calcType :
         energydensity = SMEnergyDensity(rho, rho0, KE_kernel, alpha, beta)

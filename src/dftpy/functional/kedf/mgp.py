@@ -1,9 +1,8 @@
 import numpy as np
-from scipy.interpolate import interp1d, splrep, splev
 from dftpy.mpi import sprint
-from dftpy.functional_output import Functional
-from dftpy.kedf.wt import WTPotential, WTEnergyDensity
-from dftpy.kedf.kernel import MGPKernel, MGPOmegaE, LindhardDerivative
+from dftpy.functional.functional_output import FunctionalOutput
+from dftpy.functional.kedf.wt import WTPotential, WTEnergyDensity
+from dftpy.functional.kedf.kernel import MGPKernel, MGPOmegaE
 from dftpy.time_data import TimeData
 
 __all__ = ["MGP", "MGPStress", "MGPA", "MGPG"]
@@ -56,7 +55,7 @@ def MGP(
     else:
         KE_kernel = KE_kernel_saved["Kernel"]
 
-    NL = Functional(name="NL")
+    NL = FunctionalOutput(name="NL")
     if "E" in calcType or 'D' in calcType:
         energydensity = WTEnergyDensity(rho, rho0, KE_kernel, alpha, beta)
         NL.energy = energydensity.sum() * rho.grid.dV
