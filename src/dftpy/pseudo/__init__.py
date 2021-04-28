@@ -151,7 +151,7 @@ class LocalPseudo(AbstractLocalPseudo):
         # update Zval in ions
         self.readpp.get_Zval(self._ions)
 
-    def __call__(self, density=None, calcType=["E", "V"], **kwargs):
+    def __call__(self, density=None, calcType={"E", "V"}, **kwargs):
         if self._vreal is None:
             self.local_PP()
         pot = self._vreal
@@ -317,7 +317,7 @@ class LocalPseudo(AbstractLocalPseudo):
         else :
             rho = density
         if energy is None:
-            energy = self(density=rho, calcType=["E"]).energy
+            energy = self(density=rho, calcType={"E"}).energy
         reciprocal_grid = self.grid.get_reciprocal()
         g = reciprocal_grid.g
         mask = reciprocal_grid.mask
@@ -407,7 +407,7 @@ class LocalPseudo(AbstractLocalPseudo):
             rho = density
 
         if energy is None:
-            energy = self(density=rho, calcType=["E"]).energy
+            energy = self(density=rho, calcType={"E"}).energy
         rhoG = rho.fft()
         reciprocal_grid = self.grid.get_reciprocal()
         g = reciprocal_grid.g

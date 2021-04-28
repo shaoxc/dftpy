@@ -106,10 +106,10 @@ class Optimization(AbstractOptimization):
             rho1 = phi1 * phi1
             if self.nspin > 1 :
                 rho[spin] = rho1
-                func = self.EnergyEvaluator(rho, calcType=["V"], phi = phi1, lphi = self.lphi)
+                func = self.EnergyEvaluator(rho, calcType={"V"}, phi = phi1, lphi = self.lphi)
                 Ap = ((func.potential[spin] - mu) * phi1 - res0) / epsi
             else :
-                func = self.EnergyEvaluator(rho1, calcType=["V"], phi = phi1, lphi = self.lphi)
+                func = self.EnergyEvaluator(rho1, calcType={"V"}, phi = phi1, lphi = self.lphi)
                 Ap = ((func.potential - mu) * phi1 - res0) / epsi
             pAp = self.mp.einsum("ijk, ijk->", p, Ap)
             if pAp < 0.0:
@@ -247,11 +247,11 @@ class Optimization(AbstractOptimization):
 
         if algorithm == "EMM":
             if func is None:
-                f = self.EnergyEvaluator(newrho, calcType=["E","V"], phi = newphi, lphi = self.lphi)
+                f = self.EnergyEvaluator(newrho, calcType={"E","V"}, phi = newphi, lphi = self.lphi)
             value = f.energy
         else:  # RMM
             if func is None:
-                f = self.EnergyEvaluator(newrho, calcType=["E","V"], phi = newphi, lphi = self.lphi)
+                f = self.EnergyEvaluator(newrho, calcType={"E","V"}, phi = newphi, lphi = self.lphi)
             # mu = (f.potential * newrho).integral() / Ne
             mu = self.get_chemical_potential(f.potential, newrho, phi = newphi, lphi = self.lphi)
             if self.nspin > 1 :
@@ -433,7 +433,7 @@ class Optimization(AbstractOptimization):
                 norm = rho.N / newrho.integral()
                 newrho *= norm
                 newphi *= np.sqrt(norm)
-                newfunc = self.EnergyEvaluator(newrho, calcType=["V"], phi = newphi, lphi = self.lphi)
+                newfunc = self.EnergyEvaluator(newrho, calcType={"V"}, phi = newphi, lphi = self.lphi)
                 NumLineSearch = 1
                 valuederiv = [0, 0, newphi, newfunc]
 
@@ -470,7 +470,7 @@ class Optimization(AbstractOptimization):
                 norm = rho.N / rho.integral()
                 rho *= norm
                 phi *= np.sqrt(norm)
-                func = self.EnergyEvaluator(rho, calcType=["E","V"], phi = phi, lphi = self.lphi)
+                func = self.EnergyEvaluator(rho, calcType={"E","V"}, phi = phi, lphi = self.lphi)
                 # mu = (func.potential * rho).integral() / rho.N
                 mu = self.get_chemical_potential(func.potential, rho, phi = phi, lphi = self.lphi)
                 if self.nspin > 1 :
@@ -539,5 +539,5 @@ class Optimization(AbstractOptimization):
         mu = (potential * rho).integral() / rho.N
         return mu
 
-    def __call__(self, guess_rho=None, calcType=["E","V"], guess_phi = None, lphi = False):
+    def __call__(self, guess_rho=None, calcType={"E","V"}, guess_phi = None, lphi = False):
         return self.optimize_rho(guess_rho=guess_rho, guess_phi=guess_phi, lphi=lphi)

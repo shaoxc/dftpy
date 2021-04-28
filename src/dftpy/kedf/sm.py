@@ -84,7 +84,7 @@ def SMStress(rho, energy=None):
     pass
 
 
-def SM(rho, x=1.0, y=1.0, sigma=None, alpha=0.5, beta=0.5, rho0=None, calcType=["E","V"], split=False, ke_kernel_saved = None, **kwargs):
+def SM(rho, x=1.0, y=1.0, sigma=None, alpha=0.5, beta=0.5, rho0=None, calcType={"E","V"}, split=False, ke_kernel_saved = None, **kwargs):
     TimeData.Begin("SM")
     # alpha = beta = 5.0/6.0
     q = rho.grid.get_reciprocal().q

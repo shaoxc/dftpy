@@ -83,23 +83,23 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
         E = np.real(np.conj(psi) * prop.hamiltonian(psi)).integral()
         for i_pred_corr in range(max_pred_corr):
             if i_pred_corr > 0:
-                old_rho1 = rho1
-                old_j1 = j1
+                old_rho_pred = rho_pred
+                old_j_pred = j_pred
             else:
                 atol_j = _get_atol(tol, atol, np.max(j.norm()))
-            psi1, info = prop(psi, int_t)
-            rho1 = calc_rho(psi1)
-            j1 = calc_j(psi1)
+            psi_pred, info = prop(psi, int_t)
+            rho_pred = calc_rho(psi_pred)
+            j_pred = calc_j(psi_pred)
 
             if i_pred_corr > 0:
-                diff_rho = (old_rho1 - rho1).norm()
-                diff_j = np.max((old_j1 - j1).norm())
+                diff_rho = (old_rho_pred - rho_pred).norm()
+                diff_j = np.max((old_j_pred - j_pred).norm())
                 if diff_rho < atol_rho and diff_j < atol_j:
                     break
 
-            rho_half = (rho + rho1) * 0.5
-            j_half = (j + j1) * 0.5
-            func = E_v_Evaluator.ComputeEnergyPotential(rho_half, calcType=["V"], current=j_half)
+            rho_corr = (rho + rho_pred) * 0.5
+            j_corr = (j + j_pred) * 0.5
+            func = E_v_Evaluator.ComputeEnergyPotential(rho_corr, calcType=["V"], current=j_corr)
             prop.hamiltonian.v = func.potential
         else:
             if max_pred_corr > 1:
@@ -111,13 +111,13 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
 
         if correction:
             pot = correct_potential(rho, calcType=['V'], current=j).potential
-            psi1 = psi1 - 1.0j * int_t * pot * psi
-            psi1.normalize(N=N0)
-            rho1 = calc_rho(psi1)
-            j1 = calc_j(psi1)
-            # delta_rho2 = rho1 - rho0
+            psi_pred = psi_pred - 1.0j * int_t * pot * psi
+            psi_pred.normalize(N=N0)
+            rho_pred = calc_rho(psi_pred)
+            j_pred = calc_j(psi_pred)
+            # delta_rho2 = rho_pred - rho0
             # delta_mu2 = (delta_rho2 * delta_rho2.grid.r).integral()
-            # j2_int = j1.integral()
+            # j2_int = j_pred.integral()
             #
             # if mp.is_root:
             #     with open(outfile + "_cor_mu", "a") as fmu:
@@ -126,9 +126,9 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
             #     with open(outfile + "_cor_j", "a") as fj:
             #         sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(j2_int[0], j2_int[1], j2_int[2]), fileobj=fj)
 
-        psi = psi1
-        rho = rho1
-        j = j1
+        psi = psi_pred
+        rho = rho_pred
+        j = j_pred
 
         delta_rho = rho - rho0
         delta_mu = (delta_rho * delta_rho.grid.r).integral()
@@ -169,7 +169,7 @@ def CasidaRunner(config, rho0, E_v_Evaluator):
     tda = config["CASIDA"]["tda"]
 
     if diagonalize:
-        potential = E_v_Evaluator(rho0, calcType=['V']).potential
+        potential = E_v_Evaluator(rho0, calcType={'V'}).potential
         hamiltonian = Hamiltonian(potential)
         sprint('Start diagonalizing Hamiltonian.')
         eigs, psi_list = hamiltonian.diagonalize(numeig)
@@ -206,7 +206,7 @@ def DiagonalizeRunner(config, struct, E_v_Evaluator):
     eigfile = config["TD"]["outfile"]
     direct_to_psi = './xsf'
 
-    potential = E_v_Evaluator(struct.field, calcType=['V']).potential
+    potential = E_v_Evaluator(struct.field, calcType={'V'}).potential
     hamiltonian = Hamiltonian(potential)
     sprint('Start diagonalizing Hamiltonian.')
     eigs, psi_list = hamiltonian.diagonalize(numeig)

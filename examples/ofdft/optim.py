@@ -68,7 +68,7 @@ def test_optim():
             # optimization_method = 'TN')
     new_rho = opt.optimize_rho(guess_rho=rho_ini)
     print('Calc Energy')
-    Enew = E_v_Evaluator.Energy(rho=new_rho, ions=ions, usePME = True)
+    Enew = E_v_Evaluator.Energy(rho=new_rho, ions=ions, usePME=True)
     print('Energy New (a.u.)', Enew)
     print('Energy New (eV)', Enew * ENERGY_CONV['Hartree']['eV'])
     print('Energy New (eV/atom)', Enew * ENERGY_CONV['Hartree']['eV']/ions.nat)

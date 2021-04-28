@@ -23,10 +23,10 @@ class XC :
     def core_density(self, value):
         self._core_density = value
 
-    def __call__(self, density, calcType=["E","V"], **kwargs):
+    def __call__(self, density, calcType={"E","V"}, **kwargs):
         return self.compute(density, calcType=calcType, **kwargs)
 
-    def compute(self, density, calcType=["E","V"], **kwargs):
+    def compute(self, density, calcType={"E","V"}, **kwargs):
         self.options.update(kwargs)
         core_density = self.core_density
         if core_density is None :
@@ -201,7 +201,7 @@ def Get_LibXC_Output(out, density):
     return OutFunctional
 
 
-def LibXC(density, k_str=None, x_str=None, c_str=None, calcType=["E","V"], **kwargs):
+def LibXC(density, k_str=None, x_str=None, c_str=None, calcType={"E","V"}, **kwargs):
     """
      Output:
         - out_functional: a functional evaluated with LibXC
@@ -267,7 +267,7 @@ def LibXC(density, k_str=None, x_str=None, c_str=None, calcType=["E","V"], **kwa
     return out_functional
 
 
-def PBE(density, calcType=["E","V"]):
+def PBE(density, calcType={"E","V"}):
     return LibXC(
         density=density,
         x_str="gga_x_pbe",
@@ -276,13 +276,13 @@ def PBE(density, calcType=["E","V"]):
     )
 
 
-def LDA_XC(density, calcType=["E","V"]):
+def LDA_XC(density, calcType={"E","V"}):
     return LibXC(
         density=density, x_str="lda_x", c_str="lda_c_pz", calcType=calcType
     )
 
 
-def LDA(rho, calcType=["E","V"], **kwargs):
+def LDA(rho, calcType={"E","V"}, **kwargs):
     if rho.rank > 1 :
         return LDA_XC(rho, calcType)
     TimeData.Begin("LDA")
@@ -340,11 +340,11 @@ def LDA(rho, calcType=["E","V"], **kwargs):
 def LDAStress(rho, energy=None, potential=None, **kwargs):
     TimeData.Begin("LDA_Stress")
     if energy is None:
-        EnergyPotential = LDA(rho, calcType=["E","V"])
+        EnergyPotential = LDA(rho, calcType={"E","V"})
         potential = EnergyPotential.potential
         energy = EnergyPotential.energy
     elif potential is None :
-        potential = LDA(rho, calcType=["V"]).potential
+        potential = LDA(rho, calcType={"V"}).potential
     stress = np.zeros((3, 3))
     try:
         Etmp = energy - np.einsum("..., ...-> ", potential, rho, optimize = 'optimal') * rho.grid.dV

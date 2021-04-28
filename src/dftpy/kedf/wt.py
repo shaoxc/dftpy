@@ -89,7 +89,7 @@ def WTStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, ene
     return stress
 
 
-def WT(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, rho0=None, calcType=["E","V"], split=False,
+def WT(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, rho0=None, calcType={"E","V"}, split=False,
         ke_kernel_saved = None, **kwargs):
     TimeData.Begin("WT")
     q = rho.grid.get_reciprocal().q

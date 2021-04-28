@@ -27,7 +27,7 @@ def LWTStress(
     etamax=50.0,
     neta=50000,
     order=3,
-    calcType=["E","V"],
+    calcType={"E","V"},
     energy=None,
     ke_kernel_saved = None,
     **kwargs
@@ -89,7 +89,7 @@ def LWTPotentialEnergy(
     alpha=5.0 / 6.0,
     beta=5.0 / 6.0,
     interp="linear",
-    calcType=["E","V"],
+    calcType={"E","V"},
     kfmin = None,
     kfmax = None,
     ldw = None,
@@ -352,7 +352,7 @@ def LWTLineIntegral(
     beta=5.0 / 6.0,
     nt = 500,
     interp="linear",
-    calcType=["E","V"],
+    calcType={"E","V"},
     kfmin = None,
     kfmax = None,
     ke_kernel_saved = None,
@@ -518,7 +518,7 @@ def LWT(
     delta=None,
     neta=50000,
     order=3,
-    calcType=["E","V"],
+    calcType={"E","V"},
     split=False,
     ke_kernel_saved = None,
     **kwargs
@@ -588,7 +588,7 @@ def LMGP(
     delta=None,
     neta=50000,
     order=3,
-    calcType=["E","V"],
+    calcType={"E","V"},
     split=False,
     **kwargs
 ):
@@ -638,7 +638,7 @@ def LMGPA(
     delta=None,
     neta=50000,
     order=3,
-    calcType=["E","V"],
+    calcType={"E","V"},
     split=False,
     **kwargs
 ):
@@ -688,7 +688,7 @@ def LMGPG(
     delta=None,
     neta=50000,
     order=3,
-    calcType=["E","V"],
+    calcType={"E","V"},
     split=False,
     **kwargs
 ):
