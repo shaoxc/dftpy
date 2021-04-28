@@ -184,6 +184,9 @@ def KEDFunctional(rho, name="WT", calcType=["E","V"], split=False, nspin = 1, **
             xTF.energy /= nspin
             yvW.energy /= nspin
             NL.energy /= nspin
+        if hasattr(NL, 'potential'):
+            mask = (NL.potential > 0.0) & (rho < 1E-3)
+            NL.potential[mask] = -1.0*xTF.potential[mask]
         OutFunctional = NL + xTF + yvW
         OutFunctional.name = name
         OutFunctionalDict = {"TF": xTF, "vW": yvW, "NL": NL}
@@ -442,7 +445,7 @@ class MIXGGAS:
 
         return obj
 
-    def interpfunc(self, rho, calcType=["E","V"], **kwargs):
+    def interpfunc(self, rho, calcType=["E","V"], func = 'tanh', **kwargs):
         if self.rhomax is None or self.rhomax < 1E-30 :
             self.interpolate_f = 1.0
             self.interpolate_df = 0.0
@@ -450,11 +453,27 @@ class MIXGGAS:
             self.interpolate_f = 0.0
             self.interpolate_df = 0.0
         else :
-            self.interpolate_f = np.abs(rho/self.rhomax)
-            mask = self.interpolate_f > 1.0
-            self.interpolate_f[mask] = 1.0
-            self.interpolate_df = np.ones_like(self.interpolate_f)/self.rhomax
-            self.interpolate_df[mask] = 0.0
+            if func == 'tanh' :
+                self.interp_tanh(rho, calcType=calcType, **kwargs)
+            else :
+                self.interp_linear(rho, calcType=calcType, **kwargs)
+        return
+
+    def interp_tanh(self, rho, calcType=["E","V"], **kwargs):
+        # x = -2 * np.abs(rho/self.rhomax)
+        # ex = np.exp(x)
+        # self.interpolate_f = (1 - ex)/(1 + ex)
+        x = np.abs(rho/self.rhomax)
+        self.interpolate_f = np.tanh(x)
+        self.interpolate_df = 1.0/(np.cosh(x)**2*self.rhomax)
+        return
+
+    def interp_linear(self, rho, calcType=["E","V"], **kwargs):
+        self.interpolate_f = np.abs(rho/self.rhomax)
+        mask = self.interpolate_f > 1.0
+        self.interpolate_f[mask] = 1.0
+        self.interpolate_df = np.ones_like(self.interpolate_f)/self.rhomax
+        self.interpolate_df[mask] = 0.0
         return
 
     def _interp_lkt(self, rho, calcType=["E","V"], **kwargs):
