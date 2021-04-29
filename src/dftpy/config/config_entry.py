@@ -1,14 +1,17 @@
-from json import JSONEncoder
-import re
-import numpy as np
 import ast
+import re
 from collections import OrderedDict
+from json import JSONEncoder
+
+import numpy as np
 
 try:
     from numexpr import evaluate
+
     is_numexpr = True
-except Exception :
+except Exception:
     is_numexpr = False
+
 
 def format_bool(expression):
     s = expression.lower()[0]
@@ -17,54 +20,63 @@ def format_bool(expression):
     else:
         return True
 
+
 def format_float(expression):
-    if is_numexpr :
+    if is_numexpr:
         return evaluate(expression).item()
-    else :
+    else:
         return eval(expression)
+
 
 def format_str(expression):
     return expression
 
+
 def format_cstr(expression):
     return expression.capitalize()
 
+
 def format_slice(expression):
-    if ':' in expression :
+    if ':' in expression:
         ls = expression.split(':')
-        l = [None,] * 3
+        l = [None, ] * 3
         for i, item in enumerate(ls):
             if item.lstrip('-+').isdigit():
                 l[i] = int(item)
         return slice(*l)
-    else :
+    else:
         return int(expression)
 
+
 def format_intlist(expression):
-    if ':' in expression :
+    if ':' in expression:
         items = expression.split()
-        if len(items) == 1 :
+        if len(items) == 1:
             return format_slice(items[0])
         ints = []
-        for item in items :
+        for item in items:
             s = format_slice(item)
             if ':' in item:
                 a = np.arange(0, s.stop)[s].tolist()
                 ints.extend(a)
-            else :
+            else:
                 ints.append(s)
         return ints
-    else :
+    else:
         return list(map(int, expression.split()))
+
 
 def format_floatlist(expression):
     return list(map(format_float, expression.split()))
 
+
 def format_strlist(expression):
     return expression.split()
 
+
 def format_cstrlist(expression):
     return expression.title().split()
+
 
 def format_direction(expression):
     direct_dict = {
@@ -77,21 +89,26 @@ def format_direction(expression):
     else:
         return int(expression)
 
+
 def format_cdict(expression):
     vk = ast.literal_eval(expression)
-    return OrderedDict((v.capitalize(),k) for v, k in vk.items())
+    return OrderedDict((v.capitalize(), k) for v, k in vk.items())
+
 
 def format_cfdict(expression):
     vk = ast.literal_eval(expression)
-    return OrderedDict((v.capitalize(),float(k)) for v, k in vk.items())
+    return OrderedDict((v.capitalize(), float(k)) for v, k in vk.items())
+
 
 def format_cidict(expression):
     vk = ast.literal_eval(expression)
-    return OrderedDict((v.capitalize(),int(k)) for v, k in vk.items())
+    return OrderedDict((v.capitalize(), int(k)) for v, k in vk.items())
+
 
 class ConfigEntry(object):
 
-    def __init__(self, type = 'str', default=None, comment='', options='', example = None, note = None, warning = None, **kwargs):
+    def __init__(self, type='str', default=None, comment='', options='', example=None, note=None, warning=None,
+                 **kwargs):
         self.type = type
         self.default = default
         self.comment = comment
