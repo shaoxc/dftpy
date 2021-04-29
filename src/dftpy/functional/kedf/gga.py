@@ -9,49 +9,53 @@ import scipy.special as sp
 
 __all__ = ["GGA", "GGAFs", "GGA_KEDF_list", "GGAStress"]
 
-GGA_KEDF_list = [
-    "LKT",
-    "DK",
-    "LLP",
-    "LLP91",
-    "OL1",
-    "OL2",
-    "T92",
-    "THAK",
-    "B86A",
-    "B86B",
-    "DK87",
-    "PW86",
-    "PW91O",
-    "PW91",
-    "PW91k",    # same as `PW91`
-    "LG94",
-    "E00",
-    "P92",
-    "PBE2",
-    "PBE3",
-    "PBE4",
-    "P82",
-    "TW02",
-    "APBE",
-    "APBEK",    # same as `APBE`
-    "REVAPBE",
-    "REVAPBEK", # same as `REVAPBE`
-    "VJKS00",
-    "LC94",
-    "VT84F",
-    "LKT-PADE46",
-    "SMP",
-    "TF",
-    "VW",
-    "X_TF_Y_VW",
-    "TFVW",     # same as `X_TF_Y_VW`
-    "STV",
-    "TEST-TF-APBEK",
-]
+GGA_KEDF_list = {
+    "LKT"           : [1.3, 1.0],  # \cite{luo2018simple}
+    "DK"            : [0.95, 14.28111, -19.5762, -0.05, 9.99802, 2.96085],  # \cite{garcia2007kinetic} (8)
+    "LLP"           : [0.0044188, 0.0253], # \cite{garcia2007kinetic} (9)[!x] \cite{gotz2009performance} (18)
+    "LLP91"         : [0.0044188, 0.0253], # \cite{garcia2007kinetic} (9)[!x] \cite{gotz2009performance} (18)
+    "OL1"           : [0.00677],  # \cite{gotz2009performance} (16)
+    "OL"            : [0.00677],  # \cite{gotz2009performance} (16)
+    "OL2"           : [0.0887],  # \cite{gotz2009performance} (17)
+    "T92"           : [0.0055, 0.0253, 0.072], # \cite{garcia2007kinetic} (12),\cite{gotz2009performance} (22), \cite{hfofke} (15)[!x]
+    "THAK"          : [0.0055, 0.0253, 0.072], # \cite{garcia2007kinetic} (12),\cite{gotz2009performance} (22), \cite{hfofke} (15)[!x]
+    "B86A"          : [0.0039, 0.004],  # \cite{garcia2007kinetic} (13)
+    "B86"           : [0.0039, 0.004],  # \cite{garcia2007kinetic} (13)
+    "B86B"          : [0.00403, 0.007],  # \cite{garcia2007kinetic} (14)
+    "DK87"          : [7.0 / 324.0 / (18.0 * np.pi ** 4) ** (1.0 / 3.0), 0.861504, 0.044286],  # \cite{garcia2007kinetic} (15)
+    "PW86"          : [1.296, 14.0, 0.2],  # \cite{gotz2009performance} (19)
+    "PW91O"         : [0.093907, 0.26608, 0.0809615, 100.0, 76.320, 0.57767e-4],  # (A1, A2, A3, A4, A, B1)  # \cite{gotz2009performance} (20)
+    "PW91"          : [0.19645, 0.2747, 0.1508, 100.0, 7.7956, 0.004],  # (A1, A2, A3, A4, A, B1) # \cite{lacks1994tests} (16) and \cite{garcia2007kinetic} (17)[!x]
+    "PW91k"         : [0.19645, 0.2747, 0.1508, 100.0, 7.7956, 0.004],  # (A1, A2, A3, A4, A, B1) # \cite{lacks1994tests} (16) and \cite{garcia2007kinetic} (17)[!x]
+    "LG94"          : [(1e-8 + 0.1234) / 0.024974, 29.790, 22.417, 12.119, 1570.1, 55.944, 0.024974], # a2, a4, a6, a8, a10, a12, b # \cite{garcia2007kinetic} (18)
+    "E00"           : [135.0, 28.0, 5.0, 3.0],  # \cite{gotz2009performance} (14)
+    "P92"           : [1.0, 88.3960, 16.3683, 88.2108],  # \cite{gotz2009performance} (15)
+    "PBE2"          : [0.2942, 2.0309],  # \cite{gotz2009performance} (23)
+    "PBE3"          : [4.1355, -3.7425, 50.258],  # \cite{gotz2009performance} (23)
+    "PBE4"          : [1.7107, -7.2333, 61.645, -93.683],  # \cite{gotz2009performance} (23)
+    "P82"           : [5.0 / 27.0],  # \cite{hfofke} (9)
+    "TW02"          : [0.8438, 0.27482816],  # \cite{hfofke} (20)
+    "APBE"          : [0.23889, 0.804],  # \cite{hfofke} (32)
+    "APBEK"         : [0.23889, 0.804],  # \cite{hfofke} (32)
+    "REVAPBEK"      : [0.23889, 1.245], # \cite{hfofke} (33)
+    "REVAPBE"       : [0.23889, 1.245],  # \cite{hfofke} (33)
+    "VJKS00"        : [0.8944, 0.6511, 0.0431],  # \cite{hfofke} (18) !something wrong
+    "LC94"          : [0.093907, 0.26608, 0.0809615, 100.0, 76.32, 0.000057767],  # \cite{hfofke} (16) # same as PW91
+    "VT84F"         : [2.777028126, 2.777028126 - 40.0 / 27.0],  # \cite{hfofke} (33)
+    "LKT-PADE46"    : [1.3],
+    "LKT-PADE46-S"  : [1.3, 0.01],
+    "SMP"           : [1.0],  # test functional
+    "TF"            : [1.0],
+    "VW"            : [1.0],
+    "X_TF_Y_VW"     : [1.0, 1.0],
+    "TFVW"          : [1.0, 1.0],
+    "STV"           : [1.0, 1.0, 0.01, 1.0],
+    "PBE2M"         : [1.0, 0.2942, 2.0309],
+    "TEST-TF-APBEK" : [1.3, 0.23889, 1.245],
+    }
 
 
-def GGAStress(rho, functional="LKT", energy=None, potential=None, **kwargs):
+def GGAStress(rho, functional="LKT", energy=None, potential=None, dFds2=None, **kwargs):
     """
     Not finished.
     """
@@ -68,6 +72,8 @@ def GGAStress(rho, functional="LKT", energy=None, potential=None, **kwargs):
     tf = cTF * rho53
     vkin2 = tf * ckf2 * dFds2 / rho83
     dRho_ij = []
+    g = rho.grid.get_reciprocal().g
+    rhoG = rho.fft()
     for i in range(3):
         dRho_ij.append((1j * g[i] * rhoG).ifft(force_real=True))
     stress = np.zeros((3, 3))
@@ -126,11 +132,22 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
     F = np.empty_like(s)
     dFds2 = np.empty_like(s)  # Actually, it's 1/s*dF/ds
 
+    functional = functional.upper()
+    if functional not in GGA_KEDF_list :
+        raise AttributeError("%s GGA KEDF to be implemented" % functional)
+
+    params0 = GGA_KEDF_list[functional]
+
+    if params is None :
+        pass
+    elif isinstance(params, (float, int)):
+        params0[0] = params
+    else :
+        l = min(len(params), len(params0))
+        params0[:l] = params[:l]
+
+    params = params0
     if functional == "LKT":  # \cite{luo2018simple}
-        if not params:
-            params = [1.3, 1.0]
-        elif len(params) == 1 :
-            params.append(1.0)
         ss = s / tkf0
         s2 = ss * ss
         mask1 = ss > 100.0
@@ -155,8 +172,6 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 /= tkf0 ** 2
 
     elif functional == "DK":  # \cite{garcia2007kinetic} (8)
-        if not params:
-            params = [0.95, 14.28111, -19.5762, -0.05, 9.99802, 2.96085]
         x = s * s / (72 * cTF)
         Fa = 9.0 * params[5] * x ** 4 + params[2] * x ** 3 + params[1] * x ** 2 + params[0] * x + 1.0
         Fb = params[5] * x ** 3 + params[4] * x ** 2 + params[3] * x + 1.0
@@ -170,8 +185,6 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
     elif (
         functional == "LLP" or functional == "LLP91"
     ):  # \cite{garcia2007kinetic} (9)[!x] \cite{gotz2009performance} (18)
-        if not params:
-            params = [0.0044188, 0.0253]
         bs = b * s
         bs2 = bs * bs
         Fa = params[0] * bs2
@@ -184,8 +197,6 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 *= b * b
 
     elif functional == "OL1" or functional == "OL":  # \cite{gotz2009performance} (16)
-        if not params:
-            params = [0.00677]
         F = 1.0 + s * s / 72.0 / cTF + params[0] / cTF * s
         if "V" in calcType:
             mask = s > tol2
@@ -193,8 +204,6 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2[mask] += params[0] / cTF / s[mask]
 
     elif functional == "OL2":  # \cite{gotz2009performance} (17)
-        if not params:
-            params = [0.0887]
         F = 1.0 + s * s / 72.0 / cTF + params[0] / cTF * s / (1 + 4 * s)
         if "V" in calcType:
             mask = s > tol2
@@ -204,8 +213,6 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
     elif (
         functional == "T92" or functional == "THAK"
     ):  # \cite{garcia2007kinetic} (12),\cite{gotz2009performance} (22), \cite{hfofke} (15)[!x]
-        if not params:
-            params = [0.0055, 0.0253, 0.072]
         bs = b * s
         bs2 = bs * bs
         F = (
@@ -227,8 +234,6 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 *= b * b
 
     elif functional == "B86A" or functional == "B86":  # \cite{garcia2007kinetic} (13)
-        if not params:
-            params = [0.0039, 0.004]
         bs = b * s
         bs2 = bs * bs
         Fa = params[0] * bs2
@@ -238,8 +243,6 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 = 2 * params[0] / (Fb * Fb) * (b * b)
 
     elif functional == "B86B":  # \cite{garcia2007kinetic} (14)
-        if not params:
-            params = [0.00403, 0.007]
         bs = b * s
         bs2 = bs * bs
         Fa = params[0] * bs2
@@ -249,8 +252,6 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 = (2 * params[0] * (params[1] * bs2 + 5.0)) / (5 * (1.0 + params[1] * bs2) * Fb) * (b * b)
 
     elif functional == "DK87":  # \cite{garcia2007kinetic} (15)
-        if not params:
-            params = [7.0 / 324.0 / (18.0 * np.pi ** 4) ** (1.0 / 3.0), 0.861504, 0.044286]
         bs = b * s
         bs2 = bs * bs
         Fa = params[0] * bs2 * (1 + params[1] * bs)
@@ -260,8 +261,6 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 = params[0] * (2.0 + 3.0 * params[1] * bs + params[1] * params[2] * bs2 * bs) / (Fb * Fb) * (b * b)
 
     elif functional == "PW86":  # \cite{gotz2009performance} (19)
-        if not params:
-            params = [1.296, 14.0, 0.2]
         ss = s / tkf0
         s2 = ss * ss
         s4 = s2 * s2
@@ -273,8 +272,6 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 /= tkf0 * tkf0
 
     elif functional == "PW91O":  # \cite{gotz2009performance} (20)
-        if not params:
-            params = [0.093907, 0.26608, 0.0809615, 100.0, 76.320, 0.57767e-4]  # (A1, A2, A3, A4, A, B1)
         ss = s / tkf0
         s2 = ss * ss
         s4 = s2 * s2
@@ -296,8 +293,6 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
     elif (
         functional == "PW91" or functional == "PW91k"
     ):  # \cite{lacks1994tests} (16) and \cite{garcia2007kinetic} (17)[!x]
-        if not params:
-            params = [0.19645, 0.2747, 0.1508, 100.0, 7.7956, 0.004]  # (A1, A2, A3, A4, A, B1)
         ss = s / tkf0
         s2 = ss * ss
         s4 = s2 * s2
@@ -327,16 +322,6 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 /= tkf0 * tkf0
 
     elif functional == "LG94":  # \cite{garcia2007kinetic} (18)
-        if not params:
-            params = [
-                (1e-8 + 0.1234) / 0.024974,
-                29.790,
-                22.417,
-                12.119,
-                1570.1,
-                55.944,
-                0.024974,
-            ]  # a2, a4, a6, a8, a10, a12, b
         ss = s / tkf0
         s2 = ss * ss
         s4 = s2 * s2
@@ -369,8 +354,6 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 /= tkf0 * tkf0
 
     elif functional == "E00":  # \cite{gotz2009performance} (14)
-        if not params:
-            params = [135.0, 28.0, 5.0, 3.0]
         ss = s / tkf0
         s2 = ss * ss
         s4 = s2 * s2
@@ -382,8 +365,6 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 /= tkf0 * tkf0
 
     elif functional == "P92":  # \cite{gotz2009performance} (15)
-        if not params:
-            params = [1.0, 88.3960, 16.3683, 88.2108]
         ss = s / tkf0
         s2 = ss * ss
         s4 = s2 * s2
@@ -395,8 +376,6 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 /= tkf0 * tkf0
 
     elif functional == "PBE2":  # \cite{gotz2009performance} (23)
-        if not params:
-            params = [0.2942, 2.0309]
         ss = s / tkf0
         s2 = ss * ss
         Fa = params[1] * s2
@@ -407,8 +386,6 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 /= tkf0 * tkf0
 
     elif functional == "PBE3":  # \cite{gotz2009performance} (23)
-        if not params:
-            params = [4.1355, -3.7425, 50.258]
         ss = s / tkf0
         s2 = ss * ss
         s4 = s2 * s2
@@ -420,8 +397,6 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 /= tkf0 * tkf0
 
     elif functional == "PBE4":  # \cite{gotz2009performance} (23)
-        if not params:
-            params = [1.7107, -7.2333, 61.645, -93.683]
         ss = s / tkf0
         s2 = ss * ss
         s4 = s2 * s2
@@ -435,8 +410,6 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 /= tkf0 * tkf0
 
     elif functional == "P82":  # \cite{hfofke} (9)
-        if not params:
-            params = [5.0 / 27.0]
         ss = s / tkf0
         s2 = ss * ss
         s6 = s2 * s2 * s2
@@ -447,8 +420,6 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 /= tkf0 * tkf0
 
     elif functional == "TW02":  # \cite{hfofke} (20)
-        if not params:
-            params = [0.8438, 0.27482816]
         ss = s / tkf0
         s2 = ss * ss
         Fa = params[1] * s2
@@ -458,9 +429,7 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 = 2.0 * params[0] * params[1] / (Fb * Fb)
             dFds2 /= tkf0 * tkf0
 
-    elif functional == "APBEK":  # \cite{hfofke} (32)
-        if not params:
-            params = [0.23889, 0.804]
+    elif functional == "APBE" or functional == "APBEK":  # \cite{hfofke} (32)
         ss = s / tkf0
         s2 = ss * ss
         Fa = params[0] * s2
@@ -470,9 +439,7 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 = 2.0 * params[0] / (Fb * Fb)
             dFds2 /= tkf0 * tkf0
 
-    elif functional == "REVAPBEK" or functional == "revAPBEK" or functional == "REVAPBE":  # \cite{hfofke} (33)
-        if not params:
-            params = [0.23889, 1.245]
+    elif functional == "REVAPBEK" or functional == "REVAPBE":  # \cite{hfofke} (33)
         ss = s / tkf0
         s2 = ss * ss
         Fa = params[0] * s2
@@ -483,8 +450,6 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 /= tkf0 * tkf0
 
     elif functional == "VJKS00":  # \cite{hfofke} (18) !something wrong
-        if not params:
-            params = [0.8944, 0.6511, 0.0431]
         ss = s / tkf0
         s2 = ss * ss
         s4 = s2 * s2
@@ -499,8 +464,6 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 /= tkf0 * tkf0
 
     elif functional == "LC94":  # \cite{hfofke} (16) # same as PW91
-        if not params:
-            params = [0.093907, 0.26608, 0.0809615, 100.0, 76.32, 0.000057767]
         ss = s / tkf0
         s2 = ss * ss
         s4 = s2 * s2
@@ -530,8 +493,6 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 /= tkf0 * tkf0
 
     elif functional == "VT84F":  # \cite{hfofke} (33)
-        if not params:
-            params = [2.777028126, 2.777028126 - 40.0 / 27.0]
         ss = s / tkf0
         s2 = ss * ss
         s2[s2 < tol2] = tol2
@@ -554,15 +515,13 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 /= tkf0 * tkf0
 
     elif functional == "LKT-PADE46":
-        if not params:
-            params = 1.3
         coef = [131040, 3360, 34, 62160, 3814, 59]
         # (131040 - 3360 *x**2 + 34 *x**4)/(131040 + 62160 *x**2 + 3814 *x**4 + 59 *x**6)
-        coef[1] *= params ** 2
-        coef[2] *= params ** 4
-        coef[3] *= params ** 2
-        coef[4] *= params ** 4
-        coef[5] *= params ** 6
+        coef[1] *= params[0] ** 2
+        coef[2] *= params[0] ** 4
+        coef[3] *= params[0] ** 2
+        coef[4] *= params[0] ** 4
+        coef[5] *= params[0] ** 6
 
         ss = s / tkf0
         s2 = ss * ss
@@ -580,8 +539,6 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 /= tkf0 * tkf0
 
     elif functional == "LKT-PADE46-S":
-        if not params:
-            params = [1.3, 0.01]
         coef = [131040, 3360, 34, 62160, 3814, 59]
         coef[1] *= params[0] ** 2
         coef[2] *= params[0] ** 4
@@ -607,8 +564,6 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 /= tkf0 * tkf0
 
     elif functional == "SMP":  # test functional
-        if not params:
-            params = [1.0]
         ss = s / tkf0
         s2 = ss * ss
         F = 5.0 / 3.0 * s2 + sp.erfc(s2/params[0])
@@ -620,14 +575,10 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 /= tkf0 ** 2
 
     elif functional == "TF" :
-        if not params:
-            params = [1.0]
         F = np.ones_like(s)
         dFds2 = np.zeros_like(F)
 
     elif functional == "VW" :
-        if not params:
-            params = [1.0]
         ss = s / tkf0
         s2 = ss * ss
         F = 5.0 / 3.0 * params[0] * s2
@@ -636,8 +587,6 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 /= tkf0 ** 2
 
     elif functional == "X_TF_Y_VW" or functional == "TFVW" :
-        if not params:
-            params = [1.0, 1.0]
         ss = s / tkf0
         s2 = ss * ss
         F = params[0] + 5.0 / 3.0 * params[1] * s2
@@ -646,27 +595,29 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 /= tkf0 ** 2
 
     elif functional == "STV" :
-        if not params:
-            params = [1.0, 1.0, 0.01]
         ss = s / tkf0
         s2 = ss * ss
-        Fb = 1 + params[2] * s2
+        Fb = params[3] + params[2] * s2
         F = params[0] + 5.0 / 3.0 * params[1] * s2 / Fb
         if "V" in calcType :
             dFds2[:] = 5.0 / 3.0 * params[1] * (2.0/Fb - 2.0 * s2 * params[2]/(Fb * Fb))
             dFds2 /= tkf0 ** 2
 
+    elif functional == "PBE2M":  #
+        ss = s / tkf0
+        s2 = ss * ss
+        Fa = params[2] * s2
+        Fb = params[0] + params[1] * s2
+        F = 1.0 + Fa / Fb
+        if "V" in calcType:
+            dFds2 = 2.0 * params[2] / (Fb * Fb)
+            dFds2 /= tkf0 * tkf0
+
     elif functional == "TEST-TF-APBEK" :
-        params0 = [1.3, 0.23889, 1.245]
-        if not params:
-            params = params0
-        else :
-            params0[:len(params)] = params
-            params = params0
         ss = s / tkf0
         s2 = ss * ss
 
-        Fx, dFds2 = GGAFx(ss, s2, calcType=calcType, params=params, **kwargs)
+        Fx, dFds2 = _GGAFx(ss, s2, calcType=calcType, params=params, **kwargs)
 
         Fa = params[1] * s2
         Fb = 1.0 + params[1] / params[2] * s2
@@ -732,7 +683,7 @@ def GGA(rho, functional="LKT", calcType={"E","V"}, split=False, params = None, *
     rho23 = rhom ** (2.0 / 3.0)
     rho53 = rho23 * rhom
     cTF = (3.0 / 10.0) * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
-    tkf0 = 2.0 * (3.0 * np.pi ** 2) ** (1.0 / 3.0)
+    # tkf0 = 2.0 * (3.0 * np.pi ** 2) ** (1.0 / 3.0)
     tf = cTF * rho53
     rho43 = rho23 * rho23
     rho83 = rho43 * rho43
@@ -773,3 +724,11 @@ def GGA(rho, functional="LKT", calcType={"E","V"}, split=False, params = None, *
     # np.savetxt('gga.dat', np.c_[rho.ravel(), pot.ravel(), s.ravel(), F.ravel(), dFds2.ravel()])
 
     return OutFunctional
+
+    # def laplacian(self, check_real = False, force_real = False, sigma = 0.025):
+def get_gga_p(rho, calcType=["E","V"], params = None, **kwargs):
+    sigma = kwargs.get('sigma', None)
+    rho53 = rho ** (5.0 / 3.0)
+    tkf0 = 2.0 * (3.0 * np.pi ** 2) ** (1.0 / 3.0)
+    p = rho.laplacian(sigma = sigma)/(tkf0**2*rho53)
+    return p

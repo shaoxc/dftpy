@@ -7,13 +7,19 @@ SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 SOURCEDIR     = .
 BUILDDIR      = build
+PYTHON = python
 
 # Put it first so that "make" without argument is like "make help".
 #
-html:
+html: config
 	$(SPHINXBUILD) -b html $(SOURCEDIR) $(SPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
+
+config:
+	@echo "Base on configentries.json generate config.rst"
+	$(PYTHON) gen_doc.py
+
 
 .PHONY: help Makefile html browse
 
@@ -27,3 +33,6 @@ help:
 
 browse:
 	x-www-browser build/html/index.html
+
+upload: html
+	scp -r ./build/html/* web@dftpy.rutgers.edu:/home/web/dftpy/html/
