@@ -80,13 +80,13 @@ class TotalFunctional(AbstractFunctional):
         subdict = dict((key, self.funcDict[key]) for key in keys)
         return TotalFunctional(**subdict)
 
-    def compute(self, rho, calcType={"E", "V"}, **kwargs):
+    def compute(self, rho, calcType={"E", "V"}, *args, **kwargs):
         Obj = None
         for key, evalfunctional in self.funcDict.items():
             if Obj is None:
-                Obj = evalfunctional(rho, calcType=calcType)
+                Obj = evalfunctional(rho, calcType=calcType, *args, **kwargs)
             else:
-                Obj += evalfunctional(rho, calcType=calcType)
+                Obj += evalfunctional(rho, calcType=calcType, *args, **kwargs)
             # sss = evalfunctional(rho, ["E","V"])
             # sss.energy = rho.mp.vsum(sss.energy)
             # sprint('key', key, sss.energy)
