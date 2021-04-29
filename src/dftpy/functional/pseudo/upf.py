@@ -1,9 +1,8 @@
-import numpy as np
 import importlib.util
 import re
 
-from dftpy.mpi import sprint
-from dftpy.constants import LEN_CONV, ENERGY_CONV
+import numpy as np
+
 
 class UPF(object):
     def __init__(self, fname):
@@ -19,17 +18,17 @@ class UPF(object):
         else:
             raise ModuleNotFoundError("Must pip install xmltodict")
         with open(fname) as fd:
-            doc = xmltodict.parse(fd.read(),attr_prefix='')
+            doc = xmltodict.parse(fd.read(), attr_prefix='')
             info = doc[next(iter(doc.keys()))]
         r = self.get_array(info['PP_MESH']['PP_R'])
-        v = self.get_array(info['PP_LOCAL']) * 0.5 # Ry to a.u.
+        v = self.get_array(info['PP_LOCAL']) * 0.5  # Ry to a.u.
         self.r = r
         self.v = v
         self.info = info
 
     def get_array(self, attr):
         if isinstance(attr, dict): attr = attr['#text']
-        if attr is None or len(attr) == 0 : return None
+        if attr is None or len(attr) == 0: return None
         value = self.pattern.split(attr)
         return np.array(value, dtype=np.float)
 
@@ -39,10 +38,11 @@ class UPF(object):
 
     @property
     def core_density(self):
-        if 'PP_NLCC' in self.info :
+        if 'PP_NLCC' in self.info:
             return self.get_array(self.info['PP_NLCC'])
-        else :
+        else:
             return None
+
 
 class UPFJSON(object):
     def __init__(self, fname):
@@ -75,5 +75,5 @@ class UPFJSON(object):
     def core_density(self):
         if 'core_charge_density' in self.info:
             return np.array(self.info["core_charge_density"], dtype=np.float64)
-        else :
+        else:
             return None

@@ -1,9 +1,12 @@
 # Collection of local and semilocal functional
 
 import numpy as np
+
 from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.math_utils import PowerInt
 from dftpy.time_data import TimeData
+
+__all__ = ['TF', 'ThomasFermiStress']
 
 
 def ThomasFermiPotential(rho):
@@ -19,6 +22,7 @@ def ThomasFermiPotential(rho):
     # return (3.0/10.0)*(5.0/3.0)*(3.0*np.pi**2)**(2.0/3.0)*np.abs(rho)**(2.0/3.0)
     return pot
 
+
 def ThomasFermiEnergyDensity(rho):
     """
     The Thomas-Fermi EnergyDensity
@@ -28,6 +32,7 @@ def ThomasFermiEnergyDensity(rho):
     edens = PowerInt(rho, 5, 3)
     edens *= (3.0 / 10.0) * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
     return edens
+
 
 def ThomasFermiEnergy(rho):
     """
@@ -39,8 +44,8 @@ def ThomasFermiEnergy(rho):
 
 
 def ThomasFermiF(rho):
-    ctf = 0.3 * (3.0 * np.pi * np.pi) ** (2.0/3.0)
-    return 10.0/9.0 * ctf / np.cbrt(rho)
+    ctf = 0.3 * (3.0 * np.pi * np.pi) ** (2.0 / 3.0)
+    return 10.0 / 9.0 * ctf / np.cbrt(rho)
 
 
 def ThomasFermiStress(rho, x=1.0, energy=None, **kwargs):
@@ -56,14 +61,14 @@ def ThomasFermiStress(rho, x=1.0, energy=None, **kwargs):
     return stress
 
 
-def TF(rho, x=1.0, calcType={"E","V"}, split=False, **kwargs):
+def TF(rho, x=1.0, calcType={"E", "V"}, split=False, **kwargs):
     TimeData.Begin("TF")
     OutFunctional = FunctionalOutput(name="TF")
-    if "E" in calcType or "D" in calcType :
+    if "E" in calcType or "D" in calcType:
         energydensity = ThomasFermiEnergyDensity(rho)
         ene = energydensity.sum() * rho.grid.dV
         OutFunctional.energy = ene * x
-        if 'D' in calcType :
+        if 'D' in calcType:
             OutFunctional.energydensity = energydensity
     if "V" in calcType:
         pot = ThomasFermiPotential(rho)

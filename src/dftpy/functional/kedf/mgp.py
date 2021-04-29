@@ -1,42 +1,43 @@
 import numpy as np
-from dftpy.mpi import sprint
+
 from dftpy.functional.functional_output import FunctionalOutput
-from dftpy.functional.kedf.wt import WTPotential, WTEnergyDensity
 from dftpy.functional.kedf.kernel import MGPKernel, MGPOmegaE
+from dftpy.functional.kedf.wt import WTPotential, WTEnergyDensity
+from dftpy.mpi import sprint
 from dftpy.time_data import TimeData
 
 __all__ = ["MGP", "MGPStress", "MGPA", "MGPG"]
 
 
-def MGPStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, calcType={"E","V"}):
+def MGPStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, calcType={"E", "V"}):
     pass
 
 
 def MGP(
-    rho,
-    x=1.0,
-    y=1.0,
-    sigma=None,
-    alpha=5.0 / 6.0,
-    beta=5.0 / 6.0,
-    lumpfactor=0.2,
-    maxpoint=1000,
-    symmetrization=None,
-    calcType={"E","V"},
-    split=False,
-    ke_kernel_saved = None,
-    **kwargs
+        rho,
+        x=1.0,
+        y=1.0,
+        sigma=None,
+        alpha=5.0 / 6.0,
+        beta=5.0 / 6.0,
+        lumpfactor=0.2,
+        maxpoint=1000,
+        symmetrization=None,
+        calcType={"E", "V"},
+        split=False,
+        ke_kernel_saved=None,
+        **kwargs
 ):
     TimeData.Begin("MGP")
     q = rho.grid.get_reciprocal().q
     rho0 = rho.amean()
-    if ke_kernel_saved is None :
+    if ke_kernel_saved is None:
         KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
-    else :
+    else:
         KE_kernel_saved = ke_kernel_saved
     # if abs(KE_kernel_saved['rho0']-rho0) > 1E-6 or np.shape(rho) != KE_kernel_saved['shape'] :
     if abs(KE_kernel_saved["rho0"] - rho0) > 1e-2 or np.shape(rho) != KE_kernel_saved["shape"]:
-        sprint("Re-calculate KE_kernel", comm = rho.mp.comm, level=1)
+        sprint("Re-calculate KE_kernel", comm=rho.mp.comm, level=1)
         KE_kernel = MGPKernel(q, rho0, maxpoints=maxpoint, symmetrization=symmetrization)
         if lumpfactor is not None:
             Ne = rho0 * rho.grid.Volume
@@ -68,34 +69,34 @@ def MGP(
 
 
 def MGPA(
-    rho,
-    x=1.0,
-    y=1.0,
-    sigma=None,
-    alpha=5.0 / 6.0,
-    beta=5.0 / 6.0,
-    lumpfactor=0.2,
-    maxpoint=1000,
-    symmetrization="Arithmetic",
-    calcType={"E","V"},
-    split=False,
-    **kwargs
+        rho,
+        x=1.0,
+        y=1.0,
+        sigma=None,
+        alpha=5.0 / 6.0,
+        beta=5.0 / 6.0,
+        lumpfactor=0.2,
+        maxpoint=1000,
+        symmetrization="Arithmetic",
+        calcType={"E", "V"},
+        split=False,
+        **kwargs
 ):
     return MGP(rho, x, y, sigma, alpha, beta, lumpfactor, maxpoint, "Arithmetic", calcType, split, **kwargs)
 
 
 def MGPG(
-    rho,
-    x=1.0,
-    y=1.0,
-    sigma=None,
-    alpha=5.0 / 6.0,
-    beta=5.0 / 6.0,
-    lumpfactor=0.2,
-    maxpoint=1000,
-    symmetrization="Geometric",
-    calcType={"E","V"},
-    split=False,
-    **kwargs
+        rho,
+        x=1.0,
+        y=1.0,
+        sigma=None,
+        alpha=5.0 / 6.0,
+        beta=5.0 / 6.0,
+        lumpfactor=0.2,
+        maxpoint=1000,
+        symmetrization="Geometric",
+        calcType={"E", "V"},
+        split=False,
+        **kwargs
 ):
     return MGP(rho, x, y, sigma, alpha, beta, lumpfactor, maxpoint, "Geometric", calcType, split, **kwargs)

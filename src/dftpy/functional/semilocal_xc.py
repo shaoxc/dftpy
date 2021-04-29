@@ -1,9 +1,10 @@
 # Drivers for LibXC
 
 import numpy as np
+
 from dftpy.field import DirectField
-from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.functional.abstract_functional import AbstractFunctional
+from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.time_data import TimeData
 
 
@@ -324,7 +325,7 @@ def LDA(rho, calcType={"E", "V"}, **kwargs):
         )
         pot[rs2] += (
                             gamma[0] + (7.0 / 6.0 * gamma[0] * beta1[0]) * Rs2sqrt + (
-                                4.0 / 3.0 * gamma[0] * beta2[0] * Rs[rs2])
+                            4.0 / 3.0 * gamma[0] * beta2[0] * Rs[rs2])
                     ) / (1.0 + beta1[0] * Rs2sqrt + beta2[0] * Rs[rs2]) ** 2
         OutFunctional.potential = pot
     if "V2" in calcType:
@@ -336,7 +337,7 @@ def LDA(rho, calcType={"E", "V"}, **kwargs):
         tmpb = beta2[0] * Rs[rs2]
         deno = 1.0 + tmpa + tmpb
         fc[rs2] = gamma[0] / 36.0 * (
-                    5.0 * tmpa + 7.0 * tmpa * tmpa + 8.0 * tmpb + 16.0 * tmpb * tmpb + 21.0 * tmpa * tmpb) / deno / deno / deno
+                5.0 * tmpa + 7.0 * tmpa * tmpa + 8.0 * tmpb + 16.0 * tmpb * tmpb + 21.0 * tmpa * tmpb) / deno / deno / deno
         fc /= rho
 
         OutFunctional.v2rho2 = fx + fc

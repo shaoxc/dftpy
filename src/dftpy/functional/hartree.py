@@ -1,8 +1,9 @@
 # Hartree functional
 
 import numpy as np
-from dftpy.functional.functional_output import FunctionalOutput
+
 from dftpy.functional.abstract_functional import AbstractFunctional
+from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.time_data import TimeData
 
 
