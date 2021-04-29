@@ -1,4 +1,4 @@
-from typing import List
+from typing import Set
 
 import numpy as np
 
@@ -23,9 +23,14 @@ def WCDHCPotential(rho: DirectField, j: DirectField, rhotwothirds_cutoff: float 
     return np.pi ** (5.0 / 3.0) / (2.0 * 3.0 ** (2.0 / 3.0) * rhotwothirds) * temp.ifft(force_real=True)
 
 
-def WCDHC(rho: DirectField, j: DirectField, calcType: List[str], **kwargs) -> FunctionalOutput:
+def WCDHC(rho: DirectField, j: DirectField, calcType: Set[str], **kwargs) -> FunctionalOutput:
     functional = FunctionalOutput(name = "WCDHC")
     if "V" in calcType:
         functional.potential = WCDHCPotential(rho, j, **kwargs)
     return functional
 
+def nWCDHC(rho: DirectField, j: DirectField, calcType: Set[str], **kwargs) -> FunctionalOutput:
+    functional = FunctionalOutput(name = "nWCDHC")
+    if "V" in calcType:
+        functional.potential = -WCDHCPotential(rho, j, **kwargs)
+    return functional

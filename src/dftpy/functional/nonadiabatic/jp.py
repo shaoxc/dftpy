@@ -1,4 +1,4 @@
-from typing import List
+from typing import Set
 
 import numpy as np
 
@@ -59,7 +59,7 @@ def JP1Potential_alt(rho: DirectField, j: DirectField, cutoff: float = 1.0e-4, *
     return potential
 
 
-def JP1(rho: DirectField, j: DirectField, calcType: List[str], **kwargs) -> FunctionalOutput:
+def JP1(rho: DirectField, j: DirectField, calcType: Set[str], **kwargs) -> FunctionalOutput:
     functional = FunctionalOutput(name="JP1")
     if "V" in calcType:
         functional.potential = JP1Potential(rho, j, **kwargs)
