@@ -1,28 +1,29 @@
-import os
-import numpy as np
-from scipy.interpolate import splrep, splev
-import scipy.special as sp
 import importlib.util
+import os
+from abc import abstractmethod
 
-from dftpy.mpi import sprint
-from dftpy.field import ReciprocalField, DirectField
-from dftpy.functional_output import Functional
-from dftpy.constants import LEN_CONV, ENERGY_CONV
-from dftpy.ewald import CBspline
-from dftpy.time_data import TimeData
+import numpy as np
+import scipy.special as sp
+from scipy.interpolate import splrep, splev
+
 from dftpy.atom import Atom
-from abc import ABC, abstractmethod
+from dftpy.ewald import CBspline
+from dftpy.field import ReciprocalField, DirectField
+from dftpy.functional.abstract_functional import AbstractFunctional
+from dftpy.functional.functional_output import FunctionalOutput
+from dftpy.functional.pseudo.psp import PSP
+from dftpy.functional.pseudo.recpot import RECPOT
+from dftpy.functional.pseudo.upf import UPF, UPFJSON
+from dftpy.functional.pseudo.usp import USP
 from dftpy.grid import DirectGrid
 from dftpy.math_utils import quartic_interpolation
-from dftpy.pseudo.upf import UPF, UPFJSON
-from dftpy.pseudo.usp import USP
-from dftpy.pseudo.psp import PSP
-from dftpy.pseudo.recpot import RECPOT
+from dftpy.mpi import sprint
+from dftpy.time_data import TimeData
 
 
 # NEVER TOUCH THIS CLASS
 # NEVER TOUCH THIS CLASS
-class AbstractLocalPseudo(ABC):
+class AbstractLocalPseudo(AbstractFunctional):
     """
     This is a pseudo potential template class and should never be touched.
     """
@@ -32,7 +33,7 @@ class AbstractLocalPseudo(ABC):
         pass
 
     @abstractmethod
-    def __call__(self):
+    def compute(self):
         pass
 
     @abstractmethod
@@ -76,14 +77,17 @@ class LocalPseudo(AbstractLocalPseudo):
 
     def __init__(self, grid=None, ions=None, PP_list=None, PME=True, **kwargs):
 
+        self.type = 'PSEUDO'
+        self.name = 'PSEUDO'
+
         if PP_list is not None:
             self.PP_list = PP_list
         else:
             raise AttributeError("Must specify PP_list for Pseudopotentials")
         # Read PP first, then initialize other variables.
-        if grid is None :
+        if grid is None:
             comm = None
-        else :
+        else:
             comm = grid.mp.comm
         readPP = ReadPseudo(PP_list, comm=comm, **kwargs)
         self.readpp = readPP
@@ -91,7 +95,7 @@ class LocalPseudo(AbstractLocalPseudo):
         self.restart(grid, ions, full=True)
 
         # if not PME :
-            # sprint("Using N^2 method for strf!")
+        # sprint("Using N^2 method for strf!")
 
         self.usePME = PME
 
@@ -110,7 +114,7 @@ class LocalPseudo(AbstractLocalPseudo):
             self._gp = {}  # 1D PP grid g-space
             self._vp = {}  # PP on 1D PP grid
             self._vloc_interp = {}  # Interpolates recpot PP
-        self._vlines = {} # PP for each atomic species on 3D PW grid
+        self._vlines = {}  # PP for each atomic species on 3D PW grid
         self._v = None  # PP for atom on 3D PW grid
         self._vreal = None  # PP for atom on 3D real space
         self._ions = None
@@ -131,7 +135,7 @@ class LocalPseudo(AbstractLocalPseudo):
     def grid(self, value):
         if not isinstance(value, (DirectGrid)):
             raise TypeError("Grid must be DirectGrid")
-        self._grid= value
+        self._grid = value
 
     @property
     def ions(self):
@@ -145,28 +149,28 @@ class LocalPseudo(AbstractLocalPseudo):
         if not isinstance(value, (Atom)):
             raise TypeError("Ions must be an array of Atom classes")
         for key in set(value.labels[:]):
-            if key not in self.PP_list :
+            if key not in self.PP_list:
                 raise ValueError("There is no pseudopotential for {:4s} atom".format(key))
         self._ions = value
         # update Zval in ions
         self.readpp.get_Zval(self._ions)
 
-    def __call__(self, density=None, calcType={"E", "V"}, **kwargs):
+    def compute(self, density, calcType={"E", "V"}, **kwargs):
         if self._vreal is None:
             self.local_PP()
         pot = self._vreal
         if 'E' in calcType:
-            if density.rank > 1 :
-                rho = np.sum(density, axis = 0)
-            else :
+            if density.rank > 1:
+                rho = np.sum(density, axis=0)
+            else:
                 rho = density
             ene = np.einsum("ijk, ijk->", self._vreal, rho) * self.grid.dV
         else:
             ene = 0.0
 
-        if density.rank > 1 :
+        if density.rank > 1:
             pot = np.tile(pot, (density.rank, 1, 1, 1))
-        return Functional(name="eN", energy=ene, potential=pot)
+        return FunctionalOutput(name="eN", energy=ene, potential=pot)
 
     def local_PP(self, BsplineOrder=10):
         """
@@ -234,20 +238,20 @@ class LocalPseudo(AbstractLocalPseudo):
             reciprocal_grid = self.grid.get_reciprocal()
             q = reciprocal_grid.q
             vloc = np.empty_like(q)
-            for key in sorted(self._vloc_interp) :
+            for key in sorted(self._vloc_interp):
                 vloc_interp = self._vloc_interp[key]
                 vloc[:] = 0.0
                 mask = q < self._gp[key][-1]
                 vloc[mask] = splev(q[mask], vloc_interp, der=0)
                 # quartic interpolation for small q
-                #-----------------------------------------------------------------------
+                # -----------------------------------------------------------------------
                 mask = q < self._gp[key][1]
                 vp = self._vp[key]
-                dp = vp[1]-vp[0]
+                dp = vp[1] - vp[0]
                 f = [vp[2], vp[1], vp[0], vp[1], vp[2]]
-                dx = q[mask]/dp
+                dx = q[mask] / dp
                 vloc[mask] = quartic_interpolation(f, dx)
-                #-----------------------------------------------------------------------
+                # -----------------------------------------------------------------------
                 # mask[0, 0, 0] = False
                 # vloc[mask] = splev(q[mask], vloc_interp, der=0)-self.zval[key]/gg[mask]
                 self._vlines[key] = vloc.copy()
@@ -312,12 +316,12 @@ class LocalPseudo(AbstractLocalPseudo):
         return v
 
     def _Stress(self, density, energy=None):
-        if density.rank > 1 :
-            rho = np.sum(density, axis = 0)
-        else :
+        if density.rank > 1:
+            rho = np.sum(density, axis=0)
+        else:
             rho = density
         if energy is None:
-            energy = self(density=rho, calcType={"E"}).energy
+            energy = self(rho, calcType={"E"}).energy
         reciprocal_grid = self.grid.get_reciprocal()
         g = reciprocal_grid.g
         mask = reciprocal_grid.mask
@@ -338,9 +342,9 @@ class LocalPseudo(AbstractLocalPseudo):
         return stress
 
     def _Force(self, density):
-        if density.rank > 1 :
-            rho = np.sum(density, axis = 0)
-        else :
+        if density.rank > 1:
+            rho = np.sum(density, axis=0)
+        else:
             rho = density
         rhoG = rho.fft()
         reciprocal_grid = self.grid.get_reciprocal()
@@ -356,9 +360,9 @@ class LocalPseudo(AbstractLocalPseudo):
         return Forces
 
     def _ForcePME(self, density):
-        if density.rank > 1 :
-            rho = np.sum(density, axis = 0)
-        else :
+        if density.rank > 1:
+            rho = np.sum(density, axis=0)
+        else:
             rho = density
         rhoG = rho.fft()
         reciprocal_grid = self.grid.get_reciprocal()
@@ -397,17 +401,20 @@ class LocalPseudo(AbstractLocalPseudo):
                     ).reshape(-1)
                     l123A = np.mod(1 + np.floor(Up).astype(np.int32).reshape((3, 1)) - ixyzA, nrR.reshape((3, 1)))
                     mask = self.Bspline.get_Qarray_mask(l123A)
-                    Forces[i] = -np.sum(np.matmul(Q_derivativeA.T, cell_inv)[mask] * rhoPB[l123A[0][mask], l123A[1][mask], l123A[2][mask]][:, np.newaxis], axis=0)
+                    Forces[i] = -np.sum(np.matmul(Q_derivativeA.T, cell_inv)[mask] * rhoPB[
+                                                                                         l123A[0][mask], l123A[1][mask],
+                                                                                         l123A[2][mask]][:, np.newaxis],
+                                        axis=0)
         return Forces
 
     def _StressPME(self, density, energy=None):
-        if density.rank > 1 :
-            rho = np.sum(density, axis = 0)
-        else :
+        if density.rank > 1:
+            rho = np.sum(density, axis=0)
+        else:
             rho = density
 
         if energy is None:
-            energy = self(density=rho, calcType={"E"}).energy
+            energy = self(rho, calcType={"E"}).energy
         rhoG = rho.fft()
         reciprocal_grid = self.grid.get_reciprocal()
         g = reciprocal_grid.g
@@ -445,7 +452,7 @@ class ReadPseudo(object):
     Support class for LocalPseudo.
     """
 
-    def __init__(self, PP_list=None, MaxPoints = 10000, Gmax = 30, Gmin = 1E-4, Rmax = 10, comm = None):
+    def __init__(self, PP_list=None, MaxPoints=10000, Gmax=30, Gmin=1E-4, Rmax=10, comm=None):
         self._gp = {}  # 1D PP grid g-space
         self._vp = {}  # PP on 1D PP grid
         self._r = {}  # 1D PP grid r-space
@@ -458,7 +465,7 @@ class ReadPseudo(object):
         self.comm = comm
 
         for key in self.PP_list:
-            sprint("setting key: {} -> {}".format(key, self.PP_list[key]), comm = comm)
+            sprint("setting key: {} -> {}".format(key, self.PP_list[key]), comm=comm)
             if not os.path.isfile(self.PP_list[key]):
                 raise FileNotFoundError("'{}' PP file for atom type {} not found".format(self.PP_list[key], key))
             if PP_list[key].lower().endswith("recpot"):
@@ -466,15 +473,15 @@ class ReadPseudo(object):
             elif PP_list[key].lower().endswith(("usp", "uspcc", "uspso")):
                 self._init_PP_usp(key)
             elif PP_list[key].lower().endswith("upf"):
-                self._init_PP_upf(key, MaxPoints = MaxPoints, Gmax = Gmax, Gmin = Gmin)
+                self._init_PP_upf(key, MaxPoints=MaxPoints, Gmax=Gmax, Gmin=Gmin)
             elif PP_list[key].lower().endswith(("psp", "psp8")):
-                self._init_PP_psp(key, MaxPoints = MaxPoints, Gmax = Gmax, Gmin = Gmin)
+                self._init_PP_psp(key, MaxPoints=MaxPoints, Gmax=Gmax, Gmin=Gmin)
             else:
                 raise AttributeError("Pseudopotential not supported")
 
             self.get_vloc_interp(key)
 
-    def get_vloc_interp(self, key, k = 3):
+    def get_vloc_interp(self, key, k=3):
         """get the representation of PP
 
         Args:
@@ -486,22 +493,22 @@ class ReadPseudo(object):
 
     @staticmethod
     def _real2recip(r, v, zval, MaxPoints=10000, Gmax=30, Gmin=1E-4, method='simpson'):
-        gp = np.logspace(np.log10(Gmin), np.log10(Gmax), num = MaxPoints)
+        gp = np.logspace(np.log10(Gmin), np.log10(Gmax), num=MaxPoints)
         vp = np.empty_like(gp)
-        if method == 'simpson' :
+        if method == 'simpson':
             try:
-                #new version of scipy=1.6.0 change the name to simpson
+                # new version of scipy=1.6.0 change the name to simpson
                 from scipy.integrate import simpson
-            except Exception :
+            except Exception:
                 from scipy.integrate import simps as simpson
             vr = (v * r + zval) * r
             for k in range(1, len(gp)):
                 y = sp.spherical_jn(0, gp[k] * r) * vr
                 vp[k] = (4.0 * np.pi) * simpson(y, r)
             vp[0] = (4.0 * np.pi) * simpson(vr, r)
-        else :
+        else:
             dr = np.empty_like(r)
-            dr[1:] = r[1:]-r[:-1]
+            dr[1:] = r[1:] - r[:-1]
             dr[0] = r[0]
             vr = (v * r + zval) * r * dr
             for k in range(1, len(gp)):
@@ -512,11 +519,11 @@ class ReadPseudo(object):
 
     @staticmethod
     def _recip2real(gp, vp, MaxPoints=1001, Rmax=10, r=None):
-        if r is None :
+        if r is None:
             r = np.linspace(0, Rmax, MaxPoints)
         v = np.empty_like(r)
         dg = np.empty_like(gp)
-        dg[1:] = gp[1:]-gp[:-1]
+        dg[1:] = gp[1:] - gp[:-1]
         dg[0] = gp[0]
         vr = vp * gp * gp * dg
         for i in range(0, len(r)):
@@ -524,26 +531,26 @@ class ReadPseudo(object):
         return r, v
 
     @staticmethod
-    def _vloc2rho(r, v, r2 = None):
-        if r2 is None : r2 = r
+    def _vloc2rho(r, v, r2=None):
+        if r2 is None: r2 = r
         tck = splrep(r, v)
-        dv1 = splev(r2[1:], tck, der = 1)
-        dv2 = splev(r2[1:], tck, der = 2)
+        dv1 = splev(r2[1:], tck, der=1)
+        dv2 = splev(r2[1:], tck, der=2)
         rhop = np.empty_like(r2)
-        rhop[1:] = 1.0/(4 * np.pi) * (2.0/r2[1:] * dv1 + dv2)
+        rhop[1:] = 1.0 / (4 * np.pi) * (2.0 / r2[1:] * dv1 + dv2)
         rhop[0] = rhop[1]
         return rhop
 
     def get_Zval(self, ions):
-        for key in self._gp :
-                ions.Zval[key] = self._info[key].zval
+        for key in self._gp:
+            ions.Zval[key] = self._info[key].zval
         self.zval = ions.Zval.copy()
 
     def _self_energy(self, r, vr, rhop):
         dr = np.empty_like(r)
-        dr[1:] = r[1:]-r[:-1]
+        dr[1:] = r[1:] - r[:-1]
         dr[0] = r[0]
-        ene = np.sum(r *r * vr * rhop * dr) * 4 * np.pi
+        ene = np.sum(r * r * vr * rhop * dr) * 4 * np.pi
         # sprint('Ne ', np.sum(r *r * rhop * dr) * 4 * np.pi)
         return ene
 
@@ -568,21 +575,21 @@ class ReadPseudo(object):
         """
         has_xml = importlib.util.find_spec("xmltodict")
         has_json = importlib.util.find_spec("upf_to_json")
-        if has_xml :
-            try :
+        if has_xml:
+            try:
                 self._info[key] = UPF(self.PP_list[key])
-            except :
-                if has_json :
-                    try :
+            except:
+                if has_json:
+                    try:
                         self._info[key] = UPFJSON(self.PP_list[key])
-                    except :
+                    except:
                         raise ModuleNotFoundError("Please use standard 'UPF' file")
-        elif has_json :
-            try :
+        elif has_json:
+            try:
                 self._info[key] = UPFJSON(self.PP_list[key])
-            except :
+            except:
                 raise ModuleNotFoundError("Maybe you can try install xmltodict or use standard 'UPF' file")
-        else :
+        else:
             raise ModuleNotFoundError("Must pip install xmltodict or upf_to_json")
 
         self._r[key] = self._info[key].r

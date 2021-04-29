@@ -1,11 +1,9 @@
 # Collection of semilocal functionals
 
 import numpy as np
-from dftpy.functional_output import Functional
-# from dftpy.math_utils import PowerInt
-# from dftpy.time_data import TimeData
-# from dftpy.kedf.tf import TF
 import scipy.special as sp
+
+from dftpy.functional.functional_output import FunctionalOutput
 
 __all__ = ["GGA", "GGAFs", "GGA_KEDF_list", "GGAStress"]
 
@@ -79,7 +77,7 @@ def GGAStress(rho, functional="LKT", energy=None, potential=None, dFds2=None, **
     stress = np.zeros((3, 3))
 
     if potential is None:
-        gga = GGA(rho, functional=functional, calcType={"E","V"}, **kwargs)
+        gga = GGA(rho, functional=functional, calcType={"E", "V"}, **kwargs)
         energy = gga.energy
         potential = gga.potential
 
@@ -92,7 +90,7 @@ def GGAStress(rho, functional="LKT", energy=None, potential=None, dFds2=None, **
             stress[j, i] = stress[i, j]
 
 
-def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = None, **kwargs):
+def GGAFs(s, functional="LKT", calcType={"E", "V"}, params=None, gga_remove_vw=None, **kwargs):
     r"""
     ckf = (3\pi^2)^{1/3}
     cTF = (3/10) * (3\pi^2)^{2/3} = (3/10) * ckf^2
@@ -115,7 +113,7 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
         @article{garcia2007kinetic,
           title={Kinetic energy density study of some representative semilocal kinetic energy functionals}}
         @article{gotz2009performance,
-          title={Performance of kinetic energy functionals for interaction energies in a subsystem formulation of density functional theory}}
+          title={Performance of kinetic energy functional for interaction energies in a subsystem formulation of density functional theory}}
         @article{lacks1994tests,
           title = {Tests of nonlocal kinetic energy functionals}}
         @misc{hfofke,
@@ -133,16 +131,16 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
     dFds2 = np.empty_like(s)  # Actually, it's 1/s*dF/ds
 
     functional = functional.upper()
-    if functional not in GGA_KEDF_list :
+    if functional not in GGA_KEDF_list:
         raise AttributeError("%s GGA KEDF to be implemented" % functional)
 
     params0 = GGA_KEDF_list[functional]
 
-    if params is None :
+    if params is None:
         pass
     elif isinstance(params, (float, int)):
         params0[0] = params
-    else :
+    else:
         l = min(len(params), len(params0))
         params0[:l] = params[:l]
 
@@ -156,18 +154,20 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
         F[mask] = 1.0 / np.cosh(params[0] * ss[mask]) + 5.0 / 3.0 * (s2[mask]) * params[1]
         F[mask1] = 5.0 / 3.0 * (s2[mask1]) * params[1]
         F[mask2] = (
-            1.0 + (5.0 / 3.0 * params[1] - 0.5 * params[0] ** 2) * s2[mask2] + 5.0 / 24.0 * params[0] ** 4 * s2[mask2] ** 2
+                1.0 + (5.0 / 3.0 * params[1] - 0.5 * params[0] ** 2) * s2[mask2] + 5.0 / 24.0 * params[0] ** 4 * s2[
+            mask2] ** 2
         )  # - 61.0/720.0 * params[0] ** 6 * s2[mask2] ** 3
         if "V" in calcType:
             dFds2[mask] = (
-                10.0 / 3.0 * params[1] - params[0] * np.sinh(params[0] * ss[mask]) / np.cosh(params[0] * ss[mask]) ** 2 / ss[mask]
+                    10.0 / 3.0 * params[1] - params[0] * np.sinh(params[0] * ss[mask]) / np.cosh(
+                params[0] * ss[mask]) ** 2 / ss[mask]
             )
             dFds2[mask1] = 10.0 / 3.0 * params[1]
             dFds2[mask2] = (
-                10.0 / 3.0 * params[1]
-                - params[0] ** 2
-                + 5.0 / 6.0 * params[0] ** 4 * s2[mask2]
-                - 61.0 / 120.0 * params[0] ** 6 * s2[mask2] ** 2
+                    10.0 / 3.0 * params[1]
+                    - params[0] ** 2
+                    + 5.0 / 6.0 * params[0] ** 4 * s2[mask2]
+                    - 61.0 / 120.0 * params[0] ** 6 * s2[mask2] ** 2
             )
             dFds2 /= tkf0 ** 2
 
@@ -178,12 +178,12 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
         F = Fa / Fb
         if "V" in calcType:
             dFds2 = (36.0 * params[5] * x ** 3 + 3 * params[2] * x ** 2 + 2 * params[1] * x + params[0]) / Fb - Fa / (
-                Fb * Fb
+                    Fb * Fb
             ) * (3.0 * params[5] * x ** 2 + 2.0 * params[4] * x + params[3])
             dFds2 /= 36.0 * cTF
 
     elif (
-        functional == "LLP" or functional == "LLP91"
+            functional == "LLP" or functional == "LLP91"
     ):  # \cite{garcia2007kinetic} (9)[!x] \cite{gotz2009performance} (18)
         bs = b * s
         bs2 = bs * bs
@@ -192,7 +192,7 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
         F = 1.0 + Fa / Fb
         if "V" in calcType:
             dFds2 = 2.0 * params[0] / Fb - (
-                params[0] * params[1] * bs * np.arcsinh(bs) + Fa * params[1] / np.sqrt(1.0 + bs2)
+                    params[0] * params[1] * bs * np.arcsinh(bs) + Fa * params[1] / np.sqrt(1.0 + bs2)
             ) / (Fb * Fb)
             dFds2 *= b * b
 
@@ -211,24 +211,24 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2[mask] += params[0] / cTF / (1 + 4 * s[mask]) ** 2 / s[mask]
 
     elif (
-        functional == "T92" or functional == "THAK"
+            functional == "T92" or functional == "THAK"
     ):  # \cite{garcia2007kinetic} (12),\cite{gotz2009performance} (22), \cite{hfofke} (15)[!x]
         bs = b * s
         bs2 = bs * bs
         F = (
-            1.0
-            + params[0] * bs2 / (1.0 + params[1] * bs * np.arcsinh(bs))
-            - params[2] * bs / (1.0 + 2 ** (5.0 / 3.0) * bs)
+                1.0
+                + params[0] * bs2 / (1.0 + params[1] * bs * np.arcsinh(bs))
+                - params[2] * bs / (1.0 + 2 ** (5.0 / 3.0) * bs)
         )
         # F = 1.0 + params[0] * bs2 / (1.0 + params[1] * bs * np.arcsinh(bs)) - params[2] * bs / (1.0+ 2**2 * bs)
         if "V" in calcType:
             mask = s > tol2
             Fb = (1.0 + params[1] * bs * np.arcsinh(bs)) ** 2
             dFds2 = (
-                -(params[0] * params[1] * bs2) / np.sqrt(1 + bs2)
-                + (params[0] * params[1] * bs * np.arcsinh(bs))
-                + 2.0 * params[0]
-            ) / Fb
+                            -(params[0] * params[1] * bs2) / np.sqrt(1 + bs2)
+                            + (params[0] * params[1] * bs * np.arcsinh(bs))
+                            + 2.0 * params[0]
+                    ) / Fb
             dFds2[mask] -= params[2] / (1.0 + 2 ** (5.0 / 3.0) * bs[mask]) ** 2 / bs[mask]
             # dFds2[mask] -= params[2]/(1.0+4* bs[mask]) ** 2/bs[mask]
             dFds2 *= b * b
@@ -282,16 +282,16 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             Fa_s2 = (params[1] - params[2] * np.exp(-params[3] * s2)) - params[5] * s2
 
             dFds2 = 2.0 * (
-                params[1] + (params[3] * s2 - 1) * params[2] * np.exp(-params[3] * s2) - 4.0 * params[5] * s2
+                    params[1] + (params[3] * s2 - 1) * params[2] * np.exp(-params[3] * s2) - 4.0 * params[5] * s2
             ) / Fb - Fa_s2 * ss / (Fb * Fb) * (
-                (params[0] * params[4] * ss) / (params[4] ** 2 * s2 + 1)
-                + params[0] * np.arcsinh(params[4] * ss)
-                + 4.0 * params[5] * s2
-            )
+                            (params[0] * params[4] * ss) / (params[4] ** 2 * s2 + 1)
+                            + params[0] * np.arcsinh(params[4] * ss)
+                            + 4.0 * params[5] * s2
+                    )
             dFds2 /= tkf0 * tkf0
 
     elif (
-        functional == "PW91" or functional == "PW91k"
+            functional == "PW91" or functional == "PW91k"
     ):  # \cite{lacks1994tests} (16) and \cite{garcia2007kinetic} (17)[!x]
         ss = s / tkf0
         s2 = ss * ss
@@ -301,20 +301,20 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
         F = Fa / Fb
         if "V" in calcType:
             Fa_s = (
-                params[0] * params[4] * ss / np.sqrt(params[4] ** 2 * s2 + 1)
-                + params[0] * np.arcsinh(params[4] * ss)
-                + 2.0
-                * ss
-                * (
-                    params[1]
-                    + 2.0 * params[2] * params[3] * s2 * np.exp(-params[3] * s2)
-                    - 2.0 * params[2] * np.exp(-params[3] * s2)
-                )
+                    params[0] * params[4] * ss / np.sqrt(params[4] ** 2 * s2 + 1)
+                    + params[0] * np.arcsinh(params[4] * ss)
+                    + 2.0
+                    * ss
+                    * (
+                            params[1]
+                            + 2.0 * params[2] * params[3] * s2 * np.exp(-params[3] * s2)
+                            - 2.0 * params[2] * np.exp(-params[3] * s2)
+                    )
             )
 
             dFds2 = Fa_s / Fb - Fa / (Fb * Fb) * (
-                params[0] * params[4] * ss / np.sqrt(params[4] ** 2 * s2 + 1)
-                + (params[0] * np.arcsinh(params[4] * ss) + 4.0 * params[5] * s2 * ss)
+                    params[0] * params[4] * ss / np.sqrt(params[4] ** 2 * s2 + 1)
+                    + (params[0] * np.arcsinh(params[4] * ss) + 4.0 * params[5] * s2 * ss)
             )
 
             mask = s > tol2
@@ -334,22 +334,22 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
         F = (Fa / Fb) ** params[6]
         if "V" in calcType:
             dFds2 = (
-                -2
-                * params[6]
-                * F
-                * (
-                    1e-8 * Fa
-                    - Fb
+                    -2
+                    * params[6]
+                    * F
                     * (
-                        params[0]
-                        + 2 * params[1] * s2
-                        + 3 * params[2] * s4
-                        + 4 * params[3] * s6
-                        + 5 * params[4] * s8
-                        + 6 * params[5] * s10
+                            1e-8 * Fa
+                            - Fb
+                            * (
+                                    params[0]
+                                    + 2 * params[1] * s2
+                                    + 3 * params[2] * s4
+                                    + 4 * params[3] * s6
+                                    + 5 * params[4] * s8
+                                    + 6 * params[5] * s10
+                            )
                     )
-                )
-                / (Fa * Fb)
+                    / (Fa * Fb)
             )
             dFds2 /= tkf0 * tkf0
 
@@ -472,20 +472,20 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
         F = Fa / Fb
         if "V" in calcType:
             Fa_s = (
-                params[0] * params[4] * ss / np.sqrt(params[4] ** 2 * s2 + 1)
-                + params[0] * np.arcsinh(params[4] * ss)
-                + 2.0
-                * ss
-                * (
-                    params[1]
-                    + 2.0 * params[2] * params[3] * s2 * np.exp(-params[3] * s2)
-                    - 2.0 * params[2] * np.exp(-params[3] * s2)
-                )
+                    params[0] * params[4] * ss / np.sqrt(params[4] ** 2 * s2 + 1)
+                    + params[0] * np.arcsinh(params[4] * ss)
+                    + 2.0
+                    * ss
+                    * (
+                            params[1]
+                            + 2.0 * params[2] * params[3] * s2 * np.exp(-params[3] * s2)
+                            - 2.0 * params[2] * np.exp(-params[3] * s2)
+                    )
             )
 
             dFds2 = Fa_s / Fb - Fa / (Fb * Fb) * (
-                params[0] * params[4] * ss / np.sqrt(params[4] ** 2 * s2 + 1)
-                + (params[0] * np.arcsinh(params[4] * ss) + 4.0 * params[5] * s2 * ss)
+                    params[0] * params[4] * ss / np.sqrt(params[4] ** 2 * s2 + 1)
+                    + (params[0] * np.arcsinh(params[4] * ss) + 4.0 * params[5] * s2 * ss)
             )
 
             mask = s > tol2
@@ -498,18 +498,18 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
         s2[s2 < tol2] = tol2
         s4 = s2 * s2
         F = (
-            1.0
-            + 5.0 / 3.0 * s2
-            + params[0] * s2 * np.exp(-params[1] * s2) / (1 + params[0] * s2)
-            + (1 - np.exp(-params[1] * s4)) * (1.0 / s2 - 1.0)
+                1.0
+                + 5.0 / 3.0 * s2
+                + params[0] * s2 * np.exp(-params[1] * s2) / (1 + params[0] * s2)
+                + (1 - np.exp(-params[1] * s4)) * (1.0 / s2 - 1.0)
         )
         if "V" in calcType:
             dFds2 = (
-                10.0 / 3.0
-                + 2.0 * params[0] * np.exp(-params[1] * s2) * (1.0 - params[1] * s2) / (1 + params[0] * s2)
-                - 2.0 * params[0] * s2 * np.exp(-params[1] * s2) / (1 + params[0] * s2) ** 2
-                + 4.0 * params[1] * s2 * (1.0 / s2 - 1.0) * np.exp(-params[1] * s4)
-                - 2.0 * (1 - np.exp(-params[1] * s4)) / (s4)
+                    10.0 / 3.0
+                    + 2.0 * params[0] * np.exp(-params[1] * s2) * (1.0 - params[1] * s2) / (1 + params[0] * s2)
+                    - 2.0 * params[0] * s2 * np.exp(-params[1] * s2) / (1 + params[0] * s2) ** 2
+                    + 4.0 * params[1] * s2 * (1.0 / s2 - 1.0) * np.exp(-params[1] * s4)
+                    - 2.0 * (1 - np.exp(-params[1] * s4)) / (s4)
             )
 
             dFds2 /= tkf0 * tkf0
@@ -532,9 +532,9 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
         F = Fa / Fb + 5.0 / 3.0 * s2
         if "V" in calcType:
             dFds2 = (
-                (2.0 * coef[1]+4.0 * coef[2] * s2) / Fb
-                - Fa * (2 * coef[3] + 4 * coef[4] * s2 + 6 * coef[5] * s4) / (Fb * Fb)
-                + 10.0 / 3.0
+                    (2.0 * coef[1] + 4.0 * coef[2] * s2) / Fb
+                    - Fa * (2 * coef[3] + 4 * coef[4] * s2 + 6 * coef[5] * s4) / (Fb * Fb)
+                    + 10.0 / 3.0
             )
             dFds2 /= tkf0 * tkf0
 
@@ -551,34 +551,34 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
         s2 = ss * ss
         s4 = s2 * s2
         s6 = s4 * s2
-        ms = 1.0/(1.0+alpha * s2)
+        ms = 1.0 / (1.0 + alpha * s2)
         Fa = coef[0] + coef[1] * s2 + coef[2] * s4
         Fb = coef[0] + coef[3] * s2 + coef[4] * s4 + coef[5] * s6
         F = Fa / Fb + 5.0 / 3.0 * s2 * ms
         if "V" in calcType:
             dFds2 = (
-                (2.0 * coef[1]+4.0 * coef[2] * s2) / Fb
-                - Fa * (2 * coef[3] + 4 * coef[4] * s2 + 6 * coef[5] * s4) / (Fb * Fb)
-                + 10.0 / 3.0 * (ms - alpha * s2 * ms * ms)
+                    (2.0 * coef[1] + 4.0 * coef[2] * s2) / Fb
+                    - Fa * (2 * coef[3] + 4 * coef[4] * s2 + 6 * coef[5] * s4) / (Fb * Fb)
+                    + 10.0 / 3.0 * (ms - alpha * s2 * ms * ms)
             )
             dFds2 /= tkf0 * tkf0
 
     elif functional == "SMP":  # test functional
         ss = s / tkf0
         s2 = ss * ss
-        F = 5.0 / 3.0 * s2 + sp.erfc(s2/params[0])
+        F = 5.0 / 3.0 * s2 + sp.erfc(s2 / params[0])
         mask = ss > 1e-5
         # mask1 = np.invert(mask)
         if "V" in calcType:
             dFds2[:] = 10.0 / 3.0
-            dFds2[mask] += 2/np.sqrt(np.pi) * np.exp(-(s2[mask]/params[0])**2) / ss[mask]
+            dFds2[mask] += 2 / np.sqrt(np.pi) * np.exp(-(s2[mask] / params[0]) ** 2) / ss[mask]
             dFds2 /= tkf0 ** 2
 
-    elif functional == "TF" :
+    elif functional == "TF":
         F = np.ones_like(s)
         dFds2 = np.zeros_like(F)
 
-    elif functional == "VW" :
+    elif functional == "VW":
         ss = s / tkf0
         s2 = ss * ss
         F = 5.0 / 3.0 * params[0] * s2
@@ -586,7 +586,7 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2[:] = 10.0 / 3.0 * params[0]
             dFds2 /= tkf0 ** 2
 
-    elif functional == "X_TF_Y_VW" or functional == "TFVW" :
+    elif functional == "X_TF_Y_VW" or functional == "TFVW":
         ss = s / tkf0
         s2 = ss * ss
         F = params[0] + 5.0 / 3.0 * params[1] * s2
@@ -594,13 +594,13 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2[:] = 10.0 / 3.0 * params[1]
             dFds2 /= tkf0 ** 2
 
-    elif functional == "STV" :
+    elif functional == "STV":
         ss = s / tkf0
         s2 = ss * ss
         Fb = params[3] + params[2] * s2
         F = params[0] + 5.0 / 3.0 * params[1] * s2 / Fb
-        if "V" in calcType :
-            dFds2[:] = 5.0 / 3.0 * params[1] * (2.0/Fb - 2.0 * s2 * params[2]/(Fb * Fb))
+        if "V" in calcType:
+            dFds2[:] = 5.0 / 3.0 * params[1] * (2.0 / Fb - 2.0 * s2 * params[2] / (Fb * Fb))
             dFds2 /= tkf0 ** 2
 
     elif functional == "PBE2M":  #
@@ -613,7 +613,7 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
             dFds2 = 2.0 * params[2] / (Fb * Fb)
             dFds2 /= tkf0 * tkf0
 
-    elif functional == "TEST-TF-APBEK" :
+    elif functional == "TEST-TF-APBEK":
         ss = s / tkf0
         s2 = ss * ss
 
@@ -625,14 +625,14 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
         if "V" in calcType:
             dFds2_rest = 2.0 * params[1] / (Fb * Fb)
 
-            dFds2 = (1.0 - Fx) * dFds2_rest - dFds2 * Fa/Fb
+            dFds2 = (1.0 - Fx) * dFds2_rest - dFds2 * Fa / Fb
 
             dFds2 /= tkf0 ** 2
-    #-----------------------------------------------------------------------
-    if gga_remove_vw is not None and gga_remove_vw :
+    # -----------------------------------------------------------------------
+    if gga_remove_vw is not None and gga_remove_vw:
         if isinstance(gga_remove_vw, (int, float)):
             pa = float(gga_remove_vw)
-        else :
+        else:
             pa = 1.0
         ss = s / tkf0
         s2 = ss * ss
@@ -642,7 +642,8 @@ def GGAFs(s, functional="LKT", calcType={"E","V"}, params=None, gga_remove_vw = 
 
     return F, dFds2
 
-def _GGAFx(ss, s2, functional="LKT", calcType={"E","V"}, params=None, **kwargs):
+
+def _GGAFx(ss, s2, functional="LKT", calcType={"E", "V"}, params=None, **kwargs):
     if not params:
         params = [1.3]
     mask1 = ss > 100.0
@@ -652,21 +653,21 @@ def _GGAFx(ss, s2, functional="LKT", calcType={"E","V"}, params=None, **kwargs):
     Fx = np.empty_like(ss)  # Interpolating function
     Fx[mask] = 1.0 / np.cosh(params[0] * ss[mask])
     Fx[mask1] = 0.0
-    Fx[mask2] = 1.0 -0.5 * params[0] ** 2 * s2[mask2] + 5.0 / 24.0 * params[0] ** 4 * s2[mask2] ** 2
+    Fx[mask2] = 1.0 - 0.5 * params[0] ** 2 * s2[mask2] + 5.0 / 24.0 * params[0] ** 4 * s2[mask2] ** 2
 
     if "V" in calcType:
         dFds2 = np.empty_like(ss)  # Interpolating function
         dFds2[mask] = - params[0] * np.sinh(params[0] * ss[mask]) / np.cosh(params[0] * ss[mask]) ** 2 / ss[mask]
         dFds2[mask1] = 0.0
         dFds2[mask2] = (- params[0] ** 2 + 5.0 / 6.0 * params[0] ** 4 * s2[mask2]
-            - 61.0 / 120.0 * params[0] ** 6 * s2[mask2] ** 2)
-    else :
+                        - 61.0 / 120.0 * params[0] ** 6 * s2[mask2] ** 2)
+    else:
         dFds2 = None
 
     return Fx, dFds2
 
 
-def GGA(rho, functional="LKT", calcType={"E","V"}, split=False, params = None, **kwargs):
+def GGA(rho, functional="LKT", calcType={"E", "V"}, split=False, params=None, **kwargs):
     """
     Interface to compute GGAs internally to DFTpy.
     This is the default way, even though DFTpy can generate some of the GGAs with LibXC.
@@ -694,17 +695,17 @@ def GGA(rho, functional="LKT", calcType={"E","V"}, split=False, params = None, *
     rhoGrad = []
     for i in range(3):
         # item = (1j * g[i] * rhoG).ifft(force_real=True)
-        if sigma is None :
+        if sigma is None:
             grhoG = g[i] * rhoG * 1j
-        else :
-            grhoG = g[i] * rhoG * np.exp(-q*(sigma)**2/4.0) * 1j
+        else:
+            grhoG = g[i] * rhoG * np.exp(-q * (sigma) ** 2 / 4.0) * 1j
         item = (grhoG).ifft(force_real=True)
         rhoGrad.append(item)
     s = np.sqrt(rhoGrad[0] ** 2 + rhoGrad[1] ** 2 + rhoGrad[2] ** 2) / rho43
-    F, dFds2 = GGAFs(s, functional=functional, calcType=calcType, params = params, **kwargs)
-    OutFunctional = Functional(name="GGA-" + str(functional))
+    F, dFds2 = GGAFs(s, functional=functional, calcType=calcType, params=params, **kwargs)
+    OutFunctional = FunctionalOutput(name="GGA-" + str(functional))
 
-    if 'E' in calcType or 'D' in calcType :
+    if 'E' in calcType or 'D' in calcType:
         energydensity = tf * F
         if 'D' in calcType:
             OutFunctional.energydensity = energydensity
@@ -726,9 +727,11 @@ def GGA(rho, functional="LKT", calcType={"E","V"}, split=False, params = None, *
     return OutFunctional
 
     # def laplacian(self, check_real = False, force_real = False, sigma = 0.025):
-def get_gga_p(rho, calcType=["E","V"], params = None, **kwargs):
+
+
+def get_gga_p(rho, calcType=["E", "V"], params=None, **kwargs):
     sigma = kwargs.get('sigma', None)
     rho53 = rho ** (5.0 / 3.0)
     tkf0 = 2.0 * (3.0 * np.pi ** 2) ** (1.0 / 3.0)
-    p = rho.laplacian(sigma = sigma)/(tkf0**2*rho53)
+    p = rho.laplacian(sigma=sigma) / (tkf0 ** 2 * rho53)
     return p

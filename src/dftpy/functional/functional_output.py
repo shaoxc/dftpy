@@ -1,12 +1,11 @@
 # Class handling output of functional evaluations
-from dftpy.field import DirectField, ReciprocalField
-
 # general python imports
-import numpy as np
 import copy
 
+from dftpy.field import DirectField, ReciprocalField
 
-class Functional(object):
+
+class FunctionalOutput(object):
     """
     Object handling DFT functional output
     
@@ -27,7 +26,8 @@ class Functional(object):
         be populated only if the functional is nonlocal
     """
 
-    def __init__(self, name=None, energy=None, potential=None, energydensity=None, v2rho2=None, v3rho3=None, v4rho4=None, force=None, stress=None):
+    def __init__(self, name=None, energy=None, potential=None, energydensity=None, v2rho2=None, v3rho3=None,
+                 v4rho4=None, force=None, stress=None):
 
         args = locals()
 
@@ -37,14 +37,14 @@ class Functional(object):
             elif key == "name":
                 raise AttributeError("Functional name must be specified")
         self.attr_list = [
-        'energy',
-        'potential',
-        'energydensity',
-        'v2rho2',
-        'v3rho3',
-        'v4rho4',
-        'force',
-        'stress',
+            'energy',
+            'potential',
+            'energydensity',
+            'v2rho2',
+            'v3rho3',
+            'v4rho4',
+            'force',
+            'stress',
         ]
 
     def __iter__(self):
@@ -57,7 +57,7 @@ class Functional(object):
             name = self.name
         else:
             name = self.name + other.name
-        result = Functional(name=name)
+        result = FunctionalOutput(name=name)
         for key, value in self:
             if hasattr(other, key):
                 setattr(result, key, value + getattr(other, key))
@@ -83,7 +83,7 @@ class Functional(object):
     def mul(self, x):
         result = self.copy()
         for key, value in result:
-            setattr(result, key, value*x)
+            setattr(result, key, value * x)
         return result
 
     def div(self, x):
@@ -91,7 +91,7 @@ class Functional(object):
             raise ValueError("Dividing zero")
         result = self.copy()
         for key, value in result:
-            setattr(result, key, value/x)
+            setattr(result, key, value / x)
         return result
 
     def __add__(self, other):

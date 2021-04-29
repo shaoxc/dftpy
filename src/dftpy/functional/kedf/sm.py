@@ -1,7 +1,8 @@
 import numpy as np
+
+from dftpy.functional.functional_output import FunctionalOutput
+from dftpy.functional.kedf.kernel import SMKernel
 from dftpy.mpi import sprint
-from dftpy.functional_output import Functional
-from dftpy.kedf.kernel import SMKernel
 from dftpy.time_data import TimeData
 
 """
@@ -12,6 +13,7 @@ Tips : In the SM paper, $\Delta\rho = \rho - \rho_{0}$, but $\Delta\rho^{\alpha}
 """
 
 __all__ = ["SM", "SMStress"]
+
 
 def SMPotential2(rho, rho0, Kernel, alpha=0.5, beta=0.5):
     # alpha equal beta
@@ -61,6 +63,7 @@ def SMPotential(rho, rho0, Kernel, alpha=0.5, beta=0.5):
     pot = fac * rhoDAlpha1 * (rhoDBeta.fft() * Kernel).ifft(force_real=True)
     return pot
 
+
 def SMEnergyDensity(rho, rho0, Kernel, alpha=0.5, beta=0.5):
     rhoDAlpha = rho ** alpha - rho0 ** alpha
     rhoDBeta = rhoDAlpha
@@ -69,6 +72,7 @@ def SMEnergyDensity(rho, rho0, Kernel, alpha=0.5, beta=0.5):
     energydensity = pot * rhoDAlpha
 
     return energydensity
+
 
 def SMEnergy(rho, rho0, Kernel, alpha=0.5, beta=0.5):
     rhoDAlpha = rho ** alpha - rho0 ** alpha
@@ -84,15 +88,16 @@ def SMStress(rho, energy=None):
     pass
 
 
-def SM(rho, x=1.0, y=1.0, sigma=None, alpha=0.5, beta=0.5, rho0=None, calcType={"E","V"}, split=False, ke_kernel_saved = None, **kwargs):
+def SM(rho, x=1.0, y=1.0, sigma=None, alpha=0.5, beta=0.5, rho0=None, calcType={"E", "V"}, split=False,
+       ke_kernel_saved=None, **kwargs):
     TimeData.Begin("SM")
     # alpha = beta = 5.0/6.0
     q = rho.grid.get_reciprocal().q
     if rho0 is None:
         rho0 = rho.amean()
-    if ke_kernel_saved is None :
+    if ke_kernel_saved is None:
         KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
-    else :
+    else:
         KE_kernel_saved = ke_kernel_saved
     if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
         sprint("Re-calculate KE_kernel", comm=rho.mp.comm, level=1)
@@ -103,11 +108,11 @@ def SM(rho, x=1.0, y=1.0, sigma=None, alpha=0.5, beta=0.5, rho0=None, calcType={
     else:
         KE_kernel = KE_kernel_saved["Kernel"]
 
-    NL = Functional(name="NL")
+    NL = FunctionalOutput(name="NL")
 
-    if "E" in calcType or "D" in calcType :
+    if "E" in calcType or "D" in calcType:
         energydensity = SMEnergyDensity(rho, rho0, KE_kernel, alpha, beta)
-        if 'D' in calcType :
+        if 'D' in calcType:
             NL.energydensity = energydensity
         NL.energy = energydensity.sum() * rho.grid.dV
 

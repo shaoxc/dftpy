@@ -1,8 +1,9 @@
 import numpy as np
-from dftpy.mpi import sprint
+
+from dftpy.functional.functional_output import FunctionalOutput
+from dftpy.functional.kedf.kernel import SMKernel, WTKernel
 from dftpy.math_utils import PowerInt
-from dftpy.functional_output import Functional
-from dftpy.kedf.kernel import SMKernel, WTKernel
+from dftpy.mpi import sprint
 from dftpy.time_data import TimeData
 
 """
@@ -12,15 +13,16 @@ J. Phys. : Condens. Matter 6, 431 (1994).
 
 __all__ = ["FP", "FPStress"]
 
+
 def FPPotentialEnergy(rho, rho0, Kernel, alpha=1.0, beta=1.0):
     nu = 5.0 / np.sqrt(32.0)
     rhoFiveSixth = PowerInt(rho, 5, 6)
     nuMinus1 = nu - 1.0
     Prho = (nu - (nuMinus1 * rho0) / rho) * (rhoFiveSixth - rho0 ** (5.0 / 6.0))
     dPrho = (
-        rho0 ** (11.0 / 6.0) * (1 - nu)
-        + (1.0 / 6.0 * rho0 * nuMinus1 * rhoFiveSixth)
-        + (5.0 / 6.0 * nu * rho * rhoFiveSixth)
+            rho0 ** (11.0 / 6.0) * (1 - nu)
+            + (1.0 / 6.0 * rho0 * nuMinus1 * rhoFiveSixth)
+            + (5.0 / 6.0 * nu * rho * rhoFiveSixth)
     )
     dPrho /= rho * rho
     pot = (Prho.fft() * Kernel).ifft(force_real=True)
@@ -35,9 +37,9 @@ def FPPotential(rho, rho0, Kernel, alpha=1.0, beta=1.0):
     nuMinus1 = nu - 1.0
     Prho = (nu - (nuMinus1 * rho0) / rho) * (rhoFiveSixth - rho0 ** (5.0 / 6.0))
     dPrho = (
-        rho0 ** (11.0 / 6.0) * (1 - nu)
-        + (1.0 / 6.0 * rho0 * nuMinus1 * rhoFiveSixth)
-        + (5.0 / 6.0 * nu * rho * rhoFiveSixth)
+            rho0 ** (11.0 / 6.0) * (1 - nu)
+            + (1.0 / 6.0 * rho0 * nuMinus1 * rhoFiveSixth)
+            + (5.0 / 6.0 * nu * rho * rhoFiveSixth)
     )
     dPrho /= rho * rho
     pot = 2.0 * dPrho * (Prho.fft() * Kernel).ifft(force_real=True)
@@ -60,14 +62,14 @@ def FPStress(rho, energy=None):
     pass
 
 
-def FP_origin(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType={"E","V"},
-        ke_kernel_saved = None, **kwargs):
+def FP_origin(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType={"E", "V"},
+              ke_kernel_saved=None, **kwargs):
     TimeData.Begin("FP")
     q = rho.grid.get_reciprocal().q
     rho0 = rho.amean()
-    if ke_kernel_saved is None :
+    if ke_kernel_saved is None:
         KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
-    else :
+    else:
         KE_kernel_saved = ke_kernel_saved
     if abs(KE_kernel_saved["rho0"] - rho0) > 1e-10 or np.shape(rho) != KE_kernel_saved["shape"]:
         sprint("Re-calculate KE_kernel", comm=rho.mp.comm, level=1)
@@ -96,22 +98,22 @@ def FP_origin(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType={"E",
         dPrho = 5.0 / 6.0 * (nu - (nuMinus1 * rho0) / rho) * rhoFiveSixth / rho
         pot *= 2.0 * dPrho
 
-    OutFunctional = Functional(name="FP")
+    OutFunctional = FunctionalOutput(name="FP")
     OutFunctional.potential = pot
     OutFunctional.energy = ene
     TimeData.End("FP")
     return OutFunctional
 
 
-def FP0(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType={"E","V"}, split=False,
-        ke_kernel_saved = None, **kwargs):
+def FP0(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType={"E", "V"}, split=False,
+        ke_kernel_saved=None, **kwargs):
     TimeData.Begin("FP")
     # Only performed once for each grid
     q = rho.grid.get_reciprocal().q
     rho0 = rho.amean()
-    if ke_kernel_saved is None :
+    if ke_kernel_saved is None:
         KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
-    else :
+    else:
         KE_kernel_saved = ke_kernel_saved
     if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
         sprint("Re-calculate KE_kernel", comm=rho.mp.comm, level=1)
@@ -140,19 +142,19 @@ def FP0(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType={"E","V"}, 
         # dPrho = 5.0/6.0 * Mr * rhoFiveSixth/rho;# pot *= 2.0 * dPrho
         pot *= (5.0 / 3.0) * Mr * rhoFiveSixth / rho
 
-    NL = Functional(name="NL", potential=pot, energy=ene)
+    NL = FunctionalOutput(name="NL", potential=pot, energy=ene)
     return NL
 
 
-def FP(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, rho0=None, calcType={"E","V"}, split=False,
-        ke_kernel_saved = None, **kwargs):
+def FP(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, rho0=None, calcType={"E", "V"}, split=False,
+       ke_kernel_saved=None, **kwargs):
     TimeData.Begin("FP")
     q = rho.grid.get_reciprocal().q
     if rho0 is None:
         rho0 = rho.amean()
-    if ke_kernel_saved is None :
+    if ke_kernel_saved is None:
         KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
-    else :
+    else:
         KE_kernel_saved = ke_kernel_saved
     if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
         sprint("Re-calculate KE_kernel", comm=rho.mp.comm, level=1)
@@ -175,11 +177,11 @@ def FP(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, rho0=None, calcType={
     Prho = Mr * rhoFiveSixth
     pot = (Prho.fft() * KE_kernel).ifft(force_real=True)
     # -----------------------------------------------------------------------
-    NL = Functional(name="NL")
+    NL = FunctionalOutput(name="NL")
 
-    if "E" in calcType or "D" in calcType :
+    if "E" in calcType or "D" in calcType:
         energydensity = pot * Prho
-        if 'D' in calcType :
+        if 'D' in calcType:
             NL.energydensity = energydensity
         NL.energy = energydensity.sum() * rho.grid.dV
 
