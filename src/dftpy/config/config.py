@@ -82,6 +82,14 @@ def ConfSpecialFormat(conf):
     if 'CONFDICT' in conf :
         del conf['CONFDICT']
 
+    for key in conf :
+        conf[key].pop('Comment', None)
+        conf[key].pop('comment', None)
+        conf[key].pop('Note', None)
+        conf[key].pop('note', None)
+        conf[key].pop('Warning', None)
+        conf[key].pop('warning', None)
+
     return conf
 
 

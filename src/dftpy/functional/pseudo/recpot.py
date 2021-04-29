@@ -1,9 +1,9 @@
 import numpy as np
 
-from dftpy.mpi import sprint
 from dftpy.constants import LEN_CONV, ENERGY_CONV
 
-class RECPOT :
+
+class RECPOT:
     def __init__(self, fname):
         self.fname = fname
         self.read(fname)
@@ -23,13 +23,13 @@ class RECPOT :
             line = lines[i]
             if "END COMMENT" in line:
                 ibegin = i + 3
-            elif ibegin > 1 and (line.strip() == "1000" or len(line.strip()) == 1) :
+            elif ibegin > 1 and (line.strip() == "1000" or len(line.strip()) == 1):
                 iend = i
                 break
 
         line = " ".join([line.strip() for line in lines[ibegin:iend]])
 
-        if "1000" in lines[iend] or len(lines[iend].strip()) == 1 :
+        if "1000" in lines[iend] or len(lines[iend].strip()) == 1:
             pass
         else:
             raise AttributeError("Error : Check the PP file : {}".format(fname))

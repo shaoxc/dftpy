@@ -1,14 +1,20 @@
 import numpy as np
-from dftpy.mpi import sprint
+
+from dftpy.constants import ZERO
 from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.functional.kedf.kernel import WTKernel, LindhardDerivative
+from dftpy.mpi import sprint
 from dftpy.time_data import TimeData
 
 __all__ = ["WT", "WTStress"]
 
+
 def WTPotential(rho, rho0, Kernel, alpha, beta):
     alphaMinus1 = alpha - 1.0
     betaMinus1 = beta - 1.0
+    mask = rho < ZERO
+    rho_saved = rho[mask]
+    rho[mask] = ZERO
     if abs(beta - alpha) < 1e-9:
         rhoBeta = rho ** beta
         rhoAlpha1 = rhoBeta / rho
@@ -17,6 +23,7 @@ def WTPotential(rho, rho0, Kernel, alpha, beta):
     else:
         pot = alpha * rho ** alphaMinus1 * ((rho ** beta).fft() * Kernel).ifft(force_real=True)
         pot += beta * rho ** betaMinus1 * ((rho ** alpha).fft() * Kernel).ifft(force_real=True)
+    rho[mask] = rho_saved
 
     return pot
 
@@ -33,7 +40,11 @@ def WTEnergy(rho, rho0, Kernel, alpha, beta):
     energy = energydensity.sum() * rho.grid.dV
     return energy
 
+
 def WTEnergyDensity(rho, rho0, Kernel, alpha, beta):
+    mask = rho < ZERO
+    rho_saved = rho[mask]
+    rho[mask] = ZERO
     rhoBeta = rho ** beta
     if abs(beta - alpha) < 1e-9:
         rhoAlpha = rhoBeta
@@ -41,24 +52,25 @@ def WTEnergyDensity(rho, rho0, Kernel, alpha, beta):
         rhoAlpha = rho ** alpha
     pot1 = (rhoBeta.fft() * Kernel).ifft(force_real=True)
     energydensity = pot1 * rhoAlpha
+    rho[mask] = rho_saved
     return energydensity
 
 
 def WTStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, energy=None,
-        ke_kernel_saved = None, **kwargs):
+             ke_kernel_saved=None, **kwargs):
     rho0 = rho.amean()
     g = rho.grid.get_reciprocal().g
     invgg = rho.grid.get_reciprocal().invgg
     q = rho.grid.get_reciprocal().q
     if energy is None:
-        if ke_kernel_saved is None :
+        if ke_kernel_saved is None:
             KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
-        else :
+        else:
             KE_kernel_saved = ke_kernel_saved
         if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
             sprint('Re-calculate KE_kernel', level=1)
             # KE_kernel = WTkernel(q, rho0, alpha=alpha, beta=beta)
-            KE_kernel = WTKernel(q, rho0, x=x, y=1.0, alpha=alpha, beta=beta) # always remove whole vW
+            KE_kernel = WTKernel(q, rho0, x=x, y=1.0, alpha=alpha, beta=beta)  # always remove whole vW
             KE_kernel_saved["Kernel"] = KE_kernel
             KE_kernel_saved["rho0"] = rho0
             KE_kernel_saved["shape"] = np.shape(rho)
@@ -89,21 +101,21 @@ def WTStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, ene
     return stress
 
 
-def WT(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, rho0=None, calcType={"E","V"}, split=False,
-        ke_kernel_saved = None, **kwargs):
+def WT(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, rho0=None, calcType={"E", "V"}, split=False,
+       ke_kernel_saved=None, **kwargs):
     TimeData.Begin("WT")
     q = rho.grid.get_reciprocal().q
     if rho0 is None:
         rho0 = rho.amean()
 
-    if ke_kernel_saved is None :
+    if ke_kernel_saved is None:
         KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
-    else :
+    else:
         KE_kernel_saved = ke_kernel_saved
     if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
         sprint("Re-calculate KE_kernel", np.shape(rho), level=1)
         # KE_kernel = WTKernel(q, rho0, x=x, y=y, alpha=alpha, beta=beta)
-        KE_kernel = WTKernel(q, rho0, x=x, y=1.0, alpha=alpha, beta=beta) # always remove whole vW
+        KE_kernel = WTKernel(q, rho0, x=x, y=1.0, alpha=alpha, beta=beta)  # always remove whole vW
         KE_kernel_saved["Kernel"] = KE_kernel
         KE_kernel_saved["rho0"] = rho0
         KE_kernel_saved["shape"] = np.shape(rho)
@@ -121,7 +133,7 @@ def WT(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, rho0=None
             energydensity = pot * rho / (2 * alpha)
         else:
             energydensity = WTEnergyDensity(rho, rho0, KE_kernel, alpha, beta)
-        if 'D' in calcType :
+        if 'D' in calcType:
             NL.energydensity = energydensity
         NL.energy = energydensity.sum() * rho.grid.dV
 

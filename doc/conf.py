@@ -1,7 +1,6 @@
 import sys
 import sphinx_rtd_theme
-
-project = 'dftpy'
+project = 'DFTpy'
 copyright = '2019, Pavanello Research Group'
 author = 'Pavanello Research Group'
 release = '0.0.1'

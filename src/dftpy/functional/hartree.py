@@ -1,8 +1,9 @@
 # Hartree functional
 
 import numpy as np
-from dftpy.functional.functional_output import FunctionalOutput
+
 from dftpy.functional.abstract_functional import AbstractFunctional
+from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.time_data import TimeData
 
 
@@ -12,7 +13,8 @@ class Hartree(AbstractFunctional):
         self.type = 'HARTREE'
         self.name = 'HARTREE'
 
-    def compute(self, density, calcType={"E", "V"}, **kwargs):
+    @classmethod
+    def compute(cls, density, calcType={"E", "V"}, **kwargs):
         TimeData.Begin("Hartree_Func")
         invgg = density.grid.get_reciprocal().invgg
         if density.rank > 1:
