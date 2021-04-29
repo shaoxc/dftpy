@@ -409,15 +409,15 @@ class MIXGGAS:
         self.rhomax = rhomax
         self.name = name
 
-    def __call__(self, density, calcType=["E","V"], **kwargs):
+    def __call__(self, density, calcType={"E","V"}, **kwargs):
         return self.compute(density, calcType=calcType, **kwargs)
 
-    def compute(self, density, calcType=["E","V"], **kwargs):
-        calcType = ["E","V"]
+    def compute(self, density, calcType={"E","V"}, **kwargs):
+        calcType = {"E","V"}
         if 'V' in calcType :
-            calc = ['D', 'V']
+            calc = {'D', 'V'}
         elif 'E' in calcType :
-            calc = ['D']
+            calc = {'D'}
 
         func_stv = self.stv(density, calcType = calc, **kwargs)
 
@@ -442,7 +442,7 @@ class MIXGGAS:
 
         return obj
 
-    def interpfunc(self, rho, calcType=["E","V"], func = 'tanh', **kwargs):
+    def interpfunc(self, rho, calcType={"E","V"}, func = 'tanh', **kwargs):
         if self.rhomax is None or self.rhomax < 1E-30 :
             self.interpolate_f = 1.0
             self.interpolate_df = 0.0
@@ -456,7 +456,7 @@ class MIXGGAS:
                 self.interp_linear(rho, calcType=calcType, **kwargs)
         return
 
-    def interp_tanh(self, rho, calcType=["E","V"], **kwargs):
+    def interp_tanh(self, rho, calcType={"E","V"}, **kwargs):
         # x = -2 * np.abs(rho/self.rhomax)
         # ex = np.exp(x)
         # self.interpolate_f = (1 - ex)/(1 + ex)
@@ -465,7 +465,7 @@ class MIXGGAS:
         self.interpolate_df = 1.0/(np.cosh(x)**2*self.rhomax)
         return
 
-    def interp_linear(self, rho, calcType=["E","V"], **kwargs):
+    def interp_linear(self, rho, calcType={"E","V"}, **kwargs):
         self.interpolate_f = np.abs(rho/self.rhomax)
         mask = self.interpolate_f > 1.0
         self.interpolate_f[mask] = 1.0
@@ -473,7 +473,7 @@ class MIXGGAS:
         self.interpolate_df[mask] = 0.0
         return
 
-    def _interp_lkt(self, rho, calcType=["E","V"], **kwargs):
+    def _interp_lkt(self, rho, calcType={"E","V"}, **kwargs):
         sigma = kwargs.get('sigma', None)
         rhom = rho.copy()
         tol = 1e-16

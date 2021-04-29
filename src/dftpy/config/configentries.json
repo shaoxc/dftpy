@@ -565,7 +565,7 @@
       "type": "direction",
       "default": 0,
       "comment": "The direction of the initial kick.",
-      "opitions": "0 or x, 1 or y, 2 or z"
+      "options": "0 or x, 1 or y, 2 or z"
     },
     "strength": {
       "type": "float",
@@ -602,11 +602,11 @@
       "options": "",
       "comment": "Number of eigenstates used in constructing casida matrix."
     },
-    "diagonize": {
+    "diagonalize": {
       "type": "bool",
       "default": true,
       "options": "True, False",
-      "comment": "If true, diagonize the Hamiltonian before construct the Casida matrix. If false, read the eigenstates from a saved file."
+      "comment": "If true, diagonalize the Hamiltonian before construct the Casida matrix. If false, read the eigenstates from a saved file."
     },
     "tda": {
       "type": "bool",
