@@ -12,7 +12,8 @@ class Hartree(AbstractFunctional):
         self.type = 'HARTREE'
         self.name = 'HARTREE'
 
-    def compute(self, density, calcType={"E", "V"}, **kwargs):
+    @classmethod
+    def compute(cls, density, calcType={"E", "V"}, **kwargs):
         TimeData.Begin("Hartree_Func")
         invgg = density.grid.get_reciprocal().invgg
         if density.rank > 1:

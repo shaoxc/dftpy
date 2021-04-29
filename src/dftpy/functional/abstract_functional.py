@@ -14,11 +14,11 @@ class AbstractFunctional(ABC):
     def __init__(self):
         pass
 
-    def __call__(self, rho, **kwargs):
-        return self.compute(rho, **kwargs)
+    def __call__(self, rho, *args, **kwargs):
+        return self.compute(rho, *args, **kwargs)
 
     @abstractmethod
-    def compute(self, rho, **kwargs):
+    def compute(self, rho, *args, **kwargs):
         # returns energy and potential
         pass
 
