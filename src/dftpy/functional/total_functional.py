@@ -53,7 +53,7 @@ class TotalFunctional(AbstractFunctional):
         self.funcDict = {}
         self.funcDict.update(kwargs)
         # remove useless key
-        for key, evalfunctional in self.funcDict.items():
+        for key, evalfunctional in list(self.funcDict.items()):
             if evalfunctional is None:
                 del self.funcDict[key]
 

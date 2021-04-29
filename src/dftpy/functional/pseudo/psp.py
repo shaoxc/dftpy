@@ -1,9 +1,7 @@
 import numpy as np
 
-from dftpy.mpi import sprint
-from dftpy.constants import LEN_CONV, ENERGY_CONV
 
-class PSP :
+class PSP:
     def __init__(self, fname):
         self.fname = fname
         self.read(fname)
@@ -22,7 +20,7 @@ class PSP :
         Zval = float(values[1])
         # line 3 :pspcod,pspxc,lmax,lloc,mmax,r2well
         values = lines[2].split()
-        if int(values[0]) != 8 :
+        if int(values[0]) != 8:
             raise AttributeError("Only support psp8 format pseudopotential with psp")
         info['info'] = lines[:6]
         info['atomicnum'] = atomicnum
@@ -41,7 +39,7 @@ class PSP :
         # data = np.fromstring(line, dtype=float, sep=" ")
         # data = np.array(line.split()).astype(np.float) / HARTREE2EV / BOHR2ANG ** 3
         data = [line.split()[1:3] for line in lines[ibegin:iend]]
-        data = np.asarray(data, dtype = float)
+        data = np.asarray(data, dtype=float)
 
         self.r = data[:, 0]
         self.v = data[:, 1]

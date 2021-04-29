@@ -1,4 +1,5 @@
 import numpy as np
+
 from dftpy.functional.abstract_functional import AbstractFunctional
 from dftpy.functional.functional_output import FunctionalOutput
 
