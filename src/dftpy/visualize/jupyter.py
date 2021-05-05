@@ -5,7 +5,6 @@ try:
     import dftpy.visualize.ipv_viewer as ipvv
 except Exception:
     import dftpy.visualize.mpl_viewer as mplv
-import dftpy.visualize.mpl_viewer as mplv
 
 
 def view_density(mol,level=None):
@@ -17,7 +16,6 @@ def view_density(mol,level=None):
     density = mol.field
     rho = np.pad(density, [[0,1],[0,1],[0,1]], mode="wrap")
     isipv= importlib.util.find_spec("ipyvolume")
-    isipv= False
     if isipv :
         ipvv.view_density(rho, level)
     else :
@@ -45,7 +43,6 @@ def view_ions(mol, **kwargs):
         val=val[np.logical_and(val[:,i]<1+tol, val[:,i]>-tol)]
 
     isipv= importlib.util.find_spec("ipyvolume")
-    isipv= False
     if isipv :
         ipvv.view_ions(val, tol2)
     else :

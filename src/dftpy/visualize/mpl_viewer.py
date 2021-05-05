@@ -36,14 +36,14 @@ class BasePlot(object):
         # ax.tick_params(axis='both', which='both',length=0)
         ax.tick_params(length=0)
         ax.grid(False)
-        ax.set_xlabel('X') 
+        ax.set_xlabel('X')
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
-        ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0)) 
-        ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0)) 
-        ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0)) 
-        ax.w_xaxis.line.set_color((1.0, 1.0, 1.0, 0.0)) 
-        ax.w_yaxis.line.set_color((1.0, 1.0, 1.0, 0.0)) 
+        ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+        ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+        ax.w_zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+        ax.w_xaxis.line.set_color((1.0, 1.0, 1.0, 0.0))
+        ax.w_yaxis.line.set_color((1.0, 1.0, 1.0, 0.0))
         ax.w_zaxis.line.set_color((1.0, 1.0, 1.0, 0.0))
 
 
@@ -57,7 +57,7 @@ def plot_isosurface(density,level=None, spacing = (0.1, 0.1, 0.1), color = 'red'
     # rho = np.pad(density, [[0,1],[0,1],[0,1]], mode="wrap")
     rho = density
     x, y, z = np.mgrid[0:1:nr[0]+1,0:1:nr[1]+1,0:1:nr[2]+1]
-    verts, faces, normals, values = measure.marching_cubes_lewiner(rho, level=level, spacing=spacing, **kwargs)
+    verts, faces, normals, values = measure.marching_cubes(rho, level=level, spacing=spacing, **kwargs)
     dftpyplot.ax.plot_trisurf(verts[:, 0]/2, verts[:,1]/2, faces, verts[:, 2]/2, color=color, lw=1)
 
 
