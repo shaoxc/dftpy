@@ -7,14 +7,13 @@ from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.math_utils import PowerInt
 
 
-def JP1Potential(rho: DirectField, j: DirectField, cutoff: float = 0, **kwargs) -> DirectField:
+def JP1Potential(rho: DirectField, j: DirectField, cutoff: float = 0, rho_cutoff: float = 1.0e-3, k: int = 2, **kwargs) -> DirectField:
     """
     """
-    k_F = np.cbrt(3.0 * np.pi * rho)
+    k_F = np.cbrt(3.0 * np.pi ** 2.0 * rho)
     k_F[k_F < cutoff] = cutoff
     k_F_square = k_F * k_F
     k_F_fourth = k_F_square * k_F_square
-    # rhotwothirds[rhotwothirds<rhotwothirds_cutoff] = rhotwothirds_cutoff
     reciprocal_grid = j.grid.get_reciprocal()
     g = reciprocal_grid.g
     gg = reciprocal_grid.gg
@@ -25,10 +24,9 @@ def JP1Potential(rho: DirectField, j: DirectField, cutoff: float = 0, **kwargs) 
     term1 = iq_dot_j / sqrt_gg
     sqrt_gg[0, 0, 0] = 0.0
     term2 = iq_dot_j * sqrt_gg  # * np.exp(-100*gg)
-    potential = 6.0 / k_F_square * term1.ifft(force_real=True) + 1.0 / k_F_fourth * term2.ifft(force_real=True)
+    #potential = 6.0 / k_F_square * term1.ifft(force_real=True) + 1.0 / k_F_fourth * term2.ifft(force_real=True)
+    potential = -6.0 / k_F_square * term1.ifft(force_real=True) - 1.0 / k_F_fourth * term2.ifft(force_real=True)
     potential *= - np.pi ** 3 / 12.0
-    rho_cutoff = 1.0e-3
-    k = 2
     v_mask = 1.0 - 1.0 / (1.0 + PowerInt(rho / rho_cutoff, k))
     potential *= v_mask
 
@@ -38,7 +36,7 @@ def JP1Potential(rho: DirectField, j: DirectField, cutoff: float = 0, **kwargs) 
 def JP1Potential_alt(rho: DirectField, j: DirectField, cutoff: float = 1.0e-4, **kwargs) -> DirectField:
     """
     """
-    k_F = np.cbrt(3.0 * np.pi * rho)
+    k_F = np.cbrt(3.0 * np.pi ** 2.0 * rho)
     k_F_of_q = k_F.fft()
     k_F_square = k_F * k_F
     k_F_square_of_q = k_F_square.fft()

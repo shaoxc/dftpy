@@ -1,4 +1,5 @@
 from typing import Set, Optional
+import copy
 
 from dftpy.field import DirectField
 from dftpy.functional.abstract_functional import AbstractFunctional
@@ -22,7 +23,10 @@ class Dynamic(AbstractFunctional):
         if name not in Dynamic_Dict:
             raise AttributeError("{0:s} is not a correct dynamic functional name.".format(name))
         self.name = name
+        self.kwargs = kwargs
 
     def compute(self, density: DirectField, current: DirectField = None, der_current: Optional[DirectField] = None,
                 calcType: Set[str] = ["V"], **kwargs) -> FunctionalOutput:
-        return Dynamic_Dict[self.name](density, current, der_current=der_current, calcType=calcType, **kwargs)
+        kw_args = copy.deepcopy(self.kwargs)
+        kw_args.update(kwargs)
+        return Dynamic_Dict[self.name](density, current, der_current=der_current, calcType=calcType, **kw_args)

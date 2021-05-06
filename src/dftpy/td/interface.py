@@ -141,7 +141,7 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
 
         if correction:
             pot = correct_potential(rho, calcType=['V'], current=j).potential
-            psi_pred = psi_pred - 1.0j * int_t * pot * psi
+            psi_pred = psi_pred + 1.0j * int_t * pot * psi
             psi_pred.normalize(N=N0)
             rho_pred = calc_rho(psi_pred)
             j_pred = calc_j(psi_pred)

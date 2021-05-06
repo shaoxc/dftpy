@@ -336,7 +336,7 @@
       "type": "int",
       "default": 3,
       "options": "1, 2, 3",
-      "comment": "The kernel density denpendent for `LWT` KEDF: \\\\n\\\\t\\\\t+ 1 : The origin `LWT` KEDF. \\\\n\\\\t\\\\t+ 2 : Considers the :math:`\\rho^{\\beta}(r')\\omega(\\rho(r),r-r')` term in the potential.\\\\n\\\\t\\\\t+ 3 : Also considers the derivative of kernel which is neglected in LWT. See `paper <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.100.041105>`_.  "
+      "comment": "The kernel density dependent for `LWT` KEDF: \\\\n\\\\t\\\\t+ 1 : The origin `LWT` KEDF. \\\\n\\\\t\\\\t+ 2 : Considers the :math:`\\rho^{\\beta}(r')\\omega(\\rho(r),r-r')` term in the potential.\\\\n\\\\t\\\\t+ 3 : Also considers the derivative of kernel which is neglected in LWT. See `paper <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.100.041105>`_.  "
     },
     "rho0": {
       "comment": "The 'average' density used for the definition of the Fermi momentum. Default is None, which means it calculated based on the total charge and system volume.",
@@ -627,6 +627,19 @@
       "type": "str",
       "default": null,
       "comment": "Name of nonadiabatic Pauli potential."
+    },
+    "cutoff": {
+      "type": "float",
+      "default": 1.0e-2,
+      "comment": "If :math:'k_F' is smaller than the cutoff, treat it equal to the cutoff."
+    },
+    "rho_cutoff": {
+      "type": "float",
+      "default": 1.0e-3
+    },
+    "k": {
+      "type": "int",
+      "default": 2
     }
   },
   "INVERSION": {
