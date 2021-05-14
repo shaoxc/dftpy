@@ -13,6 +13,9 @@ class Hartree(AbstractFunctional):
         self.type = 'HARTREE'
         self.name = 'HARTREE'
 
+    def __repr__(self):
+        return 'HARTREE'
+
     @classmethod
     def compute(cls, density, calcType={"E", "V"}, **kwargs):
         TimeData.Begin("Hartree_Func")

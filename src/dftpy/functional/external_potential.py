@@ -14,6 +14,9 @@ class ExternalPotential(AbstractFunctional):
         self.type = 'EXT'
         self._v = v
 
+    def __repr__(self):
+        return 'EXT'
+
     @property
     def v(self):
         return self._v

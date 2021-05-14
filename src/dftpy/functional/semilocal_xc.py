@@ -1,6 +1,7 @@
 # Drivers for LibXC
 
 import numpy as np
+import copy
 
 from dftpy.field import DirectField
 from dftpy.functional.abstract_functional import AbstractFunctional
@@ -12,8 +13,8 @@ class XC(AbstractFunctional):
     def __init__(self, xc=None, core_density=None, libxc=True, name=None, x_str = 'lda_x', c_str = 'lda_c_pz', **kwargs):
         self.type = 'XC'
         self.name = name or 'XC'
-        self.options = {'xc': xc or name, 'x_str' : x_str, 'c_str' : c_str}
-        self.options.update(kwargs)
+        self.kwargs = {'xc': xc or name, 'x_str' : x_str, 'c_str' : c_str}
+        self.kwargs.update(kwargs)
         self._core_density = core_density
         if libxc:
             if CheckLibXC(False):
@@ -35,7 +36,8 @@ class XC(AbstractFunctional):
 
     def compute(self, density, calcType={"E", "V"}, **kwargs):
 
-        self.options.update(kwargs)
+        kw_args = copy.deepcopy(self.kwargs)
+        kw_args.update(kwargs)
         core_density = self.core_density
         if core_density is None:
             new_density = density
@@ -46,16 +48,16 @@ class XC(AbstractFunctional):
             new_density[0] += 0.5 * core_density
             new_density[1] += 0.5 * core_density
 
-        xc = self.options.get('xc', None)
+        xc = kw_args.get('xc', None)
         if xc == 'PBE':
             xc_kwargs = {"x_str": "gga_x_pbe", "c_str": "gga_c_pbe"}
         elif xc == 'LDA':
             xc_kwargs = {"x_str": "lda_x", "c_str": "lda_c_pz"}
         else:
             xc_kwargs = {}
-        self.options.update(xc_kwargs)
+        kw_args.update(xc_kwargs)
 
-        functional = self.xcfun(new_density, calcType=calcType, **self.options)
+        functional = self.xcfun(new_density, calcType=calcType, **kw_args)
         return functional
 
 
