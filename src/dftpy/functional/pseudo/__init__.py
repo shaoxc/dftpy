@@ -104,6 +104,9 @@ class LocalPseudo(AbstractLocalPseudo):
         self._vp = readPP.vp
         self.zval = {}
 
+    def __repr__(self):
+        return 'LOCALPSEUDO'
+
     def restart(self, grid=None, ions=None, full=False):
         """
         Clean all private data and resets the ions and grid.
