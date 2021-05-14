@@ -5,7 +5,7 @@ import scipy.special as sp
 
 from dftpy.functional.functional_output import FunctionalOutput
 
-__all__ = ["GGA", "GGAFs", "GGA_KEDF_list", "GGAStress"]
+__all__ = ["GGA", "GGAFs", "GGA_KEDF_list"]
 
 GGA_KEDF_list = {
     "LKT"           : [1.3, 1.0],  # \cite{luo2018simple}
@@ -53,41 +53,41 @@ GGA_KEDF_list = {
     }
 
 
-def GGAStress(rho, functional="LKT", energy=None, potential=None, dFds2=None, **kwargs):
-    """
-    Not finished.
-    """
-    rhom = rho.copy()
-    tol = 1e-16
-    rhom[rhom < tol] = tol
+# def GGAStress(rho, functional="LKT", energy=None, potential=None, dFds2=None, **kwargs):
+#     """
+#     Not finished.
+#     """
+#     rhom = rho.copy()
+#     tol = 1e-16
+#     rhom[rhom < tol] = tol
 
-    rho23 = rhom ** (2.0 / 3.0)
-    rho53 = rho23 * rhom
-    rho43 = rho23 * rho23
-    rho83 = rho43 * rho43
-    cTF = (3.0 / 10.0) * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
-    ckf2 = (3.0 * np.pi ** 2) ** (2.0 / 3.0)
-    tf = cTF * rho53
-    vkin2 = tf * ckf2 * dFds2 / rho83
-    dRho_ij = []
-    g = rho.grid.get_reciprocal().g
-    rhoG = rho.fft()
-    for i in range(3):
-        dRho_ij.append((1j * g[i] * rhoG).ifft(force_real=True))
-    stress = np.zeros((3, 3))
+#     rho23 = rhom ** (2.0 / 3.0)
+#     rho53 = rho23 * rhom
+#     rho43 = rho23 * rho23
+#     rho83 = rho43 * rho43
+#     cTF = (3.0 / 10.0) * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
+#     ckf2 = (3.0 * np.pi ** 2) ** (2.0 / 3.0)
+#     tf = cTF * rho53
+#     vkin2 = tf * ckf2 * dFds2 / rho83
+#     dRho_ij = []
+#     g = rho.grid.get_reciprocal().g
+#     rhoG = rho.fft()
+#     for i in range(3):
+#         dRho_ij.append((1j * g[i] * rhoG).ifft(force_real=True))
+#     stress = np.zeros((3, 3))
 
-    if potential is None:
-        gga = GGA(rho, functional=functional, calcType={"E", "V"}, **kwargs)
-        energy = gga.energy
-        potential = gga.potential
+#     if potential is None:
+#         gga = GGA(rho, functional=functional, calcType={"E", "V"}, **kwargs)
+#         energy = gga.energy
+#         potential = gga.potential
 
-    rhoP = np.einsum("ijk, ijk", rho, potential)
-    for i in range(3):
-        for j in range(i, 3):
-            stress[i, j] = np.einsum("ijk, ijk", vkin2, dRho_ij[i] * dRho_ij[j])
-            if i == j:
-                stress[i, j] += energy - rhoP
-            stress[j, i] = stress[i, j]
+#     rhoP = np.einsum("ijk, ijk", rho, potential)
+#     for i in range(3):
+#         for j in range(i, 3):
+#             stress[i, j] = np.einsum("ijk, ijk", vkin2, dRho_ij[i] * dRho_ij[j])
+#             if i == j:
+#                 stress[i, j] += energy - rhoP
+#             stress[j, i] = stress[i, j]
 
 
 def GGAFs(s, functional="LKT", calcType={"E", "V"}, params=None, gga_remove_vw=None, **kwargs):
