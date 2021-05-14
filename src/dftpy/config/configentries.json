@@ -382,6 +382,28 @@
       "default": null
     }
   },
+  "KEDF2": {
+    "copy": {
+      "type": "str",
+      "default": "KEDF"
+    },
+    "active": {
+      "type": "bool",
+      "default": false
+    },
+    "x": {
+      "comment": "The ratio of TF KEDF.",
+      "options": "",
+      "type": "float",
+      "default": 0
+    },
+    "y": {
+      "comment": "The ratio of vW KEDF.",
+      "options": "",
+      "type": "float",
+      "default": 0
+    }
+  },
   "OUTPUT": {
     "comment": {
       "type": "str",
@@ -588,10 +610,6 @@
       "type": "bool",
       "default": false
     },
-    "correct_potential": {
-      "type": "str",
-      "default": null
-    },
     "vector_potential": {
       "type": "bool",
       "default": false,
@@ -640,6 +658,16 @@
     "k": {
       "type": "int",
       "default": 2
+    }
+  },
+  "NONADIABATIC2": {
+    "copy": {
+      "type": "str",
+      "default": "NONADIABATIC"
+    },
+    "active": {
+      "type": "bool",
+      "default": false
     }
   },
   "INVERSION": {

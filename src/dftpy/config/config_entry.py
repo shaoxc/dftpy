@@ -139,15 +139,9 @@ class ConfigEntry(object):
         return format_dict[self.type](expression)
 
     def gen_doc(self, key):
-        output = []
-        output.append(".. option:: {0:}".format(key))
-        output.append("")
-        output.append("    {0:}".format(self.comment))
-        output.append("        *Options* : {0:}".format(self.options))
-        output.append("")
-        output.append("        *Default* : {0:}".format(self.default))
-        output.append("")
-        output.append("")
+        output = [".. option:: {0:}".format(key), "", "    {0:}".format(self.comment),
+                  "        *Options* : {0:}".format(self.options), "", "        *Default* : {0:}".format(self.default),
+                  "", ""]
         return '\n'.join(output)
 
 

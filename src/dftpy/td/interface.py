@@ -3,19 +3,18 @@ import time
 
 import numpy as np
 
-
 from dftpy.constants import SPEED_OF_LIGHT
 from dftpy.field import DirectField
 from dftpy.formats import npy
 from dftpy.formats.xsf import XSF
 from dftpy.functional import Functional
+from dftpy.functional.total_functional import TotalFunctional
 from dftpy.linear_solver import _get_atol
 from dftpy.mpi import mp, sprint, MPIFile
 from dftpy.td.casida import Casida
 from dftpy.td.hamiltonian import Hamiltonian
 from dftpy.td.propagator import Propagator
 from dftpy.utils import calc_rho, calc_j
-
 
 def RealTimeRunner(config, rho0, E_v_Evaluator):
     outfile = config["TD"]["outfile"]
@@ -29,7 +28,6 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     max_runtime = config["TD"]["max_runtime"]
     restart = config["TD"]["restart"]
     correction = config["TD"]["correction"]
-    correct_potential_name = config["TD"]["correct_potential"]
     vector_potential = config["TD"]['vector_potential']
     num_t = int(t_max / int_t)
 
@@ -73,7 +71,16 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     atol_rho = _get_atol(tol, atol, rho.norm())
 
     if correction:
-        correct_potential = Functional(type='DYNAMIC', name=correct_potential_name)
+        correct_potential_dict = dict()
+        if config['KEDF2']['active']:
+            correct_kedf = Functional(type='KEDF', name=config['KEDF2']['kedf'], **config['KEDF2'])
+            correct_potential_dict.update({'Nonlocal': correct_kedf})
+        if config['NONADIABATIC2']['active']:
+            correct_dynamic = Functional(type='DYNAMIC', name=config['NONADIABATIC2']['nonadiabatic'],
+                                         **config['NONADIABATIC2'])
+            correct_potential_dict.update({'Dynamic': correct_dynamic})
+        correct_potential = TotalFunctional(**correct_potential_dict)
+        #sprint(correct_potential)
 
     if not restart and mp.is_root:
         with open(outfile + "_mu", "w") as fmu:
@@ -140,21 +147,11 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
                     sprint('Diff in j: {0:10.2e} > {1:10.2e}'.format(diff_j, atol_j))
 
         if correction:
-            pot = correct_potential(rho, calcType=['V'], current=j).potential
+            pot = correct_potential(rho_corr, calcType=['V'], current=j_corr).potential
             psi_pred = psi_pred + 1.0j * int_t * pot * psi
             psi_pred.normalize(N=N0)
             rho_pred = calc_rho(psi_pred)
             j_pred = calc_j(psi_pred)
-            # delta_rho2 = rho_pred - rho0
-            # delta_mu2 = (delta_rho2 * delta_rho2.grid.r).integral()
-            # j2_int = j_pred.integral()
-            #
-            # if mp.is_root:
-            #     with open(outfile + "_cor_mu", "a") as fmu:
-            #         sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(delta_mu2[0], delta_mu2[1], delta_mu2[2]),
-            #                fileobj=fmu)
-            #     with open(outfile + "_cor_j", "a") as fj:
-            #         sprint("{0:17.10e} {1:17.10e} {2:17.10e}".format(j2_int[0], j2_int[1], j2_int[2]), fileobj=fj)
 
         psi = psi_pred
         rho = rho_pred
@@ -273,4 +270,3 @@ def DiagonalizeRunner(config, struct, E_v_Evaluator):
 #     with open(outfile, 'w') as fw:
 #         for i in range(len(omega)):
 #             fw.write('{0:15.8e} {1:15.8e}\n'.format(omega[i], f[i]))
-
