@@ -267,8 +267,7 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2 = None):
             rho,
             E_v_Evaluator,
             energypotential=energypotential,
-            xc=config["EXC"]["xc"],
-            ke=config["KEDF"]["kedf"],
+            xc_options=config["EXC"],
             ke_options=config["KEDF"],
             linearii=linearii,
             linearie=linearie,
@@ -357,9 +356,8 @@ def GetStress(
     EnergyEvaluator,
     energypotential=None,
     energy=None,
-    xc="LDA",
-    ke="WT",
-    ke_options={"x": 1.0, "y": 1.0},
+    xc_options = {'xc' : 'LDA'},
+    ke_options={"kedf" : "WT", "x": 1.0, "y": 1.0},
     linearii=True,
     linearie=True,
     PPlist=None,
@@ -375,6 +373,8 @@ def GetStress(
             "TFvW": ["TF", "vW"],
             "WT": ["TF", "vW", "NL"],
             }
+    ke = ke_options["kedf"]
+    xc = xc_options["xc"]
     if ke not in KEDF_Stress_L :
         raise AttributeError("%s KEDF have not implemented for stress" % ke)
     kelist = KEDF_Stress_L[ke]
@@ -404,13 +404,7 @@ def GetStress(
             ewaldobj = ewald(rho=rho, ions=ions, verbose=False, PME=linearii)
             stress[key1] = ewaldobj.stress
         elif key1 == "XC" :
-            if xc == "LDA":
-                stress[key1] = LDAStress(rho, energy=energy[key1])
-                # stress[key1] = XCStress(rho, name='LDA')
-            elif xc == "PBE" :
-                stress[key1] = PBEStress(rho, energy=energy[key1])
-            else :
-                stress[key1] = XCStress(rho, x_str='gga_x_pbe', c_str='gga_c_pbe', energy=energy[key1])
+            stress[key1] = XCStress(rho, energy=energy[key1], **xc_options)
         elif key1 == 'HARTREE' :
             stress[key1] = HartreeFunctionalStress(rho, energy=energy[key1])
         elif key1 == 'PSEUDO' :

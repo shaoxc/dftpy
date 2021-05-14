@@ -10,14 +10,19 @@ from dftpy.time_data import TimeData
 
 
 class XC(AbstractFunctional):
-    def __init__(self, xc='LDA', core_density=None, libxc=True, name=None, **kwargs):
+    def __init__(self, xc=None, core_density=None, libxc=True, name=None, x_str = 'lda_x', c_str = 'lda_c_pz', **kwargs):
         self.type = 'XC'
-        self.name = name
-        self.kwargs = {'xc': xc}
+        self.name = name or 'XC'
+        self.kwargs = {'xc': xc or name, 'x_str' : x_str, 'c_str' : c_str}
         self.kwargs.update(kwargs)
         self._core_density = core_density
         if libxc:
-            self.xcfun = LibXC
+            if CheckLibXC(False):
+                self.xcfun = LibXC
+            elif xc == 'LDA':
+                self.xcfun = LDA
+            else :
+                raise ModuleNotFoundError("Install LibXC and pylibxc to use this functionality")
         else:
             self.xcfun = LDA
 
@@ -56,12 +61,12 @@ class XC(AbstractFunctional):
         return functional
 
 
-def CheckLibXC():
+def CheckLibXC(stop = True):
     import importlib.util
 
     islibxc = importlib.util.find_spec("pylibxc")
     found = islibxc is not None
-    if not found:
+    if not found and stop :
         raise ModuleNotFoundError("Install LibXC and pylibxc to use this functionality")
     return found
 
@@ -389,7 +394,7 @@ def _LDAStress(density, xc_str='lda_x', energy=None, flag='standard', **kwargs):
     kargs = {'do_exc': True, 'do_vxc': True}
     if energy is not None:
         kargs['do_exc'] = False
-        energy *= 0.5
+        energy = 0.5*energy
     out = func_xc.compute(inp, **kargs)
 
     if "zk" in out.keys():
@@ -499,8 +504,9 @@ def PBEStress(density, energy=None, flag='standard', **kwargs):
     return stress
 
 
-def XCStress(density, name=None, x_str='gga_x_pbe', c_str='gga_c_pbe', energy=None, flag='standard', **kwargs):
+def XCStress(density, name=None, xc=None, x_str='gga_x_pbe', c_str='gga_c_pbe', energy=None, flag='standard', **kwargs):
     TimeData.Begin("XCStress")
+    name = xc or name
     if name == 'LDA':
         x_str = 'lda_x'
         c_str = 'lda_c_pz'

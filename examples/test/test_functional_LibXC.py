@@ -17,7 +17,7 @@ class Test(unittest.TestCase):
         rho_r = mol.field
         thefuncclass = Functional(type='XC',
                                   name='LDA',
-                                  is_nonlocal=False)
+                                  libxc=False)
         func2 = thefuncclass.compute(rho_r)
         func1 = LibXC(density=rho_r,
                    x_str='lda_x',

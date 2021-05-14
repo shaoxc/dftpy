@@ -24,6 +24,7 @@ class Test(unittest.TestCase):
         conf['JOB']['calctype'] = 'Energy Force Stress'
         conf['OPT']['method'] = 'TN'
         conf['OUTPUT']['stress'] = False
+        conf['EXC']['xc'] = 'LDA'
         conf = ConfSpecialFormat(conf)
         path = os.environ.get('DFTPY_DATA_PATH')
         atoms = read(path+'/'+'fcc.vasp')

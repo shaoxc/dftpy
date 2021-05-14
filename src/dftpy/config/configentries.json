@@ -203,10 +203,10 @@
       "default": "Control the exchange-correlation functional."
     },
     "xc": {
-      "comment": "The kind of exchange-correlation functional. If not `LDA`, must have pylibxc_ installed.",
+      "comment": "The kind of exchange-correlation functional. If not `LDA`, must have pylibxc_ installed. It has higher priority than :ref:`x_str<exc-x_str>` and :ref:`c_str<exc-c_str>`",
       "options": "LDA, PBE",
       "type": "str",
-      "default": "LDA"
+      "default": null
     },
     "x_str": {
       "comment": "The type of exchange functional.",
@@ -327,10 +327,6 @@
       "options": "",
       "default": null,
       "comment": "The gap of spline"
-    },
-    "fd": {
-      "type": "int",
-      "default": 0
     },
     "kdd": {
       "type": "int",
