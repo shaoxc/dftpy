@@ -59,6 +59,9 @@ class TotalFunctional(AbstractFunctional):
 
         self.UpdateNameType()
 
+    def __repr__(self):
+        return self.funcDict.__repr__()
+
     def UpdateNameType(self):
         self.name = ""
         self.type = ""

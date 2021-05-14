@@ -13,6 +13,10 @@ class AbstractFunctional(ABC):
     def __init__(self):
         pass
 
+    def __repr__(self):
+        rep = self.name + ',' + self.kwargs.__repr__()
+        return rep
+
     def __call__(self, rho, *args, **kwargs):
         return self.compute(rho, *args, **kwargs)
 
