@@ -107,7 +107,12 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
         prop.hamiltonian.v = func.potential
         if vector_potential:
             prop.hamiltonian.A = A_t
-        E = np.real(np.conj(psi) * prop.hamiltonian(psi)).integral()
+        if correction:
+            if i_t == i_t0:
+                pot = correct_potential(rho, calcType=['V'], current=j).potential
+            E = np.real(np.conj(psi) * (prop.hamiltonian(psi) + pot * psi)).integral()
+        else:
+            E = np.real(np.conj(psi) * prop.hamiltonian(psi)).integral()
         if vector_potential:
             E += Omega / 8.0 / np.pi / SPEED_OF_LIGHT ** 2 * (np.dot((A_t - A_tm1), (A_t - A_tm1)) / int_t / int_t)
 

@@ -7,7 +7,7 @@ from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.math_utils import PowerInt
 
 
-def JP1Potential(rho: DirectField, j: DirectField, cutoff: float = 0, rho_cutoff: float = 1.0e-3, k: int = 2, **kwargs) -> DirectField:
+def JP1Potential(rho: DirectField, j: DirectField, cutoff: float = 1.0e-2, rho_cutoff: float = 1.0e-3, k: int = 2, **kwargs) -> DirectField:
     """
     """
     k_F = np.cbrt(3.0 * np.pi ** 2.0 * rho)
