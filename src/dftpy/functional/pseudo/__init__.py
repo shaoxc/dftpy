@@ -381,7 +381,8 @@ class LocalPseudo(AbstractLocalPseudo):
         Q_derivativeA = np.zeros((3, self.BsplineOrder * self.BsplineOrder * self.BsplineOrder))
         for key in sorted(self.ions.Zval):
             denGV = denG * self.vlines[key]
-            denGV[0, 0, 0] = 0.0 + 0.0j
+            if rho.mp.rank == 0 :
+                denGV[0, 0, 0] = 0.0 + 0.0j
             rhoPB = denGV.ifft(force_real=True)
             for i in range(self.ions.nat):
                 if self.ions.labels[i] == key:
