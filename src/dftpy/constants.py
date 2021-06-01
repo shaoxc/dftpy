@@ -28,6 +28,12 @@ STRESS_CONV["Ha/Bohr3"] = {
     "GPa": 29421.02648438959,
     "eV/A3": ENERGY_CONV["Hartree"]["eV"] / LEN_CONV["Bohr"]["Angstrom"] ** 3,
 }
+#https://en.wikipedia.org/wiki/Hartree_atomic_units
+TIME_CONV = {}
+TIME_CONV["au"] = {
+        's' : 2.4188843265857e-17,
+        'fs' : 2.4188843265857e-2,
+}
 
 units_warning = "All the quantities in atomic units"
 
