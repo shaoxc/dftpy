@@ -2,17 +2,16 @@
 import os
 import unittest
 import numpy as np
+import pytest
 
 from dftpy.functional import Functional
 from dftpy.functional.semilocal_xc import LibXC, PBE
 from dftpy.formats.qepp import PP
-import importlib.util
 
 
 class Test(unittest.TestCase):
     def test_libxc_lda(self):
-        islibxc = importlib.util.find_spec("pylibxc")
-        if not islibxc: return
+        pytest.importorskip("pylibxc")
         dftpy_data_path = os.environ.get('DFTPY_DATA_PATH')
         mol = PP(filepp=dftpy_data_path + "/Al_fde_rho.pp").read()
         rho_r = mol.field
@@ -28,8 +27,7 @@ class Test(unittest.TestCase):
         self.assertTrue(np.allclose(a, b))
 
     def test_libxc_pbe(self):
-        islibxc = importlib.util.find_spec("pylibxc")
-        if not islibxc: return
+        pytest.importorskip("pylibxc")
         dftpy_data_path = os.environ.get('DFTPY_DATA_PATH')
         mol = PP(filepp=dftpy_data_path + "/Al_fde_rho.pp").read()
         rho_r = mol.field

@@ -13,7 +13,8 @@ class XC(AbstractFunctional):
     def __init__(self, xc=None, core_density=None, libxc=True, name=None, x_str = 'lda_x', c_str = 'lda_c_pz', **kwargs):
         self.type = 'XC'
         self.name = name or 'XC'
-        self.kwargs = {'xc': xc or name, 'x_str' : x_str, 'c_str' : c_str}
+        xc = xc or name
+        self.kwargs = {'xc': xc, 'x_str' : x_str, 'c_str' : c_str}
         self.kwargs.update(kwargs)
         self._core_density = core_density
         if libxc:
