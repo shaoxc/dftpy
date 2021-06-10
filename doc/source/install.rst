@@ -36,19 +36,25 @@ Optional:
 Installation from source
 ========================
 
-You can get the source from gitlab
+You can get the source from `gitlab <https://gitlab.com/pavanello-research-group/dftpy.git>`_.
 
 Git clone:
 ----------
 
-    $ git clone https://gitlab.com/pavanello-research-group/dftpy
+    $ git clone https://gitlab.com/pavanello-research-group/dftpy.git
 
 
-:Environment:
-    Add ``dftpy/src`` to your `PYTHONPATH` environment variable and add ``dftpy/scripts`` to `PATH`.
+Environment
+^^^^^^^^^^^
 
-:Installation:
-    Alternatively, you can install ``DFTpy`` with ``python setup.py install --user``
+    Add ``dftpy/src`` to your `PYTHONPATH` environment variable.
+
+Installation
+^^^^^^^^^^^^
+
+    Alternatively, you can install ``DFTpy`` with ``python -m pip install .``
+
+    You also can install all the optional packages with ``python -m pip install .[all]``
 
 
 .. note::
