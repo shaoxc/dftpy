@@ -56,7 +56,7 @@ def read_system(infile, format=None, **kwargs):
         struct = XSF(infile).read(**kwargs)
     elif format == "den":
         density = read_data_den(infile, **kwargs)
-        struct= System(None, field = density)
+        struct= System(None, field=density)
     else:
         raise AttributeError("%s format not support yet" % format)
     return struct
