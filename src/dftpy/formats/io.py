@@ -65,13 +65,19 @@ def read_density(infile, format=None, **kwargs):
     struct = read_system(infile, format=format, **kwargs)
     return struct.field
 
-def write(outfile, data, ions = None, format=None, **kwargs):
+def write(outfile, data = None, ions = None, format=None, **kwargs):
     if format is None:
         format = guessType(outfile)
 
     if isinstance(data, Atom):
         from dftpy.formats import ase_io
-        return ase_io.ase_write(outfile, ions, **kwargs)
+        if ions is None :
+            return ase_io.ase_write(outfile, ions, **kwargs)
+        elif isinstance(ions, DirectField):
+            ions, data = data, ions
+            system = System(ions, name="DFTpy", field=data)
+        else :
+            raise AttributeError("Please check the input data")
     elif isinstance(data, System):
         system = data
     elif isinstance(data, DirectField):
