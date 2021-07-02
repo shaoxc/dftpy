@@ -30,7 +30,7 @@ class UPF(object):
         if isinstance(attr, dict): attr = attr['#text']
         if attr is None or len(attr) == 0: return None
         value = self.pattern.split(attr)
-        return np.array(value, dtype=np.float)
+        return np.array(value, dtype=np.float64)
 
     @property
     def zval(self):

@@ -402,7 +402,7 @@ def LWTKernelKf(q, kf, KernelTable, etamax=1000.0, out=None):
         limit = KernelTable[-1]
         deta = etamax / (np.size(KernelTable) - 1)
         index = np.around(eta[cond0] / deta)
-        index = index.astype(np.int)
+        index = index.astype(np.int32)
         Kernel[cond0] = KernelTable[index]
     else:
         raise AttributeError("Wrong type of KernelTable")

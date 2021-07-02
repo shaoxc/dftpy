@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-try:
-    from setuptools import setup, find_packages
-except ImportError:
-    from distutils.core import setup, find_packages
-
+from setuptools import setup, find_packages
 import sys
 import os
 import re
@@ -23,11 +19,7 @@ def pip_install_git(link):
     os.system('pip install --upgrade {}'.format(link))
     return
 
-SRC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "./src")
-if SRC_DIR not in sys.path:
-    sys.path.insert(0, SRC_DIR)
 
-# from dftpy import __version__, __author__, __contact__, __license__
 with open('src/dftpy/__init__.py') as fd :
     lines = fd.read()
     __version__ = re.search('__version__ = "(.*)"', lines).group(1)

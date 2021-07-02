@@ -110,7 +110,7 @@ class MP :
             fft = get_mpi4py_fft(self.comm, nr, decomposition=decomposition, backend=backend, **kwargs)
         s = fft.local_slice(not realspace)
         shape = fft.shape(not realspace)
-        offsets = np.zeros_like(s, dtype = np.int)
+        offsets = np.zeros_like(s, dtype = np.int32)
         for i, item in enumerate(s):
             if item.start is not None :
                 offsets[i] = item.start
@@ -125,7 +125,7 @@ class MP :
         shape = np.array(nr)
         if not full and not realspace and not cplx:
             shape[-1] = shape[-1]//2 + 1
-        offsets = np.zeros_like(nr, dtype = np.int)
+        offsets = np.zeros_like(nr, dtype = np.int32)
         return (s, shape, offsets)
 
     def get_local_fft_shape(self, nr, **kwargs):
