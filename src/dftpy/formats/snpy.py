@@ -84,6 +84,7 @@ def read(fname, mp=None, grid=None, kind="all", full=False, datarep='native', de
     else :
         fh = fname
 
+    atoms = None
     if desc is None :
         # read description
         desc = npy.read(fh, single = True)

@@ -13,7 +13,7 @@ from dftpy.formats import snpy
 
 def guessType(infile, **kwargs):
     basename = os.path.basename(infile)
-    ext = os.path.splitext(infile)[1]
+    ext = os.path.splitext(infile)[1].lower()
     if basename == "POSCAR" or basename == "CONTCAR" or ext == ".vasp":
         format = "vasp"
     elif ext == ".pp":
