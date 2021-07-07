@@ -115,9 +115,9 @@ def read(fname, mp=None, grid=None, kind="all", full=False, datarep='native', de
                     raise AttributeError("Not support Fortran order")
                 if grid is None :
                     grid = DirectGrid(lattice=lattice, nr=shape, full=full, mp=mp)
-                    data = DirectField(grid=grid, rank=1)
                 elif not(np.all(shape == grid.nrR) or np.all(shape == grid.nrG)):
                     raise AttributeError("The shape is not match with grid")
+                data = DirectField(grid=grid, rank=1)
                 npy._read_value(fh, data, datarep=datarep)
 
     if isinstance(fname, str): fh.close()
