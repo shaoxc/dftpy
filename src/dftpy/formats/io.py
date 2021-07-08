@@ -45,9 +45,7 @@ def read_system(infile, format=None, **kwargs):
 
     if format == "snpy":
         struct = snpy.read(infile, **kwargs)
-        return struct
-
-    if format == "vasp":
+    elif format == "vasp":
         atom = read_POSCAR(infile, **kwargs)
         struct= System(atom)
     elif format == "qepp":
