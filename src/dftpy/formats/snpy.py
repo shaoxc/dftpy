@@ -34,14 +34,13 @@ def write(fname, system, kind = 'all', desc = None, mp = None):
     data = system.field
     if mp is None :
         mp = data.grid.mp
-    if isinstance(fname, str):
+    if hasattr(fname, 'close'):
+        fh = fname
+    else :
         if mp.size > 1 :
-            # fh = mp.MPI.File.Open(mp.comm, fname, amode = mp.MPI.MODE_CREATE | mp.MPI.MODE_WRONLY)
             fh = MPIFile(fname, mp, amode = mp.MPI.MODE_CREATE | mp.MPI.MODE_WRONLY)
         else :
             fh = open(fname, "wb")
-    else :
-        fh = fname
 
     if desc is None :
         if kind == 'cell' :
