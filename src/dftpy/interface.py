@@ -5,13 +5,13 @@ from dftpy.optimization import Optimization
 from dftpy.functional import Functional
 from dftpy.functional.total_functional import TotalFunctional
 from dftpy.constants import LEN_CONV, ENERGY_CONV, STRESS_CONV
-from dftpy.formats.io import read, read_density, write
+from dftpy.formats.io import read, read_density, write, read_system
 from dftpy.ewald import ewald
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
 from dftpy.math_utils import bestFFTsize, interpolation_3d
 from dftpy.functional.functional_output import FunctionalOutput
-from dftpy.functional.semilocal_xc import LDAStress, PBEStress, XCStress
+from dftpy.functional.semilocal_xc import XCStress
 from dftpy.functional.kedf import KEDFStress
 from dftpy.functional.hartree import HartreeFunctionalStress
 from dftpy.config.config import PrintConf, ReadConf
@@ -35,15 +35,21 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
         raise AttributeError("Given the 'grid', can't use 'multistep' method anymore.")
 
     if ions is None:
-        ions = read(
+        struct = read_system(
             config["PATH"]["cellpath"] +os.sep+ config["CELL"]["cellfile"],
             format=config["CELL"]["format"],
             names=config["CELL"]["elename"],
         )
+        ions = struct.ions
+    else :
+        struct = None
     lattice = ions.pos.cell.lattice
     metric = np.dot(lattice.T, lattice)
     if config["GRID"]["nr"] is not None:
         nr = np.asarray(config["GRID"]["nr"])
+    elif struct is not None and struct.field is not None :
+        nr = struct.field.grid.nr
+        rhoini = struct.field
     else:
         # spacing = config['GRID']['spacing']
         spacing = config["GRID"]["spacing"] * LEN_CONV["Angstrom"]["Bohr"]
@@ -104,7 +110,7 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
     rho_ini = DirectField(grid=grid, griddata_C=zerosA, rank=1)
     density = None
     if rhoini is not None:
-        density = rhoini.reshape(rhoini.shape[:3])
+        density = rhoini
     elif config["DENSITY"]["densityini"] == "HEG":
         charge_total = ions.ncharge
         rho_ini[:] = charge_total / ions.pos.cell.volume
@@ -369,7 +375,6 @@ def GetStress(
             "WT": ["TF", "vW", "NL"],
             }
     ke = ke_options["kedf"]
-    xc = xc_options["xc"]
     if ke not in KEDF_Stress_L :
         raise AttributeError("%s KEDF have not implemented for stress" % ke)
     kelist = KEDF_Stress_L[ke]
