@@ -1,6 +1,7 @@
 import numpy as np
 import os
 
+
 class SerialComm :
     def __init__(self, *args, **kwargs):
         self.rank = 0
@@ -242,23 +243,34 @@ class PMI :
         https://www.open-mpi.org/faq/?category=running#mpi-environmental-variables
         https://docs.microsoft.com/en-us/powershell/high-performance-computing/environment-variables-for-the-mpiexec-command
     """
+    MPIENV = {
+            'OpenMPI' : ['OMPI_COMM_WORLD_SIZE', 'OMPI_COMM_WORLD_RANK'],
+            'Intel' : ['PMI_SIZE', 'PMI_RANK'],
+            'Slurm' : ['SLURM_NTASKS', 'SLURM_PROCID'],
+            'Torque' : ['PBS_NP', 'None'],
+            }
+
     def __init__(self):
         self.comm = None
         self.size = self._get_size()
         self.rank = self._get_rank()
 
-    @staticmethod
-    def _get_size():
-        psize0 = int(os.environ.get('OMPI_COMM_WORLD_SIZE', 0)) # OpenMPI
-        psize1 = int(os.environ.get('PMI_SIZE', 0))  # Intel MPI and MVAPICH2
-        pmi_size = max(psize0, psize1)
+    @classmethod
+    def _get_size(cls):
+        psizes = []
+        for key, item in cls.MPIENV.items() :
+            psize = int(os.environ.get(item[0], 0))
+            psizes.append(psize)
+        pmi_size = max(psizes)
         return pmi_size
 
-    @staticmethod
-    def _get_rank():
-        prank0 = int(os.environ.get('OMPI_COMM_WORLD_RANK', 0))
-        prank1 = int(os.environ.get('PMI_RANK', 0))
-        pmi_rank = max(prank0, prank1)
+    @classmethod
+    def _get_rank(cls):
+        pranks = []
+        for key, item in cls.MPIENV.items() :
+            prank = int(os.environ.get(item[1], 0))
+            pranks.append(prank)
+        pmi_rank = max(pranks)
         return pmi_rank
 
 class MPIFile(object):
