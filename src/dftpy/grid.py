@@ -26,6 +26,9 @@ class BaseGrid(BaseCell):
             from dftpy.mpi import MP
             mp = MP()
         super().__init__(lattice=lattice, origin=origin, units=units, **kwargs)
+        #
+        self.cplx = cplx
+        #
         self._nrR = np.array(nr, dtype = np.int32)
         self._nnrR = np.prod(self._nrR)
         self._dV = np.abs(self._volume) / self._nnrR
@@ -40,8 +43,7 @@ class BaseGrid(BaseCell):
         self._spacings = latparas / self._nrR
         self._latparas= latparas
         self._mp = mp
-        self.cplx = cplx
-        if cplx :
+        if self.cplx :
             full = True
         self.local_slice(nr, realspace = realspace, full = full, cplx = cplx, **kwargs)
         self._nnr = np.prod(self._nr)

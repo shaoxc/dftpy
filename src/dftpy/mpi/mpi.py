@@ -101,7 +101,7 @@ class MP :
     def _get_local_fft_shape_mpi4py(self, nr, realspace = True, decomposition = None, backend = None, fft = None, **kwargs):
         """
         TIP :
-            When the environment variable LD_PRELOAD is defined, backend = 'fftw' will give a wrong results
+            When the environment variable LD_PRELOAD is defined, sometimes backend = 'fftw' will give a wrong results
             for mpi4py-fft==2.0.3
         """
         decomposition = decomposition or self.decomposition
