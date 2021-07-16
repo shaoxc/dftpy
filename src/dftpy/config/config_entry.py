@@ -105,6 +105,21 @@ def format_cidict(expression):
     return OrderedDict((v.capitalize(), int(k)) for v, k in vk.items())
 
 
+def format_odict(expression):
+    vk = ast.literal_eval(expression)
+    return OrderedDict((v, k) for v, k in vk.items())
+
+
+def format_ofdict(expression):
+    vk = ast.literal_eval(expression)
+    return OrderedDict((v, float(k)) for v, k in vk.items())
+
+
+def format_oidict(expression):
+    vk = ast.literal_eval(expression)
+    return OrderedDict((v, int(k)) for v, k in vk.items())
+
+
 class ConfigEntry(object):
 
     def __init__(self, type='str', default=None, comment='', options='', example=None, note=None, warning=None,
@@ -134,6 +149,9 @@ class ConfigEntry(object):
             "cdict": format_cdict,
             "cfdict": format_cfdict,
             "cidict": format_cidict,
+            "odict": format_odict,
+            "ofdict": format_ofdict,
+            "oidict": format_oidict,
         }
         expression = re.split('#|!', string)[0]
         return format_dict[self.type](expression)
