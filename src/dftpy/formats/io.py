@@ -57,6 +57,9 @@ def read_system(infile, format=None, **kwargs):
         struct= System(None, field=density)
     else:
         raise AttributeError("%s format not support yet" % format)
+    kind = kwargs.get('kind', 'all')
+    if kind == 'cell' :
+        struct= System(ions = struct, field=density)
     return struct
 
 def read_density(infile, format=None, **kwargs):
