@@ -30,8 +30,8 @@ def guessType(infile, **kwargs):
     return format
 
 def read(infile, format=None, **kwargs):
-    struct = read_system(infile, format=format, **kwargs)
     kind = kwargs.get('kind', 'cell')
+    struct = read_system(infile, format=format, **kwargs)
     if kind == 'cell' :
         return struct.ions
     elif kind == 'field' :
@@ -46,8 +46,8 @@ def read_system(infile, format=None, **kwargs):
     if format == "snpy":
         struct = snpy.read(infile, **kwargs)
     elif format == "vasp":
-        atom = read_POSCAR(infile, **kwargs)
-        struct= System(atom)
+        struct = read_POSCAR(infile, **kwargs)
+        kwargs['kind'] = 'cell'
     elif format == "qepp":
         struct = PP(infile).read(**kwargs)
     elif format == "xsf":
@@ -59,7 +59,7 @@ def read_system(infile, format=None, **kwargs):
         raise AttributeError("%s format not support yet" % format)
     kind = kwargs.get('kind', 'all')
     if kind == 'cell' :
-        struct= System(ions = struct, field=density)
+        struct= System(ions = struct)
     return struct
 
 def read_density(infile, format=None, **kwargs):
