@@ -245,7 +245,9 @@ class LocalPseudo(AbstractLocalPseudo):
                 vloc_interp = self._vloc_interp[key]
                 vloc[:] = 0.0
                 mask = q < self._gp[key][-1]
-                vloc[mask] = splev(q[mask], vloc_interp, der=0)
+                qmask = q[mask]
+                if len(qmask)>0 :
+                    vloc[mask] = splev(qmask, vloc_interp, der=0)
                 # quartic interpolation for small q
                 # -----------------------------------------------------------------------
                 mask = q < self._gp[key][1]
