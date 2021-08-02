@@ -119,14 +119,14 @@
       "options": "",
       "type": "float",
       "default": 600,
-      "unit": "Angstrom"
+      "unit": "eV"
     },
     "spacing": {
       "comment": "The spacing (or gap) separating nearest real space grid points. If set this, :ref:`ecut<grid-ecut>` is disabled.",
       "options": "",
       "type": "float",
       "default": null,
-      "unit": "eV"
+      "unit": "Angstrom"
     },
     "gfull": {
       "comment": "Determines oif the number of grid points in the reciprocal and real space grids are equal. If '`False`' only use half grid, which will be faster.",
@@ -601,6 +601,16 @@
       "default": false,
       "options": "True, False",
       "comment": "Restart the propagation from a previously saved intermediate result."
+    },
+    "restart_input": {
+      "type": "str",
+      "default": "restart_data.npy",
+      "comment": "Input file for restart data."
+    },
+    "save_interval": {
+      "type": "int",
+      "default": 1000,
+      "comment": "The number of time step interval between two saves of states."
     },
     "correction": {
       "type": "bool",

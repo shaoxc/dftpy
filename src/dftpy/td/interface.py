@@ -27,6 +27,7 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     k = config["TD"]["strength"]
     max_runtime = config["TD"]["max_runtime"]
     restart = config["TD"]["restart"]
+    save_interval = config["TD"]["save_interval"]
     correction = config["TD"]["correction"]
     vector_potential = config["TD"]['vector_potential']
     num_t = int(t_max / int_t)
@@ -35,7 +36,8 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     prop = Propagator(hamiltonian, **config["PROPAGATOR"])
 
     if restart:
-        fname = './tmp/restart_data.npy'
+        restart_input = config["TD"]["restart_input"]
+        fname = ''.join(['./tmp/', restart_input])
         if mp.size > 1:
             f = MPIFile(fname, mp, amode=mp.MPI.MODE_RDONLY)
         else:
@@ -187,11 +189,12 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
         if info:
             break
 
-        if max_runtime > 0 and cost_t > max_runtime:
-            sprint('Maximum run time reached. Clean exiting.')
-            if not os.path.isdir('./tmp'):
+        if (i_t + 1) % save_interval == 0 or i_t + 1 == num_t or (max_runtime > 0 and cost_t > max_runtime):
+            #sprint('Maximum run time reached. Clean exiting.')
+            sprint('Save wavefunction data.')
+            if not os.path.isdir('./tmp') and mp.is_root:
                 os.mkdir('./tmp')
-            fname = './tmp/restart_data.npy'
+            fname = './tmp/{0:s}_{1:d}.npy'.format(outfile, i_t)
             if mp.size > 1:
                 f = MPIFile(fname, mp, amode=mp.MPI.MODE_CREATE | mp.MPI.MODE_WRONLY)
             else:
@@ -201,7 +204,9 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
             if vector_potential:
                 npy.write(f, A_t, single=True)
                 npy.write(f, A_tm1, single=True)
-            break
+            if max_runtime > 0 and cost_t > max_runtime:
+                sprint('Maximum run time reached. Clean exiting.')
+                break
 
 
 def CasidaRunner(config, rho0, E_v_Evaluator):
