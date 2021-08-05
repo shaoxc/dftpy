@@ -68,7 +68,9 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
     delta_mu = (delta_rho * delta_rho.grid.r).integral()
     j_int = j.integral()
     if vector_potential:
-        Omega = psi.grid.Volume
+        Omega = config["TD"]["omega"]
+        if Omega <= 0:
+            Omega = psi.grid.Volume
 
     atol_rho = _get_atol(tol, atol, rho.norm())
 
@@ -155,7 +157,7 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
 
         if correction:
             pot = correct_potential(rho_corr, calcType=['V'], current=j_corr).potential
-            psi_pred = psi_pred + 1.0j * int_t * pot * psi
+            psi_pred = psi_pred - 1.0j * int_t * pot * psi
             psi_pred.normalize(N=N0)
             rho_pred = calc_rho(psi_pred)
             j_pred = calc_j(psi_pred)

@@ -620,6 +620,10 @@
       "type": "bool",
       "default": false,
       "comment": "If true, use vector potential for the initial kick."
+    },
+    "omega": {
+      "type": "float",
+      "default": 0
     }
   },
   "CASIDA": {

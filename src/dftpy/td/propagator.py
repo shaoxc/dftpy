@@ -82,7 +82,7 @@ class Propagator(object):
 
         new_psi = psi0
         for i_order in range(order):
-            new_psi = 1j * interval / (i_order + 1) * self.hamiltonian(new_psi)
+            new_psi = -1j * interval / (i_order + 1) * self.hamiltonian(new_psi)
             if np.isnan(new_psi).any():
                 sprint("Warning: taylor propagator exits on order {0:d} due to NaN in new psi.".format(i_order))
                 psi1 = psi1 + new_psi
@@ -110,14 +110,14 @@ class Propagator(object):
                     self.hamiltonian.grid, rank=1, griddata_3d=np.reshape(psi_, self.hamiltonian.grid.nr),
                     cplx=True
                 )
-            prod = psi - 1j * self.hamiltonian(psi) * dt / 2.0
+            prod = psi + 1j * self.hamiltonian(psi) * dt / 2.0
             return prod.ravel()
 
         return cnMatvec
 
     def A_MatvecUtil(self, dt):
         def A_Matvec(psi):
-            return psi - 1j * self.hamiltonian(psi) * dt / 2.0
+            return psi + 1j * self.hamiltonian(psi) * dt / 2.0
 
         return A_Matvec
 
@@ -130,14 +130,14 @@ class Propagator(object):
 
         if self.LinearSolverDict[linearsolver]["scipy"]:
             size = self.hamiltonian.grid.nnr
-            b = (psi0 + 1j * self.hamiltonian(psi0) * interval / 2.0).ravel()
+            b = (psi0 - 1j * self.hamiltonian(psi0) * interval / 2.0).ravel()
             A = LinearOperator((size, size), dtype=psi0.dtype, matvec=self.cnMatvecUtil(interval))
             psi1_, info = self.LinearSolverDict[linearsolver]["func"](A, b, x0=psi0.ravel(), tol=tol, maxiter=maxiter,
                                                                       atol=atol)
             psi1 = DirectField(grid=self.hamiltonian.grid, rank=1,
                                griddata_3d=np.reshape(psi1_, self.hamiltonian.grid.nr), cplx=True)
         else:
-            b = psi0 + 1j * self.hamiltonian(psi0) * interval / 2.0
+            b = psi0 - 1j * self.hamiltonian(psi0) * interval / 2.0
             psi1, info = self.LinearSolverDict[linearsolver]["func"](self.A_MatvecUtil(interval), b, psi0, tol, maxiter,
                                                                      atol=atol, mp=psi0.mp)
 
