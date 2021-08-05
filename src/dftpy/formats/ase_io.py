@@ -26,14 +26,16 @@ def ase_write(outfile, ions, format=None, pbc=None, **kwargs):
     ase.io.write(outfile, struct, format=format, **kwargs)
     return
 
-def ase2ions(ase_atoms):
+def ase2ions(ase_atoms, wrap = True):
     lattice = ase_atoms.cell[:]
     lattice = np.asarray(lattice).T / BOHR2ANG
     lattice = np.ascontiguousarray(lattice)
     Z = ase_atoms.numbers
     cell = DirectCell(lattice)
-    pos = ase_atoms.get_positions() / BOHR2ANG
-    ions = Atom(Z=Z, pos=pos, cell=cell, basis="Cartesian")
+    pos = ase_atoms.get_scaled_positions()
+    if wrap :
+        pos %= 1.0
+    ions = Atom(Z=Z, pos=pos, cell=cell, basis="Crystal")
     return ions
 
 def ions2ase(ions, pbc = True):

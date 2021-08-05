@@ -7,7 +7,7 @@ from dftpy.system import System
 from dftpy.atom import Atom
 
 
-def read_xsf(infile, kind="All", full=False, pbc=True, units='Angstrom', **kwargs):
+def read_xsf(infile, kind="all", full=False, pbc=True, units='Angstrom', **kwargs):
     # http ://www.xcrysden.org/doc/XSF.html
     if isinstance(units, str):
         xsf_units = [units, units]
@@ -168,7 +168,7 @@ class XSF(object):
 
         return
 
-    def read(self, kind="All", full=False, **kwargs):
+    def read(self, kind="all", full=False, **kwargs):
         return read_xsf(self.filexsf, kind=kind, full=full, **kwargs)
 
     def _write_header(self, fileout, title):

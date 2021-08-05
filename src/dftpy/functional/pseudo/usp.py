@@ -53,8 +53,8 @@ class USP:
             raise AttributeError("Error : Check the PP file : {}".format(fname))
         gmax = np.float(lines[ibegin - 1].split()[0]) * BOHR2ANG
 
-        # v = np.array(line.split()).astype(np.float) / (HARTREE2EV*BOHR2ANG ** 3 * 4.0 * np.pi)
-        self.v_g = np.array(line.split()).astype(np.float) / (HARTREE2EV * BOHR2ANG ** 3)
+        # v = np.array(line.split()).astype(np.float64) / (HARTREE2EV*BOHR2ANG ** 3 * 4.0 * np.pi)
+        self.v_g = np.array(line.split()).astype(np.float64) / (HARTREE2EV * BOHR2ANG ** 3)
         self.r_g = np.linspace(0, gmax, num=len(self.v_g))
         self.v_g[1:] -= Zval * 4.0 * np.pi / self.r_g[1:] ** 2
         # -----------------------------------------------------------------------
@@ -76,7 +76,7 @@ class USP:
                     break
             info['core_grid'] = np.asarray(core_grid) * BOHR2ANG
             line = " ".join([line.strip() for line in lines[ibegin:]])
-            data = np.array(line.split()).astype(np.float)
+            data = np.array(line.split()).astype(np.float64)
             info['core_value'] = data[-ngrid:]
         # -----------------------------------------------------------------------
         self.info = info

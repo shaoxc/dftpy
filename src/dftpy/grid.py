@@ -26,6 +26,9 @@ class BaseGrid(BaseCell):
             from dftpy.mpi import MP
             mp = MP()
         super().__init__(lattice=lattice, origin=origin, units=units, **kwargs)
+        #
+        self.cplx = cplx
+        #
         self._nrR = np.array(nr, dtype = np.int32)
         self._nnrR = np.prod(self._nrR)
         self._dV = np.abs(self._volume) / self._nnrR
@@ -40,8 +43,7 @@ class BaseGrid(BaseCell):
         self._spacings = latparas / self._nrR
         self._latparas= latparas
         self._mp = mp
-        self.cplx = cplx
-        if cplx :
+        if self.cplx :
             full = True
         self.local_slice(nr, realspace = realspace, full = full, cplx = cplx, **kwargs)
         self._nnr = np.prod(self._nr)
@@ -327,7 +329,7 @@ class DirectGrid(BaseGrid, DirectCell):
             metric = np.dot(self.lattice.T, self.lattice)
             latticeConstants = np.sqrt(np.diag(metric))
             gaps = latticeConstants / self.nr
-            Nmax = np.ceil(rcut / gaps).astype(np.int) + 1
+            Nmax = np.ceil(rcut / gaps).astype(np.int32) + 1
             # print('lc', latticeConstants)
             # print('gaps', gaps)
             # print(Nmax)
@@ -335,12 +337,12 @@ class DirectGrid(BaseGrid, DirectCell):
             # array = np.einsum('jk,ij->ik',gridpos,self.lattice)
             # dists = np.einsum('ij,ij->j', array, array)
             # index = np.arange(0, Nmax[0] * Nmax[1] * Nmax[2]).reshape(Nmax)
-            # mgrid = np.mgrid[0:Nmax[0], 0:Nmax[1], 0:Nmax[2]].astype(np.float)
-            mgrid = np.mgrid[1 - Nmax[0] : Nmax[0], 1 - Nmax[1] : Nmax[1], 1 - Nmax[2] : Nmax[2]].astype(np.float)
+            # mgrid = np.mgrid[0:Nmax[0], 0:Nmax[1], 0:Nmax[2]].astype(np.float64)
+            mgrid = np.mgrid[1 - Nmax[0] : Nmax[0], 1 - Nmax[1] : Nmax[1], 1 - Nmax[2] : Nmax[2]].astype(np.float64)
             mgrid[0] /= self.nr[0]
             mgrid[1] /= self.nr[1]
             mgrid[2] /= self.nr[2]
-            gridpos = mgrid.astype(np.float)
+            gridpos = mgrid.astype(np.float64)
             array = np.einsum("jklm,ij->iklm", gridpos, self.lattice)
             dists = np.sqrt(np.einsum("ijkl,ijkl->jkl", array, array))
             self._Rtable["Nmax"] = Nmax

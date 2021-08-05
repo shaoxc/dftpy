@@ -10,7 +10,7 @@ def get_local_fft_shape(nr, realspace = True, full = False, **kwargs):
     shape = np.array(nr)
     if not full and not realspace :
         shape[-1] = shape[-1]//2 + 1
-    offsets = np.zeros_like(nr, dtype = np.int)
+    offsets = np.zeros_like(nr, dtype = np.int32)
     return (s, shape, offsets)
 
 

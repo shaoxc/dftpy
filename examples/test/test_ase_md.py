@@ -2,22 +2,24 @@
 import os
 import unittest
 import numpy as np
-from ase.lattice.cubic import FaceCenteredCubic
-from ase.md.langevin import Langevin
-from ase.md.verlet import VelocityVerlet
-from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
-from ase.io.trajectory import Trajectory
-from ase import units
-from ase.io import write, read
 
 # from dftpy.config.config import DefaultOption, ConfSpecialFormat
 from dftpy.config import DefaultOption, OptionFormat
 from dftpy.interface import OptimizeDensityConf
 from dftpy.api.api4ase import DFTpyCalculator
+import pytest
 
 
 class Test(unittest.TestCase):
     def test_md(self):
+        pytest.importorskip("ase")
+        from ase.lattice.cubic import FaceCenteredCubic
+        from ase.md.langevin import Langevin
+        from ase.md.verlet import VelocityVerlet
+        from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
+        from ase.io.trajectory import Trajectory
+        from ase import units
+        from ase.io import write, read
         dftpy_data_path = os.environ.get('DFTPY_DATA_PATH')
         conf = DefaultOption()
         conf['PATH']['pppath'] = os.environ.get('DFTPY_DATA_PATH')

@@ -37,7 +37,7 @@ class PSP:
         iend = ibegin + mmax
         # line = " ".join([line for line in lines[ibegin:iend]])
         # data = np.fromstring(line, dtype=float, sep=" ")
-        # data = np.array(line.split()).astype(np.float) / HARTREE2EV / BOHR2ANG ** 3
+        # data = np.array(line.split()).astype(np.float64) / HARTREE2EV / BOHR2ANG ** 3
         data = [line.split()[1:3] for line in lines[ibegin:iend]]
         data = np.asarray(data, dtype=float)
 

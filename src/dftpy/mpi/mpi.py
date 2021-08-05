@@ -1,6 +1,7 @@
 import numpy as np
 import os
 
+
 class SerialComm :
     def __init__(self, *args, **kwargs):
         self.rank = 0
@@ -101,7 +102,7 @@ class MP :
     def _get_local_fft_shape_mpi4py(self, nr, realspace = True, decomposition = None, backend = None, fft = None, **kwargs):
         """
         TIP :
-            When the environment variable LD_PRELOAD is defined, backend = 'fftw' will give a wrong results
+            When the environment variable LD_PRELOAD is defined, sometimes backend = 'fftw' will give a wrong results
             for mpi4py-fft==2.0.3
         """
         decomposition = decomposition or self.decomposition
@@ -110,7 +111,7 @@ class MP :
             fft = get_mpi4py_fft(self.comm, nr, decomposition=decomposition, backend=backend, **kwargs)
         s = fft.local_slice(not realspace)
         shape = fft.shape(not realspace)
-        offsets = np.zeros_like(s, dtype = np.int)
+        offsets = np.zeros_like(s, dtype = np.int32)
         for i, item in enumerate(s):
             if item.start is not None :
                 offsets[i] = item.start
@@ -125,7 +126,7 @@ class MP :
         shape = np.array(nr)
         if not full and not realspace and not cplx:
             shape[-1] = shape[-1]//2 + 1
-        offsets = np.zeros_like(nr, dtype = np.int)
+        offsets = np.zeros_like(nr, dtype = np.int32)
         return (s, shape, offsets)
 
     def get_local_fft_shape(self, nr, **kwargs):
@@ -242,23 +243,34 @@ class PMI :
         https://www.open-mpi.org/faq/?category=running#mpi-environmental-variables
         https://docs.microsoft.com/en-us/powershell/high-performance-computing/environment-variables-for-the-mpiexec-command
     """
+    MPIENV = {
+            'OpenMPI' : ['OMPI_COMM_WORLD_SIZE', 'OMPI_COMM_WORLD_RANK'],
+            'Intel' : ['PMI_SIZE', 'PMI_RANK'],
+            'Slurm' : ['SLURM_NTASKS', 'SLURM_PROCID'],
+            'Torque' : ['PBS_NP', 'None'],
+            }
+
     def __init__(self):
         self.comm = None
         self.size = self._get_size()
         self.rank = self._get_rank()
 
-    @staticmethod
-    def _get_size():
-        psize0 = int(os.environ.get('OMPI_COMM_WORLD_SIZE', 0)) # OpenMPI
-        psize1 = int(os.environ.get('PMI_SIZE', 0))  # Intel MPI and MVAPICH2
-        pmi_size = max(psize0, psize1)
+    @classmethod
+    def _get_size(cls):
+        psizes = []
+        for key, item in cls.MPIENV.items() :
+            psize = int(os.environ.get(item[0], 0))
+            psizes.append(psize)
+        pmi_size = max(psizes)
         return pmi_size
 
-    @staticmethod
-    def _get_rank():
-        prank0 = int(os.environ.get('OMPI_COMM_WORLD_RANK', 0))
-        prank1 = int(os.environ.get('PMI_RANK', 0))
-        pmi_rank = max(prank0, prank1)
+    @classmethod
+    def _get_rank(cls):
+        pranks = []
+        for key, item in cls.MPIENV.items() :
+            prank = int(os.environ.get(item[1], 0))
+            pranks.append(prank)
+        pmi_rank = max(pranks)
         return pmi_rank
 
 class MPIFile(object):

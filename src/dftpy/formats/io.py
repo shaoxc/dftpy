@@ -13,7 +13,7 @@ from dftpy.formats import snpy
 
 def guessType(infile, **kwargs):
     basename = os.path.basename(infile)
-    ext = os.path.splitext(infile)[1]
+    ext = os.path.splitext(infile)[1].lower()
     if basename == "POSCAR" or basename == "CONTCAR" or ext == ".vasp":
         format = "vasp"
     elif ext == ".pp":
@@ -30,8 +30,8 @@ def guessType(infile, **kwargs):
     return format
 
 def read(infile, format=None, **kwargs):
-    struct = read_system(infile, format=format, **kwargs)
     kind = kwargs.get('kind', 'cell')
+    struct = read_system(infile, format=format, **kwargs)
     if kind == 'cell' :
         return struct.ions
     elif kind == 'field' :
@@ -45,33 +45,40 @@ def read_system(infile, format=None, **kwargs):
 
     if format == "snpy":
         struct = snpy.read(infile, **kwargs)
-        return struct
-
-    if format == "vasp":
-        atom = read_POSCAR(infile, **kwargs)
-        struct= System(atom)
+    elif format == "vasp":
+        struct = read_POSCAR(infile, **kwargs)
+        kwargs['kind'] = 'cell'
     elif format == "qepp":
         struct = PP(infile).read(**kwargs)
     elif format == "xsf":
         struct = XSF(infile).read(**kwargs)
     elif format == "den":
         density = read_data_den(infile, **kwargs)
-        struct= System(None, field = density)
+        struct= System(None, field=density)
     else:
         raise AttributeError("%s format not support yet" % format)
+    kind = kwargs.get('kind', 'all')
+    if kind == 'cell' :
+        struct= System(ions = struct)
     return struct
 
 def read_density(infile, format=None, **kwargs):
     struct = read_system(infile, format=format, **kwargs)
     return struct.field
 
-def write(outfile, data, ions = None, format=None, **kwargs):
+def write(outfile, data = None, ions = None, format=None, **kwargs):
     if format is None:
         format = guessType(outfile)
 
     if isinstance(data, Atom):
         from dftpy.formats import ase_io
-        return ase_io.ase_write(outfile, ions, **kwargs)
+        if ions is None :
+            return ase_io.ase_write(outfile, ions, **kwargs)
+        elif isinstance(ions, DirectField):
+            ions, data = data, ions
+            system = System(ions, name="DFTpy", field=data)
+        else :
+            raise AttributeError("Please check the input data")
     elif isinstance(data, System):
         system = data
     elif isinstance(data, DirectField):

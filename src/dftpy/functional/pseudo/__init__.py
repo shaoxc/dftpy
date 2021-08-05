@@ -245,7 +245,9 @@ class LocalPseudo(AbstractLocalPseudo):
                 vloc_interp = self._vloc_interp[key]
                 vloc[:] = 0.0
                 mask = q < self._gp[key][-1]
-                vloc[mask] = splev(q[mask], vloc_interp, der=0)
+                qmask = q[mask]
+                if len(qmask)>0 :
+                    vloc[mask] = splev(qmask, vloc_interp, der=0)
                 # quartic interpolation for small q
                 # -----------------------------------------------------------------------
                 mask = q < self._gp[key][1]
@@ -381,7 +383,8 @@ class LocalPseudo(AbstractLocalPseudo):
         Q_derivativeA = np.zeros((3, self.BsplineOrder * self.BsplineOrder * self.BsplineOrder))
         for key in sorted(self.ions.Zval):
             denGV = denG * self.vlines[key]
-            denGV[0, 0, 0] = 0.0 + 0.0j
+            if rho.mp.rank == 0 :
+                denGV[0, 0, 0] = 0.0 + 0.0j
             rhoPB = denGV.ifft(force_real=True)
             for i in range(self.ions.nat):
                 if self.ions.labels[i] == key:

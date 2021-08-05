@@ -49,6 +49,7 @@ GGA_KEDF_list = {
     "TFVW"          : [1.0, 1.0],
     "STV"           : [1.0, 1.0, 0.01, 1.0],
     "PBE2M"         : [1.0, 0.2942, 2.0309],
+    "PG"            : [0.75, 1.0],
     "TEST-TF-APBEK" : [1.3, 0.23889, 1.245],
     }
 
@@ -611,6 +612,15 @@ def GGAFs(s, functional="LKT", calcType={"E", "V"}, params=None, gga_remove_vw=N
         F = 1.0 + Fa / Fb
         if "V" in calcType:
             dFds2 = 2.0 * params[2] / (Fb * Fb)
+            dFds2 /= tkf0 * tkf0
+
+    elif functional == "PG":
+        ss = s / tkf0
+        s2 = ss * ss
+        Fa = np.exp(-params[0] * s2)
+        F = Fa + 5.0 / 3.0 * params[1] * s2
+        if "V" in calcType:
+            dFds2 = -2.0 * params[0] * Fa + 10.0 / 3.0 *params[1]
             dFds2 /= tkf0 * tkf0
 
     elif functional == "TEST-TF-APBEK":

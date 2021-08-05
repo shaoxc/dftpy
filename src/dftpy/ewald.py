@@ -22,8 +22,8 @@ class CBspline(object):
         ixyzA = np.mgrid[: self.order, : self.order, : self.order].reshape((3, -1))
         self._BigArray = np.zeros(grid.nr)
         self._ixyzA = ixyzA
-        self._mask = np.empty(ixyzA.shape[1], dtype = np.bool)
-        self._mask1 = np.empty(ixyzA.shape[1], dtype = np.bool)
+        self._mask = np.empty(ixyzA.shape[1], dtype = bool)
+        self._mask1 = np.empty(ixyzA.shape[1], dtype = bool)
 
         if ions is not None:
             self.ions = ions
@@ -290,8 +290,8 @@ class ewald(object):
         for ix in np.arange(-N[0], N[0] + 1):
             for iy in np.arange(-N[1], N[1] + 1):
                 for iz in np.arange(-N[2], N[2] + 1):
-                    # R=np.einsum('j,ij->i',np.array([ix,iy,iz],dtype=np.float),rho.grid.lattice.transpose())
-                    R = np.einsum("j,ij->i", np.array([ix, iy, iz], dtype=np.float), self.rho.grid.lattice)
+                    # R=np.einsum('j,ij->i',np.array([ix,iy,iz],dtype=np.float64),rho.grid.lattice.transpose())
+                    R = np.einsum("j,ij->i", np.array([ix, iy, iz], dtype=np.float64), self.rho.grid.lattice)
                     for i in np.arange(self.ions.nat):
                         charges.append(self.ions.Zval[self.ions.labels[i]])
                         positions.append(self.ions.pos[i] - R)
@@ -332,8 +332,8 @@ class ewald(object):
         for ix in np.arange(-N[0], N[0] + 1):
             for iy in np.arange(-N[1], N[1] + 1):
                 for iz in np.arange(-N[2], N[2] + 1):
-                    # R=np.einsum('j,ij->i',np.array([ix,iy,iz],dtype=np.float),rho.grid.lattice.transpose())
-                    R = np.einsum("j,ij->i", np.array([ix, iy, iz], dtype=np.float), self.rho.grid.lattice)
+                    # R=np.einsum('j,ij->i',np.array([ix,iy,iz],dtype=np.float64),rho.grid.lattice.transpose())
+                    R = np.einsum("j,ij->i", np.array([ix, iy, iz], dtype=np.float64), self.rho.grid.lattice)
                     for i in range(self.ions.nat):
                         charges.append(self.ions.Zval[self.ions.labels[i]])
                         positions.append(self.ions.pos[i] - R)
@@ -375,14 +375,14 @@ class ewald(object):
         L = np.sqrt(np.einsum("ij->j", self.rho.grid.lattice ** 2))
         prec = sp.erfcinv(self.precision / 3.0)
         rmax = prec / np.sqrt(self.eta)
-        N = np.ceil(rmax / L).astype(np.int)
+        N = np.ceil(rmax / L).astype(np.int32)
         charges = []
         positions = []
         Rpbc = np.empty((2 * N[0] + 1, 2 * N[1] + 1, 2 * N[2] + 1, 3))
         for ix in np.arange(-N[0], N[0] + 1):
             for iy in np.arange(-N[1], N[1] + 1):
                 for iz in np.arange(-N[2], N[2] + 1):
-                    R = np.einsum("j,ij->i", np.array([ix, iy, iz], dtype=np.float), self.rho.grid.lattice)
+                    R = np.einsum("j,ij->i", np.array([ix, iy, iz], dtype=np.float64), self.rho.grid.lattice)
                     Rpbc[ix + N[0], iy + N[1], iz + N[2], :] = R
         for i in range(self.ions.nat):
             charges.append(self.ions.Zval[self.ions.labels[i]])
@@ -558,7 +558,7 @@ class ewald(object):
         for ix in np.arange(-N[0], N[0] + 1):
             for iy in np.arange(-N[1], N[1] + 1):
                 for iz in np.arange(-N[2], N[2] + 1):
-                    R = np.einsum("j,ij->i", np.array([ix, iy, iz], dtype=np.float), self.rho.grid.lattice)
+                    R = np.einsum("j,ij->i", np.array([ix, iy, iz], dtype=np.float64), self.rho.grid.lattice)
                     for i in np.arange(self.ions.nat):
                         charges.append(self.ions.Zval[self.ions.labels[i]])
                         positions.append(self.ions.pos[i] - R)
@@ -630,7 +630,7 @@ class ewald(object):
         for ix in np.arange(-N[0], N[0] + 1):
             for iy in np.arange(-N[1], N[1] + 1):
                 for iz in np.arange(-N[2], N[2] + 1):
-                    R = np.einsum("j,ij->i", np.array([ix, iy, iz], dtype=np.float), self.rho.grid.lattice)
+                    R = np.einsum("j,ij->i", np.array([ix, iy, iz], dtype=np.float64), self.rho.grid.lattice)
                     for i in np.arange(self.ions.nat):
                         charges.append(self.ions.Zval[self.ions.labels[i]])
                         positions.append(self.ions.pos[i] - R)
@@ -685,7 +685,7 @@ class ewald(object):
         for ix in np.arange(-N[0], N[0] + 1):
             for iy in np.arange(-N[1], N[1] + 1):
                 for iz in np.arange(-N[2], N[2] + 1):
-                    R = np.einsum("j,ij->i", np.array([ix, iy, iz], dtype=np.float), self.rho.grid.lattice)
+                    R = np.einsum("j,ij->i", np.array([ix, iy, iz], dtype=np.float64), self.rho.grid.lattice)
                     for i in np.arange(self.ions.nat):
                         charges.append(self.ions.Zval[self.ions.labels[i]])
                         positions.append(self.ions.pos[i] - R)

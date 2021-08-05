@@ -34,14 +34,13 @@ def write(fname, system, kind = 'all', desc = None, mp = None):
     data = system.field
     if mp is None :
         mp = data.grid.mp
-    if isinstance(fname, str):
+    if hasattr(fname, 'close'):
+        fh = fname
+    else :
         if mp.size > 1 :
-            # fh = mp.MPI.File.Open(mp.comm, fname, amode = mp.MPI.MODE_CREATE | mp.MPI.MODE_WRONLY)
             fh = MPIFile(fname, mp, amode = mp.MPI.MODE_CREATE | mp.MPI.MODE_WRONLY)
         else :
             fh = open(fname, "wb")
-    else :
-        fh = fname
 
     if desc is None :
         if kind == 'cell' :
@@ -84,6 +83,7 @@ def read(fname, mp=None, grid=None, kind="all", full=False, datarep='native', de
     else :
         fh = fname
 
+    atoms = None
     if desc is None :
         # read description
         desc = npy.read(fh, single = True)
@@ -114,9 +114,9 @@ def read(fname, mp=None, grid=None, kind="all", full=False, datarep='native', de
                     raise AttributeError("Not support Fortran order")
                 if grid is None :
                     grid = DirectGrid(lattice=lattice, nr=shape, full=full, mp=mp)
-                    data = DirectField(grid=grid, rank=1)
                 elif not(np.all(shape == grid.nrR) or np.all(shape == grid.nrG)):
                     raise AttributeError("The shape is not match with grid")
+                data = DirectField(grid=grid, rank=1)
                 npy._read_value(fh, data, datarep=datarep)
 
     if isinstance(fname, str): fh.close()

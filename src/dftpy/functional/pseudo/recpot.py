@@ -33,8 +33,8 @@ class RECPOT:
             pass
         else:
             raise AttributeError("Error : Check the PP file : {}".format(fname))
-        gmax = np.float(lines[ibegin - 1].strip()) * BOHR2ANG
-        self.v_g = np.array(line.split()).astype(np.float) / HARTREE2EV / BOHR2ANG ** 3
+        gmax = float(lines[ibegin - 1].strip()) * BOHR2ANG
+        self.v_g = np.array(line.split()).astype(np.float64) / HARTREE2EV / BOHR2ANG ** 3
         self.r_g = np.linspace(0, gmax, num=len(self.v_g))
 
     @property
