@@ -1,5 +1,6 @@
 import os
 import sys
+import numpy as np
 ### Import fft library
 try:
     import pyfftw
@@ -30,6 +31,8 @@ STRESS_CONV["Ha/Bohr3"] = {
 }
 
 SPEED_OF_LIGHT = 137.035999084
+C_TF = 2.87123400018819181594
+TKF0 = 6.18733545256027186194
 
 units_warning = "All the quantities in atomic units"
 

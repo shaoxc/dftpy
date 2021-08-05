@@ -296,12 +296,12 @@ class DirectField(BaseField):
         grad = grad_g.ifft(force_real=force_real)
         return grad
 
-    def divergence(self, flag="smooth", force_real=True):
+    def divergence(self, flag="smooth", force_real=True, sigma=0.025):
         if self.rank != 3:
             raise ValueError("Divergence: Rank incompatible ", self.rank)
-        div = self[0].gradient(flag=flag, ipol=1, force_real=force_real)
-        div += self[1].gradient(flag=flag, ipol=2, force_real=force_real)
-        div += self[2].gradient(flag=flag, ipol=3, force_real=force_real)
+        div = self[0].gradient(flag=flag, ipol=1, force_real=force_real, sigma=0.025)
+        div += self[1].gradient(flag=flag, ipol=2, force_real=force_real, sigma=0.025)
+        div += self[2].gradient(flag=flag, ipol=3, force_real=force_real, sigma=0.025)
         div.rank = 1
         return div
 
@@ -331,14 +331,14 @@ class DirectField(BaseField):
     #def laplacian(self, flag="smooth"):
         #return self.gradient(flag=flag).divergence(flag=flag)
 
-    def sigma(self, flag="smooth"):
+    def sigma(self, flag="smooth", sigma_gradient=None):
         """
         \sigma(r) = |\grad rho(r)|^2
         """
         if self.rank > 1 :
             vs = []
             for i in range(0, self.rank):
-                gradrho = self[i].gradient(flag=flag)
+                gradrho = self[i].gradient(flag=flag, sigma=sigma_gradient)
                 vs.append(gradrho)
             sigma = []
             for i in range(0, self.rank):
@@ -347,7 +347,7 @@ class DirectField(BaseField):
                     sigma.append(s)
             rank = (self.rank * (self.rank + 1))//2
         else :
-            gradrho = self.gradient(flag=flag)
+            gradrho = self.gradient(flag=flag, sigma=sigma_gradient)
             sigma = self.mp.einsum("lijk,lijk->ijk", gradrho, gradrho)
             rank = 1
         return DirectField(grid=self.grid, rank=rank, griddata_3d=sigma)
