@@ -17,6 +17,7 @@ from dftpy.functional.kedf.vw import *
 from dftpy.functional.kedf.wt import *
 from dftpy.functional.semilocal_xc import LibXC
 from dftpy.mpi import sprint
+from dftpy.functional.kedf.lkt import LKT
 
 __all__ = ["KEDF", "KEDFunctional", "KEDFStress"]
 
@@ -24,6 +25,7 @@ KEDF_Dict = {
     "TF": TF,
     "vW": vW,
     "GGA": GGA,
+    "LKT": LKT,
 }
 
 NLKEDF_Dict = {
