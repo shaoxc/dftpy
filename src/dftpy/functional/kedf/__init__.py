@@ -24,7 +24,6 @@ __all__ = ["KEDF", "KEDFunctional", "KEDFStress"]
 KEDF_Dict = {
     "TF": TF,
     "vW": vW,
-    "GGA": GGA,
     "LKT": LKT,
 }
 
@@ -137,18 +136,6 @@ def KEDFunctional(rho, name="WT", calcType={"E", "V"}, split=False, nspin=1, **k
         if 'V' in calcType:
             OutFunctional.potential = DirectField(grid=rho.grid, rank=nspin)
         OutFunctionalDict = {"NONE": OutFunctional}
-    elif name[:3] == "GGA":
-        func = GGA
-        k_str = kwargs["k_str"].upper()
-        if k_str not in GGA_KEDF_list:
-            raise AttributeError("%s GGA KEDF to be implemented" % k_str)
-        else:
-            OutFunctional = func(rho, functional=k_str, calcType=calcType, **kwargs)
-            OutFunctionalDict = {"GGA": OutFunctional}
-    elif name == "LIBXC_KEDF":
-        k_str = kwargs.get("k_str", "gga_k_lc94").lower()
-        OutFunctional = LibXC(rho, k_str=k_str, calcType=calcType)
-        OutFunctionalDict = {"XC": OutFunctional}
     elif name in KEDF_Dict:
         func = KEDF_Dict[name]
         OutFunctional = func(rho, calcType=calcType, **kwargs)
@@ -164,6 +151,22 @@ def KEDFunctional(rho, name="WT", calcType={"E", "V"}, split=False, nspin=1, **k
         OutFunctional = xTF + yvW
         OutFunctional.name = name
         OutFunctionalDict = {"TF": xTF, "vW": yvW}
+    elif name[:3] == "GGA" or name in GGA_KEDF_list:
+        func = GGA
+        if name in GGA_KEDF_list:
+            k_str = name
+        elif name[4:] in GGA_KEDF_list:
+            k_str = name[4:]
+        else:
+            k_str = kwargs["k_str"].upper()
+            if k_str not in GGA_KEDF_list:
+                raise AttributeError("%s GGA KEDF to be implemented" % k_str)
+        OutFunctional = func(rho, functional=k_str, calcType=calcType, **kwargs)
+        OutFunctionalDict = {"GGA": OutFunctional}
+    elif name == "LIBXC_KEDF":
+        k_str = kwargs.get("k_str", "gga_k_lc94").lower()
+        OutFunctional = LibXC(rho, k_str=k_str, calcType=calcType)
+        OutFunctionalDict = {"XC": OutFunctional}
     elif name in NLKEDF_Dict:
         func = NLKEDF_Dict[name]
         NL = func(rho, calcType=calcType, **kwargs)

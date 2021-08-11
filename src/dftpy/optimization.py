@@ -4,7 +4,7 @@ from dftpy.mpi import sprint
 from dftpy.field import DirectField
 from dftpy.math_utils import LineSearchDcsrchVector, LineSearchDcsrch2, Brent
 from dftpy.math_utils import LBFGS
-from dftpy.time_data import TimeData
+from dftpy.time_data import TimeData, timer
 from abc import ABC, abstractmethod
 from dftpy.constants import ENERGY_CONV
 from dftpy.math_utils import get_direction_CG, get_direction_GD, get_direction_LBFGS
@@ -278,8 +278,8 @@ class Optimization(AbstractOptimization):
         # sprint('theta', theta, value, grad, comm=self.comm)
         return [value, grad, newphi, f]
 
+    @timer('Optimize')
     def optimize_rho(self, guess_rho=None, guess_phi = None, lphi = False):
-        TimeData.Begin("Optimize")
         if guess_rho is None and self.rho is None:
             raise AttributeError("Must provide a guess density")
         elif guess_rho is not None :
@@ -510,7 +510,6 @@ class Optimization(AbstractOptimization):
             converged = 2
             sprint("!WARN: Not converged, but reached max steps", comm=self.comm)
 
-        TimeData.End("Optimize")
         sprint('Chemical potential (a.u.):', mu, comm=self.comm)
         sprint('Chemical potential (eV)  :', mu * ENERGY_CONV['Hartree']['eV'], comm=self.comm)
         self.mu = mu

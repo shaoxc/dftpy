@@ -40,6 +40,8 @@ SPEED_OF_LIGHT = 137.035999084
 C_TF = 2.87123400018819181594
 TKF0 = 6.18733545256027186194
 
+CBRT_TWO = 1.25992104989487316477
+
 units_warning = "All the quantities in atomic units"
 
 ZERO = 1E-30
@@ -59,4 +61,4 @@ except Exception :
     4 : error
 """
 environ['FFTLIB'] = os.environ.get('DFTPY_FFTLIB', FFTLIB)
-environ['SAVEFFT'] = os.environ.get('DFTPY_SAVEFFT', False)
+#environ['SAVEFFT'] = os.environ.get('DFTPY_SAVEFFT', False)
