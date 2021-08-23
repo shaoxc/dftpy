@@ -1,3 +1,9 @@
+"""
+MPI-IO of npy file
+
+Notes:
+    In order to support write/read multi-data in one file, not guarantee read and write for same file handle.
+"""
 import numpy as np
 from numpy.lib import format as npyf
 # from dftpy.mpi import sprint
@@ -19,6 +25,7 @@ def write(fh, data, grid = None, single = False, version = (1, 0), datarep = 'na
 
     Notes:
         For datarep, ``native`` fastest, but ``external32`` most portable
+        For easy to use and faster, if 'single = True' only rank == 0 will write.
     """
     if hasattr(data, 'grid'):
         grid = data.grid
@@ -43,6 +50,7 @@ def _write_single(fh, data, version = (1, 0)):
     if not hasattr(fh, 'Get_position'):
         # serial version use numpy.save
         return np.save(fh, data)
+    if fh.mp.rank > 0 : return
     _write_header(fh, data, version)
     _write_value_single(fh, data)
 
@@ -69,11 +77,8 @@ def _write_value(fh, data, fp = None, grid=None, datarep = 'native'):
         grid = data.grid
 
     if fp is None :
-        if grid.mp.rank == 0:
-            fp = fh.Get_position()
-        else:
-            fp = 0
-        grid.mp.comm.Bcast(fp, root = 0)
+        fp = fh.Get_byte_offset(fh.Get_position())
+        fp = grid.mp.comm.bcast(fp, root = 0)
     MPI = grid.mp.MPI
     etype = MPI._typedict[data.dtype.char]
     filetype = etype.Create_subarray(grid.nrR, grid.nr, grid.offsets, order=MPI.ORDER_C)
@@ -81,6 +86,11 @@ def _write_value(fh, data, fp = None, grid=None, datarep = 'native'):
     fh.Set_view(fp, etype, filetype, datarep=datarep)
     fh.Write_all(data)
     filetype.Free()
+    # fp += grid.nnrR*etype.size
+    fp = fh.Get_byte_offset(fh.Get_position())
+    fp = grid.mp.comm.bcast(fp, root = 0)
+    fh.Set_view(0, MPI.BYTE, MPI.BYTE, datarep=datarep)
+    fh.Seek(fp)
     return
 
 def read(fh, data=None, grid=None, single=False, datarep = 'native'):
@@ -97,6 +107,8 @@ def read(fh, data=None, grid=None, single=False, datarep = 'native'):
     Raises:
         AttributeError: Not support Fortran order
 
+    Notes:
+        For safe, please make sure everytime with 'single = True' always on rank == 0.
     """
     if single or (not hasattr(fh, 'Get_position')):
         return _read_single(fh, data)
@@ -136,17 +148,23 @@ def _read_header(fh):
     npyf._check_version(version)
     return npyf._read_array_header(fh, version)
 
-def _read_value(fh, data, grid=None, datarep = 'native'):
+def _read_value(fh, data, fp=None, grid=None, datarep = 'native'):
     if hasattr(data, 'grid'):
         grid = data.grid
     MPI = grid.mp.MPI
-    fp = fh.Get_position()
+    if fp is None :
+        fp = fh.Get_byte_offset(fh.Get_position())
+        fp = grid.mp.comm.bcast(fp, root = 0)
     etype = MPI._typedict[data.dtype.char]
     filetype = etype.Create_subarray(grid.nrR, grid.nr, grid.offsets, order=MPI.ORDER_C)
     filetype.Commit()
     fh.Set_view(fp, etype, filetype, datarep=datarep)
     fh.Read_all(data)
     filetype.Free()
+    fp = fh.Get_byte_offset(fh.Get_position())
+    fp = grid.mp.comm.bcast(fp, root = 0)
+    fh.Set_view(0, MPI.BYTE, MPI.BYTE, datarep=datarep)
+    fh.Seek(fp)
     return data
 
 def _read_value_single(fh, data):

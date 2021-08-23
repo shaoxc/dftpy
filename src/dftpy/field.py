@@ -586,15 +586,15 @@ class DirectField(BaseField):
         results = self.__class__(grid=grid, rank=self.rank, griddata_3d=data, cplx=self.cplx)
         return results
 
-    def gather(self, grid = None, out = None):
+    def gather(self, grid = None, out = None, root = 0):
         if out is None :
-            value = self.grid.gather(self)
+            value = self.grid.gather(self, root = root)
             if self.grid.mp.rank == 0 :
                 if grid is None :
                     grid = DirectGrid(self.grid.lattice, self.grid.nrR, units=self.grid.units, full=self.grid.full)
                 value = self.__class__(grid=grid, rank=self.rank, griddata_3d=value, cplx=self.cplx)
         else :
-            value = self.grid.gather(self, out = out)
+            value = self.grid.gather(self, out = out, root = root)
         return value
 
     def __scatter(self, grid, data = None):
