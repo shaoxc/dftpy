@@ -502,7 +502,7 @@
       "type": "str",
       "default": "Control of the propagator. `DFTpy` has an implementation of hydrodynamic TDDFT. This is essentially TDDFT with one orbital only, defined as :math:`{\\psi(r,t)=\\sqrt{\\rho(r,t)}e^{iS(r,t)}}`, and determined by the following time-dependent Schroedinger equation, \\\\n\\\\n\\\\t\\\\t :math:`{-\\frac{1}{2} \\nabla^2 \\psi(r,t) + v_s(r,t) \\psi(r,t) = i\\frac{d}{dt}\\psi(r,t)}`,\\\\n\\\\n\\\\twhere :math:`{v_s = v_{xc} + v_H + v_{T_s} - v_{vW} + v_{dyn}}`, See `paper <https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.111.175002>`_."
     },
-    "type": {
+    "propagator": {
       "type": "str",
       "default": "crank-nicolson",
       "comment": "The type of propagator.",
@@ -620,6 +620,11 @@
       "type": "bool",
       "default": false,
       "comment": "If true, use vector potential for the initial kick."
+    },
+    "propagate_vector_potential": {
+      "type": "bool",
+      "default": true,
+      "comment": "Only matters if vector_potential is true. If true, propagate the vector potential."
     },
     "omega": {
       "type": "float",

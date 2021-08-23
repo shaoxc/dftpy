@@ -18,7 +18,7 @@ class Propagator(object):
     interval: float
         The time interval of each propagation
 
-    type: function
+    propagator: function
         The type of propagator
 
     kwargs:
@@ -38,7 +38,7 @@ class Propagator(object):
         "cg": {"func": linear_solver.cg, "scipy": False},
     }
 
-    def __init__(self, hamiltonian, type="taylor", **kwargs):
+    def __init__(self, hamiltonian, propagator="crank-nicolson", **kwargs):
         # init the class
 
         TypeList = [
@@ -47,10 +47,10 @@ class Propagator(object):
             "rk4",
         ]
 
-        if type in TypeList:
-            self.type = type
+        if propagator in TypeList:
+            self.type = propagator
         else:
-            raise AttributeError("{0:s} is not a supported propagator type".format(type))
+            raise AttributeError("{0:s} is not a supported propagator type".format(propagator))
 
         if isinstance(hamiltonian, Hamiltonian):
             self.hamiltonian = hamiltonian

@@ -18,9 +18,9 @@ class TestPropagator(unittest.TestCase):
 
     def setUp(self):
         self.hamiltonian = Hamiltonian()
-        self.taylor = Propagator(self.hamiltonian, type='taylor',
-            order = 5)
-        self.cn = Propagator(self.hamiltonian, type='crank-nicolson')
+        self.taylor = Propagator(self.hamiltonian, propagator='taylor',
+                                 order = 5)
+        self.cn = Propagator(self.hamiltonian, propagator='crank-nicolson')
 
     def test_init(self):
         self.assertEqual(self.taylor.type, 'taylor')
