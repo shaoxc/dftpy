@@ -75,8 +75,9 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
         if vector_potential:
             psi = np.complex128(np.sqrt(rho0))
             A_t = np.zeros(3)
+            sprint(A_t.flags)
             A_t[direc] = k * SPEED_OF_LIGHT
-            A_tm1 = A_t
+            A_tm1 = A_t.copy()
         else:
             x = rho0.grid.r[direc]
             psi = np.sqrt(rho0) * np.exp(1j * k * x)
@@ -148,7 +149,8 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
             rho_pred = calc_rho(psi_pred)
             j_pred = calc_j(psi_pred)
             if vector_potential and propagate_vector_potential:
-                A_t_pred = np.real(
+                A_t_pred = np.empty_like(A_t)
+                A_t_pred[:] = np.real(
                     2 * A_t - A_tm1 - 4 * np.pi * N * A_t / Omega * int_t * int_t - 4.0 * np.pi * SPEED_OF_LIGHT * N / Omega * psi_pred.para_current(
                         sigma=0.025) * int_t * int_t)
 
@@ -223,14 +225,12 @@ def RealTimeRunner(config, rho0, E_v_Evaluator):
                 f = MPIFile(fname, mp, amode=mp.MPI.MODE_CREATE | mp.MPI.MODE_WRONLY)
             else:
                 f = open(fname, "wb")
-            npy.write(f, i_t, single=True)
+            if mp.is_root:
+                npy.write(f, i_t, single=True)
             npy.write(f, psi, grid=psi.grid)
             if vector_potential and mp.is_root:
-                try:
-                    npy.write(f, A_t, single=True)
-                    npy.write(f, A_tm1, single=True)
-                except:
-                    pass
+                npy.write(f, A_t, single=True)
+                npy.write(f, A_tm1, single=True)
             if max_runtime > 0 and cost_t > max_runtime:
                 sprint('Maximum run time reached. Clean exiting.')
                 break
