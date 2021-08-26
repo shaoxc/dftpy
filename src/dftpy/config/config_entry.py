@@ -1,5 +1,6 @@
 import ast
 import re
+import os
 from collections import OrderedDict
 from json import JSONEncoder
 
@@ -34,6 +35,23 @@ def format_str(expression):
 
 def format_cstr(expression):
     return expression.capitalize()
+
+
+def format_path(expression):
+    if '/' in expression:
+        path_list = expression.split('/')
+    elif '\\' in expression:
+        path_list = expression.split('\\')
+    else:
+        path_list = [expression]
+
+    for i_path, path_unit in enumerate(path_list):
+        if len(path_unit) == 0:
+            path_list[i_path] = os.sep
+        elif path_unit[0] == '$':
+            path_list[i_path] = os.environ.get(path_unit[1:].lstrip('{').rstrip('}'))
+
+    return os.path.join(*path_list)
 
 
 def format_slice(expression):
@@ -141,6 +159,7 @@ class ConfigEntry(object):
             "float": format_float,
             "str": format_str,
             "cstr": format_cstr,
+            "path": format_path,
             "intlist": format_intlist,
             "floatlist": format_floatlist,
             "strlist": format_strlist,

@@ -25,13 +25,13 @@
     "pppath": {
       "comment": "The path of pseudopotential.",
       "options": "",
-      "type": "str",
+      "type": "path",
       "default": "./"
     },
     "cellpath": {
       "comment": "The path of input structure.",
       "options": "",
-      "type": "str",
+      "type": "path",
       "default": "./"
     }
   },
