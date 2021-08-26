@@ -47,7 +47,8 @@ def format_path(expression):
 
     for i_path, path_unit in enumerate(path_list):
         if len(path_unit) == 0:
-            path_list[i_path] = os.sep
+            if i_path == 0:
+                path_list[i_path] = os.sep
         elif path_unit[0] == '$':
             path_list[i_path] = os.environ.get(path_unit[1:].lstrip('{').rstrip('}'))
 
