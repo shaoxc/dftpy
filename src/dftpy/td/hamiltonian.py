@@ -35,7 +35,7 @@ class Hamiltonian(object):
         else:
             raise TypeError("v must be a DFTpy DirectField.")
 
-    @v.setter
+    @A.setter
     def A(self, new_A):
         if new_A is None:
             self._A = None
