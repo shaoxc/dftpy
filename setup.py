@@ -27,7 +27,6 @@ with open('src/dftpy/__init__.py') as fd :
     __contact__ = re.search('__contact__ = "(.*)"', lines).group(1)
     __license__ = re.search('__license__ = "(.*)"', lines).group(1)
 
-
 assert sys.version_info >= (3, 6)
 description = "DFTpy: A Python3 packages for Density Functional Theory",
 long_description = """ `DFTpy` is an Density Functional Theory code based on a plane-wave
@@ -53,7 +52,9 @@ setup(name='dftpy',
       description=description,
       long_description=long_description,
       url='https://gitlab.com/pavanello-research-group/dftpy',
-      version=__version__,
+      # version=__version__,
+      use_scm_version={'version_scheme': 'post-release'},
+      setup_requires=['setuptools_scm'],
       author=__author__,
       author_email=__contact__,
       license=__license__,
