@@ -22,8 +22,9 @@ def RunJob(args):
     import time
     from dftpy.time_data import TimeData
     from dftpy.mpi import mp, sprint
+    from dftpy import __version__
 
-    sprint("Begin on :", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+    sprint("DFTpy {} Begin on : {}".format(__version__, time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
     if mp.is_mpi:
         info = 'Parallel version (MPI) on {0:>8d} processors'.format(mp.comm.size)
     else:
@@ -51,7 +52,7 @@ def RunJob(args):
         TimeData.output(config)
         sprint("-" * 80)
     sprint("#" * 80)
-    sprint("Finished on :", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+    sprint("DFTpy {} Finished on : {}".format(__version__, time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
 def main():
     import sys

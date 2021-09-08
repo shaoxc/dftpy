@@ -36,7 +36,7 @@ scripts = ['scripts/dftpy']
 extras_require = {
         'libxc' : ['pylibxc @ git+https://gitlab.com/libxc/libxc.git'],
         'upf' : ['xmltodict', 'upf_to_json'],
-        'mpi4py': ['mpi4py @ git+https://bitbucket.org/mpi4py/mpi4py.git'],
+        'mpi': ['mpi4py', 'mpi4py-fft'],
         'all' : [
             'pylibxc @ git+https://gitlab.com/libxc/libxc.git',
             'ase>=3.21.1',
