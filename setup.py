@@ -38,7 +38,7 @@ extras_require = {
         'upf' : ['xmltodict', 'upf_to_json'],
         'mpi': ['mpi4py', 'mpi4py-fft'],
         'all' : [
-            'pylibxc @ git+https://gitlab.com/libxc/libxc.git',
+            'pylibxc2',
             'ase>=3.21.1',
             'xmltodict',
             'upf_to_json',
