@@ -229,26 +229,9 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2 = None):
         energypotential = GetEnergyPotential(
             ions, rho, E_v_Evaluator, calcType=["E"], linearii=linearii, linearie=linearie
         )
-    sprint(format("Energy information", "-^80"))
-    keys, ep = zip(*energypotential.items())
-    values = [item.energy for item in ep]
-    values = rho.mp.vsum(values)
-    ep_w = dict(zip(keys, values))
-    for key in sorted(keys):
-        if key == "TOTAL":
-            continue
-        value = ep_w[key]
-        sprint("{:>10s} energy (eV): {:22.15E}".format(key, ep_w[key]* ENERGY_CONV["Hartree"]["eV"]))
-    etot = ep_w['TOTAL']
-    sprint("{:>10s} energy (eV): {:22.15E}".format("TOTAL", etot * ENERGY_CONV["Hartree"]["eV"]))
-    sprint("-" * 80)
 
-    etot_eV = etot * ENERGY_CONV["Hartree"]["eV"]
-    etot_eV_patom = etot * ENERGY_CONV["Hartree"]["eV"] / ions.nat
-    fstr = "  {:<30s} : {:30.15f}"
-    sprint(fstr.format("total energy (a.u.)", etot))
-    sprint(fstr.format("total energy (eV)", etot_eV))
-    sprint(fstr.format("total energy (eV/atom)", etot_eV_patom))
+    PrintEnergy(energypotential, ions.nat, rho.mp)
+
     ############################## Force ##############################
     if "Force" in config["JOB"]["calctype"]:
         sprint("Calculate Force...")
@@ -318,6 +301,28 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2 = None):
     # TimeData.reset() #Cleanup the data in TimeData
     # -----------------------------------------------------------------------
     return results
+
+def PrintEnergy(energypotential, nat, mp):
+    sprint(format("Energy information", "-^80"))
+    keys, ep = zip(*energypotential.items())
+    values = [item.energy for item in ep]
+    values = mp.vsum(values)
+    ep_w = dict(zip(keys, values))
+    for key in sorted(keys):
+        if key == "TOTAL":
+            continue
+        value = ep_w[key]
+        sprint("{:>10s} energy (eV): {:22.15E}".format(key, ep_w[key] * ENERGY_CONV["Hartree"]["eV"]))
+    etot = ep_w['TOTAL']
+    sprint("{:>10s} energy (eV): {:22.15E}".format("TOTAL", etot * ENERGY_CONV["Hartree"]["eV"]))
+    sprint("-" * 80)
+
+    etot_eV = etot * ENERGY_CONV["Hartree"]["eV"]
+    etot_eV_patom = etot * ENERGY_CONV["Hartree"]["eV"] / nat
+    fstr = "  {:<30s} : {:30.15f}"
+    sprint(fstr.format("total energy (a.u.)", etot))
+    sprint(fstr.format("total energy (eV)", etot_eV))
+    sprint(fstr.format("total energy (eV/atom)", etot_eV_patom))
 
 
 def GetEnergyPotential(ions, rho, EnergyEvaluator, calcType={"E","V"}, linearii=True, linearie=True):

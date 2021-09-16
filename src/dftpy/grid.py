@@ -1,5 +1,6 @@
 import numpy as np
 from dftpy.base import BaseCell, DirectCell, ReciprocalCell, Coord, s2r
+from typing import List
 
 
 class BaseGrid(BaseCell):
@@ -619,3 +620,28 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
     def full(self, value):
         if self._full != value :
             self._full = value
+
+    def calc_k_points(self, nk: List[int]):
+        '''
+        Calculate k-points for k-point sampling
+        nk: number of k-points in each direction
+        '''
+        length = nk[0] * nk[1] * nk[2]
+        k_points_crystal = np.empty((length, 3), dtype = np.float64)
+        for k_x in range(nk[0]):
+            k_x_crystal = (2 * k_x - nk[0] + 1) / nk[0] / 2
+            for k_y in range(nk[1]):
+                k_y_crystal = (2 * k_y - nk[1] + 1) / nk[1] / 2
+                for k_z in range(nk[2]):
+                    k_z_crystal = (2 * k_z - nk[2] + 1) / nk[2] / 2
+                    k_points_crystal[k_x*nk[1]*nk[2]+k_y*nk[2]+k_z:] = np.asarray([k_x_crystal, k_y_crystal, k_z_crystal])
+
+        from dftpy.mpi.utils import sprint
+        sprint(self.lattice)
+        sprint(k_points_crystal)
+
+        k_points = np.matmul(k_points_crystal, np.transpose(self.lattice))
+
+        return k_points
+
+

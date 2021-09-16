@@ -62,6 +62,14 @@ class TotalFunctional(AbstractFunctional):
     def __repr__(self):
         return self.funcDict.__repr__()
 
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        newdict = {}
+        newdict.update(self.funcDict)
+        result = cls(**newdict)
+        print(result)
+        return result
+
     def UpdateNameType(self):
         self.name = ""
         self.type = ""

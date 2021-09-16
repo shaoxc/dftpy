@@ -19,6 +19,7 @@ def GetConf():
 def RunJob(args):
     from dftpy.interface import ConfigParser, OptimizeDensityConf, InvertRunner
     from dftpy.td.interface import RealTimeRunner, CasidaRunner, DiagonalizeRunner
+    from dftpy.kpoint_interface import KPointSCFRunner
     import time
     from dftpy.time_data import TimeData
     from dftpy.mpi import mp, sprint
@@ -42,6 +43,8 @@ def RunJob(args):
             CasidaRunner(config, others["struct"].field, others["E_v_Evaluator"])
         elif "Diagonalize" in config["JOB"]["task"]:
             DiagonalizeRunner(config, others["struct"], others["E_v_Evaluator"])
+        elif "Scf" in config["JOB"]["task"]:
+            KPointSCFRunner(config, others["struct"], others["E_v_Evaluator"])
         elif "Inversion" in config["JOB"]["task"]:
             InvertRunner(config, others["struct"], others["E_v_Evaluator"])
         else:
