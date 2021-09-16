@@ -39,6 +39,11 @@ class BaseCell(object):
         self._pbc = np.ones(3, dtype = 'int32')
         self._pbc[:] = pbc
         # super().__init__(**kwargs)
+        metric = np.dot(self.lattice.T, self.lattice)
+        latparas = np.zeros(3)
+        for i in range(3):
+            latparas[i] = np.sqrt(metric[i, i])
+        self._latparas= latparas
 
     def __eq__(self, other):
         """
@@ -121,6 +126,9 @@ class BaseCell(object):
     def pbc(self):
         return self._pbc
 
+    @property
+    def latparas(self):
+        return self._latparas
 
 
 class DirectCell(BaseCell):
