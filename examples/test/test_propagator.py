@@ -8,7 +8,7 @@ from dftpy.functional.total_functional import TotalFunctional
 from dftpy.functional.pseudo import LocalPseudo
 from dftpy.td.propagator import Propagator
 from dftpy.td.hamiltonian import Hamiltonian
-from dftpy.utils import calc_rho
+from dftpy.utils.utils import calc_rho
 from dftpy.formats.xsf import read_xsf
 from dftpy.constants import LEN_CONV
 ang2bohr = LEN_CONV["Angstrom"]["Bohr"]

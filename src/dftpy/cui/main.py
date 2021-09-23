@@ -18,7 +18,8 @@ def GetConf():
 
 def RunJob(args):
     from dftpy.interface import ConfigParser, OptimizeDensityConf, InvertRunner
-    from dftpy.td.interface import RealTimeRunner, CasidaRunner, DiagonalizeRunner
+    from dftpy.td.interface import CasidaRunner, DiagonalizeRunner
+    from dftpy.td.real_time_runner import RealTimeRunner
     import time
     from dftpy.time_data import TimeData
     from dftpy.mpi import mp, sprint
@@ -38,7 +39,8 @@ def RunJob(args):
         TimeData.Begin("TOTAL")
 
         if "Propagate" in config["JOB"]["task"]:
-            RealTimeRunner(config, others["struct"].field, others["E_v_Evaluator"])
+            realtimerunner = RealTimeRunner(others["struct"], config, others["E_v_Evaluator"])
+            realtimerunner()
         elif "Casida" in config["JOB"]["task"]:
             CasidaRunner(config, others["struct"].field, others["E_v_Evaluator"])
         elif "Diagonalize" in config["JOB"]["task"]:
