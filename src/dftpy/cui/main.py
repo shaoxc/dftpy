@@ -18,13 +18,15 @@ def GetConf():
 
 def RunJob(args):
     from dftpy.interface import ConfigParser, OptimizeDensityConf, InvertRunner
-    from dftpy.td.interface import RealTimeRunner, CasidaRunner, DiagonalizeRunner
+    from dftpy.td.interface import CasidaRunner, DiagonalizeRunner
+    from dftpy.td.real_time_runner import RealTimeRunner
     from dftpy.kpoint_interface import KPointSCFRunner
     import time
     from dftpy.time_data import TimeData
     from dftpy.mpi import mp, sprint
+    from dftpy import __version__
 
-    sprint("Begin on :", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+    sprint("DFTpy {} Begin on : {}".format(__version__, time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
     if mp.is_mpi:
         info = 'Parallel version (MPI) on {0:>8d} processors'.format(mp.comm.size)
     else:
@@ -38,7 +40,8 @@ def RunJob(args):
         TimeData.Begin("TOTAL")
 
         if "Propagate" in config["JOB"]["task"]:
-            RealTimeRunner(config, others["struct"].field, others["E_v_Evaluator"])
+            realtimerunner = RealTimeRunner(others["struct"], config, others["E_v_Evaluator"])
+            realtimerunner()
         elif "Casida" in config["JOB"]["task"]:
             CasidaRunner(config, others["struct"].field, others["E_v_Evaluator"])
         elif "Diagonalize" in config["JOB"]["task"]:
@@ -54,7 +57,7 @@ def RunJob(args):
         TimeData.output(config)
         sprint("-" * 80)
     sprint("#" * 80)
-    sprint("Finished on :", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+    sprint("DFTpy {} Finished on : {}".format(__version__, time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 
 def main():
     import sys

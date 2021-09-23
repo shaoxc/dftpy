@@ -49,9 +49,9 @@ KEDF_Stress_Dict = {
 
 
 class KEDF(AbstractFunctional):
-    def __init__(self, name="WT", **kwargs):
+    def __init__(self, name="WT", kedf = None, **kwargs):
         self.type = 'KEDF'
-        self.name = name
+        self.name = kedf or name
         self.kwargs = kwargs
         self.ke_kernel_saved = {
             "Kernel": None,

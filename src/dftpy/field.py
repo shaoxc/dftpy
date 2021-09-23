@@ -589,7 +589,7 @@ class DirectField(BaseField):
     def gather(self, grid = None, out = None, root = 0):
         if out is None :
             value = self.grid.gather(self, root = root)
-            if self.grid.mp.rank == 0 :
+            if self.grid.mp.rank == root :
                 if grid is None :
                     grid = DirectGrid(self.grid.lattice, self.grid.nrR, units=self.grid.units, full=self.grid.full)
                 value = self.__class__(grid=grid, rank=self.rank, griddata_3d=value, cplx=self.cplx)

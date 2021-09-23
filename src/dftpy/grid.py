@@ -124,9 +124,9 @@ class BaseGrid(BaseCell):
     def local_slice(self, nr, **kwargs):
         self._slice, self._nr, self._offsets = self.mp.get_local_fft_shape(nr, **kwargs)
         if self.mp.is_mpi :
-            self.slice_all = self.mp.comm.gather(self._slice)
-            self.nr_all = self.mp.comm.gather(self._nr)
-            self.offsets_all = self.mp.comm.gather(self._offsets)
+            self.slice_all = self.mp.comm.allgather(self._slice)
+            self.nr_all = self.mp.comm.allgather(self._nr)
+            self.offsets_all = self.mp.comm.allgather(self._offsets)
         else :
             self.slice_all = self._slice
             self.nr_all = self._nr

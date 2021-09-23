@@ -29,21 +29,23 @@ class TimeObj(object):
 
     def Time(self, label):
         if label not in self.tic:
-            print(' !!! ERROR : You should add "Begin" before this')
+            print('!WARN : You should call "Begin" before this label : {}'.format(label))
+            t = 0
         else:
             t = time.time() - self.tic[label]
         return t
 
     def End(self, label):
         if label not in self.tic:
-            print(' !!! ERROR : You should add "Begin" before this')
+            print('!WARN : You should call "Begin" before this label : {}'.format(label))
+            t = 0
         else:
             self.toc[label] = time.time()
             t = time.time() - self.tic[label]
             self.cost[label] += t
         return t
 
-    def output(self, config=None, sort=0, comm=None):
+    def output(self, config=None, sort=0, lprint=False, comm=None, **kwargs):
         """
         sort : Label(0), Cost(1), Number(2), Avg(3)
         """
@@ -63,7 +65,6 @@ class TimeObj(object):
             idx = 0
         sprint(format("Time information", "-^80"), comm=comm)
         sprint("{:28s}{:24s}{:16s}{:24s}".format("Label", "Cost(s)", "Number", "Avg. Cost(s)"), comm=comm)
-        lprint = False
         if config:
             if isinstance(config, dict) and not config["OUTPUT"]["time"]:
                 lprint = False
