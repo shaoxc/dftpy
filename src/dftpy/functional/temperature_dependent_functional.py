@@ -1,7 +1,7 @@
 import numpy as np
 
 from dftpy.field import DirectField
-from dftpy.functional.kedf.tf import ThomasFermiPotential, ThomasFermiEnergy
+from dftpy.functional.kedf.tf import ThomasFermiPotential, ThomasFermiEnergyDensity, ThomasFermiEnergy
 from dftpy.math_utils import PowerInt
 
 
@@ -28,7 +28,7 @@ def TemperatureTFPotential(rho: DirectField, temperature: float) -> DirectField:
     ]
     c = 0.752252778063675
     mask = theta >= theta_cut
-    potential = 0.0 * theta
+    potential = np.zeros_like(theta)
     temp = np.ones_like(theta)
     for i in range(4):
         temp *= theta
@@ -43,6 +43,50 @@ def TemperatureTFPotential(rho: DirectField, temperature: float) -> DirectField:
 
 
 def TemperatureTFEnergy(rho: DirectField, temperature: float) -> float:
+    '''
+    Temperature dependent Thomas-Fermi energy
+    Parameters
+    ----------
+    rho
+    temperature: in Hartree
+
+    Returns
+    -------
+
+    '''
+    v_tf = ThomasFermiPotential(rho)
+    ene_den_tf = ThomasFermiEnergyDensity(rho)
+    theta = temperature / v_tf
+    theta_cut = 1.36
+    a = [
+        0.016,
+        -0.957 * 3,
+        -0.293 * -3,
+        0.209 * -1
+    ]
+    c = 0.752252778063675
+    factor = (3.0 / 10.0) * (5.0 / 3.0) * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
+    k = factor / temperature
+    mask = theta >= theta_cut
+    ene_den = np.zeros_like(theta)
+    temp = rho.copy()
+    for i in range(4):
+        ene_den += a[i] * temp
+        temp *= theta
+    ene_den *= temperature
+
+    temp = 1.0 / PowerInt(theta, 3, 2)
+    ene_den[mask] = (-2.0 * rho[mask] + 2 ** 1.5 * k ** 1.5 * np.arctan(c * temp[mask] / 2 ** 1.5) / c + rho[
+        mask] * np.log(1.0 + c / 2 ** 1.5 * temp[mask]) + rho[mask] * np.log(c * temp[mask]) + 2 ** 0.5 * k * np.sqrt(
+        theta[mask]) * PowerInt(rho, 1, 3)[mask] * np.log(
+        8.0 * k ** 3.0 - c ** 2.0 * PowerInt(rho, 2)[mask]) / c) * temperature - ene_den_tf[mask]
+
+    energy = ene_den.integral()
+
+    return energy
+
+
+def TemperatureTFEnergy_old(rho: DirectField, temperature: float) -> float:
     '''
     Temperature dependent Thomas-Fermi energy
     Parameters
