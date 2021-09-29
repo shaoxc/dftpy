@@ -4,7 +4,7 @@ from scipy.sparse.linalg import LinearOperator, eigsh
 from dftpy.constants import SPEED_OF_LIGHT
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.time_data import timer
-from dftpy.eigen_solver import power_iter
+from dftpy.eigen_solver import power_iter, minimization, minimization2
 
 
 class Hamiltonian(object):
@@ -146,6 +146,7 @@ class Hamiltonian(object):
 
         else:
             A = self.matvecUtil2(**kwargs)
-            info, psi = power_iter(A, x0)
-            return [info], [psi]
+            #mu, psi = power_iter(A, x0)
+            mu, psi = minimization2(A, x0)
+            return [mu], [psi]
 

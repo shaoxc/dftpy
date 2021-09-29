@@ -47,7 +47,8 @@ def RunJob(args):
         elif "Diagonalize" in config["JOB"]["task"]:
             DiagonalizeRunner(config, others["struct"], others["E_v_Evaluator"])
         elif "Scf" in config["JOB"]["task"]:
-            KPointSCFRunner(config, others["struct"], others["E_v_Evaluator"])
+            kpointscfrunner = KPointSCFRunner(others["struct"], config, others["E_v_Evaluator"])
+            kpointscfrunner()
         elif "Inversion" in config["JOB"]["task"]:
             InvertRunner(config, others["struct"], others["E_v_Evaluator"])
         else:
