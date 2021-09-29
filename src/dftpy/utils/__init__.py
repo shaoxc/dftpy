@@ -59,7 +59,7 @@ class IOContext(object):
     def openfile(self, file, comm=None, mode='w'):
         from dftpy.mpi import mp
         if comm is None:
-            comm = mp
+            comm = mp.comm
 
         if hasattr(file, 'close'):
             return file  # File already opened, not for us to close.

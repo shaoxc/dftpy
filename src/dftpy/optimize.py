@@ -19,7 +19,7 @@ class Dynamics(IOContext):
 
         self.system = system
         if logfile is not None:
-            self.logfile = self.openfile(logfile, mode='a', comm=mp)
+            self.logfile = self.openfile(logfile, mode='a', comm=mp.comm)
         self.observers_before_log = []
         self.observers_after_log = []
         self.nsteps = 0
