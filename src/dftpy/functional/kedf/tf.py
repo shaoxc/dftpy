@@ -64,7 +64,7 @@ def ThomasFermiStress(rho, x=1.0, energy=None, **kwargs):
 def TF(rho, x=1.0, calcType={"E", "V"}, split=False, **kwargs):
     TimeData.Begin("TF")
     from dftpy.functional.temperature_dependent_functional import TemperatureTFEnergy, TemperatureTFPotential
-    temperature = 1e-5
+    temperature = 1e0
     OutFunctional = FunctionalOutput(name="TF")
     if "E" in calcType or "D" in calcType:
         energydensity = ThomasFermiEnergyDensity(rho)

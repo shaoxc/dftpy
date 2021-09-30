@@ -62,11 +62,11 @@ def TemperatureTFEnergy(rho: DirectField, temperature: float) -> float:
         0.016,
         -0.957 * 3,
         -0.293 * -3,
-        0.209 * -1
+        -0.209
     ]
     c = 0.752252778063675
     factor = (3.0 / 10.0) * (5.0 / 3.0) * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
-    k = factor / temperature
+    k = temperature / factor
     mask = theta >= theta_cut
     ene_den = np.zeros_like(theta)
     temp = rho.copy()
@@ -76,7 +76,7 @@ def TemperatureTFEnergy(rho: DirectField, temperature: float) -> float:
     ene_den *= temperature
 
     temp = 1.0 / PowerInt(theta, 3, 2)
-    ene_den[mask] = (-2.0 * rho[mask] + 2 ** 1.5 * k ** 1.5 * np.arctan(c * temp[mask] / 2 ** 1.5) / c + rho[
+    ene_den[mask] = (-2.0 * rho[mask] + 2 ** 1.5 * k ** 1.5 * np.arctanh(c * temp[mask] / 2 ** 1.5) / c + rho[
         mask] * np.log(1.0 + c / 2 ** 1.5 * temp[mask]) + rho[mask] * np.log(c * temp[mask]) + 2 ** 0.5 * k * np.sqrt(
         theta[mask]) * PowerInt(rho, 1, 3)[mask] * np.log(
         8.0 * k ** 3.0 - c ** 2.0 * PowerInt(rho, 2)[mask]) / c) * temperature - ene_den_tf[mask]
