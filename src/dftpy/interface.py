@@ -104,7 +104,6 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
     kedf_config = config["KEDF"].copy()
     if kedf_config.get('temperature', None):
         kedf_config['temperature'] *= ENERGY_CONV['eV']['Hartree']
-    print(kedf_config)
     KE = Functional(type="KEDF", name=config["KEDF"]["kedf"], **kedf_config)
     ############################## XC and Hartree ##############################
     HARTREE = Functional(type="HARTREE")
