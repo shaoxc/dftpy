@@ -376,6 +376,12 @@
       "type": "float",
       "options": "",
       "default": null
+    },
+    "temperature": {
+      "comment": "The temperature of TF KEDF.",
+      "options": "",
+      "type": "float",
+      "default": null
     }
   },
   "OUTPUT": {
