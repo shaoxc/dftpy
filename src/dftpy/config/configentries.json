@@ -504,9 +504,9 @@
     },
     "propagator": {
       "type": "str",
-      "default": "crank-nicolson",
+      "default": "crank-nicholson",
       "comment": "The type of propagator.",
-      "options": "crank-nicolson, taylor, rk4 (experimental)"
+      "options": "crank-nicholson, taylor"
     },
     "order": {
       "type": "int",
