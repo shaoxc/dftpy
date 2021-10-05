@@ -80,14 +80,20 @@ def TF(rho, x=1.0, calcType={"E", "V"}, split=False, **kwargs):
     TimeData.End("TF")
     return OutFunctional
 
-def TTF(rho, x=1.0, calcType={"E", "V"}, temperature=1E-3, **kwargs):
+def TTF(rho, x=1.0, calcType={"E", "V"}, temperature=1E-3, temperature0 = None, **kwargs):
     TimeData.Begin("TTF")
     OutFunctional = FunctionalOutput(name="TTF")
     if "D" in calcType:
         raise AttributeError("Sorry TTF not support energy density")
 
+    if temperature0 is not None :
+        temperature = temperature0
+
     if "E" in calcType :
-        OutFunctional.energy = TemperatureTFEnergy(rho, temperature)*x
+        if temperature0 is not None :
+            OutFunctional.energy = TemperatureTFEnergy_old(rho, temperature)*x
+        else :
+            OutFunctional.energy = TemperatureTFEnergy(rho, temperature)*x
     if "V" in calcType:
         OutFunctional.potential = TemperatureTFPotential(rho, temperature)*x
     TimeData.End("TTF")

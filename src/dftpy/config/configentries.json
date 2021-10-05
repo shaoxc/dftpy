@@ -382,6 +382,12 @@
       "options": "",
       "type": "float",
       "default": null
+    },
+    "temperature0": {
+      "comment": "The temperature of TF KEDF (analytical approximation).",
+      "options": "",
+      "type": "float",
+      "default": null
     }
   },
   "OUTPUT": {
