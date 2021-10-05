@@ -75,10 +75,10 @@ class CrankNicholson(AbstractPropagator):
         return _scipy_matvec
 
     def _dftpy_matvec_util(self, dt: float) -> Callable:
-        def dftpy_matvec(psi: Union[DirectField, ReciprocalField]) -> Union[DirectField, ReciprocalField]:
+        def _dftpy_matvec(psi: Union[DirectField, ReciprocalField]) -> Union[DirectField, ReciprocalField]:
             return psi + 1j * self.hamiltonian(psi) * dt / 2.0
 
-        return dftpy_matvec
+        return _dftpy_matvec
 
     def _calc_b(self, psi: Union[DirectField, ReciprocalField]) -> Union[DirectField, ReciprocalField]:
         return psi - 1j * self.hamiltonian(psi) * self.interval / 2.0
