@@ -195,7 +195,7 @@ def TemperatureTFEnergy_old(rho: DirectField, temperature: float) -> float:
     '''
     v_tf = ThomasFermiPotential(rho)
     theta = temperature / v_tf
-    v_tf_t = TemperatureTFPotential(rho, temperature)
+    v_tf_t = TemperatureTFPotential(rho, temperature)+v_tf
     ene_den = v_tf_t * rho
     ene_den += -2 * np.sqrt(2) / 3 / np.pi ** 2 * temperature ** 2.5 / PowerInt(theta, 5, 2) * np.sqrt(
         0.16 + PowerInt(theta, 2)) / (1.0 - 0.14 * (np.exp(-theta) - np.exp(-3.68 * theta)))
