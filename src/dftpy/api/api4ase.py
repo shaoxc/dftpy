@@ -1,6 +1,6 @@
 import numpy as np
 from dftpy.atom import Atom
-from dftpy.base import DirectCell
+from dftpy.cell import DirectCell
 from dftpy.constants import LEN_CONV, ENERGY_CONV, FORCE_CONV, STRESS_CONV
 from dftpy.interface import ConfigParser, OptimizeDensityConf
 

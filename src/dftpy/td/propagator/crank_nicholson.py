@@ -5,11 +5,33 @@ import scipy.sparse.linalg as linalg
 from scipy.sparse.linalg import LinearOperator
 
 import dftpy.linear_solver
-from dftpy.field import DirectField, ReciprocalField
+from dftpy.field import BaseField, DirectField, ReciprocalField
+from dftpy.grid import DirectGrid
 from dftpy.mpi.utils import sprint
 from dftpy.td.hamiltonian import Hamiltonian
 from dftpy.td.propagator.abstract_propagator import AbstractPropagator
 from dftpy.time_data import timer
+from dftpy.td.operator import Operator
+
+
+class CrankNicholsonOperator(Operator):
+
+    def __init__(self, hamiltonian: Hamiltonian, interval: float) -> None:
+        super(CrankNicholsonOperator, self).__init__(hamiltonian.grid)
+        self.hamiltonian = hamiltonian
+        self.interval = interval
+
+    @property
+    def hamiltonian(self) -> Hamiltonian:
+        return self._hamiltonian
+
+    @hamiltonian.setter
+    def hamiltonian(self, hamiltonian: Hamiltonian) -> None:
+        self.grid = hamiltonian.grid
+        self._hamiltonian = hamiltonian
+
+    def __call__(self, psi: BaseField) -> BaseField:
+        return psi + 1j * self.hamiltonian(psi) * self.interval / 2.0
 
 
 class CrankNicholson(AbstractPropagator):
@@ -47,38 +69,49 @@ class CrankNicholson(AbstractPropagator):
 
         """
         super(CrankNicholson, self).__init__(hamiltonian, interval)
-        if linear_solver not in self.LinearSolverDict:
-            raise AttributeError("{0:s} is not a linear solver".format(linear_solver))
-        self.linear_solver = self.LinearSolverDict[linear_solver]['func']
-        self.scipy = self.LinearSolverDict[linear_solver]['scipy']
+        self._a = CrankNicholsonOperator(self._hamiltonian, self._interval)
+        self.linear_solver = linear_solver
         self.tol = tol
         self.maxiter = maxiter
         self.atol = atol
 
-    def _scipy_matvec_util(self, dt: float, reciprocal: bool = False) -> Callable:
-        if reciprocal:
-            reci_grid = self.hamiltonian.grid.get_reciprocal()
+    @property
+    def hamiltonian(self) -> Hamiltonian:
+        return self._hamiltonian
 
-        def _scipy_matvec(psi_: np.ndarray) -> np.ndarray:
-            if reciprocal:
-                psi = ReciprocalField(
-                    reci_grid, rank=1, griddata_3d=np.reshape(psi_, reci_grid.nr), cplx=True
-                )
-            else:
-                psi = DirectField(
-                    self.hamiltonian.grid, rank=1, griddata_3d=np.reshape(psi_, self.hamiltonian.grid.nr),
-                    cplx=True
-                )
-            prod = psi + 1j * self.hamiltonian(psi) * dt / 2.0
-            return prod.ravel()
+    @hamiltonian.setter
+    def hamiltonian(self, hamiltonian: Hamiltonian) -> None:
+        self._hamiltonian = hamiltonian
+        self._a = CrankNicholsonOperator(self._hamiltonian, self._interval)
 
-        return _scipy_matvec
+    @property
+    def interval(self) -> float:
+        return self._interval
 
-    def _dftpy_matvec_util(self, dt: float) -> Callable:
-        def _dftpy_matvec(psi: Union[DirectField, ReciprocalField]) -> Union[DirectField, ReciprocalField]:
-            return psi + 1j * self.hamiltonian(psi) * dt / 2.0
+    @interval.setter
+    def interval(self, interval: float) -> None:
+        self._interval = interval
+        self._a = CrankNicholsonOperator(self._hamiltonian, self._interval)
 
-        return _dftpy_matvec
+    @property
+    def linear_solver(self) -> str:
+        return self._linear_solver_name
+
+    @linear_solver.setter
+    def linear_solver(self, linear_solver: str) -> None:
+        """
+        Set the linear solver
+
+        Parameters
+        ----------
+        linear_solver: the name of the linear solver to solve the Ax=b problem
+
+        """
+        if linear_solver not in self.LinearSolverDict:
+            raise AttributeError("{0:s} is not a linear solver".format(linear_solver))
+        self._linear_solver_name = linear_solver
+        self._linear_solver = self.LinearSolverDict[linear_solver]['func']
+        self._scipy = self.LinearSolverDict[linear_solver]['scipy']
 
     def _calc_b(self, psi: Union[DirectField, ReciprocalField]) -> Union[DirectField, ReciprocalField]:
         return psi - 1j * self.hamiltonian(psi) * self.interval / 2.0
@@ -100,18 +133,18 @@ class CrankNicholson(AbstractPropagator):
 
         """
 
-        if self.scipy:
+        if self._scipy:
             size = self.hamiltonian.grid.nnr
             b = self._calc_b(psi0).ravel()
-            mat = LinearOperator(shape=(size, size), dtype=psi0.dtype, matvec=self._scipy_matvec_util(self.interval))
-            psi1_, status = self.linear_solver(mat, b, x0=psi0.ravel(), tol=self.tol, maxiter=self.maxiter,
-                                               atol=self.atol)
+            mat = LinearOperator(shape=(size, size), dtype=psi0.dtype, matvec=self._a.scipy_matvec_utils())
+            psi1_, status = self._linear_solver(mat, b, x0=psi0.ravel(), tol=self.tol, maxiter=self.maxiter,
+                                                atol=self.atol)
             psi1 = DirectField(grid=self.hamiltonian.grid, rank=1,
                                griddata_3d=np.reshape(psi1_, self.hamiltonian.grid.nr), cplx=True)
         else:
             b = self._calc_b(psi0)
-            psi1, status = self.linear_solver(self._dftpy_matvec_util(self.interval), b, psi0, self.tol, self.maxiter,
-                                              atol=self.atol, mp=psi0.mp)
+            psi1, status = self._linear_solver(self._a, b, psi0, self.tol, self.maxiter,
+                                               atol=self.atol, mp=psi0.mp)
 
         if status:
             sprint("Linear solver did not converge. Info: {0:d}".format(status))

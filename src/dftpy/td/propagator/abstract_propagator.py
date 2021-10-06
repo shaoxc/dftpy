@@ -21,10 +21,26 @@ class AbstractPropagator(ABC):
         """
 
         if isinstance(hamiltonian, Hamiltonian):
-            self.hamiltonian = hamiltonian
+            self._hamiltonian = hamiltonian
         else:
             raise TypeError("hamiltonian must be a DFTpy Hamiltonian.")
-        self.interval = interval
+        self._interval = interval
+
+    @property
+    def hamiltonian(self) -> Hamiltonian:
+        return self._hamiltonian
+
+    @hamiltonian.setter
+    def hamiltonian(self, hamiltonian: Hamiltonian) -> None:
+        self._hamiltonian = hamiltonian
+
+    @property
+    def interval(self) -> float:
+        return self._interval
+
+    @interval.setter
+    def interval(self, interval: float) -> None:
+        self._interval = interval
 
     @abstractmethod
     def __call__(self, psi0: Union[DirectField, ReciprocalField]):

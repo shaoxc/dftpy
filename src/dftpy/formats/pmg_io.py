@@ -9,7 +9,7 @@ import sys
 import numpy as np
 from ..system import System
 from ..atom import Atom
-from ..base import BaseCell, DirectCell
+from ..cell import BaseCell, DirectCell
 from dftpy.constants import LEN_CONV
 from pymatgen.core import Structure
 

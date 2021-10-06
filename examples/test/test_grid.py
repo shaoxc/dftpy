@@ -2,7 +2,8 @@
 import unittest
 import numpy as np
 
-from dftpy.base import DirectCell, ReciprocalCell, Coord
+from dftpy.cell import DirectCell, ReciprocalCell
+from dftpy.coord import Coord
 from dftpy.grid import DirectGrid, ReciprocalGrid
 from dftpy.constants import LEN_CONV
 

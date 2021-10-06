@@ -1,5 +1,5 @@
 import numpy as np
-from dftpy.base import BaseCell, DirectCell, ReciprocalCell, Coord, s2r
+from dftpy.cell import BaseCell, DirectCell, ReciprocalCell
 
 
 class BaseGrid(BaseCell):
@@ -20,18 +20,18 @@ class BaseGrid(BaseCell):
 
     """
 
-    def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), units="Bohr", convention="mic",
-            full = False, realspace = True, cplx = False, mp = None, **kwargs):
+    def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), convention="mic", full=False, realspace=True,
+                 cplx=False, mp=None, **kwargs):
         if mp is None :
             from dftpy.mpi import MP
             mp = MP()
-        super().__init__(lattice=lattice, origin=origin, units=units, **kwargs)
+        super().__init__(lattice=lattice, origin=origin, **kwargs)
         #
         self.cplx = cplx
         #
         self._nrR = np.array(nr, dtype = np.int32)
         self._nnrR = np.prod(self._nrR)
-        self._dV = np.abs(self._volume) / self._nnrR
+        self._dV = np.abs(self.volume) / self._nnrR
         self._nrG = self._nrR.copy()
         if not full :
             self._nrG[-1] = self._nrG[-1] // 2 + 1
@@ -50,7 +50,7 @@ class BaseGrid(BaseCell):
         # print('nr_local', self.mp.comm.rank, self._nr, realspace, self.mp.comm.size, flush = True)
         self._full = full
 
-    def __eq__(self, other):
+    def __eq__(self, other: 'BaseGrid') -> bool:
         if not super().__eq__(other):
             return False
         for ilat in range(3):
@@ -104,7 +104,7 @@ class BaseGrid(BaseCell):
         return self._spacings
 
     @property
-    def latparas(self):
+    def lat_paras(self):
         return self._latparas
 
     @property
@@ -117,7 +117,7 @@ class BaseGrid(BaseCell):
         for i in range(3):
             lattice[:, i] *= reps[i]
         nr = self.nr * reps
-        results = self.__class__(lattice, nr, origin=self.origin, units=self.units, full=self.full, cplx=self.cplx)
+        results = self.__class__(lattice, nr, origin=self.origin, full=self.full, cplx=self.cplx)
         return results
 
     def local_slice(self, nr, **kwargs):
@@ -205,20 +205,18 @@ class DirectGrid(BaseGrid, DirectCell):
         s : crystal coordinates of each grid point
     """
 
-    def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), units=None, full=True, uppergrid = None, **kwargs):
+    def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), full=True, uppergrid=None, **kwargs):
         """
         Parameters
         ----------
         lattice : array_like[3,3]
             matrix containing the direct lattice vectors (as its colums)
-        units : {'Bohr', 'Angstrom', 'nm', 'm'}, optional
-            length units of the lattice vectors.
         """
         # internally always convert the units to Bohr
         # print("DirectGrid __init__")
         # lattice is already scaled inside the super()__init__, no need to do it here
         # lattice *= LEN_CONV[units]["Bohr"]
-        super().__init__(lattice=lattice, nr=nr, origin=origin, units=units, full = full, realspace = True, **kwargs)
+        super().__init__(lattice=lattice, nr=nr, origin=origin, full=full, realspace=True, **kwargs)
         self._r = None
         self._rr = None
         self._s = None
@@ -292,7 +290,7 @@ class DirectGrid(BaseGrid, DirectCell):
             if not self._full:
                 self._nrG[-1] = self._nrG[-1] // 2 + 1
 
-    def get_reciprocal(self, scale=None, convention="physics"):
+    def get_reciprocal(self, scale=None, convention: str = "physics") -> 'ReciprocalGrid':
         """
             Returns a new ReciprocalCell, the reciprocal cell of self
             The ReciprocalCell is scaled properly to include
@@ -322,8 +320,8 @@ class DirectGrid(BaseGrid, DirectCell):
             # bg = bg/LEN_CONV["Bohr"][self.units]
             reciprocal_lat = np.einsum("ij,j->ij", bg, scale)
 
-            self.RPgrid = ReciprocalGrid(lattice=reciprocal_lat, nr=self.nrR, units=self.units, full=self.full,
-                    uppergrid=self, cplx=self.cplx, mp=self.mp)
+            self.RPgrid = ReciprocalGrid(lattice=reciprocal_lat, nr=self.nrR, full=self.full, uppergrid=self,
+                                         cplx=self.cplx, mp=self.mp)
         return self.RPgrid
 
     def get_Rtable(self, rcut=10):
@@ -369,20 +367,18 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
         gg : square of each g vector
     """
 
-    def __init__(self, lattice, nr, units=None, origin=np.array([0.0, 0.0, 0.0]), full=False, uppergrid = None, **kwargs):
+    def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), full=False, uppergrid=None, **kwargs):
         """
         Parameters
         ----------
         lattice : array_like[3,3]
             matrix containing the direct lattice vectors (as its colums)
-        units : {'Bohr', 'Angstrom', 'nm', 'm'}, optional
-            length units of the lattice vectors.
         """
         # internally always convert the units to Bohr
         # print("ReciprocalGrid __init__")
         # lattice is already scaled inside the super()__init__, no need to do it here
         # lattice /= LEN_CONV[units]["Bohr"]
-        super().__init__(lattice=lattice, nr=nr, origin=origin, units=units, full = full, realspace = False, **kwargs)
+        super().__init__(lattice=lattice, nr=nr, origin=origin, full=full, realspace=False, **kwargs)
         self._g = None
         self._gg = None
         self.Dgrid = uppergrid
@@ -477,8 +473,8 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
             at = np.linalg.inv(self.lattice.T * fac)
             # at = at*LEN_CONV["Bohr"][self.units]
             direct_lat = np.einsum("ij,j->ij", at, 1.0 / scale)
-            self.Dgrid = DirectGrid(lattice=direct_lat, nr=self.nrR, units=self.units, full=self.full,
-                    uppergrid=self, cplx=self.cplx,  mp=self.mp)
+            self.Dgrid = DirectGrid(lattice=direct_lat, nr=self.nrR, full=self.full, uppergrid=self, cplx=self.cplx,
+                                    mp=self.mp)
         return self.Dgrid
 
     def _calc_grid_points(self, full=None):

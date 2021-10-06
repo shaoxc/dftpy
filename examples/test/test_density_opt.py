@@ -30,7 +30,7 @@ class Test(unittest.TestCase):
         for i in range(3):
             nr[i] = bestFFTsize(nr[i])
         print("The final grid size is ", nr)
-        grid = DirectGrid(lattice=lattice, nr=nr, units=None, full=False)
+        grid = DirectGrid(lattice=lattice, nr=nr, full=False)
         zerosA = np.zeros(grid.nnr, dtype=float)
         rho_ini = DirectField(grid=grid, griddata_F=zerosA, rank=1)
         PP_list = {"Ga": path_pp + file1, "As": path_pp + file2}
