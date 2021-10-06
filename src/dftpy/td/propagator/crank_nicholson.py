@@ -1,4 +1,4 @@
-from typing import Union, Tuple, Callable
+from typing import Union, Tuple
 
 import numpy as np
 import scipy.sparse.linalg as linalg
@@ -6,15 +6,17 @@ from scipy.sparse.linalg import LinearOperator
 
 import dftpy.linear_solver
 from dftpy.field import BaseField, DirectField, ReciprocalField
-from dftpy.grid import DirectGrid
 from dftpy.mpi.utils import sprint
 from dftpy.td.hamiltonian import Hamiltonian
+from dftpy.td.operator import Operator
 from dftpy.td.propagator.abstract_propagator import AbstractPropagator
 from dftpy.time_data import timer
-from dftpy.td.operator import Operator
 
 
 class CrankNicholsonOperator(Operator):
+    """
+    Operator that performs (1+i*\hat(H)*dt/2)
+    """
 
     def __init__(self, hamiltonian: Hamiltonian, interval: float) -> None:
         super(CrankNicholsonOperator, self).__init__(hamiltonian.grid)
@@ -134,9 +136,11 @@ class CrankNicholson(AbstractPropagator):
         """
 
         if self._scipy:
+            reciprocal = isinstance(psi0, ReciprocalField)
             size = self.hamiltonian.grid.nnr
             b = self._calc_b(psi0).ravel()
-            mat = LinearOperator(shape=(size, size), dtype=psi0.dtype, matvec=self._a.scipy_matvec_utils())
+            mat = LinearOperator(shape=(size, size), dtype=psi0.dtype,
+                                 matvec=self._a.scipy_matvec_utils(reciprocal=reciprocal))
             psi1_, status = self._linear_solver(mat, b, x0=psi0.ravel(), tol=self.tol, maxiter=self.maxiter,
                                                 atol=self.atol)
             psi1 = DirectField(grid=self.hamiltonian.grid, rank=1,
