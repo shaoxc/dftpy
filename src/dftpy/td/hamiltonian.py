@@ -1,13 +1,15 @@
 import numpy as np
 from scipy.sparse.linalg import LinearOperator, eigsh
+from typing import Tuple
 
 from dftpy.constants import SPEED_OF_LIGHT
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.time_data import timer
 from dftpy.eigen_solver import power_iter, minimization, minimization2
+from dftpy.td.operator import Operator
 
 
-class Hamiltonian(object):
+class Hamiltonian(Operator):
 
     def __init__(self, v=None, A=None):
         self.v = v
@@ -94,29 +96,8 @@ class Hamiltonian(object):
         else:
             raise TypeError("psi must be a DFTpy DirectField or ReciprocalField.")
 
-    def matvecUtil(self, reciprocal=False, **kwargs):
-        if reciprocal:
-            reci_grid = self.grid.get_reciprocal()
-
-        def matvec(psi_):
-            if reciprocal:
-                psi = ReciprocalField(reci_grid, rank=1, griddata_3d=np.reshape(psi_, reci_grid.nr))
-            else:
-                psi = DirectField(self.grid, rank=1, griddata_3d=np.reshape(psi_, self.grid.nr))
-            prod = self(psi, **kwargs)
-            return prod.ravel()
-
-        return matvec
-
-    def matvecUtil2(self, **kwargs):
-
-        def matvec(psi):
-            return self(psi, **kwargs)
-
-        return matvec
-
     @timer('Diagonalize')
-    def diagonalize(self, numeig, return_eigenvectors=True, reciprocal=False, scipy=True, x0=None, **kwargs):
+    def diagonalize(self, numeig: int, return_eigenvectors: bool = True, reciprocal: bool = False, scipy=True, x0=None) -> Tuple:
 
         if scipy:
             if reciprocal:
@@ -127,10 +108,10 @@ class Hamiltonian(object):
                 size = self.grid.nnr
                 dtype = np.float64
 
-            A = LinearOperator((size, size), dtype=dtype, matvec=self.matvecUtil(reciprocal, **kwargs))
+            A = LinearOperator((size, size), dtype=dtype, matvec=self.scipy_matvec_utils(reciprocal=reciprocal))
 
             if return_eigenvectors:
-                Es, psis = eigsh(A, k=numeig, which='SA', return_eigenvectors=return_eigenvectors)
+                eigenvalue_list, psis = eigsh(A, k=numeig, which='SA', return_eigenvectors=return_eigenvectors)
                 psi_list = []
                 for i in range(numeig):
                     if reciprocal:
@@ -139,14 +120,13 @@ class Hamiltonian(object):
                         psi = DirectField(self.grid, rank=1, griddata_3d=np.reshape(psis[:, i], self.grid.nr))
                     psi = psi / np.sqrt((np.real(psi) * np.real(psi) + np.imag(psi) * np.imag(psi)).integral())
                     psi_list.append(psi)
-                return Es, psi_list
+                return eigenvalue_list, psi_list
             else:
-                Es, psis = eigsh(A, k=numeig, which='SA', return_eigenvectors=return_eigenvectors)
-                return Es
+                eigenvalue_list, psis = eigsh(A, k=numeig, which='SA', return_eigenvectors=return_eigenvectors)
+                return eigenvalue_list,
 
         else:
-            A = self.matvecUtil2(**kwargs)
-            #mu, psi = power_iter(A, x0)
-            mu, psi = minimization2(A, x0)
+            #mu, psi = power_iter(self, x0)
+            mu, psi = minimization2(self, x0)
             return [mu], [psi]
 

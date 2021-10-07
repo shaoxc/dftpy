@@ -1,5 +1,6 @@
 import numpy as np
-from dftpy.base import Coord,DirectCell
+from dftpy.cell import DirectCell
+from dftpy.coord import Coord
 
 
 class Atom(object):

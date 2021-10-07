@@ -3,7 +3,7 @@ import sys
 import numpy as np
 from dftpy.system import System
 from dftpy.atom import Atom
-from dftpy.base import BaseCell, DirectCell
+from dftpy.cell import BaseCell, DirectCell
 from dftpy.field import DirectField
 from dftpy.constants import LEN_CONV
 from dftpy.formats.vasp import read_POSCAR

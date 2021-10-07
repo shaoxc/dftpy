@@ -2,7 +2,9 @@
 import unittest
 import numpy as np
 
-from dftpy.base import DirectCell, ReciprocalCell, Coord, pbcarray
+from dftpy.cell import DirectCell, ReciprocalCell
+from dftpy.pbc_array import PBCArray
+from dftpy.coord import Coord
 from dftpy.constants import LEN_CONV
 
 from .common import run_test_orthorombic, run_test_triclinic, make_orthorombic_cell
@@ -79,7 +81,7 @@ class TestPbcArray(unittest.TestCase):
         print("Testing PbcArray")
         dim = 50
         A = np.random.random((dim,dim))
-        B = pbcarray(A)
+        B = PBCArray(A)
         n = 5
         for _i in range(n):
             i = _i - n//2

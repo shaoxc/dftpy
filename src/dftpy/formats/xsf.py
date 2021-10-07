@@ -1,6 +1,6 @@
 import numpy as np
 from dftpy.constants import LEN_CONV
-from dftpy.base import BaseCell, DirectCell
+from dftpy.cell import BaseCell, DirectCell
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
 from dftpy.system import System
@@ -123,7 +123,7 @@ def read_xsf(infile, kind="all", full=False, pbc=True, units='Angstrom', **kwarg
             nrx = bound.copy()
         data *= LEN_CONV["Bohr"][xsf_units[1]] ** 3
 
-        grid = DirectGrid(lattice=data_lat, nr=nrx, units=None, full=full)
+        grid = DirectGrid(lattice=data_lat, nr=nrx, full=full)
         plot = DirectField(grid=grid, griddata_3d=data, rank=1)
         # plot = DirectField(grid=grid, griddata_F=data, rank=1)
         return System(atoms, grid, name="xsf", field=plot)

@@ -74,7 +74,7 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
 
     ############################## Grid  ##############################
     if grid is None:
-        grid = DirectGrid(lattice=lattice, nr=nr, units=None, full=config["GRID"]["gfull"], cplx=config["GRID"]["cplx"], mp=mp)
+        grid = DirectGrid(lattice=lattice, nr=nr, full=config["GRID"]["gfull"], cplx=config["GRID"]["cplx"], mp=mp)
     ############################## PSEUDO  ##############################
     PPlist = {}
     for key in config["PP"]:
@@ -186,7 +186,7 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2 = None):
             sprint("#" * 80)
             sprint("MULTI-STEP: Perform %d optimization step" % istep)
             sprint("Grid size of %d" % istep, " step is ", nr)
-            grid2 = DirectGrid(lattice=grid.lattice, nr=nr, units=None, full=config["GRID"]["gfull"], mp=grid.mp)
+            grid2 = DirectGrid(lattice=grid.lattice, nr=nr, full=config["GRID"]["gfull"], mp=grid.mp)
             rho_ini = interpolation_3d(rho, nr)
             rho_ini[rho_ini < 1e-12] = 1e-12
             rho_ini = DirectField(grid=grid2, griddata_3d=rho_ini, rank=1)

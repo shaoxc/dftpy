@@ -56,7 +56,7 @@ class PredictorCorrector(Dynamics):
             self.old_rho_pred = self.rho_pred
             self.old_j_pred = self.j_pred
 
-        self.psi_pred, info = self.propagator(self.psi, self.int_t)
+        self.psi_pred, info = self.propagator(self.psi)
         self.rho_pred = calc_rho(self.psi_pred)
         self.j_pred = calc_j(self.psi_pred)
         if self.propagate_vector_potential:

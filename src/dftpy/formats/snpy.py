@@ -19,7 +19,7 @@ Notes :
     snpy format also can be directly replace with numpy npz format, but it's need parallel compress and decompress
 """
 import numpy as np
-from dftpy.base import DirectCell
+from dftpy.cell import DirectCell
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
 from dftpy.system import System

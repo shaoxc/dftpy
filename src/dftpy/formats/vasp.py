@@ -1,7 +1,7 @@
 import numpy as np
 from dftpy.system import System
 from dftpy.atom import Atom
-from dftpy.base import BaseCell, DirectCell
+from dftpy.cell import BaseCell, DirectCell
 from dftpy.constants import LEN_CONV
 
 BOHR2ANG = LEN_CONV["Bohr"]["Angstrom"]

@@ -7,7 +7,7 @@ from dftpy.grid import DirectGrid, ReciprocalGrid
 from dftpy.constants import environ
 from dftpy.math_utils import PYfft, PYifft
 from dftpy.time_data import timer
-from dftpy.base import Coord
+from dftpy.coord import Coord
 
 
 class BaseField(np.ndarray):
@@ -404,7 +404,7 @@ class DirectField(BaseField):
         X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
         new_values = ndimage.map_coordinates(self.spl_coeffs, [X, Y, Z], mode="wrap")
         new_lattice = self.grid.lattice  # *LEN_CONV["Bohr"][self.grid.units]
-        new_grid = DirectGrid(new_lattice, nr_new, units=self.grid.units)
+        new_grid = DirectGrid(new_lattice, nr_new)
         return DirectField(new_grid, self.memo, griddata_3d=new_values)
 
     def get_3dinterpolation_map(self, nr_new):
@@ -422,7 +422,7 @@ class DirectField(BaseField):
         X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
         new_values = ndimage.map_coordinates(self[0], (X, Y, Z), mode="wrap")
         new_lattice = self.grid.lattice  # *LEN_CONV["Bohr"][self.grid.units]
-        new_grid = DirectGrid(new_lattice, nr_new, units=self.grid.units)
+        new_grid = DirectGrid(new_lattice, nr_new)
         return DirectField(new_grid, self.memo, griddata_3d=new_values)
 
     def get_cut(self, r0, r1=None, r2=None, origin=None, center=None, nr=10, basis = 'Crystal'):
@@ -538,7 +538,7 @@ class DirectField(BaseField):
         at[:, 1] = v1
         at[:, 2] = v2
 
-        cut_grid = DirectGrid(lattice=at, nr=nrx, origin=origin, units=x0.cell.units)
+        cut_grid = DirectGrid(lattice=at, nr=nrx, origin=origin)
 
         if span == 1:
             values = values.reshape((a,))
@@ -591,7 +591,7 @@ class DirectField(BaseField):
             value = self.grid.gather(self, root = root)
             if self.grid.mp.rank == root :
                 if grid is None :
-                    grid = DirectGrid(self.grid.lattice, self.grid.nrR, units=self.grid.units, full=self.grid.full)
+                    grid = DirectGrid(self.grid.lattice, self.grid.nrR, full=self.grid.full)
                 value = self.__class__(grid=grid, rank=self.rank, griddata_3d=value, cplx=self.cplx)
         else :
             value = self.grid.gather(self, out = out, root = root)
