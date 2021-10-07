@@ -88,6 +88,8 @@ class LocalPseudo(AbstractLocalPseudo):
         # Read PP first, then initialize other variables.
         if PP_list is not None:
             self.readpp = ReadPseudo(PP_list, comm=comm, **kwargs)
+        elif readpp is not None :
+            self.readpp = readpp
         else:
             raise AttributeError("Must specify PP_list for Pseudopotentials")
 
