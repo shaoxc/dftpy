@@ -75,53 +75,62 @@ class LocalPseudo(AbstractLocalPseudo):
     This is a template class and should never be touched.
     """
 
-    def __init__(self, grid=None, ions=None, PP_list=None, PME=True, **kwargs):
+    def __init__(self, grid=None, ions=None, PP_list=None, PME=True, readpp = None, **kwargs):
 
         self.type = 'PSEUDO'
         self.name = 'PSEUDO'
 
-        if PP_list is not None:
-            self.PP_list = PP_list
-        else:
-            raise AttributeError("Must specify PP_list for Pseudopotentials")
-        # Read PP first, then initialize other variables.
         if grid is None:
             comm = None
         else:
             comm = grid.mp.comm
-        readPP = ReadPseudo(PP_list, comm=comm, **kwargs)
-        self.readpp = readPP
 
-        self.restart(grid, ions, full=True)
-
-        # if not PME :
-        # sprint("Using N^2 method for strf!")
+        # Read PP first, then initialize other variables.
+        if PP_list is not None:
+            self.readpp = ReadPseudo(PP_list, comm=comm, **kwargs)
+        else:
+            raise AttributeError("Must specify PP_list for Pseudopotentials")
 
         self.usePME = PME
+        # if not PME :
+            # sprint("Using N^2 method for strf!", comm=comm)
+        self.restart(grid, ions)
 
-        self._vloc_interp = readPP.vloc_interp
-        self._gp = readPP.gp
-        self._vp = readPP.vp
-        self.zval = {}
+    @property
+    def _vloc_interp(self):
+        return self.readpp.vloc_interp
+
+    @property
+    def _gp(self):
+        return self.readpp.gp
+
+    @property
+    def _vp(self):
+        return self.readpp.vp
+
+    @property
+    def PP_list(self):
+        return self.readpp.PP_list
 
     def __repr__(self):
         return 'LOCALPSEUDO'
 
-    def restart(self, grid=None, ions=None, full=False):
+    def restart(self, grid=None, ions=None, full=False, duplicate=False):
         """
         Clean all private data and resets the ions and grid.
         This will prompt the computation of a new pseudo
         without recomputing the local pp on the atoms.
         """
-        if full:
-            self._gp = {}  # 1D PP grid g-space
-            self._vp = {}  # PP on 1D PP grid
-            self._vloc_interp = {}  # Interpolates recpot PP
+        if duplicate :
+            pseudo = self.__class__(grid = grid, ions = ions, readpp = self.readpp)
+            return pseudo
+
         self._vlines = {}  # PP for each atomic species on 3D PW grid
         self._v = None  # PP for atom on 3D PW grid
         self._vreal = None  # PP for atom on 3D real space
         self._ions = None
         self._grid = None
+        self.zval = {}
         if ions is not None:
             self.ions = ions
         if grid is not None:
