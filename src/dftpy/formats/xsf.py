@@ -1,5 +1,5 @@
 import numpy as np
-from dftpy.constants import LEN_CONV
+from dftpy.constants import LEN_CONV, ENERGY_CONV
 from dftpy.base import BaseCell, DirectCell
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
@@ -7,7 +7,7 @@ from dftpy.system import System
 from dftpy.atom import Atom
 
 
-def read_xsf(infile, kind="all", full=False, pbc=True, units='Angstrom', **kwargs):
+def read_xsf(infile, kind="all", full=False, pbc=True, units='Angstrom', data_type='density', **kwargs):
     # http ://www.xcrysden.org/doc/XSF.html
     if isinstance(units, str):
         xsf_units = [units, units]
@@ -125,6 +125,8 @@ def read_xsf(infile, kind="all", full=False, pbc=True, units='Angstrom', **kwarg
 
         grid = DirectGrid(lattice=data_lat, nr=nrx, units=None, full=full)
         plot = DirectField(grid=grid, griddata_3d=data, rank=1)
+        if data_type == 'potential' :
+            plot *= ENERGY_CONV["eV"]["Hartree"]
         # plot = DirectField(grid=grid, griddata_F=data, rank=1)
         return System(atoms, grid, name="xsf", field=plot)
 
@@ -136,12 +138,12 @@ class XSF(object):
 
     xsf_units = "Angstrom"
 
-    def __init__(self, filexsf):
+    def __init__(self, filexsf, title = 'DFTpy'):
         self.filexsf = filexsf
-        self.title = ""
+        self.title = title
         self.cutoffvars = {}
 
-    def write(self, system, field=None, **kwargs):
+    def write(self, system, field=None, data_type = 'density', **kwargs):
         """
         Write a system object into an xsf file.
         Not all specifications of the xsf file format are implemented, they will
@@ -164,7 +166,7 @@ class XSF(object):
             self._write_header(fileout, title)
             self._write_cell(fileout, cell)
             self._write_coord(fileout, ions)
-            self._write_datagrid(fileout, field)
+            self._write_datagrid(fileout, field, data_type = data_type)
 
         return
 
@@ -189,12 +191,14 @@ class XSF(object):
         # for iat, atom in enumerate(ions):
         # mywrite(fileout, (atom.label, atom.pos*LEN_CONV["Bohr"][self.xsf_units]), True)
 
-    def _write_datagrid(self, fileout, plot):
+    def _write_datagrid(self, fileout, plot, data_type = 'density', **kwargs):
         ndim = plot.span  # 2D or 3D grid?
         if ndim < 2:
             return  # XSF format doesn't support one data grids
         val_per_line = 5
         values = plot.get_values_flatarray(pad=1, order="F") / LEN_CONV["Bohr"][self.xsf_units] ** 3
+        if data_type == 'potential' :
+            values = values * ENERGY_CONV["Hartree"]["eV"]
 
         mywrite(fileout, "BEGIN_BLOCK_DATAGRID_{}D".format(ndim), True)
         mywrite(fileout, "{}d_datagrid_from_pbcpy".format(ndim), True)
