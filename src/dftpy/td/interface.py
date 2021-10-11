@@ -56,7 +56,7 @@ def DiagonalizeRunner(config, struct, E_v_Evaluator):
     potential = E_v_Evaluator(struct.field, calcType={'V'}).potential
     hamiltonian = Hamiltonian(potential)
     sprint('Start diagonalizing Hamiltonian.')
-    eigs, psi_list = hamiltonian.diagonalize(numeig)
+    eigs, psi_list = hamiltonian.diagonalize(grid=struct.field.grid, numeig=numeig)
     sprint('Diagonalizing Hamiltonian done.')
 
     np.savetxt(eigfile, eigs, fmt='%15.8e')

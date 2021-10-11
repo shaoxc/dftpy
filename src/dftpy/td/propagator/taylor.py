@@ -2,7 +2,7 @@ from typing import Union, Tuple
 
 import numpy as np
 
-from dftpy.field import DirectField, ReciprocalField
+from dftpy.field import DirectField, ReciprocalField, BaseField
 from dftpy.mpi.utils import sprint
 from dftpy.td.hamiltonian import Hamiltonian
 from dftpy.td.propagator.abstract_propagator import AbstractPropagator
@@ -28,7 +28,7 @@ class Taylor(AbstractPropagator):
         self.order = order
 
     @timer('Taylor-Propagator')
-    def __call__(self, psi0: Union[DirectField, ReciprocalField]) -> Tuple:
+    def __call__(self, psi0: BaseField, **kwargs) -> Tuple:
         """
         Perform one step of propagation.
 
@@ -48,7 +48,7 @@ class Taylor(AbstractPropagator):
 
         new_psi = psi0
         for i_order in range(self.order):
-            new_psi = -1j * self.interval / (i_order + 1) * self.hamiltonian(new_psi)
+            new_psi = -1j * self.interval / (i_order + 1) * self.hamiltonian(new_psi, **kwargs)
             if np.isnan(new_psi).any():
                 sprint("Warning: taylor propagator exits on order {0:d} due to NaN in new psi.".format(i_order))
                 psi1 = psi1 + new_psi

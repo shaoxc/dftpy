@@ -19,7 +19,6 @@ class CrankNicholsonOperator(Operator):
     """
 
     def __init__(self, hamiltonian: Hamiltonian, interval: float) -> None:
-        super(CrankNicholsonOperator, self).__init__(hamiltonian.grid)
         self.hamiltonian = hamiltonian
         self.interval = interval
 
@@ -29,11 +28,10 @@ class CrankNicholsonOperator(Operator):
 
     @hamiltonian.setter
     def hamiltonian(self, hamiltonian: Hamiltonian) -> None:
-        self.grid = hamiltonian.grid
         self._hamiltonian = hamiltonian
 
-    def __call__(self, psi: BaseField) -> BaseField:
-        return psi + 1j * self.hamiltonian(psi) * self.interval / 2.0
+    def __call__(self, psi: BaseField, **kwargs) -> BaseField:
+        return psi + 1j * self.hamiltonian(psi, **kwargs) * self.interval / 2.0
 
 
 class CrankNicholson(AbstractPropagator):
@@ -115,11 +113,11 @@ class CrankNicholson(AbstractPropagator):
         self._linear_solver = self.LinearSolverDict[linear_solver]['func']
         self._scipy = self.LinearSolverDict[linear_solver]['scipy']
 
-    def _calc_b(self, psi: Union[DirectField, ReciprocalField]) -> Union[DirectField, ReciprocalField]:
+    def _calc_b(self, psi: BaseField) -> BaseField:
         return psi - 1j * self.hamiltonian(psi) * self.interval / 2.0
 
     @timer('Crank-Nicholson-Propagator')
-    def __call__(self, psi0: Union[DirectField, ReciprocalField]) -> Tuple:
+    def __call__(self, psi0: BaseField, **kwargs) -> Tuple:
         """
         Perform one step of propagation.
 
@@ -136,18 +134,21 @@ class CrankNicholson(AbstractPropagator):
         """
 
         if self._scipy:
-            reciprocal = isinstance(psi0, ReciprocalField)
-            size = self.hamiltonian.grid.nnr
+            size = psi0.grid.nnr
             b = self._calc_b(psi0).ravel()
             mat = LinearOperator(shape=(size, size), dtype=psi0.dtype,
-                                 matvec=self._a.scipy_matvec_utils(reciprocal=reciprocal))
+                                 matvec=self._a.scipy_matvec_utils(psi0.grid, **kwargs))
             psi1_, status = self._linear_solver(mat, b, x0=psi0.ravel(), tol=self.tol, maxiter=self.maxiter,
                                                 atol=self.atol)
-            psi1 = DirectField(grid=self.hamiltonian.grid, rank=1,
-                               griddata_3d=np.reshape(psi1_, self.hamiltonian.grid.nr), cplx=True)
+            if isinstance(psi0, ReciprocalField):
+                psi1 = ReciprocalField(grid=psi0.grid, rank=1,
+                                       griddata_3d=np.reshape(psi1_, psi0.grid.nr), cplx=True)
+            else:
+                psi1 = DirectField(grid=psi0.grid, rank=1,
+                                   griddata_3d=np.reshape(psi1_, psi0.grid.nr), cplx=True)
         else:
             b = self._calc_b(psi0)
-            psi1, status = self._linear_solver(self._a, b, psi0, self.tol, self.maxiter,
+            psi1, status = self._linear_solver(self._a.matvec_utils(**kwargs), b, psi0, self.tol, self.maxiter,
                                                atol=self.atol, mp=psi0.mp)
 
         if status:

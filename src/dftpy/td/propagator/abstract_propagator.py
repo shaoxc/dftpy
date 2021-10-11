@@ -1,11 +1,11 @@
-from abc import ABC, abstractmethod
-from typing import Union
+from abc import abstractmethod
 
-from dftpy.field import DirectField, ReciprocalField
+from dftpy.field import BaseField
 from dftpy.td.hamiltonian import Hamiltonian
+from dftpy.td.operator import Operator
 
 
-class AbstractPropagator(ABC):
+class AbstractPropagator(Operator):
     """
     Abstract class for real-time propagators
     """
@@ -43,7 +43,7 @@ class AbstractPropagator(ABC):
         self._interval = interval
 
     @abstractmethod
-    def __call__(self, psi0: Union[DirectField, ReciprocalField]):
+    def __call__(self, psi0: BaseField, **kwargs):
         """
         Abstract method that performs one step of propagation. Should be implemented in child classes.
         Parameters

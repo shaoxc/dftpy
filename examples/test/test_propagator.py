@@ -49,14 +49,14 @@ class TestPropagator(unittest.TestCase):
 
         psi = psi0
         func = E_v_Evaluator.compute(rho0, calcType=["V"])
-        self.hamiltonian.v = func.potential
+        self.hamiltonian.potential = func.potential
         E0 = np.real(np.conj(psi) * self.hamiltonian(psi)).integral()
 
         for i_t in range(10):
             psi, info = self.taylor(psi)
             rho = calc_rho(psi)
             func = E_v_Evaluator.compute(rho, calcType=["V"])
-            self.hamiltonian.v = func.potential
+            self.hamiltonian.potential = func.potential
 
         E = np.real(np.conj(psi) * self.hamiltonian(psi)).integral()
         self.assertTrue(np.isclose(E, E0, rtol=1e-3))
@@ -68,12 +68,12 @@ class TestPropagator(unittest.TestCase):
 
         psi = psi0
         func = E_v_Evaluator.compute(rho0, calcType=["V"])
-        self.hamiltonian.v = func.potential
+        self.hamiltonian.potential = func.potential
         for i_t in range(10):
             psi, info = self.cn(psi)
             rho = calc_rho(psi)
             func = E_v_Evaluator.compute(rho, calcType=["V"])
-            self.hamiltonian.v = func.potential
+            self.hamiltonian.potential = func.potential
 
         E = np.real(np.conj(psi) * self.hamiltonian(psi)).integral()
         self.assertTrue(np.isclose(E, E0, rtol=1e-3))

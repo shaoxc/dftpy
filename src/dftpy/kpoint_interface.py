@@ -16,9 +16,10 @@ class KPointSCFRunner(Dynamics):
 
     def __init__(self, system: System, config: Dict, boson_functionals: TotalFunctional):
         Dynamics.__init__(self, system, None)
+        self.scipy = True
         self.max_steps = 100
         self.beta = 1
-        self.nk = [1,1,1]
+        self.nk = [3,3,3]
         self.tol = 1.0e-12
         self.boson_functionals = boson_functionals
         vW = Functional(type='KEDF', name='vW')
@@ -30,23 +31,23 @@ class KPointSCFRunner(Dynamics):
         self.new_rho = None
         self.hamiltonian = Hamiltonian()
         self.hamiltonian_0 = Hamiltonian()
-        self.hamiltonian_0.v = np.zeros_like(self.rho)
+        self.hamiltonian_0.potential = np.zeros_like(self.rho)
         self.k_point_list = self.system.field.grid.get_reciprocal().calc_k_points(self.nk)
         self.numk = len(self.k_point_list)
         self.ke = 0
         self.diff = 1e6
 
-        self.attach(self.compare, before_log=True)
+        #self.attach(self.compare, before_log=True)
         self.attach(self.mixing, before_log=True)
 
     def step(self):
         self.old_rho = self.rho
-        self.hamiltonian.v = self.boson_functionals(self.rho, calcType={'V'}).potential
+        self.hamiltonian.potential = self.boson_functionals(self.rho, calcType={'V'}).potential
         self.new_rho = np.zeros_like(self.rho)
         self.ke = 0
         x0 = np.sqrt(self.system.field)
         for k_point in self.k_point_list:
-            Es, psis = self.hamiltonian.diagonalize(1, return_eigenvectors=True, k=k_point, scipy=False, x0=x0)
+            Es, psis = self.hamiltonian.diagonalize(grid=self.rho.grid, numeig=1, return_eigenvectors=True, k_point=k_point, scipy=self.scipy, x0=x0)
             psi = psis[0]
             self.new_rho += np.real(psi * np.conj(psi)) * self.n_elec
             self.ke += np.real(np.conj(psi) * self.hamiltonian_0(psi)).integral() * self.n_elec

@@ -599,14 +599,14 @@ class ReadPseudo(object):
             raise ModuleNotFoundError("Must pip install xmltodict or upf_to_json")
 
         self._r[key] = self._info[key].r
-        self._v[key] = self._info[key].v
+        self._v[key] = self._info[key].potential
         self._gp[key], self._vp[key] = self._real2recip(self._r[key], self._v[key], self._info[key].zval, **kwargs)
         self._core_density[key] = self._info[key].core_density
 
     def _init_PP_psp(self, key, **kwargs):
         self._info[key] = PSP(self.PP_list[key])
         self._r[key] = self._info[key].r
-        self._v[key] = self._info[key].v
+        self._v[key] = self._info[key].potential
         self._gp[key], self._vp[key] = self._real2recip(self._r[key], self._v[key], self._info[key].zval, **kwargs)
 
     @property

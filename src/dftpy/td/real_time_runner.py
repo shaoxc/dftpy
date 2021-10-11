@@ -156,9 +156,9 @@ class RealTimeRunner(Dynamics):
 
     def update_hamiltonian(self):
         func = self.functionals(self.rho, calcType=["V"], current=self.j)
-        self.propagator.hamiltonian.v = func.potential
+        self.propagator.hamiltonian.potential = func.potential
         if self.vector_potential:
-            self.propagator.hamiltonian.A = self.A_t
+            self.propagator.hamiltonian.vector_potential = self.A_t
         if self.correction:
             self.correct_potential = self.correct_functionals(self.rho, calcType=['V'], current=self.j).potential
 

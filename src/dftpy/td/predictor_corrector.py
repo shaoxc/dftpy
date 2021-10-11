@@ -68,10 +68,10 @@ class PredictorCorrector(Dynamics):
         self.rho_corr = (self.rho + self.rho_pred) * 0.5
         self.j_corr = (self.j + self.j_pred) * 0.5
         func = self.functionals(self.rho_corr, calcType=["V"], current=self.j_corr)
-        self.propagator.hamiltonian.v = func.potential
+        self.propagator.hamiltonian.potential = func.potential
         if self.propagate_vector_potential:
             self.A_t_corr = (self.A_t + self.A_t_pred) * 0.5
-            self.propagator.hamiltonian.A = self.A_t_corr
+            self.propagator.hamiltonian.vector_potential = self.A_t_corr
 
     def converged(self, *args):
         self.diff_rho = (self.old_rho_pred - self.rho_pred).norm()
