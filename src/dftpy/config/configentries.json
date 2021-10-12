@@ -227,8 +227,8 @@
       "default": "Control the kinetic energy density functional (KEDF). DFTpy features most KEDFs, from GGAs to nonlocal to nonlocal with density dependent kernel."
     },
     "kedf": {
-      "comment": "The type of KEDF.",
-      "options": "TF, vW, x_TF_y_vW, WT, SM, FP, MGP, MGPA, MGPG, LMGP, LMGPA, LMGPG",
+      "comment": "The type of KEDF. GGA functionals are available with keywords GGA and LIBXC_KEDF.",
+      "options": "TF, GGA, LIBXC_KEDF, vW, x_TF_y_vW, WT, SM, FP, MGP, MGPA, MGPG, LMGP, LMGPA, LMGPG",
       "type": "str",
       "default": "WT"
     },
@@ -343,9 +343,9 @@
     "k_str": {
       "comment": "Functional type for GGA/LIBXC_KEDF",
       "type": "str",
-      "options": "",
-      "default": "gga_k_revapbe",
-      "warning": "The functional type of GGA and LIBXC_KEDF are different."
+      "options": "LKT, DK, LLP, LLP91, OL1, OL, OL2, T92, THAK, B86A, B86, B86B, DK87, PW86, PW91O, PW91, PW91k, LG94, E00, P92, PBE2, PBE3, PBE4, P82, TW02, APBE, APBEK, REVAPBEK, REVAPBE, VJKS00, LC94, VT84F, SMP, TF, VW, X_TF_Y_VW, TFVW, STV, PBE2M, PG",
+      "default": "revAPBEK",
+      "warning": "GGA invokes DFTpy's implementation. LIBXC_KEDF invokes libxc's implementation (discouraged)."
     },
     "params": {
       "comment": "Parameters for GGA KEDF functionals",
