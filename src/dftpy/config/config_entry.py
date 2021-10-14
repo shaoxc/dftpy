@@ -32,6 +32,13 @@ def format_str(expression):
     return expression
 
 
+def format_lstr(expression):
+    return expression.lower()
+
+def format_ustr(expression):
+    return expression.upper()
+
+
 def format_cstr(expression):
     return expression.capitalize()
 
@@ -140,6 +147,8 @@ class ConfigEntry(object):
             "int": int,
             "float": format_float,
             "str": format_str,
+            "lstr": format_lstr,
+            "ustr": format_ustr,
             "cstr": format_cstr,
             "intlist": format_intlist,
             "floatlist": format_floatlist,
