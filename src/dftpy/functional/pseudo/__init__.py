@@ -520,6 +520,7 @@ class ReadPseudo(object):
     @staticmethod
     def _real2recip(r, v, zval=0, MaxPoints=10000, Gmax=30, Gmin=1E-4, method='simpson'):
         gp = np.logspace(np.log10(Gmin), np.log10(Gmax), num=MaxPoints)
+        gp[0] = 0.0
         vp = np.empty_like(gp)
         if method == 'simpson':
             try:
