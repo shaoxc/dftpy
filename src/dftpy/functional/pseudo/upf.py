@@ -91,7 +91,7 @@ class UPF:
         has_json = importlib.util.find_spec("upf_to_json")
         if has_xml:
             try:
-                obj = UPF(fname)
+                obj = UPFDICT(fname)
             except:
                 if has_json:
                     try:
