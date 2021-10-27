@@ -130,7 +130,7 @@ def format_oidict(expression):
 class ConfigEntry(object):
 
     def __init__(self, type='str', default=None, comment='', options='', example=None, note=None, warning=None,
-                 **kwargs):
+                 unit = None, level = None, **kwargs):
         self.type = type
         self.default = default
         self.comment = comment
@@ -138,6 +138,8 @@ class ConfigEntry(object):
         self.note = note
         self.example = example
         self.warning = warning
+        self.unit = unit
+        self.level = level
         if self.type == 'bool' and self.options == '':
             self.options = 'True, False'
 

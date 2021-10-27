@@ -83,7 +83,7 @@ def gen_config_rst():
                 # fstr += "\t{0}\n\n".format(item.default)
                 fstr += "\t{0}\n\n".format(lines)
                 if item.example :
-                    fstr += "\t*e.g.* : \n\n\t\t{0}\n".format(item.example)
+                    fstr += "\t- *e.g.* : \n\n\t\t{0}\n".format(item.example)
                 if item.note:
                     fstr += ".. note::\n {0}\n".format(item.note)
                 if item.warning:
@@ -105,10 +105,12 @@ def gen_config_rst():
                     # fstr += "\t{0}\n".format(item.comment)
                     fstr += "\t{0}\n".format(lines)
                 fstr += '\n'
-                fstr += "\t\t*Options* : {0}\n\n".format(item.options)
-                fstr += "\t\t*Default* : {0}\n\n".format(item.default)
+                fstr += "\t- *Options* : {0}\n\n".format(item.options)
+                fstr += "\t- *Default* : {0}\n\n".format(item.default)
+                if item.unit :
+                    fstr += "\t- *Unit* : {0}\n\n".format(item.unit)
                 if item.example :
-                    fstr += "\t\t*e.g.* : \n\n\t\t\t{0}\n".format(item.example)
+                    fstr += "\t- *e.g.* : \n\n\t\t\t{0}\n".format(item.example)
                 if item.note:
                     fstr += ".. note::\n {0}\n".format(item.note)
                 if item.warning:
