@@ -7,9 +7,15 @@ __date__ = "2021-09-08"
 from .config import *
 from .mpi import mp
 
-from importlib.metadata import version, PackageNotFoundError
+try:
+    from importlib.metadata import version # python >= 3.8
+except Exception :
+    try:
+        from importlib_metadata import version
+    except Exception :
+        pass
 
 try:
     __version__ = version("dftpy")
-except PackageNotFoundError:
+except Exception :
     pass

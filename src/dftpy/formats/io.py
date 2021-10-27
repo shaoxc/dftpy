@@ -88,7 +88,7 @@ def write(outfile, data = None, ions = None, format=None, **kwargs):
 
     if format == "snpy":
         # Parallel IO
-        return snpy.write(outfile, system)
+        return snpy.write(outfile, system, **kwargs)
 
     mp = system.field.mp
 
@@ -98,9 +98,9 @@ def write(outfile, data = None, ions = None, format=None, **kwargs):
 
     if mp.is_root :
         if format == "qepp":
-            PP(outfile).write(system)
+            PP(outfile).write(system, **kwargs)
         elif format == "xsf":
-            XSF(outfile).write(system)
+            XSF(outfile).write(system, **kwargs)
         elif format == "den":
             write_data_den(outfile, system.field, **kwargs)
         else:

@@ -11,14 +11,16 @@ from dftpy.ewald import CBspline
 from dftpy.field import ReciprocalField, DirectField
 from dftpy.functional.abstract_functional import AbstractFunctional
 from dftpy.functional.functional_output import FunctionalOutput
-from dftpy.functional.pseudo.psp import PSP
-from dftpy.functional.pseudo.recpot import RECPOT
-from dftpy.functional.pseudo.upf import UPF, UPFJSON
-from dftpy.functional.pseudo.usp import USP
 from dftpy.grid import DirectGrid
 from dftpy.math_utils import quartic_interpolation
 from dftpy.mpi import sprint
 from dftpy.time_data import TimeData
+
+from dftpy.functional.pseudo.psp import PSP
+from dftpy.functional.pseudo.recpot import RECPOT
+from dftpy.functional.pseudo.upf import UPF
+from dftpy.functional.pseudo.usp import USP
+from dftpy.functional.pseudo.xml import PAWXML
 
 
 # NEVER TOUCH THIS CLASS
@@ -75,53 +77,64 @@ class LocalPseudo(AbstractLocalPseudo):
     This is a template class and should never be touched.
     """
 
-    def __init__(self, grid=None, ions=None, PP_list=None, PME=True, **kwargs):
+    def __init__(self, grid=None, ions=None, PP_list=None, PME=True, readpp = None, **kwargs):
 
         self.type = 'PSEUDO'
         self.name = 'PSEUDO'
 
-        if PP_list is not None:
-            self.PP_list = PP_list
-        else:
-            raise AttributeError("Must specify PP_list for Pseudopotentials")
-        # Read PP first, then initialize other variables.
         if grid is None:
             comm = None
         else:
             comm = grid.mp.comm
-        readPP = ReadPseudo(PP_list, comm=comm, **kwargs)
-        self.readpp = readPP
 
-        self.restart(grid, ions, full=True)
-
-        # if not PME :
-        # sprint("Using N^2 method for strf!")
+        # Read PP first, then initialize other variables.
+        if PP_list is not None:
+            self.readpp = ReadPseudo(PP_list, comm=comm, **kwargs)
+        elif readpp is not None :
+            self.readpp = readpp
+        else:
+            raise AttributeError("Must specify PP_list for Pseudopotentials")
 
         self.usePME = PME
+        # if not PME :
+            # sprint("Using N^2 method for strf!", comm=comm)
+        self.restart(grid, ions)
 
-        self._vloc_interp = readPP.vloc_interp
-        self._gp = readPP.gp
-        self._vp = readPP.vp
-        self.zval = {}
+    @property
+    def _vloc_interp(self):
+        return self.readpp.vloc_interp
+
+    @property
+    def _gp(self):
+        return self.readpp.gp
+
+    @property
+    def _vp(self):
+        return self.readpp.vp
+
+    @property
+    def PP_list(self):
+        return self.readpp.PP_list
 
     def __repr__(self):
         return 'LOCALPSEUDO'
 
-    def restart(self, grid=None, ions=None, full=False):
+    def restart(self, grid=None, ions=None, full=False, duplicate=False):
         """
         Clean all private data and resets the ions and grid.
         This will prompt the computation of a new pseudo
         without recomputing the local pp on the atoms.
         """
-        if full:
-            self._gp = {}  # 1D PP grid g-space
-            self._vp = {}  # PP on 1D PP grid
-            self._vloc_interp = {}  # Interpolates recpot PP
+        if duplicate :
+            pseudo = self.__class__(grid = grid, ions = ions, readpp = self.readpp)
+            return pseudo
+
         self._vlines = {}  # PP for each atomic species on 3D PW grid
         self._v = None  # PP for atom on 3D PW grid
         self._vreal = None  # PP for atom on 3D real space
         self._ions = None
         self._grid = None
+        self.zval = {}
         if ions is not None:
             self.ions = ions
         if grid is not None:
@@ -453,19 +466,36 @@ class LocalPseudo(AbstractLocalPseudo):
         return stress
 
 
+PPEngines = {
+            "recpot" : RECPOT,
+            "usp"    : USP,
+            "uspcc"  : USP,
+            "uspso"  : USP,
+            "upf"    : UPF,
+            "psp"    : PSP,
+            "psp8"   : PSP,
+            "lps"    : PSP,
+            "xml"    : PAWXML,
+        }
+
+
 class ReadPseudo(object):
     """
     Support class for LocalPseudo.
     """
 
-    def __init__(self, PP_list=None, MaxPoints=10000, Gmax=30, Gmin=1E-4, Rmax=10, comm=None):
+    def __init__(self, PP_list=None, comm=None, MaxPoints=10000, Gmax=30, Gmin=1E-4, Rmax=10, **kwargs):
         self._gp = {}  # 1D PP grid g-space
         self._vp = {}  # PP on 1D PP grid
         self._r = {}  # 1D PP grid r-space
         self._v = {}  # PP on 1D PP grid r-space
         self._info = {}
         self._vloc_interp = {}  # Interpolates recpot PP
-        self._core_density = {}  # the radial core charge density for the non-linear core correction
+        self._core_density_grid = {}
+        self._core_density = {}  # the radial core charge density for the non-linear core correction in g-space
+        self._atomic_density_grid = {}
+        self._atomic_density = {}  # the radial atomic charge density in g-space
+        self._zval = {}
 
         self.PP_list = PP_list
         self.comm = comm
@@ -474,17 +504,7 @@ class ReadPseudo(object):
             sprint("setting key: {} -> {}".format(key, self.PP_list[key]), comm=comm)
             if not os.path.isfile(self.PP_list[key]):
                 raise FileNotFoundError("'{}' PP file for atom type {} not found".format(self.PP_list[key], key))
-            if PP_list[key].lower().endswith("recpot"):
-                self._init_PP_recpot(key)
-            elif PP_list[key].lower().endswith(("usp", "uspcc", "uspso")):
-                self._init_PP_usp(key)
-            elif PP_list[key].lower().endswith("upf"):
-                self._init_PP_upf(key, MaxPoints=MaxPoints, Gmax=Gmax, Gmin=Gmin)
-            elif PP_list[key].lower().endswith(("psp", "psp8")):
-                self._init_PP_psp(key, MaxPoints=MaxPoints, Gmax=Gmax, Gmin=Gmin)
-            else:
-                raise AttributeError("Pseudopotential not supported")
-
+            self._init_pp(key, **kwargs)
             self.get_vloc_interp(key)
 
     def get_vloc_interp(self, key, k=3):
@@ -498,8 +518,9 @@ class ReadPseudo(object):
         self._vloc_interp[key] = vloc_interp
 
     @staticmethod
-    def _real2recip(r, v, zval, MaxPoints=10000, Gmax=30, Gmin=1E-4, method='simpson'):
+    def _real2recip(r, v, zval=0, MaxPoints=10000, Gmax=30, Gmin=1E-4, method='simpson'):
         gp = np.logspace(np.log10(Gmin), np.log10(Gmax), num=MaxPoints)
+        gp[0] = 0.0
         vp = np.empty_like(gp)
         if method == 'simpson':
             try:
@@ -549,8 +570,8 @@ class ReadPseudo(object):
 
     def get_Zval(self, ions):
         for key in self._gp:
-            ions.Zval[key] = self._info[key].zval
-        self.zval = ions.Zval.copy()
+            ions.Zval[key] = self._zval[key]
+        # self.zval = ions.Zval.copy()
 
     def _self_energy(self, r, vr, rhop):
         dr = np.empty_like(r)
@@ -560,54 +581,35 @@ class ReadPseudo(object):
         # sprint('Ne ', np.sum(r *r * rhop * dr) * 4 * np.pi)
         return ene
 
-    def _init_PP_recpot(self, key):
-        self._info[key] = RECPOT(self.PP_list[key])
-        self._gp[key] = self._info[key].r_g
-        self._vp[key] = self._info[key].v_g
+    def _init_pp(self, key, engine = None, **kwargs):
+        if engine is None :
+            suffix = os.path.splitext(self.PP_list[key])[1][1:].lower()
+            engine = PPEngines.get(suffix, None)
 
-    def _init_PP_usp(self, key):
-        """
-        !!! NOT FULL TEST !!!
-        """
-        self._info[key] = USP(self.PP_list[key])
-        self._gp[key] = self._info[key].r_g
-        self._vp[key] = self._info[key].v_g
+        if engine is None :
+            raise AttributeError("Pseudopotential '{}' is not supported".format(self.PP_list[key]))
+        else :
+            pp = engine(self.PP_list[key])
 
-    def _init_PP_upf(self, key, **kwargs):
-        """
-        Note :
-            Prefer xmltodict which is more robust
-            xmltodict not work for UPF v1
-        """
-        has_xml = importlib.util.find_spec("xmltodict")
-        has_json = importlib.util.find_spec("upf_to_json")
-        if has_xml:
-            try:
-                self._info[key] = UPF(self.PP_list[key])
-            except:
-                if has_json:
-                    try:
-                        self._info[key] = UPFJSON(self.PP_list[key])
-                    except:
-                        raise ModuleNotFoundError("Please use standard 'UPF' file")
-        elif has_json:
-            try:
-                self._info[key] = UPFJSON(self.PP_list[key])
-            except:
-                raise ModuleNotFoundError("Maybe you can try install xmltodict or use standard 'UPF' file")
-        else:
-            raise ModuleNotFoundError("Must pip install xmltodict or upf_to_json")
+        self.pp = pp
 
-        self._r[key] = self._info[key].r
-        self._v[key] = self._info[key].potential
-        self._gp[key], self._vp[key] = self._real2recip(self._r[key], self._v[key], self._info[key].zval, **kwargs)
-        self._core_density[key] = self._info[key].core_density
+        self._gp[key] = pp.radial_grid
+        self._vp[key] = pp.local_potential
+        self._zval[key] = pp.zval
+        self._info[key] = pp.info
+        self._core_density[key] = pp.core_density
+        self._core_density_grid[key]= pp.core_density_grid
+        self._atomic_density[key] = pp.atomic_density
+        self._atomic_density_grid[key] = pp.atomic_density_grid
 
-    def _init_PP_psp(self, key, **kwargs):
-        self._info[key] = PSP(self.PP_list[key])
-        self._r[key] = self._info[key].r
-        self._v[key] = self._info[key].potential
-        self._gp[key], self._vp[key] = self._real2recip(self._r[key], self._v[key], self._info[key].zval, **kwargs)
+        if pp.direct :
+            self._r[key] = self._gp[key]
+            self._v[key] = self._vp[key]
+            self._gp[key], self._vp[key] = self._real2recip(self._r[key], self._v[key], self._zval[key], **kwargs)
+            if self._core_density[key] is not None :
+                self._core_density_grid[key], self._core_density[key] = self._real2recip(self._core_density_grid[key], self._core_density[key], 0, **kwargs)
+            if self._atomic_density[key] is not None :
+                self._atomic_density_grid[key], self._atomic_density[key] = self._real2recip(self._atomic_density_grid[key], self._atomic_density[key], 0, **kwargs)
 
     @property
     def vloc_interp(self):

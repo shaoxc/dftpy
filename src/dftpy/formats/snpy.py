@@ -29,7 +29,7 @@ from dftpy.mpi import MP, MPIFile, sprint
 
 MAGIC_PREFIX = b'\x93DFTPY'
 
-def write(fname, system, kind = 'all', desc = None, mp = None):
+def write(fname, system, kind = 'all', desc = None, mp = None, **kwargs):
     ions = system.ions
     data = system.field
     if mp is None :

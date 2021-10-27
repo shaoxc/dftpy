@@ -11,7 +11,7 @@ class PP(object):
         self.title = ""
         self.cutoffvars = {}
 
-    def read(self, full=True, **kwargs):
+    def read(self, full=True, data_type='density', **kwargs):
 
         with open(self.filepp) as filepp:
             # title
@@ -87,8 +87,6 @@ class PP(object):
             # self.atoms = Ions( nat, ntyp, atm, zv, tau*celldm[0], ityp, self.grid)
 
             # plot
-            igrid = 0
-            nnr = nrx[0] * nrx[1] * nrx[2]
             blocksize = 1024 * 8
             strings = ""
             while True:
@@ -98,6 +96,8 @@ class PP(object):
                 strings += line
             ppgrid = np.fromstring(strings, dtype=float, sep=" ")
 
+            # igrid = 0
+            # nnr = nrx[0] * nrx[1] * nrx[2]
             # ppgrid = np.zeros(nnr, dtype=float)
             # for line in filepp:
             # line = line.split()
@@ -106,6 +106,9 @@ class PP(object):
             # igrid += npts
 
             plot = DirectField(grid=grid, griddata_F=ppgrid, rank=1)
+
+            if data_type == 'potential' :
+                plot *= 0.5 # Ry to Hartree
 
             return System(atoms, grid, name=self.title, field=plot)
 
@@ -172,6 +175,62 @@ class PP(object):
             raise NotImplementedError("celldm2at is only implemented for ibrav = 0 and ibrav = 1")
 
         return at
+
+    def write(self, system, data_type = 'density', **kwargs):
+        info = {
+                'gcutm' : 1.0,
+                'dual' : 1.0,
+                'ecut' : 1.0,
+                }
+        info.update(kwargs)
+        with open(self.filepp, "w") as filepp:
+            val_per_line = 5
+            grid = system.field.grid
+
+            # title
+            filepp.write(system.name)
+
+            # nr1x, nr2x, nr3x, nr1, nr2, nr3, nat, ntyp
+            mywrite(filepp, grid.nrR, True)
+            mywrite(filepp, grid.nrR, False)
+            mywrite(filepp, [system.ions.nat, len(system.ions.nsymbols)], False)
+
+            # ibrav, celldm
+            celldm = np.zeros(6)
+            celldm[0] = grid.latparas[0]
+            mywrite(filepp, 0, True)
+            mywrite(filepp, celldm, False)
+
+            for ilat in range(3):
+                mywrite(filepp, grid.lattice[:, ilat]/celldm[0], True)
+
+            # gcutm, dual, ecut, plot_num
+            mywrite(filepp, info["gcutm"], True)
+            mywrite(filepp, info["dual"], False)
+            mywrite(filepp, info["ecut"], False)
+            mywrite(filepp, 0, False)
+
+            # ntyp
+            for ity, spc in enumerate(system.ions.nsymbols):
+                mywrite(filepp, [ity + 1, spc, system.ions.Zval.get(spc, 1.0)], True)
+
+            # tau
+            tau = system.ions.pos.to_cart() / celldm[0]
+            for iat in range(system.ions.nat):
+                mywrite(filepp, iat + 1, True)
+                mywrite(filepp, tau[iat], False)
+                mywrite(filepp, np.where(system.ions.nsymbols == system.ions.labels[iat])[0] + 1, False)
+
+            # plot
+            nlines = system.field.grid.nnr // val_per_line
+            grid_pp = system.field.get_values_flatarray(order="F")
+            if data_type == 'potential' :
+                grid_pp = grid_pp*2.0 # Hartree to Ry
+            for iline in range(nlines):
+                igrid = iline * val_per_line
+                mywrite(filepp, grid_pp[igrid : igrid + val_per_line], True)
+            igrid = (iline + 1) * val_per_line
+            mywrite(filepp, grid_pp[igrid : grid.nnr], True)
 
 
 class Ions(object):

@@ -1,2 +1,3 @@
 numpy>=1.11.0
 scipy>=0.18.0
+importlib-metadata>=0.12;python_version<"3.8"

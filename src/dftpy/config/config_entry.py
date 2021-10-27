@@ -33,6 +33,13 @@ def format_str(expression):
     return expression
 
 
+def format_lstr(expression):
+    return expression.lower()
+
+def format_ustr(expression):
+    return expression.upper()
+
+
 def format_cstr(expression):
     return expression.capitalize()
 
@@ -142,7 +149,7 @@ def format_oidict(expression):
 class ConfigEntry(object):
 
     def __init__(self, type='str', default=None, comment='', options='', example=None, note=None, warning=None,
-                 **kwargs):
+                 unit = None, level = None, **kwargs):
         self.type = type
         self.default = default
         self.comment = comment
@@ -150,6 +157,8 @@ class ConfigEntry(object):
         self.note = note
         self.example = example
         self.warning = warning
+        self.unit = unit
+        self.level = level
         if self.type == 'bool' and self.options == '':
             self.options = 'True, False'
 
@@ -159,6 +168,8 @@ class ConfigEntry(object):
             "int": int,
             "float": format_float,
             "str": format_str,
+            "lstr": format_lstr,
+            "ustr": format_ustr,
             "cstr": format_cstr,
             "path": format_path,
             "intlist": format_intlist,
