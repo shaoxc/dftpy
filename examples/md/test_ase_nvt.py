@@ -1,16 +1,20 @@
 import os
 import numpy as np
+from dftpy.mpi import pmi, sprint, mp
+#-----------------------------------------------------------------------
+if pmi.size > 0:
+    from mpi4py import MPI
+    mp.comm = MPI.COMM_WORLD
+#-----------------------------------------------------------------------
 from ase.lattice.cubic import FaceCenteredCubic
 from ase.md.langevin import Langevin
-from ase.md.verlet import VelocityVerlet
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.io.trajectory import Trajectory
 from ase import units
-from ase.md.npt import NPT
 
 from dftpy.config.config import DefaultOption, ConfSpecialFormat, PrintConf
-from dftpy.interface import OptimizeDensityConf
 from dftpy.api.api4ase import DFTpyCalculator
+np.random.seed(8888)
 
 ############################## initial config ##############################
 conf = DefaultOption()
@@ -22,10 +26,11 @@ conf["JOB"]["calctype"] = "Energy Force"
 conf["OUTPUT"]["time"] = False
 conf = ConfSpecialFormat(conf)
 PrintConf(conf)
+calc = DFTpyCalculator(config=conf, mp = mp)
 # -----------------------------------------------------------------------
 """
 Ref :
-    https ://wiki.fysik.dtu.dk/ase/ase/md.html#module-ase.md
+    https://wiki.fysik.dtu.dk/ase/ase/md.html#module-ase.md
 """
 
 size = 3
@@ -35,7 +40,6 @@ atoms = FaceCenteredCubic(
     directions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]], latticeconstant=a, symbol="Al", size=(size, size, size), pbc=True
 )
 
-calc = DFTpyCalculator(config=conf)
 atoms.set_calculator(calc)
 
 MaxwellBoltzmannDistribution(atoms, temperature_K = T, force_temp=True)
@@ -50,7 +54,7 @@ def printenergy(a=atoms):
     global step, interval
     epot = a.get_potential_energy() / len(a)
     ekin = a.get_kinetic_energy() / len(a)
-    print(
+    sprint(
         "Step={:<8d} Epot={:.5f} Ekin={:.5f} T={:.3f} Etot={:.5f}".format(
             step, epot, ekin, ekin / (1.5 * units.kB), epot + ekin
         )
@@ -65,6 +69,6 @@ traj = Trajectory("md.traj", "w", atoms)
 
 dyn.attach(check_stop, interval=1)
 dyn.attach(printenergy, interval=1)
-dyn.attach(traj.write, interval=5)
+dyn.attach(traj.write, interval=1)
 
 dyn.run(500)
