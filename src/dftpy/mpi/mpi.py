@@ -54,28 +54,25 @@ class MP :
             else :
                 comm = SerialComm(**kwargs)
         self._comm = comm
-        self._is_mpi = parallel
         self._MPI = MPI
-        self._is_root = False
         self.decomposition = decomposition
 
     @property
     def is_mpi(self):
         # if isinstance(self.comm, SerialComm) or self.comm.size == 1:
-        if self.comm.size == 1:
-            self._is_mpi = False
-        else :
-            self._is_mpi = True
-        return self._is_mpi
+        return self.comm.size > 1
 
     @property
     def is_root(self):
-        self._is_root = self.comm.rank == 0
-        return self._is_root
+        return self.comm.rank == 0
 
     @property
     def comm(self):
         return self._comm
+
+    @comm.setter
+    def comm(self, value):
+        self._comm = value
 
     @property
     def rank(self):
@@ -84,10 +81,6 @@ class MP :
     @property
     def size(self):
         return self.comm.size
-
-    @comm.setter
-    def comm(self, value):
-        self._comm = value
 
     @property
     def MPI(self):

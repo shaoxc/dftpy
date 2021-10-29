@@ -13,7 +13,7 @@ from dftpy.functional.abstract_functional import AbstractFunctional
 from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.grid import DirectGrid
 from dftpy.math_utils import quartic_interpolation
-from dftpy.mpi import sprint
+from dftpy.mpi import sprint, SerialComm, MP
 from dftpy.time_data import TimeData
 
 from dftpy.functional.pseudo.psp import PSP
@@ -77,15 +77,16 @@ class LocalPseudo(AbstractLocalPseudo):
     This is a template class and should never be touched.
     """
 
-    def __init__(self, grid=None, ions=None, PP_list=None, PME=True, readpp = None, **kwargs):
+    def __init__(self, grid=None, ions=None, PP_list=None, PME=True, readpp = None, comm = None, **kwargs):
 
         self.type = 'PSEUDO'
         self.name = 'PSEUDO'
 
-        if grid is None:
-            comm = None
-        else:
-            comm = grid.mp.comm
+        if comm is None:
+            if grid is not None :
+                comm = grid.mp.comm
+            else :
+                comm = SerialComm()
 
         # Read PP first, then initialize other variables.
         if PP_list is not None:
@@ -484,7 +485,7 @@ class ReadPseudo(object):
     Support class for LocalPseudo.
     """
 
-    def __init__(self, PP_list=None, comm=None, MaxPoints=10000, Gmax=30, Gmin=1E-4, Rmax=10, **kwargs):
+    def __init__(self, PP_list=None, comm=None, parallel = True, **kwargs):
         self._gp = {}  # 1D PP grid g-space
         self._vp = {}  # PP on 1D PP grid
         self._r = {}  # 1D PP grid r-space
@@ -498,7 +499,11 @@ class ReadPseudo(object):
         self._zval = {}
 
         self.PP_list = PP_list
+        #-----------------------------------------------------------------------
+        if comm is None: comm = SerialComm()
         self.comm = comm
+        self.parallel = parallel and comm.size > 1
+        #-----------------------------------------------------------------------
 
         for key in self.PP_list:
             sprint("setting key: {} -> {}".format(key, self.PP_list[key]), comm=comm)
@@ -518,10 +523,11 @@ class ReadPseudo(object):
         self._vloc_interp[key] = vloc_interp
 
     @staticmethod
-    def _real2recip(r, v, zval=0, MaxPoints=10000, Gmax=30, Gmin=1E-4, method='simpson'):
+    def _real2recip(r, v, zval=0, MaxPoints=10000, Gmax=30, Gmin=1E-4, method='simpson', comm=None, mp=None):
+        if mp is None : mp = MP(comm = comm)
         gp = np.logspace(np.log10(Gmin), np.log10(Gmax), num=MaxPoints)
         gp[0] = 0.0
-        vp = np.empty_like(gp)
+        vp = np.zeros_like(gp)
         if method == 'simpson':
             try:
                 # new version of scipy=1.6.0 change the name to simpson
@@ -529,32 +535,52 @@ class ReadPseudo(object):
             except Exception:
                 from scipy.integrate import simps as simpson
             vr = (v * r + zval) * r
-            for k in range(1, len(gp)):
+
+            lb, ub = mp.split_number(len(gp))
+            if mp.is_root : lb = 1
+
+            for k in range(lb, ub):
                 y = sp.spherical_jn(0, gp[k] * r) * vr
                 vp[k] = (4.0 * np.pi) * simpson(y, r)
+
+            if mp.is_mpi : vp = mp.vsum(vp)
+
             vp[0] = (4.0 * np.pi) * simpson(vr, r)
         else:
             dr = np.empty_like(r)
             dr[1:] = r[1:] - r[:-1]
             dr[0] = r[0]
             vr = (v * r + zval) * r * dr
-            for k in range(1, len(gp)):
+
+            lb, ub = mp.split_number(len(gp))
+            if mp.is_root : lb = 1
+
+            for k in range(lb, ub):
                 vp[k] = (4.0 * np.pi) * np.sum(sp.spherical_jn(0, gp[k] * r) * vr)
+
+            vp = mp.vsum(vp)
+
             vp[0] = (4.0 * np.pi) * np.sum(vr)
         vp[1:] -= 4.0 * np.pi * zval / (gp[1:] ** 2)
         return gp, vp
 
     @staticmethod
-    def _recip2real(gp, vp, MaxPoints=1001, Rmax=10, r=None):
+    def _recip2real(gp, vp, MaxPoints=1001, Rmax=10, r=None, comm=None, mp=None):
+        if mp is None : mp = MP(comm = comm)
         if r is None:
             r = np.linspace(0, Rmax, MaxPoints)
-        v = np.empty_like(r)
+        v = np.zeros_like(r)
         dg = np.empty_like(gp)
         dg[1:] = gp[1:] - gp[:-1]
         dg[0] = gp[0]
         vr = vp * gp * gp * dg
-        for i in range(0, len(r)):
+
+        lb, ub = mp.split_number(len(r))
+
+        for i in range(lb, ub):
             v[i] = (0.5 / np.pi ** 2) * np.sum(sp.spherical_jn(0, r[i] * gp) * vr)
+
+        v = mp.vsum(v)
         return r, v
 
     @staticmethod
@@ -589,7 +615,14 @@ class ReadPseudo(object):
         if engine is None :
             raise AttributeError("Pseudopotential '{}' is not supported".format(self.PP_list[key]))
         else :
-            pp = engine(self.PP_list[key])
+            if self.parallel :
+                if self.comm.rank == 0 :
+                    pp = engine(self.PP_list[key])
+                else :
+                    pp = None
+                pp = self.comm.bcast(pp)
+            else :
+                pp = engine(self.PP_list[key])
 
         self.pp = pp
 
@@ -603,13 +636,17 @@ class ReadPseudo(object):
         self._atomic_density_grid[key] = pp.atomic_density_grid
 
         if pp.direct :
+            if self.parallel :
+                comm = self.comm
+            else :
+                comm = None
             self._r[key] = self._gp[key]
             self._v[key] = self._vp[key]
-            self._gp[key], self._vp[key] = self._real2recip(self._r[key], self._v[key], self._zval[key], **kwargs)
+            self._gp[key], self._vp[key] = self._real2recip(self._r[key], self._v[key], self._zval[key], comm=comm, **kwargs)
             if self._core_density[key] is not None :
-                self._core_density_grid[key], self._core_density[key] = self._real2recip(self._core_density_grid[key], self._core_density[key], 0, **kwargs)
+                self._core_density_grid[key], self._core_density[key] = self._real2recip(self._core_density_grid[key], self._core_density[key], 0, comm=comm, **kwargs)
             if self._atomic_density[key] is not None :
-                self._atomic_density_grid[key], self._atomic_density[key] = self._real2recip(self._atomic_density_grid[key], self._atomic_density[key], 0, **kwargs)
+                self._atomic_density_grid[key], self._atomic_density[key] = self._real2recip(self._atomic_density_grid[key], self._atomic_density[key], 0, comm=comm, **kwargs)
 
     @property
     def vloc_interp(self):
