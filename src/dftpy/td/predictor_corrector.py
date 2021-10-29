@@ -21,7 +21,9 @@ class PredictorCorrector(Dynamics):
                  Omega=None,
                  A_t=None,
                  A_tm1=None,
-                 N0=None):
+                 N0=None,
+                 nk=None,
+                 psi_list=None):
         Dynamics.__init__(self, system=system)
         self.propagator = propagator
         self.max_steps = max_steps
@@ -30,9 +32,13 @@ class PredictorCorrector(Dynamics):
         self.propagate_vector_potential = propagate_vector_potential
         self.int_t = int_t
         self.functionals = functionals
-        self.psi = self.system.field
-        self.rho = calc_rho(self.psi)
-        self.j = calc_j(self.psi)
+        self.nk = nk
+        self.nnk = self.nk[0] * self.nk[1] * self.nk[2]
+        self.k_point_list = self.system.cell.get_reciprocal().calc_k_points(self.nk)
+        self.psi_list = psi_list
+        self.psi_pred_list = [None] * self.nnk
+        self.rho = calc_rho(self.psi_list, nnk=self.nnk)
+        self.j = calc_j(self.psi_list, nnk=self.nnk)
         self.atol_rho = _get_atol(tol, atol, self.rho.norm())
         self.atol_j = _get_atol(tol, atol, np.max(self.j.norm()))
         self.old_rho_pred = np.zeros_like(self.rho)
@@ -43,7 +49,6 @@ class PredictorCorrector(Dynamics):
         self.A_t = A_t
         self.A_tm1 = A_tm1
         self.N0 = N0
-        self.psi_pred = None
         self.A_t_pred = None
         self.rho_corr = None
         self.j_corr = None
@@ -56,14 +61,19 @@ class PredictorCorrector(Dynamics):
             self.old_rho_pred = self.rho_pred
             self.old_j_pred = self.j_pred
 
-        self.psi_pred, info = self.propagator(self.psi)
-        self.rho_pred = calc_rho(self.psi_pred)
-        self.j_pred = calc_j(self.psi_pred)
+        for i_k, k_point in enumerate(self.k_point_list):
+            self.psi_pred_list[i_k], info = self.propagator(self.psi_list[i_k], k_point=k_point)
+        self.rho_pred = calc_rho(self.psi_pred_list, nnk=self.nnk)
+        self.j_pred = calc_j(self.psi_pred_list, nnk=self.nnk)
         if self.propagate_vector_potential:
+            para_current = np.zeros((3,), dtype=np.complex128)
+            for i_k, k_point in enumerate(self.k_point_list):
+                para_current += self.psi_pred_list[i_k].para_current(k_point=k_point)
+            para_current /= self.nnk
+            para_current = np.real(para_current)
             self.A_t_pred = np.empty_like(self.A_t)
             self.A_t_pred[:] = np.real(
-                2 * self.A_t - self.A_tm1 - 4 * np.pi * self.N0 * self.A_t / self.Omega * self.int_t * self.int_t - 4.0 * np.pi * SPEED_OF_LIGHT * self.N0 / self.Omega * self.psi_pred.para_current(
-                    sigma=0.025) * self.int_t * self.int_t)
+                2 * self.A_t - self.A_tm1 - 4 * np.pi * self.N0 * self.A_t / self.Omega * self.int_t * self.int_t - 4.0 * np.pi * SPEED_OF_LIGHT * self.N0 / self.Omega * para_current * self.int_t * self.int_t)
 
         self.rho_corr = (self.rho + self.rho_pred) * 0.5
         self.j_corr = (self.j + self.j_pred) * 0.5

@@ -632,10 +632,6 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
                     k_z_crystal = (2 * k_z - nk[2] + 1) / nk[2] / 2
                     k_points_crystal[k_x*nk[1]*nk[2]+k_y*nk[2]+k_z:] = np.asarray([k_x_crystal, k_y_crystal, k_z_crystal])
 
-        from dftpy.mpi.utils import sprint
-        sprint(self.lattice)
-        sprint(k_points_crystal)
-
         k_points = np.matmul(k_points_crystal, np.transpose(self.lattice))
 
         return k_points

@@ -1,7 +1,7 @@
 from dftpy.field import BaseField, DirectField, ReciprocalField
 from dftpy.grid import BaseGrid, ReciprocalGrid
 from abc import ABC, abstractmethod
-from typing import Callable, Tuple, Union
+from typing import Callable, Tuple, List, Union
 import numpy as np
 from scipy.sparse.linalg import LinearOperator, eigsh
 from dftpy.time_data import timer

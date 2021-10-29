@@ -1,7 +1,8 @@
 import numpy as np
 import gc
-from dftpy.field import DirectField, ReciprocalField
+from dftpy.field import DirectField, ReciprocalField, BaseField
 from dftpy.grid import ReciprocalGrid
+from typing import Any
 
 
 def dipole_moment(rho, ions = None, center = [0.0, 0.0, 0.0]):
@@ -34,16 +35,38 @@ def dipole_correction(rho, axis=2, ions=None, center = [0.0, 0.0, 0.0], coef=10.
     return rho_add
 
 
-def calc_rho(psi, N=1):
-    return np.real(psi * np.conj(psi)) * N
+def calc_rho(psi, N=1, nnk=1):
+    if nnk==1:
+        if not isinstance(psi, BaseField):
+            psi = psi[0]
+        return np.real(psi * np.conj(psi)) * N
+    else:
+        rho = np.zeros_like(np.real(psi[0]))
+        for i_psi in psi:
+            rho += calc_rho(i_psi, N)
+        rho /= nnk
+        return rho
+
 
 def calc_drho(psi, dpsi, N=1):
     return 2.0*np.real(np.conj(dpsi)*psi) * N
 
-def calc_j(psi, N=1):
-    psi_conj = DirectField(psi.grid, rank=1, griddata_3d=np.conj(psi), cplx = True)
-    j = np.real(-0.5j * (psi_conj * psi.gradient(flag='standard', force_real=False) - psi * psi_conj.gradient(flag='standard', force_real=False))) * N
-    return j
+
+def calc_j(psi, N=1, nnk=1):
+    if nnk==1:
+        if not isinstance(psi, BaseField):
+            psi = psi[0]
+        psi_conj = DirectField(psi.grid, rank=1, griddata_3d=np.conj(psi), cplx=True)
+        j = np.real(-0.5j * (psi_conj * psi.gradient(flag='standard', force_real=False) - psi * psi_conj.gradient(flag='standard', force_real=False))) * N
+        return j
+    else:
+        j = DirectField(psi[0].grid, rank=3)
+        j[:] = 0
+        for i_psi in psi:
+            j += calc_j(i_psi, N)
+        j /= nnk
+        return j
+
 
 def grid_map_index(nr, nr2, full = False):
     nr_coarse = np.array(nr, dtype = int)
@@ -73,6 +96,7 @@ def grid_map_index(nr, nr2, full = False):
         mask = index[i] > dnr[i]
         index[i][mask] += nr_fine[i]-nr_coarse[i]
     return index, lfine
+
 
 def grid_map_data(data, nr = None, direct = True, index = None, grid = None):
     """
@@ -139,6 +163,7 @@ def coarse_to_fine(data, nr_fine, direct = True, index = None):
         results = value_fine
     return results
 
+
 def fine_to_coarse(data, nr_coarse, direct = True, index = None):
     """
     Only support for serial.
@@ -161,7 +186,13 @@ def fine_to_coarse(data, nr_coarse, direct = True, index = None):
         results = value_g
     return results
 
+
 def clean_variables(*args):
     for item in args :
         del item
     gc.collect()
+
+
+def setattrs(_self: Any, **kwargs) -> None:
+    for k,v in kwargs.items():
+        setattr(_self, k, v)

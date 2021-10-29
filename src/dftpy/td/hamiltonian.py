@@ -1,12 +1,10 @@
 import numpy as np
 from numpy.typing import ArrayLike
-
 from typing import Tuple, Union
 
 from dftpy.constants import SPEED_OF_LIGHT
 from dftpy.field import DirectField, ReciprocalField, BaseField
 from dftpy.grid import DirectGrid, ReciprocalGrid, BaseGrid
-
 from dftpy.td.operator import Operator
 
 
@@ -43,10 +41,12 @@ class Hamiltonian(Operator):
             if np.size(vector_potential) != 3:
                 raise AttributeError('Size of the A must be 3.')
 
-    def __call__(self, psi, force_real=None, sigma=0.025, k_point=np.array([0, 0, 0])):
-        return self.kinetic_operator(psi, force_real=force_real, sigma=sigma, k_point=k_point) + self.potential_operator(psi)
+    def __call__(self, psi: BaseField, force_real: Union[bool, None] = None, sigma: float = 0.025,
+                 k_point: ArrayLike = np.array([0, 0, 0]), **kwargs) -> BaseField:
+        return self.kinetic_operator(psi, force_real=force_real, sigma=sigma,
+                                     k_point=k_point) + self.potential_operator(psi)
 
-    def kinetic_operator(self, psi: BaseField, force_real=None, sigma=0.025, k_point=np.array([0, 0, 0])) -> BaseField:
+    def kinetic_operator(self, psi: BaseField, force_real=None, sigma=0.0, k_point=np.array([0, 0, 0])) -> BaseField:
         k_point = np.asarray(k_point)
         reciprocal = isinstance(psi, ReciprocalField)
         if not reciprocal:
@@ -62,7 +62,7 @@ class Hamiltonian(Operator):
         term1 *= np.exp(-psi.grid.gg * sigma * sigma / 4.0)
         term2 = np.einsum('i,ijkl->jkl', k_minus_a, psi.grid.g) * psi
         term2 *= np.exp(-psi.grid.gg * sigma * sigma / 4.0)
-        term3 = np.einsum('i,i->', k_minus_a, k_minus_a) * psi
+        term3 = 0.5 * np.einsum('i,i->', k_minus_a, k_minus_a) * psi
         result = term1 + term2 + term3
         if not reciprocal:
             result = result.ifft(force_real=force_real)

@@ -43,13 +43,15 @@ class RealTimeRunner(Dynamics):
         self.max_steps = int(self.t_max / self.int_t)
         self.functionals = functionals
         self.N0 = self.system.field.integral()
-        self.psi = None
         self.predictor_corrector = None
         self.delta_mu = None
         self.j_int = None
         self.E = None
         self.correct_potential = None
         self.timer = None
+
+        self.read_kpoint(fname='./test311.npy')
+        self.k_point_list = self.system.field.grid.get_reciprocal().calc_k_points(self.nk)
 
         if self.vector_potential:
             self.A_t = None
@@ -77,6 +79,7 @@ class RealTimeRunner(Dynamics):
         self.attach(self.save, interval=self.save_interval)
         if self.max_steps % self.save_interval != 0:
             self.attach(self.save, interval=-self.max_steps)
+        #self.attach(self.debug)
 
         hamiltonian = Hamiltonian()
         self.propagator = Propagator(hamiltonian, self.int_t, name = config["PROPAGATOR"]["propagator"], **config["PROPAGATOR"])
@@ -86,29 +89,32 @@ class RealTimeRunner(Dynamics):
         else:
             self.apply_initial_field()
 
-        self.rho = calc_rho(self.psi)
-        self.j = calc_j(self.psi)
+        self.rho = calc_rho(self.psi_list, nnk=self.nnk)
+        self.j = calc_j(self.psi_list, nnk=self.nnk)
         self.update_hamiltonian()
 
     def initialize(self):
         sprint("{:20s}{:30s}{:24s}".format('Iter', 'Num. of Predictor-corrector', 'Total Cost(s)'))
 
     def step(self):
-        system = System(field=self.psi)
+        system = System(cell=self.system.cell)
         self.predictor_corrector = PredictorCorrector(system, **self.predictor_corrector_arguments())
         converged = self.predictor_corrector.run()
         if not converged:
             self.predictor_corrector.print_not_converged_info()
         self.update_hamiltonian()
-        if self.correction:
-            self.predictor_corrector.psi_pred = self.predictor_corrector.psi_pred - 1.0j * self.int_t * self.correct_potential * self.psi
-            self.predictor_corrector.psi_pred.normalize(N=self.N0)
-            self.predictor_corrector.rho_pred = calc_rho(self.predictor_corrector.psi_pred)
-            self.predictor_corrector.j_pred = calc_j(self.predictor_corrector.psi_pred)
+        # if self.correction:
+        #     self.predictor_corrector.psi_pred = self.predictor_corrector.psi_pred - 1.0j * self.int_t * self.correct_potential * self.psi
+        #     self.predictor_corrector.psi_pred.normalize(N=self.N0)
+        #     self.predictor_corrector.rho_pred = calc_rho(self.predictor_corrector.psi_pred)
+        #     self.predictor_corrector.j_pred = calc_j(self.predictor_corrector.psi_pred)
 
-        self.psi = self.predictor_corrector.psi_pred
+        self.psi_list = self.predictor_corrector.psi_pred_list
         self.rho = self.predictor_corrector.rho_pred
         self.j = self.predictor_corrector.j_pred
+        if self.propagate_vector_potential:
+            self.A_tm1 = self.A_t
+            self.A_t = self.predictor_corrector.A_t_pred
 
         self.timer = TimeData.Time('Real-time propagation')
         sprint("{:<20d}{:<30d}{:<24.4f}".format(self.nsteps + 1, self.predictor_corrector.nsteps, self.timer))
@@ -133,6 +139,8 @@ class RealTimeRunner(Dynamics):
             'propagate_vector_potential': self.propagate_vector_potential,
             'int_t': self.int_t,
             'functionals': self.functionals,
+            'nk': self.nk,
+            'psi_list': self.psi_list
         }
         if self.propagate_vector_potential:
             arguments.update({
@@ -145,14 +153,16 @@ class RealTimeRunner(Dynamics):
 
     def apply_initial_field(self):
         if self.vector_potential:
-            self.psi = np.complex128(np.sqrt(self.system.field))
             self.A_t = np.zeros(3)
             self.A_t[self.direc] = self.k * SPEED_OF_LIGHT
             self.A_tm1 = self.A_t.copy()
         else:
             x = self.system.field.grid.r[self.direc]
-            self.psi = np.sqrt(self.system.field) * np.exp(1j * self.k * x)
-        self.psi.cplx = True
+            for psi in self.psi_list:
+                psi *= np.exp(1j * self.k * x)
+
+        for psi in self.psi_list:
+            psi.cplx = True
 
     def update_hamiltonian(self):
         func = self.functionals(self.rho, calcType=["V"], current=self.j)
@@ -169,12 +179,13 @@ class RealTimeRunner(Dynamics):
         self.calc_energy()
 
     def calc_energy(self):
-        if self.correction:
-            self.E = np.real(
-                np.conj(self.psi) * (
-                            self.propagator.hamiltonian(self.psi) + self.correct_potential * self.psi)).integral()
-        else:
-            self.E = np.real(np.conj(self.psi) * self.propagator.hamiltonian(self.psi)).integral()
+        self.E = 0
+        for i_k, k_point in enumerate(self.k_point_list):
+            if self.correction:
+                self.E = np.real(np.conj(self.psi_list[i_k]) * (self.propagator.hamiltonian(self.psi_list[i_k], k_point=k_point) + self.correct_potential * self.psi_list[i_k])).integral() / self.psi_list[i_k].norm() ** 2.0
+            else:
+                self.E = np.real(np.conj(self.psi_list[i_k]) * (self.propagator.hamiltonian(self.psi_list[i_k], k_point=k_point))).integral() / self.psi_list[i_k].norm() ** 2.0
+        self.E /= self.nnk
         if self.propagate_vector_potential:
             self.E += self.Omega / 8.0 / np.pi / SPEED_OF_LIGHT ** 2 * (
                     np.dot((self.A_t - self.A_tm1), (self.A_t - self.A_tm1)) / self.int_t / self.int_t)
@@ -186,8 +197,12 @@ class RealTimeRunner(Dynamics):
         else:
             f = open(fname, "rb")
         self.nsteps = npy.read(f, single=True) + 1
-        psi = npy.read(f, grid=self.system.field.grid)
-        self.psi = DirectField(grid=self.system.field.grid, rank=1, griddata_3d=psi, cplx=True)
+        self.nk = npy.read(f, single=True)
+        self.nnk = self.nk[0] * self.nk[1] * self.nk[2]
+        self.psi_list = [None] * self.nnk
+        for i_psi in range(len(self.psi_list)):
+            psi = npy.read(f, grid=self.system.field.grid)
+            self.psi_list[i_psi] = DirectField(grid=self.system.field.grid, rank=1, griddata_3d=psi, cplx=True)
         if self.vector_potential:
             self.A_t = npy.read(f, single=True)
             self.A_tm1 = npy.read(f, single=True)
@@ -204,7 +219,9 @@ class RealTimeRunner(Dynamics):
             f = open(fname, "wb")
         if mp.is_root:
             npy.write(f, self.nsteps - 1, single=True)
-        npy.write(f, self.psi, grid=self.psi.grid)
+            npy.write(f, self.nk, single=True)
+        for psi in self.psi_list:
+            npy.write(f, psi, grid=psi.grid)
         if self.vector_potential and mp.is_root:
             npy.write(f, self.A_t, single=True)
             npy.write(f, self.A_tm1, single=True)
@@ -216,6 +233,41 @@ class RealTimeRunner(Dynamics):
             self.save()
             sprint('Maximum run time reached. Clean exiting.')
             self.stop_generator = True
+
+    def read_kpoint(self, fname = './test.npy'):
+        if mp.size > 1:
+            f = MPIFile(fname, mp, amode=mp.MPI.MODE_CREATE | mp.MPI.MODE_WRONLY)
+        else:
+            f = open(fname, "rb")
+        if mp.is_root:
+            self.nk = npy.read(f, single=True)
+        self.nnk = self.nk[0] * self.nk[1] * self.nk[2]
+        self.psi_list = [None] * self.nnk
+        for i_psi in range(len(self.psi_list)):
+            psi = npy.read(f, grid=self.system.field.grid)
+            self.psi_list[i_psi] = DirectField(grid=self.system.field.grid, rank=1, griddata_3d=psi, cplx=True)
+
+        f.close()
+
+    def debug(self):
+        #from dftpy.formats.xsf import XSF
+        #i_k = 4
+        #xsf = XSF(filexsf='./jy_{0:d}_{1:d}.xsf'.format(i_k, self.nsteps))
+        #xsf.write(self.system, field=self.psi_list[i_k])
+        #j = calc_j(self.psi_list[i_k])
+        #sprint(np.sum(j[1]))
+        #j_y = j[1]
+        #j_z_inv = np.flip(j_z, axis=2)
+        #xsf.write(self.system, field=j[1])
+        #sprint(self.k_point_list[i_k], ':\n', self.psi_list[i_k])
+        psi = self.psi_list[0]
+        print(psi[0,0,1]-psi[0,1,0])
+        for i_k, k_point in enumerate(self.k_point_list):
+             j = calc_j(self.psi_list[i_k]).integral()
+             sprint(k_point, ": ", j)
+
+        sprint(self.j_int)
+
 
 
 def real_time_runner_print_title(fileobj, vector_potential=False):

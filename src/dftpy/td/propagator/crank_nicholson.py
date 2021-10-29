@@ -82,7 +82,7 @@ class CrankNicholson(AbstractPropagator):
     @hamiltonian.setter
     def hamiltonian(self, hamiltonian: Hamiltonian) -> None:
         self._hamiltonian = hamiltonian
-        self._a = CrankNicholsonOperator(self._hamiltonian, self._interval)
+        self._a.hamiltonian = hamiltonian
 
     @property
     def interval(self) -> float:
@@ -91,7 +91,7 @@ class CrankNicholson(AbstractPropagator):
     @interval.setter
     def interval(self, interval: float) -> None:
         self._interval = interval
-        self._a = CrankNicholsonOperator(self._hamiltonian, self._interval)
+        self._a.interval = interval
 
     @property
     def linear_solver(self) -> str:

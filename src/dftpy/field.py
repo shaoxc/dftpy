@@ -549,15 +549,16 @@ class DirectField(BaseField):
 
         return DirectField(grid=cut_grid, memo=self.memo, griddata_3d=values)
 
-    def para_current(self, sigma=0.025):
+    def para_current(self, sigma=0.025, k_point=np.array([0, 0, 0])):
         """
         Calculate <\psi|i\nabla|psi>
         """
+        k_point = np.asarray(k_point)
         reciprocal_self = self.fft()
         reciprocal_self_conj = np.conj(self).fft()
         j_p = (
-            reciprocal_self.grid.g
-            * (- reciprocal_self * reciprocal_self_conj)
+            (-reciprocal_self.grid.g - np.einsum('i,ijkl->jkl', k_point, np.ones_like(reciprocal_self.grid.g)))
+            * (reciprocal_self * reciprocal_self_conj)
             * np.exp(-reciprocal_self.grid.gg * (sigma / 2.0) ** 2)
         )
         return j_p.integral()
