@@ -10,7 +10,7 @@ from dftpy.base import Coord
 
 
 class BaseField(np.ndarray):
-    """
+    r"""
     Extended numpy array representing a field on a grid
     (Cell (lattice) plus discretization)
 
@@ -31,33 +31,37 @@ class BaseField(np.ndarray):
 
     """
 
-    def __new__(cls, grid, memo="", rank=1, order = 'C', griddata_F=None, griddata_C=None, griddata_3d=None, fft_data = None, cplx = False):
-        # Input array is an already formed ndarray instance
-        # We first cast to be our class type
-
-        # TODO merge 'griddata_C', 'griddata_F' and 'griddata_3d' to 'data' and 'order'
-
-        if griddata_3d is not None:
-            if isinstance(griddata_3d, list):
-                rank = len(griddata_3d)
+    def __new__(cls, grid, memo="", rank=1, data = None, order = 'C', fft_data = None, cplx = False,
+            griddata_F=None, griddata_C=None, griddata_3d=None):
+        #-----------------------------------------------------------------------
+        if griddata_F is not None or griddata_C is not None or griddata_3d is not None:
+            # warnings.warn(FutureWarning("'griddata_*' are deprecated; please use 'data' and 'order'"))
+            if griddata_F is not None :
+                data = griddata_F
+                order = 'F'
+            elif griddata_C is not None :
+                data = griddata_C
+                order = 'C'
+            elif griddata_3d is not None:
+                data = griddata_3d
+                order = 'C'
+        #-----------------------------------------------------------------------
+        if data is not None:
+            if isinstance(data, list): rank = len(data)
 
         if rank == 1:
             nr = grid.nr
         else:
             nr = rank, *grid.nr
-        if griddata_F is None and griddata_C is None and griddata_3d is None:
+
+        if data is None :
             if cplx :
                 input_values = np.zeros(nr, dtype ='complex128', order = order)
             else :
                 input_values = np.zeros(nr, order = order)
-        elif griddata_F is not None:
-            input_values = np.reshape(griddata_F, nr, order="F")
-        elif griddata_C is not None:
-            input_values = np.reshape(griddata_C, nr, order="C")
-        elif griddata_3d is not None:
-            input_values = np.asarray(griddata_3d)
-            input_values = np.reshape(input_values, nr)
-            # input_values = np.reshape(griddata_3d, nr)
+        else :
+            input_values = np.asarray(data)
+            input_values = np.reshape(input_values, nr, order=order)
 
         obj = np.asarray(input_values).view(cls)
         # add the new attribute to the created instance
@@ -163,12 +167,11 @@ class BaseField(np.ndarray):
 class DirectField(BaseField):
     spl_order = 3
 
-    def __new__(cls, grid, memo="", rank=1, griddata_F=None, griddata_C=None, griddata_3d=None, cplx=False, **kwargs):
+    def __new__(cls, grid, memo="", rank=1, data = None, order = 'C', cplx=False, **kwargs):
         if not isinstance(grid, DirectGrid):
             raise TypeError("the grid argument is not an instance of DirectGrid")
         obj = super().__new__(
-            cls, grid, memo="", rank=rank, griddata_F=griddata_F, griddata_C=griddata_C, griddata_3d=griddata_3d,
-            cplx = cplx, **kwargs)
+            cls, grid, memo="", rank=rank, data = data, order = order, cplx = cplx, **kwargs)
         obj._N = None
         obj.spl_coeffs = None
         obj._cplx = cplx
@@ -333,7 +336,7 @@ class DirectField(BaseField):
         #return self.gradient(flag=flag).divergence(flag=flag)
 
     def sigma(self, flag="smooth"):
-        """
+        r"""
         \sigma(r) = |\grad rho(r)|^2
         """
         if self.rank > 1 :
@@ -580,7 +583,7 @@ class DirectField(BaseField):
         return DirectField(grid=cut_grid, memo=self.memo, griddata_3d=values)
 
     def para_current(self, sigma=0.025):
-        """
+        r"""
         Calculate <\psi|i\nabla|psi>
         """
         reciprocal_self = self.fft()
@@ -640,14 +643,11 @@ class DirectField(BaseField):
 
 
 class ReciprocalField(BaseField):
-    def __new__(cls, grid, memo="", rank=1, griddata_F=None, griddata_C=None, griddata_3d=None, cplx=False, **kwargs):
+    def __new__(cls, grid, memo="", rank=1, data = None, order = 'C', cplx=False, **kwargs):
         if not isinstance(grid, ReciprocalGrid):
             raise TypeError("the grid argument is not an instance of ReciprocalGrid")
-        if griddata_F is None and griddata_C is None and griddata_3d is None :
-            griddata_3d = np.zeros(grid.nr, dtype=np.complex128)
         obj = super().__new__(
-            cls, grid, memo="", rank=rank, griddata_F=griddata_F, griddata_C=griddata_C, griddata_3d=griddata_3d, **kwargs
-        )
+            cls, grid, memo="", rank=rank, data = data, order = order, cplx = cplx, **kwargs)
         obj.spl_coeffs = None
         obj._cplx = cplx
         if obj.mp.is_mpi :
