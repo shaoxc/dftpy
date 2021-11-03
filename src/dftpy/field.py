@@ -31,9 +31,11 @@ class BaseField(np.ndarray):
 
     """
 
-    def __new__(cls, grid, memo="", rank=1, griddata_F=None, griddata_C=None, griddata_3d=None, fft_data = None, cplx = False):
+    def __new__(cls, grid, memo="", rank=1, order = 'C', griddata_F=None, griddata_C=None, griddata_3d=None, fft_data = None, cplx = False):
         # Input array is an already formed ndarray instance
         # We first cast to be our class type
+
+        # TODO merge 'griddata_C', 'griddata_F' and 'griddata_3d' to 'data' and 'order'
 
         if griddata_3d is not None:
             if isinstance(griddata_3d, list):
@@ -45,9 +47,9 @@ class BaseField(np.ndarray):
             nr = rank, *grid.nr
         if griddata_F is None and griddata_C is None and griddata_3d is None:
             if cplx :
-                input_values = np.zeros(nr, dtype ='complex128')
+                input_values = np.zeros(nr, dtype ='complex128', order = order)
             else :
-                input_values = np.zeros(nr)
+                input_values = np.zeros(nr, order = order)
         elif griddata_F is not None:
             input_values = np.reshape(griddata_F, nr, order="F")
         elif griddata_C is not None:
@@ -99,7 +101,6 @@ class BaseField(np.ndarray):
             result = self._fft_data.copy()
             result._fft_data = self
             return result
-            self.grid = new_grid
 
     def __array_wrap__(self, obj, context=None):
         """wrap it up"""
@@ -162,12 +163,12 @@ class BaseField(np.ndarray):
 class DirectField(BaseField):
     spl_order = 3
 
-    def __new__(cls, grid, memo="", rank=1, griddata_F=None, griddata_C=None, griddata_3d=None, cplx=False, fft_data = None):
+    def __new__(cls, grid, memo="", rank=1, griddata_F=None, griddata_C=None, griddata_3d=None, cplx=False, **kwargs):
         if not isinstance(grid, DirectGrid):
             raise TypeError("the grid argument is not an instance of DirectGrid")
         obj = super().__new__(
             cls, grid, memo="", rank=rank, griddata_F=griddata_F, griddata_C=griddata_C, griddata_3d=griddata_3d,
-            cplx = cplx, fft_data = fft_data)
+            cplx = cplx, **kwargs)
         obj._N = None
         obj.spl_coeffs = None
         obj._cplx = cplx
@@ -639,13 +640,13 @@ class DirectField(BaseField):
 
 
 class ReciprocalField(BaseField):
-    def __new__(cls, grid, memo="", rank=1, griddata_F=None, griddata_C=None, griddata_3d=None, cplx=False, fft_data = None):
+    def __new__(cls, grid, memo="", rank=1, griddata_F=None, griddata_C=None, griddata_3d=None, cplx=False, **kwargs):
         if not isinstance(grid, ReciprocalGrid):
             raise TypeError("the grid argument is not an instance of ReciprocalGrid")
         if griddata_F is None and griddata_C is None and griddata_3d is None :
             griddata_3d = np.zeros(grid.nr, dtype=np.complex128)
         obj = super().__new__(
-            cls, grid, memo="", rank=rank, griddata_F=griddata_F, griddata_C=griddata_C, griddata_3d=griddata_3d, fft_data = fft_data
+            cls, grid, memo="", rank=rank, griddata_F=griddata_F, griddata_C=griddata_C, griddata_3d=griddata_3d, **kwargs
         )
         obj.spl_coeffs = None
         obj._cplx = cplx
