@@ -647,7 +647,7 @@ class ReciprocalField(BaseField):
         if not isinstance(grid, ReciprocalGrid):
             raise TypeError("the grid argument is not an instance of ReciprocalGrid")
         obj = super().__new__(
-            cls, grid, memo="", rank=rank, data = data, order = order, cplx = cplx, **kwargs)
+            cls, grid, memo="", rank=rank, data = data, order = order, cplx = True, **kwargs)
         obj.spl_coeffs = None
         obj._cplx = cplx
         if obj.mp.is_mpi :
