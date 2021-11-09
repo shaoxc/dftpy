@@ -35,10 +35,11 @@ class PredictorCorrector(Dynamics):
         self.nk = nk
         self.nnk = self.nk[0] * self.nk[1] * self.nk[2]
         self.k_point_list = self.system.cell.get_reciprocal().calc_k_points(self.nk)
+        self.N0 = N0
         self.psi_list = psi_list
         self.psi_pred_list = [None] * self.nnk
-        self.rho = calc_rho(self.psi_list, nnk=self.nnk)
-        self.j = calc_j(self.psi_list, nnk=self.nnk)
+        self.rho = calc_rho(self.psi_list, N=self.N0, nnk=self.nnk)
+        self.j = calc_j(self.psi_list, N=self.N0, nnk=self.nnk)
         self.atol_rho = _get_atol(tol, atol, self.rho.norm())
         self.atol_j = _get_atol(tol, atol, np.max(self.j.norm()))
         self.old_rho_pred = np.zeros_like(self.rho)
@@ -48,7 +49,6 @@ class PredictorCorrector(Dynamics):
         self.Omega = Omega
         self.A_t = A_t
         self.A_tm1 = A_tm1
-        self.N0 = N0
         self.A_t_pred = None
         self.rho_corr = None
         self.j_corr = None
@@ -63,8 +63,8 @@ class PredictorCorrector(Dynamics):
 
         for i_k, k_point in enumerate(self.k_point_list):
             self.psi_pred_list[i_k], info = self.propagator(self.psi_list[i_k], k_point=k_point)
-        self.rho_pred = calc_rho(self.psi_pred_list, nnk=self.nnk)
-        self.j_pred = calc_j(self.psi_pred_list, nnk=self.nnk)
+        self.rho_pred = calc_rho(self.psi_pred_list, N=self.N0, nnk=self.nnk)
+        self.j_pred = calc_j(self.psi_pred_list, N=self.N0, nnk=self.nnk)
         if self.propagate_vector_potential:
             para_current = np.zeros((3,), dtype=np.complex128)
             for i_k, k_point in enumerate(self.k_point_list):
@@ -86,7 +86,7 @@ class PredictorCorrector(Dynamics):
     def converged(self, *args):
         self.diff_rho = (self.old_rho_pred - self.rho_pred).norm()
         self.diff_j = np.max((self.old_j_pred - self.j_pred).norm())
-        return self.diff_rho < self.atol_rho and self.diff_j < self.atol_j
+        return self.diff_rho < self.atol_rho #and self.diff_j < self.atol_j
 
     def print_not_converged_info(self):
         if self.max_steps > 1:

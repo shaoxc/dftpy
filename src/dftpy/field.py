@@ -577,8 +577,10 @@ class DirectField(BaseField):
     def cplx(self, value):
         self._cplx = value
         if self._cplx:
-            self.grid.full = True
-            self.grid.cplx = True
+            if not self.grid.full:
+                self.grid = DirectGrid(lattic=self.grid.lattice, nr=self.grid.nr, origin=self.grid.origin, full=True)
+            # self.grid.full = True
+            # self.grid.cplx = True
 
     def repeat(self, reps=1):
         reps = np.ones(3, dtype='int')*reps

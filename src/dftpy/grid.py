@@ -623,7 +623,7 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
         nk: number of k-points in each direction
         '''
         length = nk[0] * nk[1] * nk[2]
-        k_points_crystal = np.empty((length, 3), dtype = np.float64)
+        k_points_crystal = np.empty((length, 3), dtype=np.float64)
         for k_x in range(nk[0]):
             k_x_crystal = (2 * k_x - nk[0] + 1) / nk[0] / 2
             for k_y in range(nk[1]):

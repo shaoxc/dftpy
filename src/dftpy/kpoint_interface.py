@@ -25,9 +25,9 @@ class KPointSCFRunner(Dynamics):
         self.scipy = True
         self.max_steps = 100
         self.beta = 0.5
-        self.nk = [3,1,1]
+        self.nk = [1,1,3]
         self.nnk = self.nk[0] * self.nk[1] * self.nk[2]
-        self.outfile = 'test311'
+        self.outfile = 'test113'
         self.tol = 1.0e-12
         self.boson_functionals = boson_functionals
         vW = Functional(type='KEDF', name='vW')
@@ -49,7 +49,7 @@ class KPointSCFRunner(Dynamics):
 
         #self.attach(self.compare, before_log=True)
         self.attach(self.mixing, before_log=True)
-        #self.attach(self.debug)
+        self.attach(self.debug)
 
     def step(self):
         self.old_rho = self.rho
@@ -58,19 +58,18 @@ class KPointSCFRunner(Dynamics):
         self.ke = 0
         x0 = np.sqrt(self.rho)
         for i_k, k_point in enumerate(self.k_point_list):
-            Es, psis = self.hamiltonian.diagonalize(grid=self.grid, numeig=1, return_eigenvectors=True, k_point=k_point, scipy=self.scipy, x0=x0)
+            Es, psis = self.hamiltonian.diagonalize(grid=self.grid, numeig=1, return_eigenvectors=True, k_point=k_point, scipy=self.scipy, x0=x0, sigma=0.025)
             self.psi_list[i_k] = psis[0]
             self.new_rho += np.real(self.psi_list[i_k] * np.conj(self.psi_list[i_k])) * self.n_elec
-            self.ke += np.real(np.conj(self.psi_list[i_k]) * self.hamiltonian_0(self.psi_list[i_k], sigma=0)).integral() * self.n_elec
+            self.ke += np.real(np.conj(self.psi_list[i_k]) * self.hamiltonian_0(self.psi_list[i_k], sigma=0.025)).integral() * self.n_elec
 
         self.new_rho /= self.numk
         self.ke /= self.numk
 
     def debug(self):
         if self.psi_list[0] is not None:
-            print(self.psi_list[0][0,0,1]-self.psi_list[0][0,1,0])
-            #for psi in self.psi_list:
-            #    print(np.sum(psi))
+            vW = Functional(type='KEDF', name='vW')
+            print((self.psi_list[0]*self.hamiltonian_0(self.psi_list[0])).integral() * self.n_elec - vW(rho=self.psi_list[0] * self.psi_list[0] * self.n_elec).energy)
 
     def converged(self):
         self.diff = np.max(np.abs(self.old_rho-self.rho))
