@@ -8,10 +8,11 @@ from dftpy.interface import ConfigParser, OptimizeDensityConf
 class DFTpyCalculator(object):
     """DFTpy calculator for ase"""
 
-    def __init__(self, config=None):
+    def __init__(self, config=None, mp = None, **kwargs):
         self.config = config
         self.results = None
         self.atoms = {}
+        self.mp = mp
 
     def check_restart(self, atoms=None):
         if (
@@ -49,13 +50,15 @@ class DFTpyCalculator(object):
             ions = Atom(Z=Z, pos=pos, cell=cell, basis="Crystal")
             # ions.restart()
             if self.results is not None and self.config["MATH"]["reuse"]:
-                config, others = ConfigParser(self.config, ions=ions, rhoini=self.results["density"], pseudo=pseudo, grid=grid)
+                config, others = ConfigParser(self.config, ions=ions, rhoini=self.results["density"], pseudo=pseudo, grid=grid, mp = self.mp)
                 results = OptimizeDensityConf(config, others["struct"], others["E_v_Evaluator"], others["nr2"])
             else:
-                config, others = ConfigParser(self.config, ions=ions, pseudo=pseudo, grid=grid)
+                config, others = ConfigParser(self.config, ions=ions, pseudo=pseudo, grid=grid, mp = self.mp)
                 results = OptimizeDensityConf(config, others["struct"], others["E_v_Evaluator"], others["nr2"])
             self.results = results
-        return self.results["energypotential"]["TOTAL"].energy * ENERGY_CONV["Hartree"]["eV"]
+        energy = self.results["energypotential"]["TOTAL"].energy * ENERGY_CONV["Hartree"]["eV"]
+        energy = self.results["density"].grid.mp.asum(energy)
+        return energy
 
     def get_forces(self, atoms):
         if self.check_restart(atoms):

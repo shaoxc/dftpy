@@ -210,6 +210,21 @@ def KEDFunctional(rho, name="WT", calcType={"E", "V"}, split=False, nspin=1, **k
         OutFunctionalDict = {"GGA": gga, "NL": NL}
     else:
         raise AttributeError("%s KEDF to be implemented" % name)
+
+    temperature0 = kwargs.get('temperature0', None)
+    if temperature0 :
+        temperature = temperature0
+    else :
+        temperature = kwargs.get('temperature', None)
+    if temperature :
+        outf_ttf = TTF(rho, calcType=calcType, **kwargs)
+        OutFunctional += outf_ttf
+        OutFunctional.name = name
+        if temperature0 :
+            OutFunctionalDict['TTF0'] = outf_ttf
+        else :
+            OutFunctionalDict['TTF'] = outf_ttf
+    #-----------------------------------------------------------------------
     # -----------------------------------------------------------------------
     # rho_min = kwargs.get("rho_min", None)
     # if rho_min is not None and 'V' in calcType :

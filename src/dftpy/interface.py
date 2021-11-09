@@ -101,7 +101,10 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
         PSEUDO.restart(full=False)
         PSEUDO.grid = grid
         PSEUDO.ions = ions
-    KE = Functional(type="KEDF", name=config["KEDF"]["kedf"], **config["KEDF"])
+    kedf_config = config["KEDF"].copy()
+    if kedf_config.get('temperature', None):
+        kedf_config['temperature'] *= ENERGY_CONV['eV']['Hartree']
+    KE = Functional(type="KEDF", name=config["KEDF"]["kedf"], **kedf_config)
     ############################## XC and Hartree ##############################
     HARTREE = Functional(type="HARTREE")
     XC = Functional(type="XC", name=config["EXC"]["xc"], **config["EXC"])
@@ -126,16 +129,28 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
         # -----------------------------------------------------------------------
     elif config["DENSITY"]["densityini"] == "Read":
         density = read_density(config["DENSITY"]["densityfile"])
-    # normalization
     if density is not None:
-        if not np.all(grid.nrR == density.shape[:3]):
-            density = interpolation_3d(density, grid.nrR)
-            # density = prolongation(density)
-            density[density < 1e-12] = 1e-12
-        grid.scatter(density, out = rho_ini)
-        charge_total = ions.ncharge
-        rho_ini *= charge_total / rho_ini.integral()
-    # rho_ini[:] = density.reshape(rho_ini.shape, order='F')
+        # gathered density
+        if np.all(grid.nrR == density.shape[:3]):
+            grid.scatter(density, out = rho_ini)
+        else :
+            linterp = True
+            # distributed density also need has grid, otherwise treat it as gathered density
+            if hasattr(density, 'grid'):
+                if np.all(grid.nrR == density.grid.nrR):
+                    rho_ini[:] = density
+                    linterp = False
+                else :
+                    # gather the density
+                    density = density.grid.gather(density)
+            if linterp :
+                density = interpolation_3d(density, grid.nrR)
+                # density = prolongation(density)
+                density[density < 1e-12] = 1e-12
+                grid.scatter(density, out = rho_ini)
+    # normalization the charge (e.g. the cell changed)
+    charge_total = ions.ncharge
+    rho_ini *= charge_total / rho_ini.integral()
     ############################## add spin magmom ##############################
     nspin=config["DENSITY"]["nspin"]
     if nspin > 1 :

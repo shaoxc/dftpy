@@ -1,16 +1,16 @@
 import numpy as np
 
 from dftpy.constants import LEN_CONV, ENERGY_CONV
+from dftpy.functional.pseudo.abstract_pseudo import BasePseudo
 
 
-class USP:
-    def __init__(self, fname):
-        self.fname = fname
-        self.read()
+class USP(BasePseudo):
+    def __init__(self, fname, direct = False, **kwargs):
+        super().__init__(fname, direct = direct, **kwargs)
 
     def read(self, fname):
         """
-        !!! NOT FULL TEST !!!
+        !!! NOT FULLY TEST !!!
         Reads CASTEP-like usp PP file
         """
         if fname.lower().endswith(("usp", "uspcc")):
@@ -25,6 +25,7 @@ class USP:
         with open(fname, "r") as outfil:
             lines = outfil.readlines()
 
+        comment = ''
         ibegin = 0
         for i in range(0, len(lines)):
             line = lines[i]
@@ -34,18 +35,20 @@ class USP:
                 elif ibegin > 1 and (line.strip() == "1000" or len(line.strip()) == 1) and i - ibegin > 4:
                     iend = i
                     break
+                elif ibegin<1 :
+                    comment += line
             elif ext == 'uspso':
                 if "END COMMENT" in line:
                     ibegin = i + 5
                 elif ibegin > 1 and (line.strip() == "1000" or len(line.strip()) == 5) and i - ibegin > 4:
                     iend = i
                     break
+                elif ibegin<1 :
+                    comment += line
 
         line = " ".join([line.strip() for line in lines[ibegin:iend]])
-        info = {}
 
         Zval = np.float(lines[ibegin - 2].strip())
-        info['zval'] = Zval
 
         if "1000" in lines[iend] or len(lines[iend].strip()) == 1 or len(lines[iend].strip()) == 5:
             pass
@@ -54,9 +57,10 @@ class USP:
         gmax = np.float(lines[ibegin - 1].split()[0]) * BOHR2ANG
 
         # v = np.array(line.split()).astype(np.float64) / (HARTREE2EV*BOHR2ANG ** 3 * 4.0 * np.pi)
-        self.v_g = np.array(line.split()).astype(np.float64) / (HARTREE2EV * BOHR2ANG ** 3)
-        self.r_g = np.linspace(0, gmax, num=len(self.v_g))
-        self.v_g[1:] -= Zval * 4.0 * np.pi / self.r_g[1:] ** 2
+        self.v = np.array(line.split()).astype(np.float64) / (HARTREE2EV * BOHR2ANG ** 3)
+        self.r = np.linspace(0, gmax, num=len(self.v))
+        self.v[1:] -= Zval * 4.0 * np.pi / self.r[1:] ** 2
+        self.info = {'comment' : comment}
         # -----------------------------------------------------------------------
         nlcc = int(lines[ibegin - 1].split()[1])
         if nlcc == 2 and ext == 'usp':
@@ -74,13 +78,8 @@ class USP:
                 if len(core_grid) >= ngrid:
                     core_grid = core_grid[:ngrid]
                     break
-            info['core_grid'] = np.asarray(core_grid) * BOHR2ANG
+            self._core_density_grid = np.asarray(core_grid) * BOHR2ANG
             line = " ".join([line.strip() for line in lines[ibegin:]])
             data = np.array(line.split()).astype(np.float64)
-            info['core_value'] = data[-ngrid:]
+            self._core_density = data[-ngrid:]
         # -----------------------------------------------------------------------
-        self.info = info
-
-    @property
-    def zval(self):
-        return self.info['zval']
