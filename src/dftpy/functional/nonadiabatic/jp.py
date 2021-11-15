@@ -15,15 +15,10 @@ def JP1Potential(rho: DirectField, j: DirectField, cutoff: float = 1.0e-2, rho_c
     k_F_square = k_F * k_F
     k_F_fourth = k_F_square * k_F_square
     reciprocal_grid = j.grid.get_reciprocal()
-    g = reciprocal_grid.g
-    gg = reciprocal_grid.gg
-    sqrt_gg = np.sqrt(reciprocal_grid.gg)
-    sqrt_gg[0, 0, 0] = 1.0
-    j_of_g = j.fft() * np.exp(-0.025 * gg)
-    iq_dot_j = 1j * j_of_g.dot(g)
-    term1 = iq_dot_j / sqrt_gg
-    sqrt_gg[0, 0, 0] = 0.0
-    term2 = iq_dot_j * sqrt_gg  # * np.exp(-100*gg)
+    j_of_g = j.fft() * np.exp(-0.025 * reciprocal_grid.gg)
+    iq_dot_j = 1j * j_of_g.dot(reciprocal_grid.g)
+    term1 = iq_dot_j * reciprocal_grid.invq
+    term2 = iq_dot_j * reciprocal_grid.q  # * np.exp(-100*gg)
     #potential = 6.0 / k_F_square * term1.ifft(force_real=True) + 1.0 / k_F_fourth * term2.ifft(force_real=True)
     potential = -6.0 / k_F_square * term1.ifft(force_real=True) - 1.0 / k_F_fourth * term2.ifft(force_real=True)
     potential *= - np.pi ** 3 / 12.0
