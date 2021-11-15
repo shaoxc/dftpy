@@ -21,7 +21,7 @@ def JP1Potential(rho: DirectField, j: DirectField, cutoff: float = 1.0e-2, rho_c
     term2 = iq_dot_j * reciprocal_grid.q  # * np.exp(-100*gg)
     #potential = 6.0 / k_F_square * term1.ifft(force_real=True) + 1.0 / k_F_fourth * term2.ifft(force_real=True)
     potential = -6.0 / k_F_square * term1.ifft(force_real=True) - 1.0 / k_F_fourth * term2.ifft(force_real=True)
-    potential *= - np.pi ** 3 / 12.0
+    potential *= np.pi ** 3 / 12.0
     v_mask = 1.0 - 1.0 / (1.0 + PowerInt(rho / rho_cutoff, k))
     potential *= v_mask
 
