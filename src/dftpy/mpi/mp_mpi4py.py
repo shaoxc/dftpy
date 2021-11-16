@@ -65,7 +65,10 @@ def get_mpi4py_fft(comm, nr, decomposition = 'Slab', backend = None, grid = None
         else :
             fft = PFFT(comm, nr, axes=(0, 1, 2), dtype=dtype, backend = backend)
         if len(fft_saved) >= max_saved :
-            for key in fft_saved : del fft_saved[key]; break
+            for key in fft_saved :
+                delfft = fft_saved.pop(key)
+                delfft.destroy()
+                break
         fft_saved[id(comm)] = fft
     return fft
 
