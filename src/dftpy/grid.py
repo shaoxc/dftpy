@@ -193,6 +193,9 @@ class BaseGrid(BaseCell):
                 out[:] = data.copy()
         return out
 
+    def free(self):
+        self.mp.free()
+
 
 class DirectGrid(BaseGrid, DirectCell):
     """
