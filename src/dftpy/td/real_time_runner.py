@@ -79,7 +79,7 @@ class RealTimeRunner(Dynamics):
             self.attach(self.save, interval=-self.max_steps)
 
         hamiltonian = Hamiltonian()
-        self.propagator = Propagator(hamiltonian, self.int_t, name = config["PROPAGATOR"]["propagator"], **config["PROPAGATOR"])
+        self.propagator = Propagator(hamiltonian, self.int_t, name=config["PROPAGATOR"]["propagator"], **config["PROPAGATOR"])
 
         if self.restart:
             self.load()

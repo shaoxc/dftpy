@@ -17,20 +17,16 @@ class Inverter(object):
     def __init__(self):
         pass
 
-    def __call__(self, rho_in, EnergyEvaluator):
+    def __call__(self, rho_in, functionals):
         phi = np.sqrt(rho_in)
         v = phi.laplacian(force_real=True) / phi / 2.0
-        v_of = EnergyEvaluator(rho_in, calcType={'V'}).potential
-        vw = Functional(type='KEDF', name='vW')
-        v_vw = vw(rho_in, calcType={'V'}).potential
-        v_ext = v - v_of + v_vw
+        v_of = functionals(rho_in, calcType={'V'}).potential
+        #vw = Functional(type='KEDF', name='vW')
+        #v_vw = vw(rho_in, calcType={'V'}).potential
+        v_ext = v - v_of# + v_vw
         ext = ExternalPotential(v_ext)
-        EnergyEvaluator.UpdateFunctional(newFuncDict={'EXT': ext})
-        optimizer = Optimization(EnergyEvaluator=EnergyEvaluator, guess_rho=rho_in,
-                                 optimization_options={'econv': 1e-8})
-        rho = optimizer.optimize_rho()
 
-        return ext, rho
+        return ext
 
 
 def linear_inverter(delta_rho, alpha):
