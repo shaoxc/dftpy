@@ -1,5 +1,8 @@
 import numpy as np
 import gc
+import os
+import importlib.util
+import resource
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.grid import ReciprocalGrid
 
@@ -165,3 +168,40 @@ def clean_variables(*args):
     for item in args :
         del item
     gc.collect()
+
+def bytes2human(n):
+    symbols = ('B', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y')
+    if isinstance(n, (int, float)):
+        ns = len(symbols) - 1
+        for i, s in enumerate(reversed(symbols)):
+            unit = 1 << (ns - i) * 10
+            if n >= unit :
+                value = float(n) / unit
+                return f'{value:.1f}{s:s}'
+        return f'{n}B'
+    return f'{n}U'
+
+def get_mem_info(pid = None, width = 8):
+    # return "PID", "USS", "PSS", "Swap", "RSS"
+    if not pid : pid = os.getpid()
+    templ = "{:<{width}s} {:{width}s} {:{width}s} {:{width}s} {:{width}s}"
+    is_psutil = importlib.util.find_spec("psutil")
+    if is_psutil :
+        import psutil
+        mem = psutil.Process(pid).memory_full_info()
+        uss = mem.uss
+        rss = mem.rss
+        pss = getattr(mem, "pss", "0U")
+        swap = getattr(mem, "swap", "0U")
+        line = templ.format(str(pid), bytes2human(uss), bytes2human(pss), bytes2human(swap), bytes2human(rss), width = width)
+    else :
+        try:
+            mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            if os.uname().sysname == 'Linux' : # kB
+                mem = bytes2human(mem*1024)
+            else : # Darwin
+                mem = bytes2human(mem)
+        except Exception :
+            mem = '0U'
+        line = templ.format(str(pid), mem, mem, '0U', mem, width = width)
+    return line
