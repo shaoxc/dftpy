@@ -24,7 +24,7 @@ def sprint(*args, comm = None, lprint = False, debug = False, level = 2, fileobj
     if debug :
         comm = comm or mp.comm
         nodename = os.uname().nodename
-        header = f'{nodename[:30]}->{comm.rank} -> '
+        header = f'{nodename[:30]}->{comm.rank:<7d} -> '
         args = funcs2args(*args)
         comm.Barrier()
         print(header, *args, **kwargs)

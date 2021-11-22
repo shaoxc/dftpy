@@ -184,7 +184,7 @@ def bytes2human(n):
 def get_mem_info(pid = None, width = 8):
     # return "PID", "USS", "PSS", "Swap", "RSS"
     if not pid : pid = os.getpid()
-    templ = "{:<{width}s} {:{width}s} {:{width}s} {:{width}s} {:{width}s}"
+    templ = "{:<{width}s} {:>{width}s} {:>{width}s} {:>{width}s} {:>{width}s}"
     is_psutil = importlib.util.find_spec("psutil")
     if is_psutil :
         import psutil
