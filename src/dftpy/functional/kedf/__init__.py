@@ -339,6 +339,11 @@ def kedf2nlgga(name='STV+GGA+LMGPA', **kwargs):
 
     """
 
+    kedf = kwargs.get('kedf', None)
+    if kedf :
+        name = kedf
+        del kwargs['kedf']
+
     if not name.startswith('STV+GGA+'):
         raise AttributeError("The name of NLGGA is not correct : {}".format(name))
     names = name.split('+')
@@ -392,6 +397,11 @@ def kedf2mixkedf(name='MIX_TF+GGA', first_high=True, **kwargs):
         AttributeError: The name must startswith 'MIX_'
 
     """
+
+    kedf = kwargs.get('kedf', None)
+    if kedf :
+        name = kedf
+        del kwargs['kedf']
 
     if not name.startswith('MIX_'):
         raise AttributeError("The name of MIXKEDF is not correct : {}".format(name))
