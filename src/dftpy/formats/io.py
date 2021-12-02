@@ -29,23 +29,11 @@ def guessType(infile, **kwargs):
 
     if format is None :
         raise AttributeError("%s not support yet" % infile)
-    return format
-
-def read(infile, format=None, **kwargs):
-    kind = kwargs.get('kind', 'cell')
-    struct = read_system(infile, format=format, **kwargs)
-    if kind == 'cell' :
-        return struct.ions
-    elif kind == 'field' :
-        return struct.field
-    else :
-        return struct
+    return format.format
 
 def get_io_driver(infile, format = None, mode = 'r'):
-    if format is None:
-        iof = guessType(infile)
-    else :
-        iof = IOFormats.get(format, None)
+    if format is None : format = guessType(infile)
+    iof = IOFormats.get(format, None)
 
     if iof is None :
         raise AttributeError("%s format not support yet" % format)
@@ -65,7 +53,6 @@ def get_io_driver(infile, format = None, mode = 'r'):
 
     return iof
 
-
 def read_system(infile, format=None, **kwargs):
     driver = get_io_driver(infile, format, mode = 'r')
     system = driver.read(infile, **kwargs)
@@ -73,7 +60,6 @@ def read_system(infile, format=None, **kwargs):
 
 def write_system(outfile, system, format = None, comm = None, **kwargs):
     driver = get_io_driver(outfile, format, mode = 'w')
-    print(system.field.shape)
     if driver.format == "snpy": # only snpy format support MPI-IO
         return driver.write(outfile, system, **kwargs)
     else : # only rank==0 write
@@ -94,6 +80,16 @@ def write_system(outfile, system, format = None, comm = None, **kwargs):
 def read_density(infile, format=None, **kwargs):
     struct = read_system(infile, format=format, **kwargs)
     return struct.field
+
+def read(infile, format=None, **kwargs):
+    struct = read_system(infile, format=format, **kwargs)
+    kind = kwargs.get('kind', 'cell')
+    if kind == 'cell' :
+        return struct.ions
+    elif kind == 'field' :
+        return struct.field
+    else :
+        return struct
 
 def write(outfile, data = None, ions = None, format=None, **kwargs):
     if isinstance(data, System):
