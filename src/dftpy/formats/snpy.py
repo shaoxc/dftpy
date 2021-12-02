@@ -122,3 +122,9 @@ def read(fname, mp=None, grid=None, kind="all", full=False, datarep='native', de
 
     if isinstance(fname, str): fh.close()
     return System(atoms, grid, name="DFTpy", field=data)
+
+def read_snpy(fname, **kwargs):
+    return read(fname, **kwargs)
+
+def write_snpy(fname, *args, **kwargs):
+    return write(fname, *args, **kwargs)
