@@ -1,11 +1,9 @@
-import os
-import sys
 import numpy as np
 import ase
 import ase.io
 from dftpy.system import System
 from dftpy.atom import Atom
-from dftpy.base import BaseCell, DirectCell
+from dftpy.base import DirectCell
 from dftpy.constants import LEN_CONV
 
 BOHR2ANG = LEN_CONV["Bohr"]["Angstrom"]
@@ -45,3 +43,11 @@ def ions2ase(ions, pbc = True):
     pos = ions.pos[:] * BOHR2ANG
     struct = ase.Atoms(positions=pos, numbers=numbers, cell=cell, pbc = pbc)
     return struct
+
+def read_ase(infile, **kwargs):
+    ions = ase_read(infile, **kwargs)
+    system = System(ions, name="DFTpy", field=None)
+    return system
+
+def write_ase(outfile, system, **kwargs):
+    ase_write(outfile, system.ions, **kwargs)
