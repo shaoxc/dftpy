@@ -3,7 +3,7 @@ from scipy.linalg import eigh
 
 from dftpy.field import DirectField
 from dftpy.functional import Functional
-from dftpy.time_data import TimeData
+from dftpy.time_data import timer
 
 
 class Casida(object):
@@ -43,8 +43,8 @@ class Casida(object):
         mu = (psi_1 * x * psi_2).integral()
         return mu
 
+    @timer('Casida Matrix')
     def build_matrix(self, num_psi, eigs, psi_list, calc_triplet=False, build_ab=False):
-        TimeData.Begin('Casida Matrix')
         hartree = Functional(type='HARTREE')
         self.c = np.empty([num_psi - 1, num_psi - 1], dtype=np.float64)
         if build_ab:
@@ -102,10 +102,9 @@ class Casida(object):
             self.x[i - 1] = self.calc_mu(psi_list[0], psi_list[i])
             self.y[i - 1] = self.calc_mu(psi_list[0], psi_list[i], direc=1)
             self.z[i - 1] = self.calc_mu(psi_list[0], psi_list[i], direc=2)
-        TimeData.End('Casida Matrix')
 
+    @timer('Casida')
     def __call__(self, calc_triplet=False):
-        TimeData.Begin('Casida')
         if not hasattr(self, 'c'):
             raise Exception("Matrix is not built yet. Run build_matrix first.")
         if calc_triplet and not hasattr(self, 'c_tri'):
@@ -152,7 +151,6 @@ class Casida(object):
             omega = np.real(np.concatenate((omega, omega_tri)))
             f = np.concatenate((f, f_tri))
 
-        TimeData.End('Casida')
         return omega, f, x_minus_y_list
 
     def tda(self, calc_triplet=False):
