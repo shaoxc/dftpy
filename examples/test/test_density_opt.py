@@ -4,11 +4,12 @@ import unittest
 import numpy as np
 import dftpy.formats.io as dftpy_io
 from dftpy.optimization import Optimization
-from dftpy.functionals import FunctionalClass, TotalEnergyAndPotential
+from dftpy.functional import Functional
+from dftpy.functional.total_functional import TotalFunctional
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
 from dftpy.math_utils import bestFFTsize
-from dftpy.pseudo import LocalPseudo
+from dftpy.functional.pseudo import LocalPseudo
 
 
 class Test(unittest.TestCase):
@@ -29,21 +30,21 @@ class Test(unittest.TestCase):
         for i in range(3):
             nr[i] = bestFFTsize(nr[i])
         print("The final grid size is ", nr)
-        grid = DirectGrid(lattice=lattice, nr=nr, units=None, full=False)
+        grid = DirectGrid(lattice=lattice, nr=nr, full=False)
         zerosA = np.zeros(grid.nnr, dtype=float)
         rho_ini = DirectField(grid=grid, griddata_F=zerosA, rank=1)
         PP_list = {"Ga": path_pp + file1, "As": path_pp + file2}
         PSEUDO = LocalPseudo(grid=grid, ions=ions, PP_list=PP_list, PME=True)
         optional_kwargs = {}
-        KE = FunctionalClass(type="KEDF", name="WT", optional_kwargs=optional_kwargs)
-        XC = FunctionalClass(type="XC", name="LDA")
-        HARTREE = FunctionalClass(type="HARTREE")
+        KE = Functional(type="KEDF", name="WT", optional_kwargs=optional_kwargs)
+        XC = Functional(type="XC", name="LDA")
+        HARTREE = Functional(type="HARTREE")
 
         charge_total = 0.0
         for i in range(ions.nat):
             charge_total += ions.Zval[ions.labels[i]]
         rho_ini[:] = charge_total / ions.pos.cell.volume
-        E_v_Evaluator = TotalEnergyAndPotential(
+        E_v_Evaluator = TotalFunctional(
             KineticEnergyFunctional=KE, XCFunctional=XC, HARTREE=HARTREE, PSEUDO=PSEUDO,
         )
         optimization_options = {

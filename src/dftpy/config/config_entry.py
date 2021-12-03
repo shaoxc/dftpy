@@ -1,11 +1,18 @@
-from json import JSONEncoder
+import ast
 import re
+import os
+from collections import OrderedDict
+from json import JSONEncoder
+
+import numpy as np
 
 try:
     from numexpr import evaluate
+
     is_numexpr = True
-except Exception :
+except Exception:
     is_numexpr = False
+
 
 def format_bool(expression):
     s = expression.lower()[0]
@@ -14,29 +21,88 @@ def format_bool(expression):
     else:
         return True
 
+
 def format_float(expression):
-    if is_numexpr :
+    if is_numexpr:
         return evaluate(expression).item()
-    else :
+    else:
         return eval(expression)
+
 
 def format_str(expression):
     return expression
 
+
+def format_lstr(expression):
+    return expression.lower()
+
+def format_ustr(expression):
+    return expression.upper()
+
+
 def format_cstr(expression):
     return expression.capitalize()
 
+
+def format_path(expression):
+    if '/' in expression:
+        path_list = expression.split('/')
+    elif '\\' in expression:
+        path_list = expression.split('\\')
+    else:
+        path_list = [expression]
+
+    for i_path, path_unit in enumerate(path_list):
+        if len(path_unit) == 0:
+            if i_path == 0:
+                path_list[i_path] = os.sep
+        elif path_unit[0] == '$':
+            path_list[i_path] = os.environ.get(path_unit[1:].lstrip('{').rstrip('}'))
+
+    return os.path.join(*path_list)
+
+
+def format_slice(expression):
+    if ':' in expression:
+        ls = expression.split(':')
+        l = [None, ] * 3
+        for i, item in enumerate(ls):
+            if item.lstrip('-+').isdigit():
+                l[i] = int(item)
+        return slice(*l)
+    else:
+        return int(expression)
+
+
 def format_intlist(expression):
-    return list(map(int, expression.split()))
+    if ':' in expression:
+        items = expression.split()
+        if len(items) == 1:
+            return format_slice(items[0])
+        ints = []
+        for item in items:
+            s = format_slice(item)
+            if ':' in item:
+                a = np.arange(0, s.stop)[s].tolist()
+                ints.extend(a)
+            else:
+                ints.append(s)
+        return ints
+    else:
+        return list(map(int, expression.split()))
+
 
 def format_floatlist(expression):
     return list(map(format_float, expression.split()))
 
+
 def format_strlist(expression):
     return expression.split()
 
+
 def format_cstrlist(expression):
     return expression.title().split()
+
 
 def format_direction(expression):
     direct_dict = {
@@ -49,17 +115,52 @@ def format_direction(expression):
     else:
         return int(expression)
 
+
+def format_cdict(expression):
+    vk = ast.literal_eval(expression)
+    return OrderedDict((v.capitalize(), k) for v, k in vk.items())
+
+
+def format_cfdict(expression):
+    vk = ast.literal_eval(expression)
+    return OrderedDict((v.capitalize(), float(k)) for v, k in vk.items())
+
+
+def format_cidict(expression):
+    vk = ast.literal_eval(expression)
+    return OrderedDict((v.capitalize(), int(k)) for v, k in vk.items())
+
+
+def format_odict(expression):
+    vk = ast.literal_eval(expression)
+    return OrderedDict((v, k) for v, k in vk.items())
+
+
+def format_ofdict(expression):
+    vk = ast.literal_eval(expression)
+    return OrderedDict((v, float(k)) for v, k in vk.items())
+
+
+def format_oidict(expression):
+    vk = ast.literal_eval(expression)
+    return OrderedDict((v, int(k)) for v, k in vk.items())
+
+
 class ConfigEntry(object):
 
-
-    def __init__(self, type, default=None, comment='', options='', **kwargs):
+    def __init__(self, type='str', default=None, comment='', options='', example=None, note=None, warning=None,
+                 unit = None, level = None, **kwargs):
         self.type = type
         self.default = default
         self.comment = comment
         self.options = options
+        self.note = note
+        self.example = example
+        self.warning = warning
+        self.unit = unit
+        self.level = level
         if self.type == 'bool' and self.options == '':
             self.options = 'True, False'
-
 
     def format(self, string):
         format_dict = {
@@ -67,15 +168,30 @@ class ConfigEntry(object):
             "int": int,
             "float": format_float,
             "str": format_str,
+            "lstr": format_lstr,
+            "ustr": format_ustr,
             "cstr": format_cstr,
+            "path": format_path,
             "intlist": format_intlist,
             "floatlist": format_floatlist,
             "strlist": format_strlist,
             "cstrlist": format_cstrlist,
             "direction": format_direction,
+            "cdict": format_cdict,
+            "cfdict": format_cfdict,
+            "cidict": format_cidict,
+            "odict": format_odict,
+            "ofdict": format_ofdict,
+            "oidict": format_oidict,
         }
         expression = re.split('#|!', string)[0]
         return format_dict[self.type](expression)
+
+    def gen_doc(self, key):
+        output = [".. option:: {0:}".format(key), "", "    {0:}".format(self.comment),
+                  "        *Options* : {0:}".format(self.options), "", "        *Default* : {0:}".format(self.default),
+                  "", ""]
+        return '\n'.join(output)
 
 
 class ConfigEntryEncoder(JSONEncoder):

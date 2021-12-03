@@ -19,7 +19,7 @@ Then we run the following command:
 
 ::
 
-    $ dftpy -i optimize.ini
+    $ python -m dftpy optimize.ini
 
 which will generate a density file names density in the working directory.
 
@@ -36,7 +36,7 @@ Then we run the following command:
 
 ::
 
-    $ dftpy -i propagate.ini
+    $ python -m dftpy propagate.ini
 
 It will generate three files: td_out_E, td_out_mu, td_out_j, which contains the energy of the electrons, the dipole
 moment, and the integrated current of each time step, respectively.

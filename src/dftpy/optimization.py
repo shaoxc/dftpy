@@ -1,11 +1,10 @@
 import numpy as np
-from scipy.optimize import minimize, line_search
-from scipy import optimize as sopt
-import scipy.special as sp
 from functools import partial
+from dftpy.mpi import sprint
 from dftpy.field import DirectField
-from dftpy.math_utils import LineSearchDcsrchVector, LineSearchDcsrch2, Brent, TimeData
+from dftpy.math_utils import LineSearchDcsrchVector, LineSearchDcsrch2, Brent
 from dftpy.math_utils import LBFGS
+from dftpy.time_data import TimeData, timer
 from abc import ABC, abstractmethod
 from dftpy.constants import ENERGY_CONV
 from dftpy.math_utils import get_direction_CG, get_direction_GD, get_direction_LBFGS
@@ -32,7 +31,6 @@ class AbstractOptimization(ABC):
 class Optimization(AbstractOptimization):
     """
     Class handling electron density optimization.
-    minimizer based on scipy.minimize
 
     Attributes
     ---------
@@ -41,8 +39,8 @@ class Optimization(AbstractOptimization):
     optimization_options: dict
             kwargs for the minim. method
 
-    EnergyEvaluator: TotalEnergyAndPotential class   
-            
+    EnergyEvaluator: TotalEnergyAndPotential class
+
 
     guess_rho: DirectField, optional
             an initial guess for the electron density
@@ -87,15 +85,17 @@ class Optimization(AbstractOptimization):
             self.EnergyEvaluator = EnergyEvaluator
 
         self.optimization_method = optimization_method
+        self.lphi = False
+        self.comm = None
 
     def get_direction_TN(self, res0, phi=None, mu=None, density=None, spin=1, **kwargs):
         if self.nspin > 1 :
             rho = density.copy()
         direction = np.zeros_like(res0)
-        epsi = 1.0e-9
+        epsi = 1.0e-9 * self.mp.comm.size
         res = -res0.copy()
         p = res.copy()
-        r0Norm = np.einsum("ijk, ijk->", res, res)
+        r0Norm = self.mp.einsum("ijk, ijk->", res, res)
         r1Norm = r0Norm
         rConv = r0Norm * 0.1
         stat = "NOTCONV"
@@ -106,25 +106,25 @@ class Optimization(AbstractOptimization):
             rho1 = phi1 * phi1
             if self.nspin > 1 :
                 rho[spin] = rho1
-                func = self.EnergyEvaluator(rho, calcType=["V"])
+                func = self.EnergyEvaluator(rho, calcType={"V"}, phi = phi1, lphi = self.lphi)
                 Ap = ((func.potential[spin] - mu) * phi1 - res0) / epsi
             else :
-                func = self.EnergyEvaluator(rho1, calcType=["V"])
+                func = self.EnergyEvaluator(rho1, calcType={"V"}, phi = phi1, lphi = self.lphi)
                 Ap = ((func.potential - mu) * phi1 - res0) / epsi
-            pAp = np.einsum("ijk, ijk->", p, Ap)
+            pAp = self.mp.einsum("ijk, ijk->", p, Ap)
             if pAp < 0.0:
                 if it == 0:
                     direction = r0Norm / pAp * p
                     stat = "WARN"
                 else:
                     stat = "FAILED"
-                    print("!WARN : pAp small than zero :iter = ", it)
+                    sprint("!WARN : pAp small than zero :iter = ", it, pAp, comm=self.comm)
                 break
             alpha = r0Norm / pAp
             direction += alpha * p
             res -= alpha * Ap
-            r1Norm = np.einsum("ijk, ijk->", res, res)
-            # print('it', it, rConv, r1Norm)
+            r1Norm = self.mp.einsum("ijk, ijk->", res, res)
+            # sprint('it', it, rConv, r1Norm, comm=self.comm)
             if r1Norm < min(rLists):
                 Best = direction.copy()
             rLists.append(r1Norm)
@@ -152,7 +152,7 @@ class Optimization(AbstractOptimization):
         q = -resA[-1]
         alphaList = np.zeros(len(lbfgs.s))
         for i in range(len(lbfgs.s) - 1, 0, -1):
-            alpha = lbfgs.rho[i] * np.einsum("ijk->", lbfgs.s[i] * q)
+            alpha = lbfgs.rho[i] * self.mp.einsum("ijk, ijk->", lbfgs.s[i], q)
             alphaList[i] = alpha
             q -= alpha * lbfgs.y[i]
 
@@ -160,13 +160,13 @@ class Optimization(AbstractOptimization):
             if len(lbfgs.s) < 1:
                 gamma = 1.0
             else:
-                gamma = np.einsum("ijk->", lbfgs.s[-1] * lbfgs.y[-1]) / np.einsum("ijk->", lbfgs.y[-1] * lbfgs.y[-1])
+                gamma = self.mp.einsum("ijk, ijk->", lbfgs.s[-1], lbfgs.y[-1]) / self.mp.einsum("ijk, ijk->", lbfgs.y[-1], lbfgs.y[-1])
             direction = gamma * q
         else:
             direction = lbfgs.H0 * q
 
         for i in range(len(lbfgs.s)):
-            beta = lbfgs.rho[i] * np.einsum("ijk->", lbfgs.y[i] * direction)
+            beta = lbfgs.rho[i] * self.mp.einsum("ijk->", lbfgs.y[i] * direction)
             direction += lbfgs.s[i] * (alphaList[i] - beta)
 
         return direction, number
@@ -247,40 +247,48 @@ class Optimization(AbstractOptimization):
 
         if algorithm == "EMM":
             if func is None:
-                f = self.EnergyEvaluator(newrho, calcType=["E","V"])
+                f = self.EnergyEvaluator(newrho, calcType={"E","V"}, phi = newphi, lphi = self.lphi)
             value = f.energy
         else:  # RMM
             if func is None:
-                f = self.EnergyEvaluator(newrho, calcType=["E","V"])
-                # f = self.EnergyEvaluator(newrho, calcType = 'Potential')
-            mu = (f.potential * newrho).integral() / Ne
+                f = self.EnergyEvaluator(newrho, calcType={"E","V"}, phi = newphi, lphi = self.lphi)
+            # mu = (f.potential * newrho).integral() / Ne
+            mu = self.get_chemical_potential(f.potential, newrho, phi = newphi, lphi = self.lphi)
             if self.nspin > 1 :
                 mu = mu[:, None, None, None]
-            residual = (f.potential - mu) * newphi
-            resN = np.einsum("..., ...->", residual, residual, optimize = 'optimal') * phi.grid.dV
-            value = resN
+            if algorithm == "RMM":
+                residual = (f.potential - mu) * newphi
+                try:
+                    resN = self.mp.einsum("..., ...->", residual, residual, optimize = 'optimal') * phi.grid.dV
+                except Exception :
+                    resN = self.mp.sum(residual*residual) * phi.grid.dV
+                value = resN
+            elif algorithm == "CMM":
+                value = mu
 
         if vector == "Orthogonalization":
             p2 = p * np.cos(theta) - phi * np.sin(theta)
         else:
             p2 = p
         if self.nspin == 1 :
-            grad = 2.0 * np.einsum("ijk, ijk, ijk->", f.potential, newphi, p2) * phi.grid.dV
+            grad = 2.0 * self.mp.einsum("ijk, ijk, ijk->", f.potential, newphi, p2) * phi.grid.dV
         else :
-            grad = 2.0 * np.einsum("lijk, lijk, lijk->l", f.potential, newphi, p2) * phi.grid.dV
+            grad = 2.0 * self.mp.einsum("lijk, lijk, lijk->l", f.potential, newphi, p2) * phi.grid.dV
 
-        # print('theta', theta, value, grad)
+        # sprint('theta', theta, value, grad, comm=self.comm)
         return [value, grad, newphi, f]
 
-    def optimize_rho(self, guess_rho=None):
-        TimeData.Begin("Optimize")
+    @timer('Optimize')
+    def optimize_rho(self, guess_rho=None, guess_phi = None, lphi = False):
         if guess_rho is None and self.rho is None:
             raise AttributeError("Must provide a guess density")
         elif guess_rho is not None :
             self.rho = guess_rho
-        rho = self.rho
+        rho = self.rho.copy()
         self.nspin = rho.rank
-        # -----------------------------------------------------------------------
+        converged = 1  # if >0 means not converged
+        self.lphi = lphi
+        #-----------------------------------------------------------------------
         xtol = self.optimization_options["xtol"]
         maxls = self.optimization_options["maxls"]
         c1 = self.optimization_options["c1"]
@@ -289,11 +297,25 @@ class Optimization(AbstractOptimization):
         theta = 0.1
         if self.nspin > 1 :
             theta = np.ones(self.nspin) * theta
-        # -----------------------------------------------------------------------
+        #-----------------------------------------------------------------------
+        self.mp = rho.grid.mp
+        self.comm = self.mp.comm
+        #-----------------------------------------------------------------------
         EnergyHistory = []
-        phi = np.sqrt(rho)
-        func = self.EnergyEvaluator(rho)
-        mu = (func.potential * rho).integral() / rho.N
+        if guess_phi is None :
+            phi = rho.copy()
+            mask = rho > 0
+            mask2 = np.invert(mask)
+            phi[mask] = np.sqrt(rho[mask])
+            phi[mask2] = 1E-300
+            factor = np.sqrt(self.mp.sum(rho)/self.mp.sum(phi * phi))
+            phi *= factor
+        else :
+            phi = guess_phi.copy()
+        rho[:] = phi * phi
+        func = self.EnergyEvaluator(rho, calcType = ['E', 'V'], phi = phi, lphi = self.lphi)
+        # mu = (func.potential * rho).integral() / rho.N
+        mu = self.get_chemical_potential(func.potential, rho, phi = phi, lphi = self.lphi)
         if self.nspin > 1 :
             mus = mu[:, None, None, None]
         else :
@@ -310,12 +332,14 @@ class Optimization(AbstractOptimization):
         fmt = "{:8s}{:24s}{:16s}{:16s}{:8s}{:8s}{:16s}".format(
             "Step", "Energy(a.u.)", "dE", "dP", "Nd", "Nls", "Time(s)"
         )
-        print(fmt)
+        sprint(fmt, comm=self.comm)
         dE = energy
-        # resN = np.einsum("ijk, ijk->", residual, residual) * rho.grid.dV
-        resN = np.einsum("..., ...->", residual, residual, optimize = 'optimal') * rho.grid.dV
+        try:
+            resN = self.mp.einsum("..., ...->", residual, residual, optimize = 'optimal') * rho.grid.dV
+        except Exception :
+            resN = float(self.mp.sum(residual*residual) * rho.grid.dV)
         fmt = "{:<8d}{:<24.12E}{:<16.6E}{:<16.6E}{:<8d}{:<8d}{:<16.6E}".format(0, energy, dE, resN, 1, 1, CostTime)
-        print(fmt)
+        sprint(fmt, comm=self.comm)
         Bound = self.optimization_options["maxcor"]
 
         if self.optimization_method == "LBFGS":
@@ -338,20 +362,20 @@ class Optimization(AbstractOptimization):
 
             if self.nspin > 1 :
                 lsfun = 'dcsrchV'
-                thetaDeriv0 = np.einsum("lijk, lijk, lijk ->l", func.potential, phi, p) * 2.0
+                thetaDeriv0 = self.mp.einsum("lijk, lijk, lijk ->l", func.potential, phi, p) * 2.0
                 if any(thetaDeriv0 > 0) :
                     gradf = True
                 else :
                     gradf = False
             else :
-                thetaDeriv0 = np.einsum("ijk, ijk, ijk->", func.potential, phi, p) * 2.0
+                thetaDeriv0 = self.mp.einsum("ijk, ijk, ijk->", func.potential, phi, p) * 2.0
                 if thetaDeriv0 > 0 :
                     gradf = True
                 else :
                     gradf = False
             #-----------------------------------------------------------------------
             if gradf:
-                print("!WARN: Change to steepest decent")
+                sprint("!WARN: Change to steepest decent", comm=self.comm)
                 p = -residualA[-1]
                 p, theta0 = self.OrthogonalNormalization(p, phi, vector=self.optimization_options["vector"])
 
@@ -409,14 +433,16 @@ class Optimization(AbstractOptimization):
                 norm = rho.N / newrho.integral()
                 newrho *= norm
                 newphi *= np.sqrt(norm)
-                newfunc = self.EnergyEvaluator(newrho, calcType=["V"])
+                newfunc = self.EnergyEvaluator(newrho, calcType={"V"}, phi = newphi, lphi = self.lphi)
                 NumLineSearch = 1
+                valuederiv = [0, 0, newphi, newfunc]
 
             if theta is None:
-                print("!!!ERROR : Line-Search Failed!!!")
-                print("!!!ERROR : Density Optimization NOT Converged  !!!")
+                converged = 1
+                sprint("!!!ERROR : Line-Search Failed!!!", comm=self.comm)
+                sprint("!!!ERROR : Density Optimization NOT Converged  !!!", comm=self.comm)
                 break
-                # print('!WARN: Line-search failed and change to steepest decent')
+                # sprint('!WARN: Line-search failed and change to steepest decent', comm=self.comm)
                 # theta = 0.001
 
             newphi = valuederiv[2]
@@ -425,14 +451,12 @@ class Optimization(AbstractOptimization):
 
             rho = phi * phi
             func = newfunc
-            #-----------------------------------------------------------------------
-            # phi = np.sqrt(rho)
-            #-----------------------------------------------------------------------
             # if self.optimization_options["algorithm"] == 'RMM' :
-            # f = self.EnergyEvaluator(rho, calcType = 'Energy')
+            # f = self.EnergyEvaluator(rho, calcType = ['E'], phi = phi, lphi = self.lphi)
             # func.energy = f.energy
-            # func = self.EnergyEvaluator(rho, calcType = 'Both')
-            mu = (func.potential * rho).integral() / rho.N
+            # func = self.EnergyEvaluator(rho, calcType = ['E', 'V'], phi = phi, lphi = self.lphi)
+            # mu = (func.potential * rho).integral() / rho.N
+            mu = self.get_chemical_potential(func.potential, rho, phi = phi, lphi = self.lphi)
             if self.nspin > 1 :
                 mus = mu[:, None, None, None]
             else :
@@ -446,8 +470,9 @@ class Optimization(AbstractOptimization):
                 norm = rho.N / rho.integral()
                 rho *= norm
                 phi *= np.sqrt(norm)
-                func = self.EnergyEvaluator(rho, calcType=["E","V"])
-                mu = (func.potential * rho).integral() / rho.N
+                func = self.EnergyEvaluator(rho, calcType={"E","V"}, phi = phi, lphi = self.lphi)
+                # mu = (func.potential * rho).integral() / rho.N
+                mu = self.get_chemical_potential(func.potential, rho, phi = phi, lphi = self.lphi)
                 if self.nspin > 1 :
                     mus = mu[:, None, None, None]
                 else :
@@ -463,13 +488,17 @@ class Optimization(AbstractOptimization):
             EnergyHistory.append(energy)
             CostTime = TimeData.Time("Optimize")
             dE = EnergyHistory[-1] - EnergyHistory[-2]
-            resN = np.einsum("..., ...->", residual, residual, optimize = 'optimal') * phi.grid.dV
+            try:
+                resN = self.mp.einsum("..., ...->", residual, residual, optimize = 'optimal') * phi.grid.dV
+            except Exception :
+                resN = float(self.mp.sum(residual*residual) * phi.grid.dV)
             fmt = "{:<8d}{:<24.12E}{:<16.6E}{:<16.6E}{:<8d}{:<8d}{:<16.6E}".format(
                 it, energy, dE, resN, NumDirectrion, NumLineSearch, CostTime
             )
-            print(fmt)
+            sprint(fmt, comm=self.comm)
             if self.check_converge(EnergyHistory):
-                print("#### Density Optimization Converged ####")
+                converged = 0
+                sprint("#### Density Optimization Converged ####", comm=self.comm)
                 break
 
             directionA.append(p)
@@ -477,13 +506,17 @@ class Optimization(AbstractOptimization):
                 residualA.pop(0)
             if len(directionA) > 2:
                 directionA.pop(0)
+        else :
+            converged = 2
+            sprint("!WARN: Not converged, but reached max steps", comm=self.comm)
 
-        TimeData.End("Optimize")
-        print('Chemical potential (a.u.):', mu)
-        print('Chemical potential (eV)  :', mu * ENERGY_CONV['Hartree']['eV'])
+        sprint('Chemical potential (a.u.):', mu, comm=self.comm)
+        sprint('Chemical potential (eV)  :', mu * ENERGY_CONV['Hartree']['eV'], comm=self.comm)
         self.mu = mu
         self.rho = rho
         self.functional = func
+        self.converged = converged
+        self.phi = phi
         return rho
 
     def check_converge(self, EnergyHistory, **kwargs):
@@ -501,5 +534,9 @@ class Optimization(AbstractOptimization):
         flag = True
         return flag
 
-    def __call__(self, guess_rho=None, calcType=["E","V"]):
-        return self.optimize_rho(guess_rho=guess_rho)
+    def get_chemical_potential(self, potential, rho, phi = None, lphi = False):
+        mu = (potential * rho).integral() / rho.N
+        return mu
+
+    def __call__(self, guess_rho=None, calcType={"E","V"}, guess_phi = None, lphi = False):
+        return self.optimize_rho(guess_rho=guess_rho, guess_phi=guess_phi, lphi=lphi)

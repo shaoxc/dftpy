@@ -1,34 +1,45 @@
-import numpy as np
-import copy
 import configparser
-from dftpy.constants import ENERGY_CONV, LEN_CONV
+import copy
+
+import numpy as np
+
 from dftpy.config.config_entry import ConfigEntry
+from dftpy.constants import ENERGY_CONV, LEN_CONV
+from dftpy.mpi import sprint
 
 
 def config_map(mapping_function, premap_conf):
-
-    def section_map(sectiondict):
-        return dict(zip(sectiondict, map(mapping_function, sectiondict.values())))
-
-    return dict(zip(premap_conf, map(section_map, premap_conf.values())))
+    return dict(zip(premap_conf, map(mapping_function, premap_conf.values())))
 
 
 def readJSON(JSON_file):
-
     import json
     with open(JSON_file) as f:
         conf_JSON = json.load(f)
 
     def map_JSON_ConfigEntry(value):
-        return ConfigEntry(**value)
+        if 'type' in value and 'default' in value:
+            return ConfigEntry(**value)
+        else:
+            return config_map(map_JSON_ConfigEntry, value)
 
-    return config_map(map_JSON_ConfigEntry, conf_JSON)
+    conf = config_map(map_JSON_ConfigEntry, conf_JSON)
+
+    for section in conf:
+        if 'copy' in conf[section]:
+            copied_keys = copy.deepcopy(conf[conf[section]['copy'].default])
+            copied_keys.update(conf[section])
+            conf[section].update(copied_keys)
+
+    return conf
 
 
 def DefaultOptionFromEntries(conf):
-
     def map_ConfigEntry_default(config_entry):
-        return config_entry.default
+        if isinstance(config_entry, ConfigEntry):
+            return config_entry.default
+        else:
+            return config_map(map_ConfigEntry_default, config_entry)
 
     results = config_map(map_ConfigEntry_default, conf)
     results['CONFDICT'] = copy.deepcopy(conf)
@@ -36,11 +47,15 @@ def DefaultOptionFromEntries(conf):
     # return config_map(map_ConfigEntry_default, conf)
 
 
-def DefaultOption():
+def default_json():
     import os
     fileJSON = os.path.join(os.path.dirname(__file__), 'configentries.json')
     configentries = readJSON(fileJSON)
-    return DefaultOptionFromEntries(configentries)
+    return configentries
+
+
+def DefaultOption():
+    return DefaultOptionFromEntries(default_json())
 
 
 def ConfSpecialFormat(conf):
@@ -51,60 +66,56 @@ def ConfSpecialFormat(conf):
     """
     if conf["GRID"]["spacing"]:  # Here units are : spacing (Angstrom),  ecut (eV), same as input.
         conf["GRID"]["ecut"] = (
-            np.pi ** 2
-            / (2 * conf["GRID"]["spacing"] ** 2)
-            * ENERGY_CONV["Hartree"]["eV"]
-            / LEN_CONV["Angstrom"]["Bohr"] ** 2
+                np.pi ** 2
+                / (2 * conf["GRID"]["spacing"] ** 2)
+                * ENERGY_CONV["Hartree"]["eV"]
+                / LEN_CONV["Angstrom"]["Bohr"] ** 2
         )
     else:
         conf["GRID"]["spacing"] = (
-            np.sqrt(np.pi ** 2 / conf["GRID"]["ecut"] * 0.5 / ENERGY_CONV["eV"]["Hartree"])
-            * LEN_CONV["Bohr"]["Angstrom"]
+                np.sqrt(np.pi ** 2 / conf["GRID"]["ecut"] * 0.5 / ENERGY_CONV["eV"]["Hartree"])
+                * LEN_CONV["Bohr"]["Angstrom"]
         )
 
-    if conf["KEDF"]["lumpfactor"]:
-        if len(conf["KEDF"]["lumpfactor"]) == 1:
-            conf["KEDF"]["lumpfactor"] = conf["KEDF"]["lumpfactor"][0]
+    for section in conf:
+        if section == 'KEDF' or ('copy' in conf[section] and conf[section]['copy'] == 'KEDF'):
+            if conf[section]["lumpfactor"]:
+                if len(conf[section]["lumpfactor"]) == 1:
+                    conf[section]["lumpfactor"] = conf[section]["lumpfactor"][0]
 
-    for key in conf["PP"]:
-        conf["PP"][key.capitalize()] = conf["PP"][key]
+    # for key in conf["PP"]:
+    # conf["PP"][key.capitalize()] = conf["PP"][key]
+
+    if conf["MATH"]["twostep"] and conf["MATH"]["multistep"] == 1:
+        conf["MATH"]["multistep"] = 2
+
+    if 'CONFDICT' in conf:
+        del conf['CONFDICT']
+
+    for key in conf:
+        conf[key].pop('Comment', None)
+        conf[key].pop('comment', None)
+        conf[key].pop('Note', None)
+        conf[key].pop('note', None)
+        conf[key].pop('Warning', None)
+        conf[key].pop('warning', None)
+        conf[key].pop('copy', None)
 
     return conf
 
 
-def PrintConf(conf):
+def PrintConf(conf, comm=None):
     if not isinstance(conf, dict):
         raise TypeError("conf must be dict")
     try:
         import json
-        print(json.dumps(conf, indent=4, sort_keys=True))
+        pretty_dict_str = json.dumps(conf, indent=4, sort_keys=True)
     except Exception:
         import pprint
-
-        pprint.pprint(conf)
+        # pprint.pprint(conf)
         pretty_dict_str = pprint.pformat(conf)
-        return pretty_dict_str
-
-
-def ReadConfbak(infile):
-    config = configparser.ConfigParser()
-    config.read(infile)
-
-    import os
-    fileJSON = os.path.join(os.path.dirname(__file__), 'configentries.json')
-    configentries = readJSON(fileJSON)
-    pp_entry = ConfigEntry(type='str')
-    conf = DefaultOptionFromEntries(configentries)
-    for section in config.sections():
-        for key in config.options(section):
-            if section != 'PP' and key not in conf[section]:
-                print('!WARN : "%s.%s" not in the dictionary' % (section, key))
-            elif section == 'PP':
-                conf['PP'][key.capitalize()] = pp_entry.format(config.get(section, key))
-            else:
-                conf[section][key] = configentries[section][key].format(config.get(section, key))
-    conf = ConfSpecialFormat(conf)
-    return conf
+    sprint(pretty_dict_str, comm=comm)
+    return pretty_dict_str
 
 
 def ReadConf(infile):
@@ -115,9 +126,9 @@ def ReadConf(infile):
     for section in config.sections():
         for key in config.options(section):
             if section != 'PP' and key not in conf[section]:
-                print('!WARN : "%s.%s" not in the dictionary' % (section, key))
+                sprint('!WARN : "%s.%s" not in the dictionary' % (section, key))
             elif section == 'PP':
-                conf['PP'][key.capitalize()] = config.get(section, key) 
+                conf['PP'][key.capitalize()] = config.get(section, key)
             else:
                 conf[section][key] = config.get(section, key)
     conf = OptionFormat(conf)
@@ -126,17 +137,17 @@ def ReadConf(infile):
 
 def OptionFormat(config):
     conf = {}
-    for section in config :
+    for section in config:
         if section == 'CONFDICT':
             continue
-        else :
+        else:
             conf[section] = {}
-        for key in config[section] :
+        for key in config[section]:
             if section == 'PP':
                 conf["PP"][key.capitalize()] = config["PP"][key]
-            elif config[section][key] :
+            elif config[section][key]:
                 conf[section][key] = config['CONFDICT'][section][key].format(str(config[section][key]))
-            else :
+            else:
                 conf[section][key] = config[section][key]
 
     conf = ConfSpecialFormat(conf)

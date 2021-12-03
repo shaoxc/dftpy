@@ -1,7 +1,7 @@
 import numpy as np
 from dftpy.system import System
 from dftpy.atom import Atom
-from dftpy.base import BaseCell, DirectCell
+from dftpy.cell import BaseCell, DirectCell
 from dftpy.constants import LEN_CONV
 
 BOHR2ANG = LEN_CONV["Bohr"]["Angstrom"]
@@ -19,6 +19,7 @@ def read_POSCAR(infile, names=None, **kwargs):
         for i in range(2, 5):
             lat.append(list(map(float, fr.readline().split())))
         lat = np.asarray(lat).T / BOHR2ANG
+        lat = np.ascontiguousarray(lat)
         for i in range(3):
             lat[i] *= scale[i]
         lineL = fr.readline().split()

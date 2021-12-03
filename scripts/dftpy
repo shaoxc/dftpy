@@ -1,28 +1,8 @@
 #!/usr/bin/env python3
-import configparser
-import argparse
-from dftpy.interface import ConfigParser, OptimizeDensityConf
-from dftpy.td import RealTimeRunner, CasidaRunner, SternheimerRunner
-
-
-def RunJob():
-    parser = argparse.ArgumentParser(description='Process task')
-
-    parser.add_argument('-i', '--ini', '--input', dest='input', type=str, action='store',
-            default='config.ini', help='input file (default: config.ini)')
-
-    args = parser.parse_args()
-    config, others = ConfigParser(args.input)
-    if "Propagate" in config["JOB"]["task"]:
-        RealTimeRunner(config, others["struct"].field, others["E_v_Evaluator"])
-    elif "Casida" in config["JOB"]["task"]:
-        CasidaRunner(config, others["struct"].field, others["E_v_Evaluator"])
-    elif "Sternheimer" in config["JOB"]["task"]:
-        SternheimerRunner(config, others["struct"].field, others["E_v_Evaluator"])
-    else:
-        results = OptimizeDensityConf(config, others["struct"], others["E_v_Evaluator"], others["nr2"])
-        # results = OptimizeDensityConf(args.input)
-
-
-if __name__ == "__main__":
-    RunJob()
+# -*- coding: utf-8 -*-
+import re
+import sys
+from dftpy.cui.main import main
+if __name__ == '__main__':
+    sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
+    sys.exit(main())

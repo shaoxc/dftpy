@@ -1,14 +1,13 @@
+import os
+import sys
+import numpy as np
 ### Import fft library
 try:
     import pyfftw
     FFTLIB = "pyfftw"
-except:
+except Exception:
     FFTLIB = "numpy"
 
-# FFTLIB = 'numpy'
-MATHLIB = "numpy"
-
-print('Use "%s" for Fourier Transform' % (FFTLIB))
 LEN_UNITS = ["Bohr", "Angstrom", "nm", "m"]
 
 LEN_CONV = {}
@@ -30,5 +29,36 @@ STRESS_CONV["Ha/Bohr3"] = {
     "GPa": 29421.02648438959,
     "eV/A3": ENERGY_CONV["Hartree"]["eV"] / LEN_CONV["Bohr"]["Angstrom"] ** 3,
 }
+#https://en.wikipedia.org/wiki/Hartree_atomic_units
+TIME_CONV = {}
+TIME_CONV["au"] = {
+        's' : 2.4188843265857e-17,
+        'fs' : 2.4188843265857e-2,
+}
+
+SPEED_OF_LIGHT = 137.035999084
+C_TF = 2.87123400018819181594
+TKF0 = 6.18733545256027186194
+
+CBRT_TWO = 1.25992104989487316477
 
 units_warning = "All the quantities in atomic units"
+
+ZERO = 1E-30
+# set to 0 if smaller than ZERO
+
+environ = {} # You can change it anytime you want
+environ['STDOUT'] = sys.stdout # file descriptor of sprint
+try:
+    environ['LOGLEVEL'] = int(os.environ.get('DFTPY_LOGLEVEL', 2)) # The level of sprint
+except Exception :
+    environ['LOGLEVEL'] = 2 # The level of sprint
+"""
+    0 : all
+    1 : debug
+    2 : info
+    3 : warning
+    4 : error
+"""
+environ['FFTLIB'] = os.environ.get('DFTPY_FFTLIB', FFTLIB)
+#environ['SAVEFFT'] = os.environ.get('DFTPY_SAVEFFT', False)

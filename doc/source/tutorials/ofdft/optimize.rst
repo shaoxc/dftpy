@@ -10,5 +10,5 @@ We can easily perform a density optimization using `dftpy` script with a `config
 
 ::
 
-    $ dftpy -i config.ini
+    $ python -m dftpy config.ini
 

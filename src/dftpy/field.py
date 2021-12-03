@@ -1,11 +1,13 @@
 import warnings
 import numpy as np
+from functools import lru_cache
 from scipy import ndimage
 from scipy import signal
 from dftpy.grid import DirectGrid, ReciprocalGrid
-from dftpy.constants import FFTLIB
-from dftpy.math_utils import PYfft, PYifft, TimeData
-from dftpy.base import Coord
+from dftpy.constants import environ
+from dftpy.math_utils import PYfft, PYifft
+from dftpy.time_data import timer
+from dftpy.coord import Coord
 
 
 class BaseField(np.ndarray):
@@ -30,7 +32,7 @@ class BaseField(np.ndarray):
 
     """
 
-    def __new__(cls, grid, memo="", rank=1, griddata_F=None, griddata_C=None, griddata_3d=None):
+    def __new__(cls, grid, memo="", rank=1, griddata_F=None, griddata_C=None, griddata_3d=None, cplx = False):
         # Input array is an already formed ndarray instance
         # We first cast to be our class type
 
@@ -43,7 +45,10 @@ class BaseField(np.ndarray):
         else:
             nr = rank, *grid.nr
         if griddata_F is None and griddata_C is None and griddata_3d is None:
-            input_values = np.zeros(nr)
+            if cplx :
+                input_values = np.zeros(nr, dtype ='complex128')
+            else :
+                input_values = np.zeros(nr)
         elif griddata_F is not None:
             input_values = np.reshape(griddata_F, nr, order="F")
         elif griddata_C is not None:
@@ -59,6 +64,7 @@ class BaseField(np.ndarray):
         obj.span = (grid.nr > 1).sum()
         obj.rank = rank
         obj.memo = str(memo)
+        obj.mp = obj.grid.mp
         # Finally, we must return the newly created object:
         return obj
 
@@ -77,6 +83,7 @@ class BaseField(np.ndarray):
         self.grid = getattr(obj, "grid", None)
         self.span = getattr(obj, "span", None)
         self.memo = getattr(obj, "memo", None)
+        self.mp = getattr(obj, "mp", None)
 
     def __array_wrap__(self, obj, context=None):
         """wrap it up"""
@@ -100,7 +107,7 @@ class BaseField(np.ndarray):
         if np.shape(self) != np.shape(obj):
             raise ValueError("Shape incompatible")  # to be specified
 
-        prod = np.einsum("ijkl,ijkl->jkl", self, obj)
+        prod = self.mp.einsum("ijkl,ijkl->jkl", self, obj)
         prod = np.expand_dims(prod, axis=3)
 
         return type(self)(self.grid, rank=1, griddata_3d=prod)
@@ -116,6 +123,19 @@ class BaseField(np.ndarray):
         """ Normalize the field to N """
         return self / self.norm() * np.sqrt(N)
 
+    def asum(self):
+        return self.mp.asum(self)
+
+    def amean(self):
+        return self.mp.amean(self)
+
+    def amax(self):
+        return self.mp.amax(self)
+
+    def amin(self):
+        return self.mp.amin(self)
+
+
 class DirectField(BaseField):
     spl_order = 3
 
@@ -123,12 +143,25 @@ class DirectField(BaseField):
         if not isinstance(grid, DirectGrid):
             raise TypeError("the grid argument is not an instance of DirectGrid")
         obj = super().__new__(
-            cls, grid, memo="", rank=rank, griddata_F=griddata_F, griddata_C=griddata_C, griddata_3d=griddata_3d
-        )
+            cls, grid, memo="", rank=rank, griddata_F=griddata_F, griddata_C=griddata_C, griddata_3d=griddata_3d,
+            cplx = cplx)
         obj._N = None
         obj.spl_coeffs = None
-        cls._cplx = cplx
-        cls.fft_object = None
+        obj._cplx = cplx
+        if obj.mp.is_mpi :
+            from dftpy.mpi.mp_mpi4py import mpi_fft
+            obj.fft_object = mpi_fft(obj.grid)
+        elif not obj._cplx and np.all(obj.grid.nr == obj.grid.nrG):  # Can only use numpy.fft
+            obj.fft_object = np.fft.fftn
+        elif environ["FFTLIB"] == "pyfftw":
+            obj.fft_object = PYfft(obj.grid, obj._cplx)
+        elif environ["FFTLIB"] == "numpy":
+            if obj._cplx:
+                obj.fft_object = np.fft.fftn
+            else:
+                obj.fft_object = np.fft.rfftn
+        else :
+            obj.fft_object = np.fft.fftn
         return obj
 
     def __array_finalize__(self, obj):
@@ -137,30 +170,28 @@ class DirectField(BaseField):
         if obj is None:
             return
         if isinstance(obj, (DirectField)):
-            # self.rank = np.max([self.rank, obj.rank])
-            if obj.fft_object is not None:
-                self.fft_object = obj.fft_object
+            self.fft_object = getattr(obj, 'fft_object', None)
+            self.cplx = getattr(obj, 'cplx', None)
         self.spl_coeffs = None
         self._N = None
 
     # def __array_wrap__(self,obj,context=None):
-    #    '''wrap it up'''
-    #    b = np.ndarray.__array_wrap__(self, obj, context)
-    #    #b.rank = self.rank * obj.rank
-    #    rank = 1
-    #    a=np.shape(np.shape(self))[0]
-    #    if a == 4:
-    #        rank = np.shape(self)[3]
-    #    nr = *self.grid.nr, self.rank
-    #    b = np.reshape(b,nr)
-    #    return DirectField(grid=self.grid,rank=rank,griddata_3d=b)
+        # b = super().__array_wrap__(obj, context)
+        # if isinstance(obj, (DirectField)):
+            # b.fft_object = obj.fft_object
+            # b.cplx = obj.cplx
+        # else :
+            # b.fft_object = self.fft_object
+            # b.cplx = self.cplx
+        # return b
 
-    def integral(self):
+    def integral(self, gather = True):
         """ Returns the integral of self """
+        mp = self.mp if gather else np
         if self.rank == 1:
-            return np.einsum("ijk->", self) * self.grid.dV
+            return mp.einsum("ijk->", self) * self.grid.dV
         else:
-            return np.einsum("ijkl->i", self) * self.grid.dV
+            return mp.einsum("ijkl->i", self) * self.grid.dV
 
     def _calc_spline(self):
         padded_values = np.pad(self, ((self.spl_order,)), mode="wrap")
@@ -168,11 +199,12 @@ class DirectField(BaseField):
         return
 
     def window_functions(self, window="hann"):
+        """Only support for serial"""
         nr = self.nr
         Wx = signal.get_window(window, nr[0])
         Wy = signal.get_window(window, nr[1])
         Wz = signal.get_window(window, nr[2])
-        Wxyz = np.einsum("i, j, k -> ijk", Wx, Wy, Wz)
+        Wxyz = self.mp.einsum("i, j, k -> ijk", Wx, Wy, Wz)
         return Wxyz
 
     def numerically_smooth_gradient(self, ipol=None):
@@ -193,41 +225,41 @@ class DirectField(BaseField):
                 raise ValueError("Gradient rank incompatible with shape")
             return DirectField(grid=grad.grid, rank=1, griddata_3d=2.0 * sq_self * np.reshape(grad, np.shape(sq_self)))
 
-    def super_smooth_gradient(self, ipol=None, force_real=True):
+    def super_smooth_gradient(self, ipol=None, force_real=True, sigma=0.025):
         reciprocal_self = self.fft()
         imag = 0 + 1j
         nr = 3, *reciprocal_self.grid.nr
-        grad_g = np.empty(nr, dtype=complex)
+        grad_g = np.empty(nr, dtype='complex128')
         if ipol is None:
             # FFT(\grad A) = i \vec(G) * FFT(A)
             grad_g = (
                 reciprocal_self.grid.g
                 * (reciprocal_self * imag)
-                * np.exp(-reciprocal_self.grid.gg * (0.1 / 2.0) ** 2)
+                * np.exp(-reciprocal_self.grid.gg * (sigma / 2.0) ** 2)
             )
             grad_g = ReciprocalField(grid=self.grid.get_reciprocal(), rank=3, griddata_3d=grad_g)
             grad = grad_g.ifft(force_real=force_real)
             if grad.rank != np.shape(grad)[0]:
                 raise ValueError("Standard Gradient: Gradient rank incompatible with shape")
             return grad
+        elif ipol > 3:
+            raise ValueError("Standard Gradient: ipol can not large than 3")
         else:
             i = ipol - 1
             grad_g = (
                 reciprocal_self.grid.g[i]
                 * (reciprocal_self * imag)
-                * np.exp(-reciprocal_self.grid.gg * (0.1 / 2.0) ** 2)
+                * np.exp(-reciprocal_self.grid.gg * (sigma / 2.0) ** 2)
             )
             grad_g = ReciprocalField(grid=self.grid.get_reciprocal(), rank=1, griddata_3d=grad_g)
             grad = grad_g.ifft(force_real=force_real)
-            if grad.rank != np.shape(grad)[0]:
-                raise ValueError("Standard Gradient: Gradient rank incompatible with shape")
             return grad
 
     def standard_gradient(self, ipol=None, force_real=True):
         reciprocal_self = self.fft()
         imag = 0 + 1j
         # nr = 3, *reciprocal_self.grid.nr
-        # grad_g = np.empty(nr, dtype=complex)
+        # grad_g = np.empty(nr, dtype='complex128')
         if ipol is None:
             # FFT(\grad A) = i \vec(G) * FFT(A)
             grad_g = reciprocal_self.grid.g * (reciprocal_self * imag)
@@ -241,16 +273,16 @@ class DirectField(BaseField):
         grad = grad_g.ifft(force_real=force_real)
         return grad
 
-    def divergence(self, flag="smooth", force_real=True):
+    def divergence(self, flag="smooth", force_real=True, sigma=0.025):
         if self.rank != 3:
             raise ValueError("Divergence: Rank incompatible ", self.rank)
-        div = self[0].gradient(flag=flag, ipol=1, force_real=force_real)
-        div += self[1].gradient(flag=flag, ipol=2, force_real=force_real)
-        div += self[2].gradient(flag=flag, ipol=3, force_real=force_real)
+        div = self[0].gradient(flag=flag, ipol=1, force_real=force_real, sigma=0.025)
+        div += self[1].gradient(flag=flag, ipol=2, force_real=force_real, sigma=0.025)
+        div += self[2].gradient(flag=flag, ipol=3, force_real=force_real, sigma=0.025)
         div.rank = 1
         return div
 
-    def gradient(self, flag="smooth", ipol=None, force_real=True):
+    def gradient(self, flag="smooth", ipol=None, force_real=True, sigma=0.025):
         if self.rank > 1 and ipol is None:
             raise Exception("gradient is only implemented for scalar fields")
         if flag == "standard":
@@ -260,59 +292,49 @@ class DirectField(BaseField):
                 raise Exception("Smooth gradient is not implemented for complex fields")
             return self.numerically_smooth_gradient(ipol)
         elif flag == "supersmooth":
-            return self.super_smooth_gradient(ipol, force_real)
+            return self.super_smooth_gradient(ipol, force_real, sigma=sigma)
         else :
             raise Exception("Incorrect flag")
 
     def laplacian(self, check_real = False, force_real = False, sigma = 0.025):
-        self_fft = self.fft()
-        gg = self_fft.grid.gg
-        if sigma is None :
-            self_fft = -self_fft.grid.gg*self_fft
+        reciprocal_self = self.fft()
+        gg = reciprocal_self.grid.gg
+        if sigma is None or sigma == 0:
+            reciprocal_self = -reciprocal_self.grid.gg*reciprocal_self
         else :
-            self_fft = -gg*self_fft*np.exp(-gg*(sigma*sigma)/4.0)
-        return self_fft.ifft(check_real = check_real, force_real = force_real)
+            reciprocal_self = -gg*reciprocal_self*np.exp(-gg*(sigma*sigma)/4.0)
+        return reciprocal_self.ifft(check_real = check_real, force_real = force_real)
 
     #def laplacian(self, flag="smooth"):
         #return self.gradient(flag=flag).divergence(flag=flag)
 
-    def sigma(self, flag="smooth"):
+    def sigma(self, flag="smooth", sigma_gradient=None):
         """
         \sigma(r) = |\grad rho(r)|^2
         """
         if self.rank > 1 :
             vs = []
             for i in range(0, self.rank):
-                gradrho = self[i].gradient(flag=flag)
+                gradrho = self[i].gradient(flag=flag, sigma=sigma_gradient)
                 vs.append(gradrho)
             sigma = []
             for i in range(0, self.rank):
                 for j in range(i, self.rank):
-                    s = np.einsum("lijk,lijk->ijk", vs[i], vs[j])
+                    s = self.mp.einsum("lijk,lijk->ijk", vs[i], vs[j])
                     sigma.append(s)
             rank = (self.rank * (self.rank + 1))//2
         else :
-            gradrho = self.gradient(flag=flag)
-            sigma = np.einsum("lijk,lijk->ijk", gradrho, gradrho)
+            gradrho = self.gradient(flag=flag, sigma=sigma_gradient)
+            sigma = self.mp.einsum("lijk,lijk->ijk", gradrho, gradrho)
             rank = 1
         return DirectField(grid=self.grid, rank=rank, griddata_3d=sigma)
 
+    @timer('FFT')
     def fft(self):
-        TimeData.Begin("FFT")
         """ Implements the Discrete Fourier Transform
-        Tips : If you use pyfft to perform fft, you should copy the input_array sometime. Becuase 
-        the input_array may be overwite.
+        Tips : If you use pyfft to perform fft, you should copy the input_array, because
+        the input_array may be overwritten.
         """
-        self.fft_object = np.fft.fftn
-        if not self.cplx and np.all(self.grid.nr == self.grid.nrG):  # Can only use numpy.fft
-            self.fft_object = np.fft.fftn
-        elif FFTLIB == "pyfftw":
-            self.fft_object = PYfft(self.grid, self.cplx)
-        elif FFTLIB == "numpy":
-            if self.cplx:
-                self.fft_object = np.fft.fftn
-            else:
-                self.fft_object = np.fft.rfftn
         reciprocal_grid = self.grid.get_reciprocal()
         dim = np.shape(np.shape(self))[0]
         if dim == 3:
@@ -322,16 +344,20 @@ class DirectField(BaseField):
         if self.rank == 1:
             griddata_3d = self.fft_object(self) * self.grid.dV
         else:
-            griddata_3d = np.empty(nr, dtype=complex)
+            griddata_3d = np.empty(nr, dtype='complex128')
             for i in range(self.rank):
                 griddata_3d[i] = self.fft_object(self[i]) * self.grid.dV
-        TimeData.End("FFT")
-        return ReciprocalField(
+        # print('shape0', self.grid.nr, griddata_3d.shape, reciprocal_grid.nr)
+        fft_data=ReciprocalField(
             grid=reciprocal_grid, memo=self.memo, rank=self.rank, griddata_3d=griddata_3d, cplx=self.cplx
         )
+        return fft_data
 
     def get_value_at_points(self, points):
-        """points is in crystal coordinates"""
+        """
+        Only support for serial.
+        points is in crystal coordinates
+        """
         if self.spl_coeffs is None:
             self._calc_spline()
         for ipol in range(3):
@@ -341,6 +367,9 @@ class DirectField(BaseField):
         return values
 
     def get_values_flatarray(self, pad=0, order="F"):
+        """
+        Only support for serial.
+        """
         if pad > 0:
             nr0 = self.shape
             p = []
@@ -360,6 +389,7 @@ class DirectField(BaseField):
 
     def get_3dinterpolation(self, nr_new):
         """
+        Only support for serial.
         Interpolates the values of the function on a cell with a different number
         of points, and returns a new Grid_Function_Base object.
         """
@@ -374,11 +404,12 @@ class DirectField(BaseField):
         X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
         new_values = ndimage.map_coordinates(self.spl_coeffs, [X, Y, Z], mode="wrap")
         new_lattice = self.grid.lattice  # *LEN_CONV["Bohr"][self.grid.units]
-        new_grid = DirectGrid(new_lattice, nr_new, units=self.grid.units)
+        new_grid = DirectGrid(new_lattice, nr_new)
         return DirectField(new_grid, self.memo, griddata_3d=new_values)
 
     def get_3dinterpolation_map(self, nr_new):
         """
+        Only support for serial.
         Interpolates the values of the function on a cell with a different number
         of points, and returns a new Grid_Function_Base object.
         """
@@ -391,11 +422,12 @@ class DirectField(BaseField):
         X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
         new_values = ndimage.map_coordinates(self[0], (X, Y, Z), mode="wrap")
         new_lattice = self.grid.lattice  # *LEN_CONV["Bohr"][self.grid.units]
-        new_grid = DirectGrid(new_lattice, nr_new, units=self.grid.units)
+        new_grid = DirectGrid(new_lattice, nr_new)
         return DirectField(new_grid, self.memo, griddata_3d=new_values)
 
     def get_cut(self, r0, r1=None, r2=None, origin=None, center=None, nr=10, basis = 'Crystal'):
         """
+        Only support for serial.
         general routine to get the arbitrary cuts of a Grid_Function_Base object in 1,2,
         or 3 dimensions. spline interpolation will be used.
             r0 = first vector (always required)
@@ -506,7 +538,7 @@ class DirectField(BaseField):
         at[:, 1] = v1
         at[:, 2] = v2
 
-        cut_grid = DirectGrid(lattice=at, nr=nrx, origin=origin, units=x0.cell.units)
+        cut_grid = DirectGrid(lattice=at, nr=nrx, origin=origin)
 
         if span == 1:
             values = values.reshape((a,))
@@ -516,6 +548,19 @@ class DirectField(BaseField):
             values = values.reshape((a, b, c))
 
         return DirectField(grid=cut_grid, memo=self.memo, griddata_3d=values)
+
+    def para_current(self, sigma=0.025):
+        """
+        Calculate <\psi|i\nabla|psi>
+        """
+        reciprocal_self = self.fft()
+        reciprocal_self_conj = np.conj(self).fft()
+        j_p = (
+            reciprocal_self.grid.g
+            * (- reciprocal_self * reciprocal_self_conj)
+            * np.exp(-reciprocal_self.grid.gg * (sigma / 2.0) ** 2)
+        )
+        return j_p.integral()
 
     @property
     def N(self):
@@ -530,19 +575,67 @@ class DirectField(BaseField):
     @cplx.setter
     def cplx(self, value):
         self._cplx = value
-        if self._cplx and not self.grid.full :
+        if self._cplx:
             self.grid.full = True
+            self.grid.cplx = True
+
+    def repeat(self, reps=1):
+        reps = np.ones(3, dtype='int')*reps
+        data = np.tile(np.array(self), reps)
+        grid = self.grid.repeat(reps)
+        results = self.__class__(grid=grid, rank=self.rank, griddata_3d=data, cplx=self.cplx)
+        return results
+
+    def gather(self, grid = None, out = None, root = 0):
+        if out is None :
+            value = self.grid.gather(self, root = root)
+            if self.grid.mp.rank == root :
+                if grid is None :
+                    grid = DirectGrid(self.grid.lattice, self.grid.nrR, full=self.grid.full)
+                value = self.__class__(grid=grid, rank=self.rank, griddata_3d=value, cplx=self.cplx)
+        else :
+            value = self.grid.gather(self, out = out, root = root)
+        return value
+
+    def __scatter(self, grid, data = None):
+        pass
+        if data is None :
+            if self.grid.mp.is_mpi :
+                data = self.grid.gather(self)
+            else :
+                data = self
+        value = grid.scatter(data)
+        value = self.__class__(grid=grid, rank=self.rank, griddata_3d=value, cplx=self.cplx)
+        return value
 
 
 class ReciprocalField(BaseField):
     def __new__(cls, grid, memo="", rank=1, griddata_F=None, griddata_C=None, griddata_3d=None, cplx=False):
         if not isinstance(grid, ReciprocalGrid):
             raise TypeError("the grid argument is not an instance of ReciprocalGrid")
+        if griddata_F is None and griddata_C is None and griddata_3d is None :
+            griddata_3d = np.zeros(grid.nr, dtype=np.complex128)
         obj = super().__new__(
             cls, grid, memo="", rank=rank, griddata_F=griddata_F, griddata_C=griddata_C, griddata_3d=griddata_3d
         )
         obj.spl_coeffs = None
-        cls._cplx = cplx
+        obj._cplx = cplx
+        if obj.mp.is_mpi :
+            from dftpy.mpi.mp_mpi4py import mpi_ifft
+            obj.ifft_object = mpi_ifft(obj.grid)
+        elif not obj._cplx and np.all(obj.grid.nrG == obj.grid.nrR):  # Can only use numpy.fft
+            obj.ifft_object = np.fft.ifftn
+            # if environ["FFTLIB"] != 'numpy' :
+            # print('!WARN : For full G-space, you can only use numpy.fft.\n So here we reset the FFT as numpy.fft.')
+        elif environ["FFTLIB"] == "pyfftw":
+            obj.ifft_object = PYifft(obj.grid, obj._cplx)
+        elif environ["FFTLIB"] == "numpy":
+            if obj._cplx:
+                obj.ifft_object = np.fft.ifftn
+            else:
+                obj.ifft_object = np.fft.irfftn
+        else :
+            obj.ifft_object = np.fft.ifftn
         return obj
 
     def __array_finalize__(self, obj):
@@ -550,6 +643,9 @@ class ReciprocalField(BaseField):
         if obj is None:
             return
         super().__array_finalize__(obj)
+        if isinstance(obj, (ReciprocalField)):
+            self.ifft_object = obj.ifft_object
+            self.cplx = obj.cplx
         self.spl_coeffs = None
 
     # def __array_wrap__(self,obj,context=None):
@@ -597,66 +693,40 @@ class ReciprocalField(BaseField):
     #    return ReciprocalField(grid=self.grid,rank=s_pol*o_pol,griddata_3d=prod)
     # else:
     #    return self*other
-    
+
     def integral(self):
         """ Returns the integral of self """
         if self.rank == 1:
-            return np.einsum("ijk->", self) * self.grid.dV * self.grid.nnr / (2.0 * np.pi) ** 3
+            return self.mp.einsum("ijk->", self) * self.grid.dV * self.grid.nnrG / (2.0 * np.pi) ** 3
         else:
-            return np.einsum("ijkl->i", self) * self.grid.dV * self.grid.nnr / (2.0 * np.pi) ** 3
+            return self.mp.einsum("lijk->l", self) * self.grid.dV * self.grid.nnrG / (2.0 * np.pi) ** 3
 
+    @timer('InvFFT')
     def ifft(self, check_real=False, force_real=False):
         """
         Implements the Inverse Discrete Fourier Transform
         """
-        TimeData.Begin("InvFFT")
-        if not self.cplx and np.all(self.grid.nr == self.grid.nrR):  # Can only use numpy.fft
-            self.ifft_object = np.fft.ifftn
-            # if FFTLIB != 'numpy' :
-            # print('!WARN : For full G-space, you can only use numpy.fft.\n So here we reset the FFT as numpy.fft.')
-        elif FFTLIB == "pyfftw":
-            self.ifft_object = PYifft(self.grid, self.cplx)
-        elif FFTLIB == "numpy":
-            if self.cplx:
-                self.ifft_object = np.fft.ifftn
-            else:
-                self.ifft_object = np.fft.irfftn
         direct_grid = self.grid.get_direct()
-        nr = self.rank, *self.grid.nrR
+        nr = self.rank, *direct_grid.nr
         if self.rank == 1:
-            # if FFTLIB == 'pyfftw' :
-            # # data = self[0].copy()
-            # data = self[0]
-            # griddata_3d = self.ifft_object(data)/direct_grid.dV
-            # elif FFTLIB == 'numpy' :
-            # griddata_3d = np.fft.irfftn(self[0], s = nr[:-1])/direct_grid.dV
-            # b = np.fft.irfftn
-            # self.ifft_object = np.fft.irfftn
-            # griddata_3d = b(self[0], s = nr[:-1])/direct_grid.dV
-            if FFTLIB == "numpy":
+            if environ["FFTLIB"] == "numpy":
                 griddata_3d = self.ifft_object(self, s=self.grid.nrR) / direct_grid.dV
             else:
                 griddata_3d = self.ifft_object(self) / direct_grid.dV
         else:
-            if self.cplx or np.all(self.grid.nr == self.grid.nrR):  # Can only use numpy.fft
-                griddata_3d = np.empty(nr, dtype="complex")
+            if self.cplx or np.all(self.grid.nrG == self.grid.nrR):  # Can only use numpy.fft
+                griddata_3d = np.empty(nr, dtype="complex128")
             else:
                 griddata_3d = np.empty(nr)
             for i in range(self.rank):
-                # if FFTLIB == 'pyfftw' :
-                # # data = self[i].copy()
-                # data = self[i]
-                # griddata_3d[i] = self.ifft_object(data)/direct_grid.dV
-                # elif FFTLIB == 'numpy' :
-                # griddata_3d[i] = np.fft.irfftn(self[i])/direct_grid.dV
                 griddata_3d[i] = self.ifft_object(self[i]) / direct_grid.dV
         if check_real:
             if np.isclose(np.imag(griddata_3d), 0.0, atol=1.0e-16).all():
                 griddata_3d = np.real(griddata_3d)
         if force_real:
             griddata_3d = np.real(griddata_3d)
-        TimeData.End("InvFFT")
-        return DirectField(grid=direct_grid, memo=self.memo, rank=self.rank, griddata_3d=griddata_3d, cplx=self.cplx)
+        fft_data=DirectField(grid=direct_grid, memo=self.memo, rank=self.rank, griddata_3d=griddata_3d, cplx=self.cplx)
+        return fft_data
 
     @property
     def cplx(self):

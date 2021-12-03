@@ -1,4 +1,5 @@
 __pycache__/
+*.pyc
 .cache/
 .coverage
 *.egg-info/
@@ -10,3 +11,4 @@ src/dftpy/dev/
 dev/
 doc/build/
 .ipynb_checkpoints/
+doc/source/tutorials/config.rst

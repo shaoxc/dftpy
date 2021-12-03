@@ -5,7 +5,7 @@ import ase
 import ase.io
 from dftpy.system import System
 from dftpy.atom import Atom
-from dftpy.base import BaseCell, DirectCell
+from dftpy.cell import BaseCell, DirectCell
 from dftpy.constants import LEN_CONV
 
 BOHR2ANG = LEN_CONV["Bohr"]["Angstrom"]
@@ -16,22 +16,32 @@ def ase_read(infile, index=None, format=None, **kwargs):
         struct = infile
     else :
         struct = ase.io.read(infile, index=index, format=format, **kwargs)
-    lattice = struct.cell[:]
-    lattice = np.asarray(lattice).T / BOHR2ANG
-    Z = struct.numbers
-    cell = DirectCell(lattice)
-    pos = struct.get_positions() / BOHR2ANG
-    atoms = Atom(Z=Z, pos=pos, cell=cell, basis="Cartesian")
+    atoms = ase2ions(struct)
     return atoms
 
-
 def ase_write(outfile, ions, format=None, pbc=None, **kwargs):
-    cell = ions.pos.cell.lattice * BOHR2ANG
-    numbers = ions.Z
-    pos = ions.pos[:] * BOHR2ANG
-    if pbc is None:
-        pbc = [1, 1, 1]
-    struct = ase.Atoms(positions=pos, numbers=numbers, cell=cell, pbc=pbc)
+    struct = ions2ase(ions)
+    if pbc is not None :
+        struct.set_pbc(pbc)
     ase.io.write(outfile, struct, format=format, **kwargs)
     return
 
+def ase2ions(ase_atoms, wrap = True):
+    lattice = ase_atoms.cell[:]
+    lattice = np.asarray(lattice).T / BOHR2ANG
+    lattice = np.ascontiguousarray(lattice)
+    Z = ase_atoms.numbers
+    cell = DirectCell(lattice)
+    pos = ase_atoms.get_scaled_positions()
+    if wrap :
+        pos %= 1.0
+    ions = Atom(Z=Z, pos=pos, cell=cell, basis="Crystal")
+    return ions
+
+def ions2ase(ions, pbc = True):
+    cell = ions.pos.cell.lattice.T * BOHR2ANG
+    cell = np.ascontiguousarray(cell)
+    numbers = ions.Z
+    pos = ions.pos[:] * BOHR2ANG
+    struct = ase.Atoms(positions=pos, numbers=numbers, cell=cell, pbc = pbc)
+    return struct
