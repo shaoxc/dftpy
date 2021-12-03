@@ -101,9 +101,9 @@ def write_vasp(infile, system, direct = False, fmt = '%22.15f', header = 'DFTpy'
         fh.write('Direct\n')
     else:
         fh.write('Cartesian\n')
+        pos = pos*BOHR2ANG
 
     for i, ps in enumerate(pos):
-        ps *= BOHR2ANG
         fh.write(f'{fmt%ps[0]} {fmt%ps[1]} {fmt%ps[2]}\n')
 
     if not hasattr(infile, 'close'): fh.close()

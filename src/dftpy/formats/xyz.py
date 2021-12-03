@@ -58,8 +58,8 @@ def write_xyz(infile, system = None, comment = None, fmt = '%22.15f', **kwargs):
     comment = comment.rstrip()
     natoms = len(ions.pos)
     fh.write(f'{natoms}\n{comment}\n')
-    for s, ps in zip(ions.labels, ions.pos):
-        ps *= BOHR2ANG
+    pos = ions.pos*BOHR2ANG
+    for s, ps in zip(ions.labels, pos):
         fh.write(f'{s:3s} {fmt%ps[0]} {fmt%ps[1]} {fmt%ps[2]}\n')
 
     if not hasattr(infile, 'close'): fh.close()
