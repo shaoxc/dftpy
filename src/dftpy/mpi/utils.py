@@ -21,24 +21,20 @@ def sprint(*args, comm = None, lprint = False, debug = False, level = 2, fileobj
     elif level == 0 :
         debug = True
 
+    if not fileobj :
+        fileobj = kwargs.get('file', environ.get('STDOUT', sys.stdout))
+
+    args = funcs2args(*args)
+
     if debug :
         comm = comm or mp.comm
         nodename = os.uname().nodename
         header = f'{nodename[:30]}->{comm.rank:<7d} -> '
-        args = funcs2args(*args)
         comm.Barrier()
-        print(header, *args, **kwargs)
+        print(header, *args, file = fileobj, **kwargs)
         comm.Barrier()
     elif lprint :
-        if fileobj :
-            stdout = sys.stdout
-            sys.stdout = fileobj
-        else :
-            sys.stdout = environ['STDOUT']
-        args = funcs2args(*args)
-        print(*args, **kwargs)
-        if fileobj :
-            sys.stdout = stdout
+        print(*args, file = fileobj, **kwargs)
 
 def funcs2args(*args, **kwargs):
     newargs = None

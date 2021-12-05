@@ -120,7 +120,7 @@ def read(fh, data=None, grid=None, single=False, datarep = 'native'):
     #     raise AttributeError("Not support Fortran order")
 
     if not(np.all(shape == grid.nrR) or np.all(shape == grid.nrG)):
-        raise AttributeError("The shape is not match with grid")
+        raise AttributeError("The shape {} is not match with grid {} ({})".format(shape, grid.nrR, grid.nrG))
     if data is None :
         data = np.empty(grid.nr, dtype=dtype, order='C')
 

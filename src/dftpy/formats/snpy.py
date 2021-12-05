@@ -115,7 +115,7 @@ def read(fname, mp=None, grid=None, kind="all", full=False, datarep='native', de
                 if grid is None :
                     grid = DirectGrid(lattice=lattice, nr=shape, full=full, mp=mp)
                 elif not(np.all(shape == grid.nrR) or np.all(shape == grid.nrG)):
-                    raise AttributeError("The shape is not match with grid")
+                    raise AttributeError("The shape {} is not match with grid {} ({})".format(shape, grid.nrR, grid.nrG))
                 order = 'F' if fortran_order else 'C'
                 data = DirectField(grid=grid, rank=1, order = order)
                 npy._read_value(fh, data, datarep=datarep, fortran_order=fortran_order)
