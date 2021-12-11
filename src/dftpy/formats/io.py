@@ -26,17 +26,23 @@ IOFormats= {
         }
 
 def guessType(infile, **kwargs):
-    basename = os.path.basename(infile)
+    return guess_format(infile, **kwargs)
+
+def guess_format(infile, **kwargs):
+    basename = os.path.basename(infile).lower()
     ext = os.path.splitext(infile)[1].lower()
-    format = IOFormats.get(basename.lower(), None)
-    if format is None : format = IOFormats.get(ext[1:], None)
+    format = IOFormats.get(basename, None)
+    if format is None and len(ext)>1 :
+        format = IOFormats.get(ext[1:], None)
 
     if format is None :
-        raise AttributeError("%s not support yet" % infile)
-    return format.format
+        format = ext[1:] if len(ext)>1 else basename
+    else :
+        format = format.format
+    return format
 
 def get_io_driver(infile, format = None, mode = 'r'):
-    if format is None : format = guessType(infile)
+    if format is None : format = guess_format(infile)
     iof = IOFormats.get(format, None)
 
     if iof is None :

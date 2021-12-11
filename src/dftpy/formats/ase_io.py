@@ -1,4 +1,5 @@
 import numpy as np
+from collections import OrderedDict
 import ase
 import ase.io
 from dftpy.system import System
@@ -51,3 +52,27 @@ def read_ase(infile, **kwargs):
 
 def write_ase(outfile, system, **kwargs):
     ase_write(outfile, system.ions, **kwargs)
+
+def sort_ase_atoms(atoms, tags = None):
+    symbols = atoms.symbols
+    if tags is None :
+        tags = (OrderedDict.fromkeys(symbols)).keys()
+    index = []
+    for s in tags :
+        ind = np.where(symbols == s)[0]
+        index.extend(ind.tolist())
+    return atoms[index]
+
+def subtract_ase_atoms(a1, a2, tol = 0.1):
+    from ase.neighborlist import neighbor_list
+    atoms = a1 + a2
+    inda, indb = neighbor_list('ij', atoms, tol)
+    index = []
+    for i in range(len(atoms)):
+        firsts = np.where(inda == i)[0]
+        if len(firsts)>0 :
+            neibors = indb[firsts]
+            index.append(i)
+            index.extend(neibors)
+    del atoms[index]
+    return atoms
