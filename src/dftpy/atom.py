@@ -13,7 +13,10 @@ class Atom(object):
         else:
             self.Zval = Zval
         # self.pos = Coord(pos, cell, basis='Cartesian')
-        self._pos = Coord(pos, cell, basis=basis).to_cart()
+        if isinstance(pos, Coord) :
+            self._pos = pos.to_cart()
+        else :
+            self._pos = Coord(pos, cell, basis=basis).to_cart()
         self.nat = len(pos)
         self.Z = Z
         self._ncharge = None
@@ -51,6 +54,10 @@ class Atom(object):
             self._ncharge = self.get_ncharge()
 
     @property
+    def cell(self):
+        return self._pos.cell
+
+    @property
     def symbols(self):
         return self.labels
 
@@ -85,7 +92,8 @@ class Atom(object):
 
     def __getitem__(self, i):
         if i is None : i = slice(None)
-        atoms = self.__class__(Z=self.Z[i].copy(), Zval=self.Zval, label=self.labels[i].copy(), pos=self.pos[i].copy(), cell = self.pos.cell, basis = self.pos.basis)
+        atoms = self.__class__(Z=self.Z[i].copy(), Zval=self.Zval, label=self.labels[i].copy(),
+                pos=self.pos[i].copy(), cell = self.pos.cell, basis = self.pos.basis)
         return atoms
 
     def __delitem__(self, i):
@@ -121,7 +129,17 @@ class Atom(object):
         for i in range(3):
             lattice[:, i] *= reps[i]
         cell = DirectCell(lattice)
-        atoms = self.__class__(Z=Z, Zval=Zval, pos=pos, cell = cell, basis = self.pos.basis)
+        atoms = self.__class__(Z=Z, Zval=Zval, pos=pos, cell = cell, basis = 'Cartesian')
+        return atoms
+
+    def copy(self):
+        return self[:]
+
+    def __add__(self, other):
+        Z = np.concatenate((self.Z, other.Z))
+        Zval = {**self.Zval, **other.Zval}
+        pos = np.concatenate((self.pos.to_cart(), other.pos.to_cart()), axis = 0)
+        atoms = self.__class__(Z=Z, Zval=Zval, pos=pos, cell = self.pos.cell)
         return atoms
 
 
