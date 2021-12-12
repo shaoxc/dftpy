@@ -281,7 +281,7 @@
       "default": "WT"
     },
     "symmetrization": {
-      "comment": "The symmetrization way for `MGP` KEDF. See `paper <https://aip.scitation.org/doi/abs/10.1063/1.5023926>`_.",
+      "comment": "The symmetrization way for `MGP` KEDF. See `MGP_paper <https://aip.scitation.org/doi/abs/10.1063/1.5023926>`_.",
       "options": "None, Arithmetic, Geometric",
       "type": "str",
       "default": null
@@ -332,7 +332,7 @@
       "type": "int",
       "default": 3,
       "options": "1, 2, 3",
-      "comment": "The kernel density denpendent for `LWT` KEDF: \\\\n\\\\t\\\\t+ 1 : The origin `LWT` KEDF. \\\\n\\\\t\\\\t+ 2 : Considers the :math:`\\rho^{\\beta}(r')\\omega(\\rho(r),r-r')` term in the potential.\\\\n\\\\t\\\\t+ 3 : Also considers the derivative of kernel which is neglected in LWT. See `paper <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.100.041105>`_.  "
+      "comment": "The kernel density denpendent for `LWT` KEDF: \\\\n\\\\t\\\\t+ 1 : The origin `LWT` KEDF. \\\\n\\\\t\\\\t+ 2 : Considers the :math:`\\rho^{\\beta}(r')\\omega(\\rho(r),r-r')` term in the potential.\\\\n\\\\t\\\\t+ 3 : Also considers the derivative of kernel which is neglected in LWT. See `LMGP_paper <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.100.041105>`_.  "
     },
     "rho0": {
       "comment": "The 'average' density used for the definition of the Fermi momentum. Default is None, which means it calculated based on the total charge and system volume.",
