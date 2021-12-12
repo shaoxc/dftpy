@@ -69,6 +69,14 @@ class Atom(object):
             self._ncharge = self.get_ncharge()
         return self._ncharge
 
+    def set_cell(self, cell):
+        self._pos = Coord(self._pos, cell, basis="Cartesian")
+        return self
+
+    def translate(self, shift):
+        self._pos += np.array(shift)
+        return self
+
     def get_ncharge(self):
         if self.Zval is None:
             raise Exception("Must set 'Zval' first")
