@@ -12,9 +12,11 @@ class Atom(object):
             self.Zval = {}
         else:
             self.Zval = Zval
-        # self.pos = Coord(pos, cell, basis='Cartesian')
-        if isinstance(pos, Coord) :
-            self._pos = pos.to_cart()
+        if cell is None :
+            if isinstance(pos, Coord) :
+                self._pos = pos.to_cart()
+            else :
+                raise AttributeError("Missing the cell fot Atom")
         else :
             self._pos = Coord(pos, cell, basis=basis).to_cart()
         self.nat = len(pos)
