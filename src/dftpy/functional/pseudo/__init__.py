@@ -1,4 +1,3 @@
-import importlib.util
 import os
 from abc import abstractmethod
 
@@ -186,7 +185,7 @@ class LocalPseudo(AbstractLocalPseudo):
             ene = 0.0
 
         if density.rank > 1:
-            pot = np.tile(pot, (density.rank, 1, 1, 1))
+            pot = pot.tile((density.rank, 1, 1, 1))
         return FunctionalOutput(name="eN", energy=ene, potential=pot)
 
     def local_PP(self, BsplineOrder=10):

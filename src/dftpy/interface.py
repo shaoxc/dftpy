@@ -149,10 +149,10 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
     nspin=config["DENSITY"]["nspin"]
     if nspin > 1 :
         magmom = config["DENSITY"]["magmom"]
-        rho_spin = np.tile(rho_ini, (nspin, 1, 1, 1))
+        rho_spin = rho_ini.tile((nspin, 1, 1, 1))
         for ip in range(nspin):
             rho_spin[ip] = 1.0/nspin * rho_spin[ip] + 1.0/nspin *(-1)**ip * magmom/ ions.pos.cell.volume
-        rho_ini = DirectField(grid=grid, griddata_3d=rho_spin, rank=nspin)
+        rho_ini = rho_spin
     #-----------------------------------------------------------------------
     struct = System(ions, grid, name='density', field=rho_ini)
     E_v_Evaluator = TotalFunctional(KineticEnergyFunctional=KE, XCFunctional=XC, HARTREE=HARTREE, PSEUDO=PSEUDO)

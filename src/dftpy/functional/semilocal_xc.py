@@ -522,8 +522,8 @@ def XCStress(density, name=None, xc=None, x_str='gga_x_pbe', c_str='gga_c_pbe', 
         stress = _LDAStress(density, xc_str=x_str, energy=energy, flag=flag, **kwargs)
         stress += _LDAStress(density, xc_str=c_str, energy=energy, flag=flag, **kwargs)
     elif x_str[:3] == c_str[:3] == 'gga':
-        stress = _LDAStress(density, xc_str=x_str, energy=energy, flag=flag, **kwargs)
-        stress += _LDAStress(density, xc_str=c_str, energy=energy, flag=flag, **kwargs)
+        stress = _GGAStress(density, xc_str=x_str, energy=energy, flag=flag, **kwargs)
+        stress += _GGAStress(density, xc_str=c_str, energy=energy, flag=flag, **kwargs)
     else:
         raise AttributeError("'x_str' %s and 'c_str' %s must be same type" % (x_str, c_str))
 

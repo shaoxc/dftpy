@@ -36,7 +36,7 @@ class Hartree(AbstractFunctional):
         else:
             e_h = 0
         if density.rank > 1:
-            v_h_of_r = np.tile(v_h_of_r, (density.rank, 1, 1, 1))
+            v_h_of_r = v_h_of_r.tile((density.rank, 1, 1, 1))
         TimeData.End("Hartree_Func")
         return FunctionalOutput(name="Hartree", potential=v_h_of_r, energy=e_h)
 
