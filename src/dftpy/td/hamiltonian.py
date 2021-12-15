@@ -4,19 +4,17 @@ from typing import Tuple
 
 from dftpy.constants import SPEED_OF_LIGHT
 from dftpy.field import DirectField, ReciprocalField
+from dftpy.grid import DirectGrid
 from dftpy.time_data import timer
 from dftpy.td.operator import Operator
 
 
 class Hamiltonian(Operator):
 
-    def __init__(self, v=None, A=None):
+    def __init__(self, v=None, A=None, full=True):
+        self.full = full
         self.v = v
         self.A = A
-        if self.v is None:
-            self.grid = None
-        else:
-            self.grid = v.grid
 
     @property
     def v(self):
@@ -27,11 +25,14 @@ class Hamiltonian(Operator):
         return self._A
 
     @v.setter
-    def v(self, new_v):
-        if isinstance(new_v, DirectField):
-            self._v = new_v
-            self.grid = new_v.grid
-        elif new_v is None:
+    def v(self, v):
+        if isinstance(v, DirectField):
+            self._v = v
+            if v.grid.full == self.full:
+                self.grid = v.grid
+            else:
+                self.grid = DirectGrid(lattice=v.grid.lattice, nr=v.grid.nr, origin=v.grid.origin, full=self.full)
+        elif v is None:
             self._v = None
             self.grid = None
         else:
