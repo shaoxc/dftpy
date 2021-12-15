@@ -48,7 +48,7 @@ def RunJob(args):
         elif "Inversion" in config["JOB"]["task"]:
             InvertRunner(config, others["struct"], others["E_v_Evaluator"])
         elif "Sternheimer" in config["JOB"]["task"]:
-            SternheimerRunner(config, others["struct"].field, others["E_v_Evaluator"])
+            SternheimerRunner(config, others["struct"], others["E_v_Evaluator"])
         else:
             OptimizeDensityConf(config, others["struct"], others["E_v_Evaluator"], others["nr2"])
 

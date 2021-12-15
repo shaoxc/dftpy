@@ -7,6 +7,8 @@ from dftpy.formats.xsf import XSF
 from dftpy.mpi import sprint
 from dftpy.td.casida import Casida
 from dftpy.td.hamiltonian import Hamiltonian
+from dftpy.td.sternheimer import Sternheimer
+from dftpy.field import DirectField
 
 
 def CasidaRunner(config, rho0, E_v_Evaluator):
@@ -66,17 +68,57 @@ def DiagonalizeRunner(config, struct, E_v_Evaluator):
     for i in range(len(eigs)):
         XSF(filexsf='{0:s}/psi{1:d}.xsf'.format(direct_to_psi, i)).write(system=struct, field=psi_list[i])
 
-def SternheimerRunner(config, rho0, E_v_Evaluator):
+
+def osillator_strength(drho: DirectField, e: float) -> float:
+    grid = drho.grid
+    result = 0.0
+    for direc in range(3):
+        x = grid.r[direc]
+        result += (x * drho).integral()
+
+    result *= -2.0 / e
+    return result
+
+
+def SternheimerRunner(config, system, E_v_Evaluator):
     outfile = config["TD"]["outfile"]
 
-    sternheimer = Sternheimer(rho0, E_v_Evaluator)
-    eigs, psi_list = sternheimer.hamiltonian.diagonalize(2)
-    sternheimer.grid.full = True
-    omega = np.linspace(0.0, 0.5, 26)
-    f = sternheimer(psi_list[1], omega, 0)
+    hamiltonian = Hamiltonian(v=E_v_Evaluator(system.field, calcType=['V']).potential)
+    eigs, psi_list = hamiltonian.diagonalize(2)
+    drho0 = psi_list[0]*psi_list[1]*system.field.integral()
+    # r = DirectField(grid=system.field.grid, griddata_3d=(system.field.grid.r[0] - system.field.grid.lattice[0][0] / 2))
+    # print(r.integral())
+    # diff = np.zeros_like(system.field)
+    # diff[1::, 1::, 1::] = system.field[1::, 1::, 1::] - system.field[-1:0:-1, -1:0:-1, -1:0:-1]
+    # print(np.abs(diff).integral())
+    # from dftpy.formats.xsf import XSF
+    # xsf = XSF(filexsf='r.xsf')
+    # xsf.write(system=system, field=r)
+
+    e = 1e-3
+    #omega_list = np.linspace(0.05, 0.5, 10)
+    omega_list = [0.1]
+    oscillator_strength_list = []
+    with open(outfile, 'w') as fw:
+        pass
+    for omega in omega_list:
+        sprint('omega: ', omega)
+        sternheimer = Sternheimer(system=system, functionals=E_v_Evaluator, drho0=drho0, omega=omega, e0=eigs[0], e=e)
+        sternheimer()
+        dv = sternheimer.calc_dv(sternheimer.drho)
+        sternheimer.sternheimer_equation_solver.dv = dv
+        drho = sternheimer.sternheimer_equation_solver() * sternheimer.N
+        sprint('drho_diff: ', np.abs(drho-sternheimer.drho).integral())
+        #sprint(drho)
+        sprint('drho: ', sternheimer.drho.integral())
+        osc = osillator_strength(sternheimer.drho, e)
+        oscillator_strength_list.append(osc)
+        with open(outfile, 'a') as fw:
+            fw.write('{0:17.10e} {1:17.10e}\n'.format(omega, osc))
+
     # f = omega
     # sternheimer(psi_list[1], 1e-4, 0.01)
 
-    with open(outfile, 'w') as fw:
-        for i in range(len(omega)):
-            fw.write('{0:15.8e} {1:15.8e}\n'.format(omega[i], f[i]))
+    # with open(outfile, 'w') as fw:
+    #     for i in range(len(omega)):
+    #         fw.write('{0:15.8e} {1:15.8e}\n'.format(omega[i], oscillator_strength_list[i]))
