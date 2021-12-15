@@ -108,18 +108,14 @@ class BaseField(np.ndarray):
 
     def __array_wrap__(self, obj, context=None):
         """wrap it up"""
+        if obj.ndim< 3 :
+            # This is only return numpy array not field
+            return obj
         b = np.ndarray.__array_wrap__(self, obj, context)
-        a = np.shape(np.shape(b))[0]
-        # a = np.shape(np.shape(self))[0]
-        # self.rank = np.max([self.rank, obj.rank])
-        if a == 4:
+        if b.ndim == 4:
             rank = np.shape(b)[0]
-            #rank = np.shape(self)[0]
         else:
             rank = 1
-        # if rank == 1:
-        # b = np.reshape(b, self.grid.nr)
-        # b = np.reshape(b,nr)
         b.rank = rank
         #clean saved fft_data
         b._fft_data = None
@@ -612,12 +608,34 @@ class DirectField(BaseField):
             self.grid.full = True
             self.grid.cplx = True
 
-    def repeat(self, reps=1):
-        reps = np.ones(3, dtype='int')*reps
-        data = np.tile(np.array(self), reps)
-        grid = self.grid.repeat(reps)
-        results = self.__class__(grid=grid, rank=self.rank, griddata_3d=data, cplx=self.cplx, fft_data=None)
+    def tile(self, reps=1, **kwargs):
+        # Overwrite the numpy.tile
+        try:
+            tup = tuple(reps)
+        except TypeError:
+            tup = (reps,)
+        reps = np.asarray(tup)
+        data = np.tile(np.asarray(self), reps)
+        shape = data.shape
+        rank = 1 if len(shape) == 3 else shape[0]
+        if len(reps)>3 : reps = reps[-3:]
+        if np.all(reps == 1) :
+            grid = self.grid
+        else :
+            self.grid.tile(reps)
+        results = self.__class__(grid=grid, rank=rank, griddata_3d=data, cplx=self.cplx, fft_data=None)
         return results
+
+    def repeat(self, rep=1, **kwargs):
+        # Overwrite the numpy.repeat, the different is it only repeat last three dimensions with same rep
+        if not isinstance(rep, int):
+            raise AttributeError("Field repeat only support one integer, Please use 'tile'.")
+        if self.rank == 1 :
+            reps = np.ones(3, dtype='int')*rep
+        else :
+            reps = np.ones(4, dtype='int')*rep
+            reps[0] = 1
+        return self.tile(reps, **kwargs)
 
     def gather(self, grid = None, out = None, root = 0):
         if out is None :

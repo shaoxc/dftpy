@@ -111,14 +111,29 @@ class BaseGrid(BaseCell):
     def full(self):
         return self._full
 
-    def repeat(self, reps=1):
-        reps = np.ones(3, dtype='int')*reps
+    def tile(self, reps=1):
+        # it only repeat last three dimensions with same rep
+        try:
+            tup = tuple(reps)
+        except TypeError:
+            tup = (reps,)
+        reps = np.ones(3, dtype='int')
+        for i, x in enumerate(tup):
+            reps[i] = x
         lattice = self.lattice.copy()
         for i in range(3):
             lattice[:, i] *= reps[i]
         nr = self.nr * reps
         results = self.__class__(lattice, nr, origin=self.origin, units=self.units, full=self.full, cplx=self.cplx)
         return results
+
+    def repeat(self, rep=1):
+        # it only repeat last three dimensions with same rep
+        if not isinstance(rep, int):
+            raise AttributeError("Grid repeat only support one integer, Please use 'tile'.")
+        if self.rank == 1 :
+            reps = np.ones(3, dtype='int')*rep
+        return self.tile(reps)
 
     def local_slice(self, nr, **kwargs):
         self._slice, self._nr, self._offsets = self.mp.get_local_fft_shape(nr, **kwargs)
