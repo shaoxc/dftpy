@@ -67,7 +67,6 @@ class BaseField(np.ndarray):
         # add the new attribute to the created instance
         obj.grid = grid
         obj.span = (grid.nr > 1).sum()
-        obj.rank = rank
         obj.memo = str(memo)
         # add fft data
         obj._fft_data = fft_data
@@ -75,16 +74,15 @@ class BaseField(np.ndarray):
         # Finally, we must return the newly created object:
         return obj
 
+    @property
+    def rank(self):
+        if self.ndim == 4 :
+            return self.shape[0]
+        else :
+            return 1
+
     def __array_finalize__(self, obj):
         # Restore attributes when we are taking a slice
-        # getting the rank right - or at least trying to do so....
-        # self.rank = getattr(obj, 'rank', None)
-        a = np.shape(np.shape(self))[0]
-        if a == 4:
-            rank = np.shape(self)[0]
-        else:
-            rank = 1
-        self.rank = rank
         if obj is None:
             return
         self.grid = getattr(obj, "grid", None)
@@ -112,11 +110,6 @@ class BaseField(np.ndarray):
             # This is only return numpy array not field
             return obj
         b = np.ndarray.__array_wrap__(self, obj, context)
-        if b.ndim == 4:
-            rank = np.shape(b)[0]
-        else:
-            rank = 1
-        b.rank = rank
         #clean saved fft_data
         b._fft_data = None
         return b
@@ -197,16 +190,6 @@ class DirectField(BaseField):
             self.cplx = getattr(obj, 'cplx', None)
         self.spl_coeffs = None
         self._N = None
-
-    # def __array_wrap__(self,obj,context=None):
-        # b = super().__array_wrap__(obj, context)
-        # if isinstance(obj, (DirectField)):
-            # b.fft_object = obj.fft_object
-            # b.cplx = obj.cplx
-        # else :
-            # b.fft_object = self.fft_object
-            # b.cplx = self.cplx
-        # return b
 
     def integral(self, gather = True):
         """ Returns the integral of self """
@@ -302,7 +285,6 @@ class DirectField(BaseField):
         div = self[0].gradient(flag=flag, ipol=1, force_real=force_real)
         div += self[1].gradient(flag=flag, ipol=2, force_real=force_real)
         div += self[2].gradient(flag=flag, ipol=3, force_real=force_real)
-        div.rank = 1
         return div
 
     def gradient(self, flag="smooth", ipol=None, force_real=True, sigma=0.025):
@@ -361,19 +343,14 @@ class DirectField(BaseField):
         the input_array may be overwite.
         """
         reciprocal_grid = self.grid.get_reciprocal()
-        dim = np.shape(np.shape(self))[0]
-        if dim == 3:
-            self.rank = 1
-        else:
-            nr = self.rank, *reciprocal_grid.nr
         if self.rank == 1:
             griddata_3d = self.fft_object(self) * self.grid.dV
         else:
+            nr = self.rank, *reciprocal_grid.nr
             griddata_3d = np.empty(nr, dtype='complex128')
             for i in range(self.rank):
                 griddata_3d[i] = self.fft_object(self[i]) * self.grid.dV
         TimeData.End("FFT")
-        # print('shape0', self.grid.nr, griddata_3d.shape, reciprocal_grid.nr)
         fft_data=ReciprocalField(
             grid=reciprocal_grid, memo=self.memo, rank=self.rank, griddata_3d=griddata_3d, cplx=self.cplx
         )
