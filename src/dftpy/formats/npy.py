@@ -59,6 +59,7 @@ def _write_header(fh, data, version = (1, 0), grid = None):
         shape = data.shape
     else :
         shape = grid.nrR
+        if data.ndim == 4 : shape = data.shape[0], *shape
         # if header['fortran_order'] and grid.mp.size > 1:
         #     raise AttributeError("Not support Fortran order")
     header['shape'] = tuple(shape)
@@ -82,7 +83,13 @@ def _write_value(fh, data, fp = None, grid=None, datarep = 'native'):
         order = MPI.ORDER_F
     else :
         order = MPI.ORDER_C
-    filetype = etype.Create_subarray(grid.nrR, grid.nr, grid.offsets, order=order)
+    nrR, nr, offsets = grid.nrR, grid.nr, grid.offsets
+    if data.ndim == 4 :
+        rank = data.shape[0]
+        nrR = np.insert(nrR, 0, rank)
+        nr = np.insert(nr, 0, rank)
+        offsets = np.insert(offsets, 0, 0)
+    filetype = etype.Create_subarray(nrR, nr, offsets, order=order)
     filetype.Commit()
     fh.Set_view(fp, etype, filetype, datarep=datarep)
     fh.Write_all(data)
@@ -155,7 +162,13 @@ def _read_value(fh, data, fp=None, grid=None, datarep = 'native', fortran_order=
         order = MPI.ORDER_F
     else :
         order = MPI.ORDER_C
-    filetype = etype.Create_subarray(grid.nrR, grid.nr, grid.offsets, order=order)
+    nrR, nr, offsets = grid.nrR, grid.nr, grid.offsets
+    if data.ndim == 4 :
+        rank = data.shape[0]
+        nrR = np.insert(nrR, 0, rank)
+        nr = np.insert(nr, 0, rank)
+        offsets = np.insert(offsets, 0, 0)
+    filetype = etype.Create_subarray(nrR, nr, offsets, order=order)
     filetype.Commit()
     fh.Set_view(fp, etype, filetype, datarep=datarep)
     fh.Read_all(data)

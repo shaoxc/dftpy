@@ -1,5 +1,5 @@
 import numpy as np
-from dftpy.base import BaseCell, DirectCell, ReciprocalCell, Coord, s2r
+from dftpy.base import BaseCell, DirectCell, ReciprocalCell
 
 
 class BaseGrid(BaseCell):
@@ -159,13 +159,18 @@ class BaseGrid(BaseCell):
             reqs = []
             bufs = []
             if self.mp.rank == root:
+                rank = 1 if getattr(data, 'ndim', 1) < 4 else data.shape[0]
                 if out is None :
+                    if nr is None : nr = self.nrR
+                    if rank>1 : nr = (rank, *nr)
                     out = np.empty(nr, dtype = data.dtype)
                 for i in range(0, self.mp.comm.size):
                     if i == root :
                         buf = data
                     else :
-                        buf = np.empty(self.nr_all[i], dtype = data.dtype)
+                        shape = self.nr_all[i]
+                        if rank>1 : shape = (rank, *shape)
+                        buf = np.empty(shape, dtype = data.dtype)
                         req = self.mp.comm.Irecv(buf, source = i, tag = i)
                         reqs.append(req)
                     bufs.append(buf)
@@ -176,7 +181,9 @@ class BaseGrid(BaseCell):
             self.mp.MPI.Request.Waitall(reqs)
             if self.mp.rank == root:
                 for i in range(0, self.mp.comm.size):
-                    out[self.slice_all[i]] = bufs[i]
+                    inds = self.slice_all[i]
+                    if rank>1 : inds = (slice(None), *inds)
+                    out[inds] = bufs[i]
             self.mp.comm.Barrier()
         else :
             out = data.copy()
@@ -185,15 +192,26 @@ class BaseGrid(BaseCell):
     def scatter(self, data, out = None, root = 0, **kwargs):
         if self.mp.is_mpi :
             reqs = []
+            rank = 1 if getattr(data, 'ndim', 1) < 4 else data.shape[0]
+            rank = self.mp.amax(rank)
             if out is None :
-                out = np.empty(self.nr, dtype = data.dtype)
+                nr = self.nr
+                if rank>1 : nr = (rank, *nr)
+                out = np.empty(nr, dtype = data.dtype)
             if self.mp.rank == root :
                 for i in range(0, self.mp.comm.size):
                     if i == root :
-                        out[:] = data[self.slice_all[i]]
+                        inds = self.slice_all[i]
+                        if rank>1 : inds = (slice(None), *inds)
+                        out[:] = data[inds]
                     else :
-                        buf = np.empty(self.nr_all[i], dtype = data.dtype)
-                        buf[:] = data[self.slice_all[i]]
+                        shape = self.nr_all[i]
+                        inds = self.slice_all[i]
+                        if rank>1 :
+                            shape = (rank, *shape)
+                            inds = (slice(None), *inds)
+                        buf = np.empty(shape, dtype = data.dtype)
+                        buf[:] = data[inds]
                         req = self.mp.comm.Isend(buf, dest = i, tag = i)
                         reqs.append(req)
             else :
@@ -205,7 +223,7 @@ class BaseGrid(BaseCell):
             if out is None :
                 out = data.copy()
             else :
-                out[:] = data.copy()
+                out[:] = data
         return out
 
     def free(self):
@@ -311,7 +329,7 @@ class DirectGrid(BaseGrid, DirectCell):
                 self._nrG[-1] = self._nrG[-1] // 2 + 1
 
     def get_reciprocal(self, scale=None, convention="physics"):
-        """
+        r"""
             Returns a new ReciprocalCell, the reciprocal cell of self
             The ReciprocalCell is scaled properly to include
             the scaled (*self.nr) reciprocal grid points
@@ -469,7 +487,7 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
         return invq
 
     def get_direct(self, scale= None, convention="physics"):
-        """
+        r"""
             Returns a new DirectCell, the direct cell of self
             The DirectCell is scaled properly to include
             the scaled (*self.nr) reciprocal grid points
@@ -496,7 +514,7 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
             # at = at*LEN_CONV["Bohr"][self.units]
             direct_lat = np.einsum("ij,j->ij", at, 1.0 / scale)
             self.Dgrid = DirectGrid(lattice=direct_lat, nr=self.nrR, units=self.units, full=self.full,
-                    uppergrid=self, cplx=self.cplx,  mp=self.mp)
+                    uppergrid=self, cplx=self.cplx, mp=self.mp)
         return self.Dgrid
 
     def _calc_grid_points(self, full=None):

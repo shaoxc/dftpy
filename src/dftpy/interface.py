@@ -5,7 +5,7 @@ from dftpy.optimization import Optimization
 from dftpy.functional import Functional
 from dftpy.functional.total_functional import TotalFunctional
 from dftpy.constants import LEN_CONV, ENERGY_CONV, STRESS_CONV
-from dftpy.formats.io import read, read_density, write, read_system
+from dftpy.formats.io import read_density, write, read_system
 from dftpy.ewald import ewald
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
@@ -20,6 +20,7 @@ from dftpy.inverter import Inverter
 from dftpy.formats.xsf import XSF
 from dftpy.formats.qepp import PP
 from dftpy.properties import get_electrostatic_potential
+from dftpy.utils import field2distrib
 
 
 def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = None):
@@ -75,6 +76,7 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
     ############################## Grid  ##############################
     if grid is None:
         grid = DirectGrid(lattice=lattice, nr=nr, units=None, full=config["GRID"]["gfull"], cplx=config["GRID"]["cplx"], mp=mp)
+    if mp is None : mp = grid.mp
     ############################## PSEUDO  ##############################
     PPlist = {}
     for key in config["PP"]:
@@ -109,50 +111,31 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
     HARTREE = Functional(type="HARTREE")
     XC = Functional(type="XC", name=config["EXC"]["xc"], **config["EXC"])
     ############################## Initial density ##############################
-    zerosA = np.empty(grid.nnr, dtype=float)
-    rho_ini = DirectField(grid=grid, griddata_C=zerosA, rank=1)
+    nspin=config["DENSITY"]["nspin"]
+    rho_ini = DirectField(grid=grid, rank=nspin)
     density = None
+    root = 0
     if rhoini is not None:
         density = rhoini
     elif config["DENSITY"]["densityini"] == "HEG":
         charge_total = ions.ncharge
         rho_ini[:] = charge_total / ions.pos.cell.volume
-        # -----------------------------------------------------------------------
-        # rho_ini[:] = charge_total/ions.pos.cell.volume + np.random.random(np.shape(rho_ini)) * 1E-2
-        # rho_ini *= (charge_total / (np.sum(rho_ini) * rho_ini.grid.dV ))
-        # -----------------------------------------------------------------------
+        if nspin>1 : rho_ini[:] /= nspin
     elif config["DENSITY"]["densityini"] == "Read":
-        density = read_density(config["DENSITY"]["densityfile"])
+        density = []
+        if mp.rank == root :
+            density = read_density(config["DENSITY"]["densityfile"])
+
     if density is not None:
-        # gathered density
-        if np.all(grid.nrR == density.shape[:3]):
-            grid.scatter(density, out = rho_ini)
-        else :
-            linterp = True
-            # distributed density also need has grid, otherwise treat it as gathered density
-            if hasattr(density, 'grid'):
-                if np.all(grid.nrR == density.grid.nrR):
-                    rho_ini[:] = density
-                    linterp = False
-                else :
-                    # gather the density
-                    density = density.grid.gather(density)
-            if linterp :
-                density = interpolation_3d(density, grid.nrR)
-                # density = prolongation(density)
-                density[density < 1e-12] = 1e-12
-                grid.scatter(density, out = rho_ini)
+        field2distrib(density, rho_ini, root = root)
     # normalization the charge (e.g. the cell changed)
     charge_total = ions.ncharge
-    rho_ini *= charge_total / rho_ini.integral()
+    rho_ini *= charge_total / np.sum(rho_ini.integral())
     ############################## add spin magmom ##############################
-    nspin=config["DENSITY"]["nspin"]
     if nspin > 1 :
         magmom = config["DENSITY"]["magmom"]
-        rho_spin = rho_ini.tile((nspin, 1, 1, 1))
         for ip in range(nspin):
-            rho_spin[ip] = 1.0/nspin * rho_spin[ip] + 1.0/nspin *(-1)**ip * magmom/ ions.pos.cell.volume
-        rho_ini = rho_spin
+            rho_ini[ip] += 1.0/nspin *(-1)**ip * magmom/ ions.pos.cell.volume
     #-----------------------------------------------------------------------
     struct = System(ions, grid, name='density', field=rho_ini)
     E_v_Evaluator = TotalFunctional(KineticEnergyFunctional=KE, XCFunctional=XC, HARTREE=HARTREE, PSEUDO=PSEUDO)
@@ -197,10 +180,9 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2 = None):
             sprint("MULTI-STEP: Perform %d optimization step" % istep)
             sprint("Grid size of %d" % istep, " step is ", nr)
             grid2 = DirectGrid(lattice=grid.lattice, nr=nr, units=None, full=config["GRID"]["gfull"], mp=grid.mp)
-            rho_ini = interpolation_3d(rho, nr)
-            rho_ini[rho_ini < 1e-12] = 1e-12
-            rho_ini = DirectField(grid=grid2, griddata_3d=rho_ini, rank=1)
-            rho_ini *= charge_total / (np.sum(rho_ini) * rho_ini.grid.dV)
+            rho_ini = DirectField(grid=grid2, rank=rho.rank)
+            field2distrib(rho, rho_ini, root = 0)
+            rho_ini *= charge_total / (np.sum(rho_ini.integral()))
             # ions.restart()
             if hasattr(E_v_Evaluator, 'PSEUDO'):
                 PSEUDO=E_v_Evaluator.PSEUDO

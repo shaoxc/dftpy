@@ -246,13 +246,13 @@ def LibXC(density, k_str=None, x_str=None, c_str=None, calcType={"E", "V"}, **kw
         raise AttributeError("At least one of the k_str, x_str, c_str must not be None.")
 
     if not isinstance(density, (DirectField)):
-        raise TypeError("density must be a rank-1 or -2 PBCpy DirectField")
+        raise TypeError("Density should be a DirectField")
     if density.rank == 1:
         polarization = "unpolarized"
     elif density.rank == 2:
         polarization = "polarized"
     else:
-        raise AttributeError("density must be a rank-1 or -2 PBCpy DirectField")
+        raise AttributeError("Only support nspin=1 or 2.")
 
     inp = Get_LibXC_Input(density, do_sigma=do_sigma)
     kargs = {'do_exc': False, 'do_vxc': False}
