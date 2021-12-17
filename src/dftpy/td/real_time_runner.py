@@ -99,8 +99,9 @@ class RealTimeRunner(Dynamics):
         converged = self.predictor_corrector.run()
         if not converged:
             self.predictor_corrector.print_not_converged_info()
-        self.update_hamiltonian()
+
         if self.correction:
+            self.correct_potential = self.correct_functionals(self.rho, calcType=['V'], current=self.j).potential
             self.predictor_corrector.psi_pred = self.predictor_corrector.psi_pred - 1.0j * self.int_t * self.correct_potential * self.psi
             self.predictor_corrector.psi_pred.normalize(N=self.N0)
             self.predictor_corrector.rho_pred = calc_rho(self.predictor_corrector.psi_pred)
@@ -109,6 +110,12 @@ class RealTimeRunner(Dynamics):
         self.psi = self.predictor_corrector.psi_pred
         self.rho = self.predictor_corrector.rho_pred
         self.j = self.predictor_corrector.j_pred
+
+        if self.propagate_vector_potential:
+            self.A_tm1 = self.A_t
+            self.A_t = self.predictor_corrector.A_t_pred
+
+        self.update_hamiltonian()
 
         self.timer = TimeData.Time('Real-time propagation')
         sprint("{:<20d}{:<30d}{:<24.4f}".format(self.nsteps + 1, self.predictor_corrector.nsteps, self.timer))
@@ -159,8 +166,6 @@ class RealTimeRunner(Dynamics):
         self.propagator.hamiltonian.v = func.potential
         if self.vector_potential:
             self.propagator.hamiltonian.A = self.A_t
-        if self.correction:
-            self.correct_potential = self.correct_functionals(self.rho, calcType=['V'], current=self.j).potential
 
     def calc_obeservables(self):
         delta_rho = self.rho - self.system.field
