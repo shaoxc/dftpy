@@ -89,6 +89,8 @@ class RealTimeRunner(Dynamics):
         self.rho = calc_rho(self.psi)
         self.j = calc_j(self.psi)
         self.update_hamiltonian()
+        if self.correction:
+            self.correct_potential = self.correct_functionals(self.rho, calcType=['V'], current=self.j).potential
 
     def initialize(self):
         sprint("{:20s}{:30s}{:24s}".format('Iter', 'Num. of Predictor-corrector', 'Total Cost(s)'))
