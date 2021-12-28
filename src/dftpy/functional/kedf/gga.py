@@ -668,7 +668,7 @@ def GGAFs(s, functional="LKT", calcType={"E", "V"}, params=None, gga_remove_vw=N
     if functional not in GGA_KEDF_list:
         raise AttributeError("%s GGA KEDF to be implemented" % functional)
 
-    params0 = GGA_KEDF_list[functional]
+    params0 = GGA_KEDF_list[functional]['params']
 
     if params is None:
         pass
