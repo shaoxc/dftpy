@@ -324,7 +324,7 @@ def GetEnergyPotential(ions, rho, EnergyEvaluator, calcType={"E","V"}, linearii=
             results = func(rho, calcType=calcType, split=True)
             for key2 in results:
                 energypotential["TOTAL"] += results[key2]
-                energypotential["KEDF-" + key2] = results[key2]
+                energypotential["KEDF-" + key2.split('-')[-1]] = results[key2]
         else :
             results = func(rho, calcType=calcType)
             energypotential["TOTAL"] += results
@@ -348,7 +348,7 @@ def GetForces(ions, rho, EnergyEvaluator, linearii=True, linearie=True, PPlist=N
     return forces
 
 
-def GetStress(
+def GetStress_old(
     ions,
     rho,
     EnergyEvaluator,
@@ -366,10 +366,10 @@ def GetStress(
     #-----------------------------------------------------------------------
     KEDF_Stress_L= {
             "TF" : ["TF"],
-            "vW": ["TF"],
-            "x_TF_y_vW": ["TF", "vW"],
-            "TFvW": ["TF", "vW"],
-            "WT": ["TF", "vW", "NL"],
+            "VW": ["VW"],
+            "X_TF_Y_VW": ["TF", "VW"],
+            "TFVW": ["TF", "VW"],
+            "WT": ["TF", "VW", "NL"],
             }
     ke = ke_options["kedf"]
     if ke not in KEDF_Stress_L :
@@ -409,8 +409,8 @@ def GetStress(
         elif key1.startswith('KEDF') :
             if "TF" in key1 :
                 stress[key1] = KEDFStress(rho, name="TF", energy=energy[key1], **ke_options)
-            if "vW" in key1 :
-                stress[key1] = KEDFStress(rho, name="vW", energy=energy[key1], **ke_options)
+            if "VW" in key1 :
+                stress[key1] = KEDFStress(rho, name="VW", energy=energy[key1], **ke_options)
             if 'NL' in key1 :
                 stress[key1] = KEDFStress(rho, name=ke, energy=energy[key1], **ke_options)
         else :
@@ -443,3 +443,43 @@ def InvertRunner(config, struct, EnergyEvaluater):
     #xsf.write(struct, field=rho)
 
     return ext
+
+def GetStress(
+    ions,
+    rho,
+    EnergyEvaluator,
+    linearii=True,
+    ewaldobj= None,
+    **kwargs
+):
+    """
+    Get stress tensor
+    """
+    #-----------------------------------------------------------------------
+    stress = {}
+    if ewaldobj is None :
+        ewaldobj = ewald(rho=rho, ions=ions, verbose=False, PME=linearii)
+    stress['II'] = ewaldobj.stress
+    stress['TOTAL'] = stress['II'].copy()
+
+    funcDict = EnergyEvaluator.funcDict
+    for key, func in funcDict.items():
+        if func.type == "KEDF":
+            results = func.stress(rho, split=True)
+            for key2 in results:
+                stress["TOTAL"] += results[key2]
+                stress["KEDF-" + key2.split('-')[-1]] = results[key2]
+        else :
+            results = func.stress(rho)
+            stress["TOTAL"] += results
+            stress[func.type] = results
+
+    for i in range(1, 3):
+        for j in range(i - 1, -1, -1):
+            stress["TOTAL"][i, j] = stress["TOTAL"][j, i]
+
+    keys, values = zip(*stress.items())
+    values = rho.mp.vsum(values)
+    stress = dict(zip(keys, values))
+
+    return stress

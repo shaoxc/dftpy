@@ -1,6 +1,7 @@
 # Hartree functional
 
 import numpy as np
+import copy
 
 from dftpy.functional.abstract_functional import AbstractFunctional
 from dftpy.functional.functional_output import FunctionalOutput
@@ -8,10 +9,12 @@ from dftpy.time_data import TimeData
 
 
 class Hartree(AbstractFunctional):
+    _energy = None
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.type = 'HARTREE'
         self.name = 'HARTREE'
+        self.options = kwargs
 
     def __repr__(self):
         return 'HARTREE'
@@ -38,7 +41,20 @@ class Hartree(AbstractFunctional):
         if density.rank > 1:
             v_h_of_r = v_h_of_r.tile((density.rank, 1, 1, 1))
         TimeData.End("Hartree_Func")
-        return FunctionalOutput(name="Hartree", potential=v_h_of_r, energy=e_h)
+        functional=FunctionalOutput(name="Hartree", potential=v_h_of_r, energy=e_h)
+        if 'E' in calcType : cls._energy = functional.energy
+        return functional
+
+    @property
+    def energy(self):
+        return self._energy
+
+    def stress(self, density, **kwargs):
+        options = copy.deepcopy(self.options)
+        options.update(kwargs)
+        energy = self.energy
+        stress=HartreeFunctionalStress(density, energy=energy)
+        return stress
 
 
 def HartreePotentialReciprocalSpace(density):

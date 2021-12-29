@@ -277,3 +277,18 @@ def field2distrib(data, out, root = None, tol = 1E-30):
     else :
         raise AttributeError(f"The two fields with different rank can not interpolate({out.shape})")
     return out
+
+def name2functions(name, data, sep = '+'):
+    results = {}
+    if sep in name :
+        value = name.split(sep)
+    else :
+        value = data.get(name, None)
+    if value is None :
+        raise AttributeError("'{}' has not implemented.".format(name))
+    if hasattr(value, '__call__'):
+        results[name] = value
+    else :
+        for item in value :
+            results.update(name2functions(item, data))
+    return results

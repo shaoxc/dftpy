@@ -2,13 +2,13 @@
 # general python imports
 import copy
 
-from dftpy.field import DirectField, ReciprocalField
+from dftpy.field import DirectField
 
 
 class FunctionalOutput(object):
     """
     Object handling DFT functional output
-    
+
     Attributes
     ----------
     name: string
@@ -18,9 +18,9 @@ class FunctionalOutput(object):
         The energy
 
     potential: DirectField
-        The first functional derivative of the functional wrt 
-        the electron density 
-        
+        The first functional derivative of the functional wrt
+        the electron density
+
     kernel: ReciprocalField
         The value of the reciprocal space kernel. This will
         be populated only if the functional is nonlocal
@@ -108,3 +108,23 @@ class FunctionalOutput(object):
 
     def copy(self):
         return copy.deepcopy(self)
+
+
+class ZeroFunctional(object):
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def __repr__(self):
+        return 'ZeroFunctional'
+
+    def __call__(self, rho, *args, **kwargs):
+        return self.compute(rho, *args, **kwargs)
+
+    @staticmethod
+    def compute(rho, *args, calcType = {'E', 'V'}, **kwargs):
+        out = FunctionalOutput(name="ZERO", energy=0.0)
+        if 'D' in calcType:
+            out.energydensity = DirectField(grid=rho.grid)
+        if 'V' in calcType:
+            out.potential = DirectField(grid=rho.grid)
+        return out
