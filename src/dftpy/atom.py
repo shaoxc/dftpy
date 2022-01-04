@@ -146,11 +146,19 @@ class Atom(object):
         return self[:]
 
     def __add__(self, other):
+
         Z = np.concatenate((self.Z, other.Z))
         Zval = {**self.Zval, **other.Zval}
         pos = np.concatenate((self.pos.to_cart(), other.pos.to_cart()), axis = 0)
         atoms = self.__class__(Z=Z, Zval=Zval, pos=pos, cell = self.pos.cell)
         return atoms
+
+    def __eq__(self, other):
+        if not isinstance(other, Atom):
+            return False
+        else :
+            return (len(self.pos) == len(other.pos) and (self.pos.to_cart() == other.pos.to_cart).all()
+                    and (self.Z == other.Z))
 
 
 z2lab = [

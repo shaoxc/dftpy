@@ -203,22 +203,28 @@
       "default": "Control the exchange-correlation functional."
     },
     "xc": {
-      "comment": "The kind of exchange-correlation functional. If not `LDA`, must have pylibxc_ installed. It has higher priority than :ref:`x_str<exc-x_str>` and :ref:`c_str<exc-c_str>`",
+      "comment": "The kind of exchange-correlation functional. If not `LDA`, must have pylibxc_ installed. It has higher priority than :ref:`libxc<exc-libxc>`",
       "options": "LDA, PBE",
       "type": "str",
       "default": null
     },
+    "libxc": {
+      "comment": "The type of exchange-correlation functionals with pylibxc_.",
+      "options": "",
+      "type": "lstrlist",
+      "default": "lda_x lda_c_pz"
+    },
     "x_str": {
-      "comment": "The type of exchange functional.",
+      "comment": "The type of exchange functional. (deprecated)",
       "options": "",
       "type": "str",
-      "default": "lda_x"
+      "default": null
     },
     "c_str": {
-      "comment": "The type of correlation functional.",
+      "comment": "The type of correlation functional. (deprecated)",
       "options": "",
       "type": "str",
-      "default": "lda_c_pz"
+      "default": null
     }
   },
   "KEDF": {

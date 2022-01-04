@@ -30,7 +30,7 @@ class XC(AbstractFunctional):
             self.options['libxc'] = libxc
             if CheckLibXC(False):
                 self.xcfun = LibXC
-            elif xc == 'LDA':
+            elif xc.lower() == 'lda':
                 self.xcfun = LDA
             else :
                 raise ModuleNotFoundError("Install LibXC and pylibxc to use this functionality")
@@ -236,7 +236,7 @@ def LibXC(density, libxc=None, calcType={"E", "V"}, **kwargs):
 
     do_sigma = False
     #-----------------------------------------------------------------------
-    libxc = _get_libxc(libxc = libxc, **kwargs)
+    libxc = get_libxc_names(libxc = libxc, **kwargs)
     #-----------------------------------------------------------------------
     for value in libxc :
         if not isinstance(value, str):
@@ -494,7 +494,7 @@ def _GGAStress(density, xc_str='gga_x_pbe', energy=None, flag='standard', **kwar
 
 def XCStress(density, libxc=None, energy=None, flag='standard', **kwargs):
     TimeData.Begin("XCStress")
-    libxc = _get_libxc(libxc = libxc, **kwargs)
+    libxc = get_libxc_names(libxc = libxc, **kwargs)
     stress = np.zeros((3, 3))
     if energy is not None : energy = energy / len(libxc)
     for key in libxc :
@@ -508,26 +508,11 @@ def XCStress(density, libxc=None, energy=None, flag='standard', **kwargs):
     return stress
 
 
-def _get_libxc(xc = None, libxc = None, name = None, **kwargs):
-    xc = xc or name
-    if xc :
-        libxc = get_libxc_names(xc = xc)
-    elif isinstance(libxc, str):
-        libxc =[libxc]
-    elif not libxc :
-        # warnings.warn(FutureWarning("'*_str' are deprecated; please use 'libxc' or 'xc'"))
-        libxc = []
-        for key, value in kwargs.items():
-            if key in ["k_str", "x_str", "c_str"] :
-                libxc.append(value)
-    return libxc
-
-
 xc_json_file = os.path.join(os.path.dirname(__file__), 'xc.json')
 with open(xc_json_file) as f:
     xcformats = json.load(f)
 
-def get_short_name(libxc = None, xc = None, code = None):
+def get_short_xc_name(libxc = None, xc = None, code = None, **kwargs):
     name = None
     if xc :
         alias = xcformats.get(xc, {}).get('alias', {}).get(code, [])
@@ -545,17 +530,27 @@ def get_short_name(libxc = None, xc = None, code = None):
                     break
     return name
 
-def get_libxc_names(xc = None, code = None) :
-    libxc = None
-    xc = xc.lower()
-    if code :
-        for name, value in xcformats.items():
-            alias = value.get('alias', {}).get(code, [])
-            if xc in alias :
-                v = value.get('libxc', None)
-                if v : libxc = v
-                break
-    else :
-        v = xcformats.get(xc, {}).get('libxc', None)
-        if v : libxc = v
+def get_libxc_names(xc = None, libxc = None, name = None, code = None, **kwargs):
+    xc = xc or name
+    if xc :
+        xc = xc.lower()
+        if code :
+            for name, value in xcformats.items():
+                alias = value.get('alias', {}).get(code, [])
+                if xc in alias :
+                    v = value.get('libxc', None)
+                    if v : libxc = v
+                    break
+        else :
+            v = xcformats.get(xc, {}).get('libxc', None)
+            if v : libxc = v
+    elif isinstance(libxc, str):
+        libxc =[libxc]
+
+    # compatible with older version
+    libxc_old = [v for k, v in kwargs.items() if k in ["k_str", "x_str", "c_str"] and v is not None]
+    if len(libxc_old)>0 :
+        # print('libxc', libxc, libxc_old)
+        # warnings.warn(FutureWarning("'*_str' are deprecated; please use 'libxc' or 'xc'"))
+        libxc = libxc_old
     return libxc

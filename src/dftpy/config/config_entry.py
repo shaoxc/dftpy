@@ -85,6 +85,10 @@ def format_cstrlist(expression):
     return expression.title().split()
 
 
+def format_lstrlist(expression):
+    return expression.lower().split()
+
+
 def format_direction(expression):
     direct_dict = {
         "x": 0,
@@ -156,6 +160,7 @@ class ConfigEntry(object):
             "floatlist": format_floatlist,
             "strlist": format_strlist,
             "cstrlist": format_cstrlist,
+            "lstrlist": format_lstrlist,
             "direction": format_direction,
             "cdict": format_cdict,
             "cfdict": format_cfdict,
