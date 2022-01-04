@@ -209,19 +209,19 @@
       "default": null
     },
     "libxc": {
-      "comment": "The type of exchange-correlation functionals with pylibxc_.",
+      "comment": "The type of exchange-correlation functionals with pylibxc_. See `available functionals <https://www.tddft.org/programs/libxc/functionals/>`_.",
       "options": "",
       "type": "lstrlist",
       "default": "lda_x lda_c_pz"
     },
     "x_str": {
-      "comment": "The type of exchange functional. (deprecated)",
+	  "comment": "See `libxc's available exchange functionals <https://www.tddft.org/programs/libxc/functionals/>`_ (deprecated).",
       "options": "",
       "type": "str",
       "default": null
     },
     "c_str": {
-      "comment": "The type of correlation functional. (deprecated)",
+	  "comment": "See `libxc's available correlation functionals <https://www.tddft.org/programs/libxc/functionals/>`_ (deprecated).",
       "options": "",
       "type": "str",
       "default": null
