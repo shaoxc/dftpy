@@ -21,19 +21,19 @@ class XC(AbstractFunctional):
         self.options['xc'] = xc
         self._core_density = core_density
         if libxc is False :
-            if xc.lower() == 'lda' :
+            if xc and xc.lower() == 'lda' :
                 self.xcfun = LDA
             else :
-                raise AttributeError("Please try with pylibxc")
+                raise AttributeError("Default one only support 'LDA', others please try with pylibxc.")
         else :
-            if not isinstance(libxc, bool) : self.options['libxc'] = libxc
+            if isinstance(libxc, bool) : libxc = None
             self.options['libxc'] = libxc
             if CheckLibXC(False):
                 self.xcfun = LibXC
             elif xc.lower() == 'lda':
                 self.xcfun = LDA
             else :
-                raise ModuleNotFoundError("Install LibXC and pylibxc to use this functionality")
+                raise ModuleNotFoundError("Install pylibxc to use this functionality")
 
     @property
     def core_density(self):
