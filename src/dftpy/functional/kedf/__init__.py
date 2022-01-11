@@ -105,23 +105,20 @@ class KEDF(AbstractFunctional):
         functional = {}
         if density.ndim > 3:
             nspin = density.rank
-            rhos = np.sum(density, axis=0)
+            rhos = density*nspin
         else :
             nspin = 1
-            rhos = density
+            rhos = [density]
         names = name2functions(name, KEDFEngines)
-        for key in names :
-            func = KEDFEngines.get(key, None)
-            if func is None :
-                raise AttributeError("%s KEDF to be implemented" % name)
+        for rho in rhos :
+            for key in names :
+                func = KEDFEngines.get(key, None)
+                if func is None :
+                    raise AttributeError("%s KEDF to be implemented" % name)
 
-            out = func(rhos, calcType=calcType, ke_kernel_saved=self.ke_kernel_saved, **options)
+                out = func(rho, calcType=calcType, ke_kernel_saved=self.ke_kernel_saved, **options)
 
-            if split:
-                functional[key] = out
-                if 'E' in calcType : self.energies[key] = out.energy
-            else:
-                key = 'KEDF'
+                if not split: key = 'KEDF'
                 if key not in functional :
                     functional[key] = out
                 else :
@@ -130,16 +127,22 @@ class KEDF(AbstractFunctional):
         if nspin > 1 :
             """
             Note :
-                For polarization case, use total density and have same potential.
+                For polarization case, same potential for both.
             """
             for key, out in functional.items() :
-                for i in range(1, nspin):
-                    if 'V' in calcType:
-                        out.potential = out.potential.tile((nspin, 1, 1, 1))
-                    if 'D' in calcType:
-                        out.energydensity = out.energydensity.tile((nspin, 1, 1, 1))
-        if not split : functional = functional[key]
+                out = out / nspin
+                if 'V' in calcType:
+                    out.potential = out.potential.tile((nspin, 1, 1, 1))
+                if 'D' in calcType:
+                    out.energydensity = out.energydensity.tile((nspin, 1, 1, 1))
+                functional[key] = out
         #-----------------------------------------------------------------------
+        if split : # Save energies for stress
+            if 'E' in calcType :
+                for key, value in functional.items():
+                    self.energies[key] = value.energy
+        else :
+            functional = functional[key]
         return functional
 
     def stress(self, density, name=None, kedf=None, split=False, **kwargs):
@@ -154,7 +157,7 @@ class KEDF(AbstractFunctional):
             self.compute(density, calcType = {"E"}, name = name, split = True, **kwargs)
         if density.ndim > 3:
             nspin = density.rank
-            rhol = density
+            rhol = density*nspin
         else :
             nspin = 1
             rhol = [density]
@@ -162,9 +165,9 @@ class KEDF(AbstractFunctional):
         out = {}
         for k, func in funcs.items():
             if split : stress = np.zeros((3, 3))
-            energy = self.energies[k]/nspin
+            energy = self.energies[k]
             for i in range(0, nspin):
-                stress += func(rhol[i], energy=energy, **kwargs)
+                stress += func(rhol[i], energy=energy, **kwargs) / nspin
             if split : out[k] = stress
         if split : stress = out
         return stress
