@@ -19,6 +19,9 @@ def JP1Potential(rho: DirectField, j: DirectField, cutoff: float = 1.0e-2, rho_c
     iq_dot_j = 1j * j_of_g.dot(reciprocal_grid.g)
     term1 = iq_dot_j * reciprocal_grid.invq
     term2 = iq_dot_j * reciprocal_grid.q  # * np.exp(-100*gg)
+    a = 10
+    #term2 *= 1.0 / (1.0 + a * reciprocal_grid.gg)
+    #term2 *= np.exp(-a * reciprocal_grid.gg)
     #potential = 6.0 / k_F_square * term1.ifft(force_real=True) + 1.0 / k_F_fourth * term2.ifft(force_real=True)
     potential = -6.0 / k_F_square * term1.ifft(force_real=True) - 1.0 / k_F_fourth * term2.ifft(force_real=True)
     potential *= np.pi ** 3 / 12.0

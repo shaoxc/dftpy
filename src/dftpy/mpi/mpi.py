@@ -45,7 +45,7 @@ class SerialComm :
         pass
 
 class MP :
-    def __init__(self, comm = None, parallel = False, decomposition = 'Slab', **kwargs):
+    def __init__(self, comm = None, parallel = False, decomposition = 'Pencil', **kwargs):
         MPI = None
         if comm is None :
             if parallel :

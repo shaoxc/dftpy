@@ -7,6 +7,7 @@ from dftpy.mpi import mp, sprint
 from dftpy import __version__
 from dftpy.cui.main import GetConf
 from dftpy.formats.io import write
+import numpy as np
 
 
 def RunJob(args):
@@ -25,6 +26,7 @@ def RunJob(args):
         TimeData.Begin("TOTAL")
 
         system = others['struct']
+        system.field = np.abs(system.field)
         outfile = config["DENSITY"]["densityoutput"]
         write(outfile=outfile, data=system.field, ions=system.ions)
 
