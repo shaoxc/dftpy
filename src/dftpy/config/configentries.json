@@ -643,6 +643,10 @@
     "omega": {
       "type": "float",
       "default": 0
+    },
+    "z_split": {
+      "type": "float",
+      "default": 0
     }
   },
   "CASIDA": {

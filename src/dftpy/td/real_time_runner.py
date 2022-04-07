@@ -16,7 +16,7 @@ from dftpy.td.predictor_corrector import PredictorCorrector
 from dftpy.td.propagator import Propagator
 from dftpy.utils.utils import calc_rho, calc_j
 from dftpy.time_data import TimeData, timer
-
+from dftpy.constants import LEN_CONV
 
 class RealTimeRunner(Dynamics):
 
@@ -50,6 +50,9 @@ class RealTimeRunner(Dynamics):
         self.E = None
         self.correct_potential = None
         self.timer = None
+
+        #self.z_split = 0
+        self.z_split = config["TD"]['z_split'] * LEN_CONV["Angstrom"]["Bohr"]
 
         if self.vector_potential:
             self.A_t = None
@@ -159,7 +162,11 @@ class RealTimeRunner(Dynamics):
             self.A_t[self.direc] = self.k * SPEED_OF_LIGHT
             self.A_tm1 = self.A_t.copy()
         else:
-            x = self.system.field.grid.r[self.direc]
+            if self.z_split == 0:
+                x = self.system.field.grid.r[self.direc]
+            else:
+                mask = self.system.field.grid.r[2] >= self.z_split
+                x = self.system.field.grid.r[self.direc] * mask
             self.psi = np.sqrt(self.system.field) * np.exp(1j * self.k * x)
         self.psi.cplx = True
 
@@ -171,7 +178,14 @@ class RealTimeRunner(Dynamics):
 
     def calc_obeservables(self):
         delta_rho = self.rho - self.system.field
-        self.delta_mu = (delta_rho * delta_rho.grid.r).integral()
+        if self.z_split == 0:
+            self.delta_mu = (delta_rho * delta_rho.grid.r).integral()
+        else:
+            mask = self.system.field.grid.r[2] >= self.z_split
+            self.delta_mu = [(delta_rho * mask * delta_rho.grid.r).integral()]
+            mask = self.system.field.grid.r[2] < self.z_split
+            self.delta_mu.append((delta_rho * mask * delta_rho.grid.r).integral())
+
         self.j_int = self.j.integral()
         self.calc_energy()
 
@@ -240,7 +254,11 @@ def real_time_runner_print_title(fileobj, vector_potential=False):
 def real_time_runner_print_data(fileobj, t, E, mu, j, A=None):
     sprint("{0:17.10e}".format(t), end='', fileobj=fileobj)
     sprint(" {0:17.10e}".format(E), end='', fileobj=fileobj)
-    sprint(" {0:17.10e} {1:17.10e} {2:17.10e}".format(mu[0], mu[1], mu[2]), end='', fileobj=fileobj)
+    if not isinstance(mu[0], np.ndarray):
+        sprint(" {0:17.10e} {1:17.10e} {2:17.10e}".format(mu[0], mu[1], mu[2]), end='', fileobj=fileobj)
+    else:
+        for m in mu:
+            sprint(" {0:17.10e} {1:17.10e} {2:17.10e}".format(m[0], m[1], m[2]), end='', fileobj=fileobj)
     sprint(" {0:17.10e} {1:17.10e} {2:17.10e}".format(j[0], j[1], j[2]), end='',
            fileobj=fileobj)
     if A is not None:
