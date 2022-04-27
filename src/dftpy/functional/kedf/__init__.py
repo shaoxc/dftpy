@@ -240,7 +240,7 @@ class NLGGA(AbstractFunctional):
         if self.level > 2:
             func_stv = self.stv(density, calcType=calc, **kwargs)
             func_nl = self.nl(density_trunc, calcType=calc, **kwargs)
-            kdd = kwargs.get('kdd', self.nl.kwargs.get('kdd', 1))
+            kdd = kwargs.get('kdd', self.nl.options.get('kdd', 1))
             if kdd < 3:
                 func_nl.energydensity = 3.0 / 8.0 * density_trunc * func_nl.potential
 
