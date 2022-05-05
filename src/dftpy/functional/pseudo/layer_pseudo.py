@@ -14,7 +14,7 @@ class LayerPseudo(ExternalPotential):
         self.ions = ions
         self.vr = vr
         self.r = r
-        if r:
+        if r is not None:
             self.r_cut = r[-1]
         self.dis = None
         self.distance()
@@ -26,7 +26,7 @@ class LayerPseudo(ExternalPotential):
 
     @property
     def v(self):
-        if self._v:
+        if self._v is not None:
             return self._v
 
         from scipy.interpolate import splrep, splev
