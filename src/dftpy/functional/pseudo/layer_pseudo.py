@@ -4,6 +4,7 @@ from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
 from typing import List
 import numpy as np
+from dftpy.math_utils import PowerInt
 
 
 class LayerPseudo(ExternalPotential):
@@ -22,7 +23,11 @@ class LayerPseudo(ExternalPotential):
     def distance(self):
         self.dis = DirectField(self.grid, griddata_3d=np.zeros(self.grid.nr))
         for ion in self.ions:
-            self.dis[(self.dis.grid.r[0]-ion.pos[0])**2+(self.dis.grid.r[1]-ion.pos[1])**2+(self.dis.grid.r[0]-ion.pos[0])**2<self.r_cut] = np.sqrt((self.dis.grid.r[0]-ion.pos[0])**2+(self.dis.grid.r[1]-ion.pos[1])**2+(self.dis.grid.r[0]-ion.pos[0])**2)
+            dis_ion = np.sqrt(
+                PowerInt((self.dis.grid.r[0] - ion.pos[0]), 2) +
+                PowerInt((self.dis.grid.r[1] - ion.pos[1]), 2) +
+                PowerInt((self.dis.grid.r[2] - ion.pos[2]), 2))
+            self.dis[dis_ion <= self.r_cut] = dis_ion[dis_ion <= self.r_cut]
 
     @property
     def v(self):
