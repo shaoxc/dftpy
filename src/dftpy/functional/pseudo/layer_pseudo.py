@@ -37,7 +37,7 @@ class LayerPseudo(ExternalPotential):
         from scipy.interpolate import splrep, splev
         spl = splrep(self.r, self.vr)
         self._v = splev(self.dis, spl)
-        self._v = DirectField(self.grid, griddata_3d=np.zeros(self._v))
+        self._v = DirectField(self.grid, griddata_3d=self._v)
         return self._v
 
 
