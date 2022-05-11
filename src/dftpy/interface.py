@@ -106,6 +106,8 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
     kedf_config = config["KEDF"].copy()
     if kedf_config.get('temperature', None):
         kedf_config['temperature'] *= ENERGY_CONV['eV']['Hartree']
+    if kedf_config.get('temperature0', None):
+        kedf_config['temperature0'] *= ENERGY_CONV['eV']['Hartree']
     KE = Functional(type="KEDF", name=config["KEDF"]["kedf"], **kedf_config)
     ############################## XC and Hartree ##############################
     HARTREE = Functional(type="HARTREE")
@@ -226,11 +228,13 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2 = None):
     values = [item.energy for item in ep]
     values = rho.mp.vsum(values)
     ep_w = dict(zip(keys, values))
+    ke_energy = 0.0
     for key in sorted(keys):
         if key == "TOTAL":
             continue
         value = ep_w[key]
         sprint("{:>10s} energy (eV): {:22.15E}".format(key, ep_w[key]* ENERGY_CONV["Hartree"]["eV"]))
+        if key.startswith('KEDF'): ke_energy += ep_w[key]
     etot = ep_w['TOTAL']
     sprint("{:>10s} energy (eV): {:22.15E}".format("TOTAL", etot * ENERGY_CONV["Hartree"]["eV"]))
     sprint("-" * 80)
@@ -238,6 +242,8 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2 = None):
     etot_eV = etot * ENERGY_CONV["Hartree"]["eV"]
     etot_eV_patom = etot * ENERGY_CONV["Hartree"]["eV"] / ions.nat
     fstr = "  {:<30s} : {:30.15f}"
+    sprint(fstr.format("kedfs energy (a.u.)", ke_energy))
+    sprint(fstr.format("kedfs energy (eV)", ke_energy* ENERGY_CONV["Hartree"]["eV"]))
     sprint(fstr.format("total energy (a.u.)", etot))
     sprint(fstr.format("total energy (eV)", etot_eV))
     sprint(fstr.format("total energy (eV/atom)", etot_eV_patom))

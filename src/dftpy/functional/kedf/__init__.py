@@ -39,6 +39,7 @@ KEDFEngines= {
         "LMGPA-NL": LMGPA,
         "LMGPG-NL": LMGPG,
         "HC-NL": HC,
+        "DTTF": TTF,
         "LIBXC_KEDF": LibXC,
         "X_TF_Y_VW": ("TF", "VW"),
         "XTFYVW": ("TF", "VW"),
@@ -54,7 +55,7 @@ KEDFEngines= {
         "LMGPA": ("TF", "VW", "LMGPA-NL"),
         "LMGPG": ("TF", "VW", "LMGPG-NL"),
         "HC": ("TF", "VW", "HC-NL"),
-        "TTF": TTF,
+        "TTF": TF,
         }
 
 KEDFEngines_Stress = {
@@ -110,6 +111,10 @@ class KEDF(AbstractFunctional):
             nspin = 1
             rhos = [density]
         names = name2functions(name, KEDFEngines)
+        #-----------------------------------------------------------------------
+        temperature = options.get('temperature0', None) or options.get('temperature', None)
+        if temperature : names = {**names, 'DTTF':TTF}
+        #-----------------------------------------------------------------------
         for rho in rhos :
             for key in names :
                 func = KEDFEngines.get(key, None)
