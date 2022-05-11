@@ -636,6 +636,14 @@ class DirectField(BaseField):
         value = self.__class__(grid=grid, rank=self.rank, griddata_3d=value, cplx=self.cplx, fft_data=None)
         return value
 
+    def write(self, filename, ions = None, format=None, **kwargs):
+        from dftpy.formats import io as dftpy_io
+        dftpy_io.write(filename, data=self, ions=ions, format=format, **kwargs)
+
+    def read(self, filename, format=None, **kwargs):
+        from dftpy.formats import io as dftpy_io
+        self[:] = dftpy_io.read_density(filename, format=format, **kwargs)
+
 
 class ReciprocalField(BaseField):
     def __new__(cls, grid, memo="", rank=1, data = None, order = 'C', cplx=False, **kwargs):
