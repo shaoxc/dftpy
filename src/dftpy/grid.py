@@ -186,7 +186,10 @@ class BaseGrid(BaseCell):
                     out[inds] = bufs[i]
             self.mp.comm.Barrier()
         else :
-            out = data.copy()
+            if out is None :
+                out = data.copy()
+            else :
+                out[:] = data
         return out
 
     def scatter(self, data, out = None, root = 0, **kwargs):
