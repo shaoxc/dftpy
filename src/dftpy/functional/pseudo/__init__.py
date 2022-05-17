@@ -4,6 +4,7 @@ from abc import abstractmethod
 import numpy as np
 import scipy.special as sp
 from scipy.interpolate import splrep, splev
+import re
 
 from dftpy.atom import Atom
 from dftpy.ewald import CBspline
@@ -510,6 +511,21 @@ class ReadPseudo(object):
                 raise FileNotFoundError("'{}' PP file for atom type {} not found".format(self.PP_list[key], key))
             self._init_pp(key, **kwargs)
             self.get_vloc_interp(key)
+
+    @property
+    def PP_list(self):
+        return self._PP_list
+
+    @PP_list.setter
+    def PP_list(self, value):
+        if isinstance(value, (list, tuple)):
+            dicts = {}
+            pattern = re.compile(r'[.-_@]')
+            for item in value :
+                k = pattern.split(os.path.basename(item))[0]
+                dicts[k.capitalize()] = item
+            value = dicts
+        self._PP_list = value
 
     def get_vloc_interp(self, key, k=3):
         """get the representation of PP
