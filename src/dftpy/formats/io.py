@@ -14,6 +14,7 @@ IOFormats= {
             "xsf"     : ioformat('xsf' , 'dftpy.formats.xsf'   , 'read_xsf' , 'write_xsf' , ['cell', 'field', 'all']),
             "pp"      : ioformat('qepp', 'dftpy.formats.qepp'  , 'read_qepp', 'write_qepp', ['cell', 'field', 'all']),
             "qepp"    : ioformat('qepp', 'dftpy.formats.qepp'  , 'read_qepp', 'write_qepp', ['cell', 'field', 'all']),
+            "cube"    : ioformat('cube', 'dftpy.formats.cube'  , 'read_cube', 'write_cube', ['cell', 'field', 'all']),
             "den"     : ioformat('den' , 'dftpy.formats.den'   , 'read_den' , 'write_den' , ['field']),
             "xyz"     : ioformat('xyz' , 'dftpy.formats.xyz'   , 'read_xyz' , 'write_xyz' , ['cell']),
             "extxyz"  : ioformat('xyz' , 'dftpy.formats.xyz'   , 'read_xyz' , 'write_xyz' , ['cell']),

@@ -213,9 +213,9 @@ class XSF(object):
         data = []
         for p in plot :
             values = p.get_values_flatarray(pad=1, order="F") / LEN_CONV["Bohr"][self.xsf_units] ** 3
+            if data_type == 'potential' :
+                values = values * ENERGY_CONV["Hartree"]["eV"]
             data.append(values)
-        if data_type == 'potential' :
-            values = values * ENERGY_CONV["Hartree"]["eV"]
 
         mywrite(fileout, "BEGIN_BLOCK_DATAGRID_{}D".format(ndim), True)
         mywrite(fileout, "{}d_datagrid_{}".format(ndim, data_type), True)
