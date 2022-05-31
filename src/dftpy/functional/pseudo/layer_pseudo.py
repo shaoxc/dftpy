@@ -2,44 +2,50 @@ from dftpy.functional.external_potential import ExternalPotential
 from dftpy.atom import Atom
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
-from typing import List
 import numpy as np
 from dftpy.math_utils import PowerInt
+from dftpy.density.density import AtomicDensity
+from scipy.interpolate import splrep, splev
 
 
 class LayerPseudo(ExternalPotential):
 
-    def __init__(self, vr=None, r=None, grid: DirectGrid = None, ions: List[Atom] = None, **kwargs):
+    def __init__(self, vr=None, r=None, grid: DirectGrid = None, ions: Atom = None, **kwargs):
         super().__init__()
         self.grid = grid
         self.ions = ions
-        self.vr = vr
+        if self.ions is not None:
+            self.key = self.ions.labels[0]
+        self._vr = vr
         self.r = r
         if r is not None:
             self.r_cut = r[-1]
-        self.dis = None
-        self.distance()
 
-    def distance(self):
-        self.dis = DirectField(self.grid, griddata_3d=np.zeros(self.grid.nr))
-        for ion in self.ions:
-            dis_ion = np.sqrt(
-                PowerInt((self.dis.grid.r[0] - ion.pos[0]), 2) +
-                PowerInt((self.dis.grid.r[1] - ion.pos[1]), 2) +
-                PowerInt((self.dis.grid.r[2] - ion.pos[2]), 2))
-            self.dis[dis_ion <= self.r_cut] = dis_ion[dis_ion <= self.r_cut]
+    @property
+    def vr(self):
+        return self._vr
+
+    @vr.setter
+    def vr(self, new_vr):
+        self._vr = new_vr
+        self.update_v()
 
     @property
     def v(self):
         if self._v is not None:
             return self._v
-
-        from scipy.interpolate import splrep, splev
-        spl = splrep(self.r, self.vr)
-        self._v = splev(self.dis, spl)
-        self._v = DirectField(self.grid, griddata_3d=self._v)
+        self.update_v()
         return self._v
 
+    def update_v(self):
+        spl = splrep(self.r, self.vr)
+        self._v = DirectField(self.grid)
+        self.calc_dis = AtomicDensity(self.grid, self.ions, self.key, self.r_cut)
+        for dis in self.calc_dis.distance():
+            dv0 = splev(dis['dists'], spl)
+            dv1 = np.zeros_like(dv0)
+            dv1[dis['index']] = dv0[dis['index']]
+            self._v[dis['l123A'][0][dis['mask']], dis['l123A'][1][dis['mask']], dis['l123A'][2][dis['mask']]] += dv1.ravel()[dis['mask']]
 
     # def __init__(self, **kwargs):
     #     self._gp = {}  # 1D PP grid g-space
