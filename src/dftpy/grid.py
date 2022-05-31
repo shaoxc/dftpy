@@ -391,6 +391,20 @@ class DirectGrid(BaseGrid, DirectCell):
         value = super().gather(data, self.nrR, out = out, **kwargs)
         return value
 
+    def get_array_mask(self, xyz):
+        if self.mp.comm.size == 1: return slice(None)
+        offsets = self.offsets.reshape((3, 1))
+        nr = self.nr
+        # -----------------------------------------------------------------------
+        xyz -= offsets
+        mask = np.logical_and(xyz[0] > -1, xyz[0] < nr[0])
+        mask1 = np.logical_and(xyz[1] > -1, xyz[1] < nr[1])
+        np.logical_and(mask, mask1, out=mask)
+        np.logical_and(xyz[2] > -1, xyz[2] < nr[2], out=mask1)
+        np.logical_and(mask, mask1, out=mask)
+        # -----------------------------------------------------------------------
+        return mask
+
 
 class ReciprocalGrid(BaseGrid, ReciprocalCell):
     """
