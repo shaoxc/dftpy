@@ -32,3 +32,31 @@ class System(object):
     @property
     def natoms(self):
         return np.shape(self.ions.pos)[0]
+
+    def copy(self):
+        kws = {}
+        for key in ['ions', 'cell', 'field'] :
+            value = getattr(self, key, None)
+            if value is not None : value = value.copy()
+            kws[key] = value
+        system = self.__class__(**kws)
+        return system
+
+    def __add__(self, other):
+        system = self.copy()
+        system += other
+        return system
+
+    def __iadd__(self, other):
+        if other.ions is not None :
+            if self.ions is not None :
+                self.ions = self.ions + other.ions
+            else :
+                self.ions = other.ions.copy()
+
+        if other.field is not None :
+            if self.field is not None :
+                self.field+= other.field
+            else :
+                self.field = other.field.copy()
+        return self

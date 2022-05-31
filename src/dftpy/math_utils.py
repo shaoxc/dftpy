@@ -121,13 +121,13 @@ def LineSearchDcsrchVector(func, alpha0=None, func0=None, c1=1e-4, c2=0.9, amax=
         resA.append(g1)
         direction = get_direction_CG(resA, dirA=dirA, method="CG-PR")
         dirA.append(direction)
-        grad = (g1 * direction).asum()
+        grad = (g1 * direction).sum()
         if grad > 0.0 :
             direction = -g1
-            grad = (g1 * direction).asum()
+            grad = (g1 * direction).sum()
 
         task = b"START"
-        factor = (np.abs(direction).amax())
+        factor = (np.abs(direction).max())
         beta = min(0.1, 0.1 * np.pi/factor)
         # stop
         for j in range(maxiter):
@@ -138,14 +138,14 @@ def LineSearchDcsrchVector(func, alpha0=None, func0=None, c1=1e-4, c2=0.9, amax=
                 func1 = func(alpha1)
                 x1 = func1[0]
                 g1 = func1[1]
-                grad = (g1 * direction).asum()
+                grad = (g1 * direction).sum()
             else:
                 break
         else:
             alpha1 = None
         if task[:5] == b"ERROR" or task[:4] == b"WARN":
             alpha1 = None  # failed
-        if alpha1 is None or (g1 * g1).asum() < econv :
+        if alpha1 is None or (g1 * g1).sum() < econv :
             break
     return alpha1, x1, g1, task, it, func1
 
@@ -383,7 +383,8 @@ class LBFGS(object):
             self.rho.pop(0)
         self.s.append(dx)
         self.y.append(dg)
-        rho = 1.0 / (dg * dx).asum()
+        asum = dx.grid.mp.asum if hasattr(dx, 'grid') else np.sum
+        rho = 1.0 / asum(dg*dx)
 
         self.rho.append(rho)
 
@@ -394,23 +395,24 @@ def get_direction_CG(resA, dirA=None, method="CG-HS", **kwargs):
     HS->DY->CD
 
     """
+    asum = resA[-1].grid.mp.asum if hasattr(resA[-1], 'grid') else np.sum
     if len(resA) == 1:
         beta = 0.0
     elif method == "CG-HS" and len(dirA) > 0:  # Maybe the best of the CG.
-        beta = (resA[-1] * (resA[-1] - resA[-2])).asum() / (dirA[-1] * (resA[-1] - resA[-2])).asum()
+        beta = asum(resA[-1] * (resA[-1] - resA[-2])) / asum(dirA[-1] * (resA[-1] - resA[-2]))
     elif method == "CG-FR":
-        beta = (resA[-1] ** 2).asum() / (resA[-2] ** 2).asum()
+        beta = asum(resA[-1] ** 2) / asum(resA[-2] ** 2)
     elif method == "CG-PR":
-        beta = (resA[-1] * (resA[-1] - resA[-2])).asum() / (resA[-2] ** 2).asum()
+        beta = asum(resA[-1] * (resA[-1] - resA[-2])) / asum(resA[-2] ** 2)
         beta = max(beta, 0.0)
     elif method == "CG-DY" and len(dirA) > 0:
-        beta = (resA[-1] ** 2).asum() / (dirA[-1] * (resA[-1] - resA[-2])).asum()
+        beta = asum(resA[-1] ** 2) / asum(dirA[-1] * (resA[-1] - resA[-2]))
     elif method == "CG-CD" and len(dirA) > 0:
-        beta = -(resA[-1] ** 2).asum() / (dirA[-1] * resA[-2]).asum()
+        beta = -(resA[-1] ** 2) / asum(dirA[-1] * resA[-2])
     elif method == "CG-LS" and len(dirA) > 0:
-        beta = (resA[-1] * (resA[-1] - resA[-2])).asum() / (dirA[-1] * resA[-2]).asum()
+        beta = asum(resA[-1] * (resA[-1] - resA[-2])) / asum(dirA[-1] * resA[-2])
     else:
-        beta = (resA[-1] ** 2).asum() / (resA[-2] ** 2).asum()
+        beta = asum(resA[-1] ** 2) / asum(resA[-2] ** 2)
 
     if dirA is None or len(dirA) == 0:
         direction = -resA[-1]
@@ -429,8 +431,10 @@ def get_direction_LBFGS(resA, lbfgs=None, **kwargs):
     direction = np.zeros_like(resA[-1])
     q = -resA[-1]
     alphaList = np.zeros(len(lbfgs.s))
+    asum = resA[-1].grid.mp.asum if hasattr(resA[-1], 'grid') else np.sum
     for i in range(len(lbfgs.s) - 1, 0, -1):
-        alpha = lbfgs.rho[i] * (lbfgs.s[i] * q).asum()
+        # alpha = lbfgs.rho[i] * (lbfgs.s[i] * q).asum()
+        alpha = lbfgs.rho[i] * asum(lbfgs.s[i] * q)
         alphaList[i] = alpha
         q -= alpha * lbfgs.y[i]
 
@@ -438,13 +442,13 @@ def get_direction_LBFGS(resA, lbfgs=None, **kwargs):
         if len(lbfgs.s) < 1:
             gamma = 1.0
         else:
-            gamma = (lbfgs.s[-1] * lbfgs.y[-1]).asum() / (lbfgs.y[-1] * lbfgs.y[-1]).asum()
+            gamma = asum(lbfgs.s[-1] * lbfgs.y[-1]) / asum(lbfgs.y[-1] * lbfgs.y[-1])
         direction = gamma * q
     else:
         direction = lbfgs.H0 * q
 
     for i in range(len(lbfgs.s)):
-        beta = lbfgs.rho[i] * (lbfgs.y[i] * direction).asum()
+        beta = lbfgs.rho[i] * asum(lbfgs.y[i] * direction)
         direction += lbfgs.s[i] * (alphaList[i] - beta)
 
     return direction

@@ -111,14 +111,29 @@ class BaseGrid(BaseCell):
     def full(self):
         return self._full
 
-    def repeat(self, reps=1):
-        reps = np.ones(3, dtype='int')*reps
+    def tile(self, reps=1):
+        # it only repeat last three dimensions with same rep
+        try:
+            tup = tuple(reps)
+        except TypeError:
+            tup = (reps,)
+        reps = np.ones(3, dtype='int')
+        for i, x in enumerate(tup):
+            reps[i] = x
         lattice = self.lattice.copy()
         for i in range(3):
             lattice[:, i] *= reps[i]
         nr = self.nr * reps
         results = self.__class__(lattice, nr, origin=self.origin, full=self.full, cplx=self.cplx)
         return results
+
+    def repeat(self, rep=1):
+        # it only repeat last three dimensions with same rep
+        if not isinstance(rep, int):
+            raise AttributeError("Grid repeat only support one integer, Please use 'tile'.")
+        if self.rank == 1 :
+            reps = np.ones(3, dtype='int')*rep
+        return self.tile(reps)
 
     def local_slice(self, nr, **kwargs):
         self._slice, self._nr, self._offsets = self.mp.get_local_fft_shape(nr, **kwargs)
@@ -144,13 +159,18 @@ class BaseGrid(BaseCell):
             reqs = []
             bufs = []
             if self.mp.rank == root:
+                rank = 1 if getattr(data, 'ndim', 1) < 4 else data.shape[0]
                 if out is None :
+                    if nr is None : nr = self.nrR
+                    if rank>1 : nr = (rank, *nr)
                     out = np.empty(nr, dtype = data.dtype)
                 for i in range(0, self.mp.comm.size):
                     if i == root :
                         buf = data
                     else :
-                        buf = np.empty(self.nr_all[i], dtype = data.dtype)
+                        shape = self.nr_all[i]
+                        if rank>1 : shape = (rank, *shape)
+                        buf = np.empty(shape, dtype = data.dtype)
                         req = self.mp.comm.Irecv(buf, source = i, tag = i)
                         reqs.append(req)
                     bufs.append(buf)
@@ -161,7 +181,9 @@ class BaseGrid(BaseCell):
             self.mp.MPI.Request.Waitall(reqs)
             if self.mp.rank == root:
                 for i in range(0, self.mp.comm.size):
-                    out[self.slice_all[i]] = bufs[i]
+                    inds = self.slice_all[i]
+                    if rank>1 : inds = (slice(None), *inds)
+                    out[inds] = bufs[i]
             self.mp.comm.Barrier()
         else :
             out = data.copy()
@@ -170,15 +192,26 @@ class BaseGrid(BaseCell):
     def scatter(self, data, out = None, root = 0, **kwargs):
         if self.mp.is_mpi :
             reqs = []
+            rank = 1 if getattr(data, 'ndim', 1) < 4 else data.shape[0]
+            rank = self.mp.amax(rank)
             if out is None :
-                out = np.empty(self.nr, dtype = data.dtype)
+                nr = self.nr
+                if rank>1 : nr = (rank, *nr)
+                out = np.empty(nr, dtype = data.dtype)
             if self.mp.rank == root :
                 for i in range(0, self.mp.comm.size):
                     if i == root :
-                        out[:] = data[self.slice_all[i]]
+                        inds = self.slice_all[i]
+                        if rank>1 : inds = (slice(None), *inds)
+                        out[:] = data[inds]
                     else :
-                        buf = np.empty(self.nr_all[i], dtype = data.dtype)
-                        buf[:] = data[self.slice_all[i]]
+                        shape = self.nr_all[i]
+                        inds = self.slice_all[i]
+                        if rank>1 :
+                            shape = (rank, *shape)
+                            inds = (slice(None), *inds)
+                        buf = np.empty(shape, dtype = data.dtype)
+                        buf[:] = data[inds]
                         req = self.mp.comm.Isend(buf, dest = i, tag = i)
                         reqs.append(req)
             else :
@@ -190,8 +223,11 @@ class BaseGrid(BaseCell):
             if out is None :
                 out = data.copy()
             else :
-                out[:] = data.copy()
+                out[:] = data
         return out
+
+    def free(self):
+        self.mp.free()
 
 
 class DirectGrid(BaseGrid, DirectCell):
@@ -291,7 +327,7 @@ class DirectGrid(BaseGrid, DirectCell):
                 self._nrG[-1] = self._nrG[-1] // 2 + 1
 
     def get_reciprocal(self, scale=None, convention: str = "physics") -> 'ReciprocalGrid':
-        """
+        r"""
             Returns a new ReciprocalCell, the reciprocal cell of self
             The ReciprocalCell is scaled properly to include
             the scaled (*self.nr) reciprocal grid points
@@ -447,7 +483,7 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
         return invq
 
     def get_direct(self, scale= None, convention="physics"):
-        """
+        r"""
             Returns a new DirectCell, the direct cell of self
             The DirectCell is scaled properly to include
             the scaled (*self.nr) reciprocal grid points

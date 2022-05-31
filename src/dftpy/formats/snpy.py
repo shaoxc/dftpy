@@ -105,19 +105,37 @@ def read(fname, mp=None, grid=None, kind="all", full=False, datarep='native', de
         elif key == 4 : # read volumetric data
             if mp.size == 1 :
                 data = npy.read(fh, single=True)
+                shape = data.shape
+                if len(shape) == 4 :
+                    rank = shape[0]
+                    shape = shape[1:]
+                else :
+                    rank = 1
                 if grid is None :
-                    grid = DirectGrid(lattice=lattice, nr=data.shape, full=full, mp=mp)
-                data = DirectField(grid=grid, griddata_3d=data, rank=1)
+                    grid = DirectGrid(lattice=lattice, nr=shape, full=full, mp=mp)
+                data = DirectField(grid=grid, griddata_3d=data, rank=rank)
             else :
                 shape, fortran_order, dtype = npy._read_header(fh)
-                if fortran_order :
-                    raise AttributeError("Not support Fortran order")
+                if len(shape) == 4 :
+                    rank = shape[0]
+                    shape = shape[1:]
+                else :
+                    rank = 1
+                # if fortran_order :
+                #     raise AttributeError("Not support Fortran order")
                 if grid is None :
                     grid = DirectGrid(lattice=lattice, nr=shape, full=full, mp=mp)
                 elif not(np.all(shape == grid.nrR) or np.all(shape == grid.nrG)):
-                    raise AttributeError("The shape is not match with grid")
-                data = DirectField(grid=grid, rank=1)
-                npy._read_value(fh, data, datarep=datarep)
+                    raise AttributeError("The shape {} is not match with grid {} (or {})".format(shape, grid.nrR, grid.nrG))
+                order = 'F' if fortran_order else 'C'
+                data = DirectField(grid=grid, rank=rank, order = order)
+                npy._read_value(fh, data, datarep=datarep, fortran_order=fortran_order)
 
     if isinstance(fname, str): fh.close()
     return System(atoms, grid, name="DFTpy", field=data)
+
+def read_snpy(fname, **kwargs):
+    return read(fname, **kwargs)
+
+def write_snpy(fname, *args, **kwargs):
+    return write(fname, *args, **kwargs)

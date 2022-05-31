@@ -34,9 +34,10 @@ class MPI4PYFFTRUN :
         return results
 
 
-def get_mpi4py_fft(comm, nr, decomposition = 'Slab', backend = None, grid = None, max_saved = 4, cplx = False, **kwargs):
+def get_mpi4py_fft(comm, nr, decomposition = 'Slab', backend = None, grid = None, max_saved = 10, cplx = False, **kwargs):
     """
-    'max_saved' means the number of fft objects saved.
+    Note :
+        'max_saved' means the number of fft objects saved. It should be manual release. see MP.free()
     """
     fft_support = ['pyfftw', 'numpy','scipy', 'mkl_fft']
     # fft_support = ['fftw', 'pyfftw', 'numpy','scipy', 'mkl_fft']
@@ -65,7 +66,10 @@ def get_mpi4py_fft(comm, nr, decomposition = 'Slab', backend = None, grid = None
         else :
             fft = PFFT(comm, nr, axes=(0, 1, 2), dtype=dtype, backend = backend)
         if len(fft_saved) >= max_saved :
-            for key in fft_saved : del fft_saved[key]; break
+            for key in fft_saved :
+                delfft = fft_saved.pop(key)
+                delfft.destroy()
+                break
         fft_saved[id(comm)] = fft
     return fft
 

@@ -2,6 +2,8 @@
 
 import numpy as np
 import copy
+import os
+import json
 
 from dftpy.field import DirectField
 from dftpy.functional.abstract_functional import AbstractFunctional
@@ -10,22 +12,28 @@ from dftpy.time_data import TimeData
 
 
 class XC(AbstractFunctional):
-    def __init__(self, xc=None, core_density=None, libxc=True, name=None, x_str = 'lda_x', c_str = 'lda_c_pz', **kwargs):
+    def __init__(self, xc=None, core_density=None, libxc=None, name=None, **kwargs):
         self.type = 'XC'
         self.name = name or 'XC'
+        self.energy = None
         xc = xc or name
-        self.kwargs = {'xc': xc, 'x_str' : x_str, 'c_str' : c_str}
-        self.kwargs.update(kwargs)
+        self.options = kwargs
+        self.options['xc'] = xc
         self._core_density = core_density
-        if libxc:
-            if CheckLibXC(False):
-                self.xcfun = LibXC
-            elif xc == 'LDA':
+        if libxc is False :
+            if xc and xc.lower() == 'lda' :
                 self.xcfun = LDA
             else :
-                raise ModuleNotFoundError("Install LibXC and pylibxc to use this functionality")
-        else:
-            self.xcfun = LDA
+                raise AttributeError("Default one only support 'LDA', others please try with pylibxc.")
+        else :
+            if isinstance(libxc, bool) : libxc = None
+            self.options['libxc'] = libxc
+            if CheckLibXC(False):
+                self.xcfun = LibXC
+            elif xc.lower() == 'lda':
+                self.xcfun = LDA
+            else :
+                raise ModuleNotFoundError("Install pylibxc to use this functionality")
 
     @property
     def core_density(self):
@@ -36,9 +44,8 @@ class XC(AbstractFunctional):
         self._core_density = value
 
     def compute(self, density, calcType={"E", "V"}, **kwargs):
-
-        kw_args = copy.deepcopy(self.kwargs)
-        kw_args.update(kwargs)
+        options = copy.deepcopy(self.options)
+        options.update(kwargs)
         core_density = self.core_density
         if core_density is None:
             new_density = density
@@ -49,17 +56,16 @@ class XC(AbstractFunctional):
             new_density[0] += 0.5 * core_density
             new_density[1] += 0.5 * core_density
 
-        xc = kw_args.get('xc', None)
-        if xc == 'PBE':
-            xc_kwargs = {"x_str": "gga_x_pbe", "c_str": "gga_c_pbe"}
-        elif xc == 'LDA':
-            xc_kwargs = {"x_str": "lda_x", "c_str": "lda_c_pz"}
-        else:
-            xc_kwargs = {}
-        kw_args.update(xc_kwargs)
-
-        functional = self.xcfun(new_density, calcType=calcType, **kw_args)
+        functional = self.xcfun(new_density, calcType=calcType, **options)
+        if 'E' in calcType : self.energy = functional.energy
         return functional
+
+    def stress(self, density, **kwargs):
+        options = copy.deepcopy(self.options)
+        options.update(kwargs)
+        energy = self.energy
+        stress=XCStress(density, energy=energy, **options)
+        return stress
 
 
 def CheckLibXC(stop = True):
@@ -216,43 +222,43 @@ def Get_LibXC_Output(out, density):
     return OutFunctional
 
 
-def LibXC(density, k_str=None, x_str=None, c_str=None, calcType={"E", "V"}, **kwargs):
+def LibXC(density, libxc=None, calcType={"E", "V"}, **kwargs):
     """
      Output:
         - out_functional: a functional evaluated with LibXC
      Input:
         - density: a DirectField (rank=1)
-        - k_str, x_str,c_str: strings like "gga_k_lc94", "gga_x_pbe" and "gga_c_pbe"
+        - libxc: strings like "gga_k_lc94", "gga_x_pbe" and "gga_c_pbe"
     """
     TimeData.Begin("LibXC")
     if CheckLibXC():
         from pylibxc.functional import LibXCFunctional
 
-    args = locals()
     do_sigma = False
-    func_str = {}
-    for key, value in args.items():
-        if key in ["k_str", "x_str", "c_str"] and value is not None:
-            if not isinstance(value, str):
-                raise AttributeError(
-                    "{} must be LibXC functionals. Check pylibxc.util.xc_available_functional_names()".format(key)
-                )
+    #-----------------------------------------------------------------------
+    libxc = get_libxc_names(libxc = libxc, **kwargs)
+    #-----------------------------------------------------------------------
+    for value in libxc :
+        if not isinstance(value, str):
+            raise AttributeError(
+                    "{} must be LibXC functionals. Check pylibxc.util.xc_available_functional_names()".format(value)
+                    )
             if value.startswith('hyb') or value.startswith('mgga'):
                 raise AttributeError('Hybrid and Meta-GGA functionals have not been implemented yet')
-            if value.startswith('gga'):
-                do_sigma = True
-            func_str[key] = value
-    if not func_str:
-        raise AttributeError("At least one of the k_str, x_str, c_str must not be None.")
+        if value.startswith('gga'):
+            do_sigma = True
+
+    if not libxc:
+        raise AttributeError("Please give a short name 'xc' or a list 'libxc'.")
 
     if not isinstance(density, (DirectField)):
-        raise TypeError("density must be a rank-1 or -2 PBCpy DirectField")
+        raise TypeError("Density should be a DirectField")
     if density.rank == 1:
         polarization = "unpolarized"
     elif density.rank == 2:
         polarization = "polarized"
     else:
-        raise AttributeError("density must be a rank-1 or -2 PBCpy DirectField")
+        raise AttributeError("Only support nspin=1 or 2.")
 
     inp = Get_LibXC_Input(density, do_sigma=do_sigma)
     kargs = {'do_exc': False, 'do_vxc': False}
@@ -267,12 +273,13 @@ def LibXC(density, k_str=None, x_str=None, c_str=None, calcType={"E", "V"}, **kw
     if 'V4' in calcType:
         kargs.update({'do_lxc': True})
 
-    for key, value in func_str.items():
+    out_functional = None
+    for value in libxc :
         func = LibXCFunctional(value, polarization)
         TimeData.Begin("libxc_eval")
         out = func.compute(inp, **kargs)
         TimeData.End("libxc_eval")
-        if 'out_functional' in locals():
+        if out_functional is not None :
             out_functional += Get_LibXC_Output(out, density)
             out_functional.name += "_" + value
         else:
@@ -283,18 +290,11 @@ def LibXC(density, k_str=None, x_str=None, c_str=None, calcType={"E", "V"}, **kw
 
 
 def PBE(density, calcType={"E", "V"}):
-    return LibXC(
-        density=density,
-        x_str="gga_x_pbe",
-        c_str="gga_c_pbe",
-        calcType=calcType
-    )
+    return LibXC(density=density, libxc = ["gga_x_pbe", "gga_c_pbe"], calcType=calcType)
 
 
 def LDA_XC(density, calcType={"E", "V"}):
-    return LibXC(
-        density=density, x_str="lda_x", c_str="lda_c_pz", calcType=calcType
-    )
+    return LibXC(density=density, libxc = ["lda_x", "lda_c_pz"], calcType=calcType)
 
 
 def LDA(rho, calcType={"E", "V"}, **kwargs):
@@ -332,9 +332,9 @@ def LDA(rho, calcType={"E", "V"}, **kwargs):
                 + 1.0 / 3 * (2 * d[0] - c[0]) * Rs[rs1]
         )
         pot[rs2] += (
-                            gamma[0] + (7.0 / 6.0 * gamma[0] * beta1[0]) * Rs2sqrt + (
-                            4.0 / 3.0 * gamma[0] * beta2[0] * Rs[rs2])
-                    ) / (1.0 + beta1[0] * Rs2sqrt + beta2[0] * Rs[rs2]) ** 2
+                gamma[0] + (7.0 / 6.0 * gamma[0] * beta1[0]) * Rs2sqrt + (
+                    4.0 / 3.0 * gamma[0] * beta2[0] * Rs[rs2])
+                ) / (1.0 + beta1[0] * Rs2sqrt + beta2[0] * Rs[rs2]) ** 2
         OutFunctional.potential = pot
     if "V2" in calcType:
         fx = - np.cbrt(3.0 / np.pi) / 3.0 * np.cbrt(rho) / rho
@@ -395,7 +395,6 @@ def _LDAStress(density, xc_str='lda_x', energy=None, flag='standard', **kwargs):
     kargs = {'do_exc': True, 'do_vxc': True}
     if energy is not None:
         kargs['do_exc'] = False
-        energy = 0.5*energy
     out = func_xc.compute(inp, **kargs)
 
     if "zk" in out.keys():
@@ -455,7 +454,6 @@ def _GGAStress(density, xc_str='gga_x_pbe', energy=None, flag='standard', **kwar
     kargs = {'do_exc': True, 'do_vxc': True}
     if energy is not None:
         kargs['do_exc'] = False
-        energy *= 0.5
     out = func_xc.compute(inp, **kargs)
 
     if "zk" in out.keys():
@@ -494,38 +492,65 @@ def _GGAStress(density, xc_str='gga_x_pbe', energy=None, flag='standard', **kwar
     return stress / rho.grid.volume
 
 
-def GGAStress(density, x_str='gga_x_pbe', c_str='gga_c_pbe', energy=None, flag='standard', **kwargs):
-    stress = _GGAStress(density, xc_str=x_str, energy=energy, flag=flag, **kwargs)
-    stress += _GGAStress(density, xc_str=c_str, energy=energy, flag=flag, **kwargs)
-    return stress
-
-
-def PBEStress(density, energy=None, flag='standard', **kwargs):
-    stress = GGAStress(density, x_str='gga_x_pbe', c_str='gga_c_pbe', energy=energy, flag=flag, **kwargs)
-    return stress
-
-
-def XCStress(density, name=None, xc=None, x_str='gga_x_pbe', c_str='gga_c_pbe', energy=None, flag='standard', **kwargs):
+def XCStress(density, libxc=None, energy=None, flag='standard', **kwargs):
     TimeData.Begin("XCStress")
-    name = xc or name
-    if name == 'LDA':
-        x_str = 'lda_x'
-        c_str = 'lda_c_pz'
-        stress = _LDAStress(density, xc_str=x_str, energy=energy, flag=flag, **kwargs)
-        stress += _LDAStress(density, xc_str=c_str, energy=energy, flag=flag, **kwargs)
-    elif name == 'PBE':
-        x_str = 'gga_x_pbe'
-        c_str = 'gga_c_pbe'
-        stress = _GGAStress(density, xc_str=x_str, energy=energy, flag=flag, **kwargs)
-        stress += _GGAStress(density, xc_str=c_str, energy=energy, flag=flag, **kwargs)
-    elif x_str[:3] == c_str[:3] == 'lda':
-        stress = _LDAStress(density, xc_str=x_str, energy=energy, flag=flag, **kwargs)
-        stress += _LDAStress(density, xc_str=c_str, energy=energy, flag=flag, **kwargs)
-    elif x_str[:3] == c_str[:3] == 'gga':
-        stress = _LDAStress(density, xc_str=x_str, energy=energy, flag=flag, **kwargs)
-        stress += _LDAStress(density, xc_str=c_str, energy=energy, flag=flag, **kwargs)
-    else:
-        raise AttributeError("'x_str' %s and 'c_str' %s must be same type" % (x_str, c_str))
-
+    libxc = get_libxc_names(libxc = libxc, **kwargs)
+    stress = np.zeros((3, 3))
+    if energy is not None : energy = energy / len(libxc)
+    for key in libxc :
+        if key.startswith('lda') :
+            stress += _LDAStress(density, xc_str=key, energy=energy, flag=flag, **kwargs)
+        elif key.startswith('gga') :
+            stress += _GGAStress(density, xc_str=key, energy=energy, flag=flag, **kwargs)
+        else :
+            raise AttributeError('Hybrid and Meta-GGA functionals have not been implemented yet')
     TimeData.End("XCStress")
     return stress
+
+
+xc_json_file = os.path.join(os.path.dirname(__file__), 'xc.json')
+with open(xc_json_file) as f:
+    xcformats = json.load(f)
+
+def get_short_xc_name(libxc = None, xc = None, code = None, **kwargs):
+    name = None
+    if xc :
+        alias = xcformats.get(xc, {}).get('alias', {}).get(code, [])
+        if alias : name = alias[0]
+    else :
+        for name, value in xcformats.items():
+            libxc_strs= value.get('libxc', [])
+            if len(libxc) == len(libxc_strs) :
+                for a, b in zip(libxc, libxc_strs):
+                    if a.lower() != b : break
+                else :
+                    if code :
+                        alias = value.get('alias', {}).get(code, [])
+                        if alias : name = alias[0]
+                    break
+    return name
+
+def get_libxc_names(xc = None, libxc = None, name = None, code = None, **kwargs):
+    xc = xc or name
+    if xc :
+        xc = xc.lower()
+        if code :
+            for name, value in xcformats.items():
+                alias = value.get('alias', {}).get(code, [])
+                if xc in alias :
+                    v = value.get('libxc', None)
+                    if v : libxc = v
+                    break
+        else :
+            v = xcformats.get(xc, {}).get('libxc', None)
+            if v : libxc = v
+    elif isinstance(libxc, str):
+        libxc =[libxc]
+
+    # compatible with older version
+    libxc_old = [v for k, v in kwargs.items() if k in ["k_str", "x_str", "c_str"] and v is not None]
+    if len(libxc_old)>0 :
+        # print('libxc', libxc, libxc_old)
+        # warnings.warn(FutureWarning("'*_str' are deprecated; please use 'libxc' or 'xc'"))
+        libxc = libxc_old
+    return libxc

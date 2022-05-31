@@ -301,7 +301,7 @@ class AtomicDensity(object):
 
     def distance(self):
         self.i = 0
-        while self.i < len(self.ions):
+        while self.i < self.ions.nat:
             results = self.step()
             if results is not None:
                 yield results

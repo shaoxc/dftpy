@@ -11,7 +11,7 @@ from dftpy.coord import Coord
 
 
 class BaseField(np.ndarray):
-    """
+    r"""
     Extended numpy array representing a field on a grid
     (Cell (lattice) plus discretization)
 
@@ -32,52 +32,56 @@ class BaseField(np.ndarray):
 
     """
 
-    def __new__(cls, grid, memo="", rank=1, griddata_F=None, griddata_C=None, griddata_3d=None, cplx = False):
-        # Input array is an already formed ndarray instance
-        # We first cast to be our class type
-
-        if griddata_3d is not None:
-            if isinstance(griddata_3d, list):
-                rank = len(griddata_3d)
+    def __new__(cls, grid, memo="", rank=1, data = None, order = 'C', cplx = False,
+            griddata_F=None, griddata_C=None, griddata_3d=None):
+        #-----------------------------------------------------------------------
+        if griddata_F is not None or griddata_C is not None or griddata_3d is not None:
+            # warnings.warn(FutureWarning("'griddata_*' are deprecated; please use 'data' and 'order'"))
+            if griddata_F is not None :
+                data = griddata_F
+                order = 'F'
+            elif griddata_C is not None :
+                data = griddata_C
+                order = 'C'
+            elif griddata_3d is not None:
+                data = griddata_3d
+                order = 'C'
+        #-----------------------------------------------------------------------
+        if data is not None:
+            if isinstance(data, list): rank = len(data)
 
         if rank == 1:
             nr = grid.nr
         else:
             nr = rank, *grid.nr
-        if griddata_F is None and griddata_C is None and griddata_3d is None:
+
+        if data is None :
             if cplx :
-                input_values = np.zeros(nr, dtype ='complex128')
+                input_values = np.zeros(nr, dtype ='complex128', order = order)
             else :
-                input_values = np.zeros(nr)
-        elif griddata_F is not None:
-            input_values = np.reshape(griddata_F, nr, order="F")
-        elif griddata_C is not None:
-            input_values = np.reshape(griddata_C, nr, order="C")
-        elif griddata_3d is not None:
-            input_values = np.asarray(griddata_3d)
-            input_values = np.reshape(input_values, nr)
-            # input_values = np.reshape(griddata_3d, nr)
+                input_values = np.zeros(nr, order = order)
+        else :
+            input_values = np.asarray(data)
+            input_values = np.reshape(input_values, nr, order=order)
 
         obj = np.asarray(input_values).view(cls)
         # add the new attribute to the created instance
         obj.grid = grid
         obj.span = (grid.nr > 1).sum()
-        obj.rank = rank
         obj.memo = str(memo)
         obj.mp = obj.grid.mp
         # Finally, we must return the newly created object:
         return obj
 
+    @property
+    def rank(self):
+        if self.ndim == 4 :
+            return self.shape[0]
+        else :
+            return 1
+
     def __array_finalize__(self, obj):
         # Restore attributes when we are taking a slice
-        # getting the rank right - or at least trying to do so....
-        # self.rank = getattr(obj, 'rank', None)
-        a = np.shape(np.shape(self))[0]
-        if a == 4:
-            rank = np.shape(self)[0]
-        else:
-            rank = 1
-        self.rank = rank
         if obj is None:
             return
         self.grid = getattr(obj, "grid", None)
@@ -87,19 +91,10 @@ class BaseField(np.ndarray):
 
     def __array_wrap__(self, obj, context=None):
         """wrap it up"""
+        if obj.ndim< 3 :
+            # This is only return numpy array not field
+            return obj
         b = np.ndarray.__array_wrap__(self, obj, context)
-        a = np.shape(np.shape(b))[0]
-        # a = np.shape(np.shape(self))[0]
-        # self.rank = np.max([self.rank, obj.rank])
-        if a == 4:
-            rank = np.shape(b)[0]
-            #rank = np.shape(self)[0]
-        else:
-            rank = 1
-        # if rank == 1:
-        # b = np.reshape(b, self.grid.nr)
-        # b = np.reshape(b,nr)
-        b.rank = rank
         return b
 
     def dot(self, obj):
@@ -139,12 +134,11 @@ class BaseField(np.ndarray):
 class DirectField(BaseField):
     spl_order = 3
 
-    def __new__(cls, grid, memo="", rank=1, griddata_F=None, griddata_C=None, griddata_3d=None, cplx=False):
+    def __new__(cls, grid, memo="", rank=1, data = None, order = 'C', cplx=False, **kwargs):
         if not isinstance(grid, DirectGrid):
             raise TypeError("the grid argument is not an instance of DirectGrid")
         obj = super().__new__(
-            cls, grid, memo="", rank=rank, griddata_F=griddata_F, griddata_C=griddata_C, griddata_3d=griddata_3d,
-            cplx = cplx)
+            cls, grid, memo="", rank=rank, data = data, order = order, cplx = cplx, **kwargs)
         obj._N = None
         obj.spl_coeffs = None
         obj._cplx = cplx
@@ -174,16 +168,6 @@ class DirectField(BaseField):
             self.cplx = getattr(obj, 'cplx', None)
         self.spl_coeffs = None
         self._N = None
-
-    # def __array_wrap__(self,obj,context=None):
-        # b = super().__array_wrap__(obj, context)
-        # if isinstance(obj, (DirectField)):
-            # b.fft_object = obj.fft_object
-            # b.cplx = obj.cplx
-        # else :
-            # b.fft_object = self.fft_object
-            # b.cplx = self.cplx
-        # return b
 
     def integral(self, gather = True):
         """ Returns the integral of self """
@@ -276,10 +260,9 @@ class DirectField(BaseField):
     def divergence(self, flag="smooth", force_real=True, sigma=0.025):
         if self.rank != 3:
             raise ValueError("Divergence: Rank incompatible ", self.rank)
-        div = self[0].gradient(flag=flag, ipol=1, force_real=force_real, sigma=0.025)
-        div += self[1].gradient(flag=flag, ipol=2, force_real=force_real, sigma=0.025)
-        div += self[2].gradient(flag=flag, ipol=3, force_real=force_real, sigma=0.025)
-        div.rank = 1
+        div = self[0].gradient(flag=flag, ipol=1, force_real=force_real, sigma=sigma)
+        div += self[1].gradient(flag=flag, ipol=2, force_real=force_real, sigma=sigma)
+        div += self[2].gradient(flag=flag, ipol=3, force_real=force_real, sigma=sigma)
         return div
 
     def gradient(self, flag="smooth", ipol=None, force_real=True, sigma=0.025):
@@ -309,7 +292,7 @@ class DirectField(BaseField):
         #return self.gradient(flag=flag).divergence(flag=flag)
 
     def sigma(self, flag="smooth", sigma_gradient=None):
-        """
+        r"""
         \sigma(r) = |\grad rho(r)|^2
         """
         if self.rank > 1 :
@@ -336,18 +319,13 @@ class DirectField(BaseField):
         the input_array may be overwritten.
         """
         reciprocal_grid = self.grid.get_reciprocal()
-        dim = np.shape(np.shape(self))[0]
-        if dim == 3:
-            self.rank = 1
-        else:
-            nr = self.rank, *reciprocal_grid.nr
         if self.rank == 1:
             griddata_3d = self.fft_object(self) * self.grid.dV
         else:
+            nr = self.rank, *reciprocal_grid.nr
             griddata_3d = np.empty(nr, dtype='complex128')
             for i in range(self.rank):
                 griddata_3d[i] = self.fft_object(self[i]) * self.grid.dV
-        # print('shape0', self.grid.nr, griddata_3d.shape, reciprocal_grid.nr)
         fft_data=ReciprocalField(
             grid=reciprocal_grid, memo=self.memo, rank=self.rank, griddata_3d=griddata_3d, cplx=self.cplx
         )
@@ -550,7 +528,7 @@ class DirectField(BaseField):
         return DirectField(grid=cut_grid, memo=self.memo, griddata_3d=values)
 
     def para_current(self, sigma=0.025):
-        """
+        r"""
         Calculate <\psi|i\nabla|psi>
         """
         reciprocal_self = self.fft()
@@ -579,12 +557,34 @@ class DirectField(BaseField):
             self.grid.full = True
             self.grid.cplx = True
 
-    def repeat(self, reps=1):
-        reps = np.ones(3, dtype='int')*reps
-        data = np.tile(np.array(self), reps)
-        grid = self.grid.repeat(reps)
-        results = self.__class__(grid=grid, rank=self.rank, griddata_3d=data, cplx=self.cplx)
+    def tile(self, reps=1, **kwargs):
+        # Overwrite the numpy.tile
+        try:
+            tup = tuple(reps)
+        except TypeError:
+            tup = (reps,)
+        reps = np.asarray(tup)
+        data = np.tile(np.asarray(self), reps)
+        shape = data.shape
+        rank = 1 if len(shape) == 3 else shape[0]
+        if len(reps)>3 : reps = reps[-3:]
+        if np.all(reps == 1) :
+            grid = self.grid
+        else :
+            self.grid.tile(reps)
+        results = self.__class__(grid=grid, rank=rank, griddata_3d=data, cplx=self.cplx)
         return results
+
+    def repeat(self, rep=1, **kwargs):
+        # Overwrite the numpy.repeat, the different is it only repeat last three dimensions with same rep
+        if not isinstance(rep, int):
+            raise AttributeError("Field repeat only support one integer, Please use 'tile'.")
+        if self.rank == 1 :
+            reps = np.ones(3, dtype='int')*rep
+        else :
+            reps = np.ones(4, dtype='int')*rep
+            reps[0] = 1
+        return self.tile(reps, **kwargs)
 
     def gather(self, grid = None, out = None, root = 0):
         if out is None :
@@ -610,14 +610,11 @@ class DirectField(BaseField):
 
 
 class ReciprocalField(BaseField):
-    def __new__(cls, grid, memo="", rank=1, griddata_F=None, griddata_C=None, griddata_3d=None, cplx=False):
+    def __new__(cls, grid, memo="", rank=1, data = None, order = 'C', cplx=False, **kwargs):
         if not isinstance(grid, ReciprocalGrid):
             raise TypeError("the grid argument is not an instance of ReciprocalGrid")
-        if griddata_F is None and griddata_C is None and griddata_3d is None :
-            griddata_3d = np.zeros(grid.nr, dtype=np.complex128)
         obj = super().__new__(
-            cls, grid, memo="", rank=rank, griddata_F=griddata_F, griddata_C=griddata_C, griddata_3d=griddata_3d
-        )
+            cls, grid, memo="", rank=rank, data = data, order = order, cplx = True, **kwargs)
         obj.spl_coeffs = None
         obj._cplx = cplx
         if obj.mp.is_mpi :

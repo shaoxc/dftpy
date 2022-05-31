@@ -1,11 +1,18 @@
 import numpy as np
 from dftpy.constants import LEN_CONV, ENERGY_CONV
-from dftpy.cell import BaseCell, DirectCell
+from dftpy.cell import DirectCell
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
 from dftpy.system import System
 from dftpy.atom import Atom
 
+def xsf_readline(fr):
+    for line in fr:
+        line = line.strip()
+        if len(line) == 0 or line.startswith("#"):
+            continue
+        else :
+            yield line
 
 def read_xsf(infile, kind="all", full=False, pbc=True, units='Angstrom', data_type='density', **kwargs):
     # http ://www.xcrysden.org/doc/XSF.html
@@ -17,118 +24,121 @@ def read_xsf(infile, kind="all", full=False, pbc=True, units='Angstrom', data_ty
         raise AttributeError("!!!ERROR : Wrong type of the `units`")
 
     with open(infile, "r") as fr:
-
-        def readline():
-            for line in fr:
-                line = line.strip()
-                if len(line) == 0 or line.startswith("#"):
-                    continue
-                else:
-                    return line
-
-        celltype = readline()
+        fh = xsf_readline(fr)
+        celltype = next(fh).upper()
+        if celltype != 'CRYSTAL' :
+            raise AttributeError("Only support crystal xsf.")
         lattice = []
-        line = readline()
+        line = next(fh).upper()
         if line.startswith("PRIMVEC"):
             for i in range(3):
                 l = list(map(float, fr.readline().split()))
                 lattice.append(l)
             lattice = np.asarray(lattice) / LEN_CONV["Bohr"][xsf_units[0]]
             lattice = np.ascontiguousarray(lattice.T)  # cell = [a, b, c]
-            line = readline()
+            line = next(fh).upper()
 
         label = []
         pos = []
         if line.startswith("CONVVEC"):
-            for i in range(4):
-                line = readline()
+            for i in range(3):
+                line = next(fh)
+            line = next(fh).upper()
 
         if line.startswith("PRIMCOORD"):
             natom = int(fr.readline().split()[0])
             for i in range(natom):
-                line = readline().split()
+                line = next(fh).split()
                 label.append(line[0])
                 p = list(map(float, line[1:4]))
                 pos.append(p)
             pos = np.asarray(pos) / LEN_CONV["Bohr"][xsf_units[0]]
-            line = readline()
+            line = next(fh).upper()
 
-        if len(lattice) > 0 :
-            cell = DirectCell(lattice)
-            atoms = Atom(label=label, pos=pos, cell=cell, basis="Cartesian")
-            if kind == "cell":
-                return atoms
+        cell = DirectCell(lattice)
+        atoms = Atom(label=label, pos=pos, cell=cell, basis="Cartesian")
 
-        if line.startswith("BEGIN_BLOCK_DATAGRID_"):
-            line = readline()
-            line = readline()
-        data = []
-        if line.startswith("BEGIN_DATAGRID"):
-            nrx = np.ones(3, dtype=int)
-            npbc = 3
-            if line.startswith("BEGIN_DATAGRID_3D"):
-                nrx[0], nrx[1], nrx[2] = map(int, readline().split())
-                npbc = 3
-            elif line.startswith("BEGIN_DATAGRID_2D"):
-                nrx[0], nrx[1] = map(int, readline().split())
-                npbc = 2
-            elif line.startswith("BEGIN_DATAGRID_1D"):
-                nrx[0] = map(int, readline().split())
-                npbc = 1
-            readline()  # read the origin
-            vlat = np.zeros((3, 3))
-            for i in range(npbc):
-                l = list(map(float, readline().split()))
-                vlat[i] = np.asarray(l)
-            if npbc == 1:
-                for i in range(3):
-                    if abs(vlat[0][i]) > 1e-4:
-                        j = i - 1
-                        vlat[1][j] = vlat[0][i]
-                        vlat[1][i] = -vlat[0][j]
-                        vlat[1] = vlat[1] / np.sqrt(np.dot(vlat[1], vlat[1]))
-                        break
-                vlat[2] = np.cross(vlat[0], vlat[1])
-                vlat[2] = vlat[2] / np.sqrt(np.dot(vlat[2], vlat[2]))
-            elif npbc == 2:
-                vlat[2] = np.cross(vlat[0], vlat[1])
-                vlat[2] = vlat[2] / np.sqrt(np.dot(vlat[2], vlat[2]))
-            data_lat = np.ascontiguousarray(vlat.T)  # cell = [a, b, c]
-            data_lat /= LEN_CONV["Bohr"][xsf_units[0]]
-            # for speed, we assume in the data block no blank line
-            for line in fr:
-                line = line.split()
-                if not line:
-                    continue
-                if line[0][0] == "E":
-                    break
-                else:
-                    l = list(map(float, line))
-                    data.extend(l)
+        if kind == "cell":
+            system = System(ions = atoms)
+        else :
+            if line.startswith("BEGIN_BLOCK_DATAGRID_"):
+                line = next(fh)
+            blocks = []
+            for line in fh :
+                data = []
+                line = line.upper()
+                if line.startswith("BEGIN_DATAGRID"):
+                    nrx = np.ones(3, dtype=int)
+                    npbc = 3
+                    if line.startswith("BEGIN_DATAGRID_3D"):
+                        nrx[0], nrx[1], nrx[2] = map(int, next(fh).split())
+                        npbc = 3
+                    elif line.startswith("BEGIN_DATAGRID_2D"):
+                        nrx[0], nrx[1] = map(int, next(fh).split())
+                        npbc = 2
+                    elif line.startswith("BEGIN_DATAGRID_1D"):
+                        nrx[0] = map(int, next(fh).split())
+                        npbc = 1
+                    next(fh)  # read the origin
+                    vlat = np.zeros((3, 3))
+                    for i in range(npbc):
+                        l = list(map(float, next(fh).split()))
+                        vlat[i] = np.asarray(l)
+                    if npbc == 1:
+                        for i in range(3):
+                            if abs(vlat[0][i]) > 1e-4:
+                                j = i - 1
+                                vlat[1][j] = vlat[0][i]
+                                vlat[1][i] = -vlat[0][j]
+                                vlat[1] = vlat[1] / np.sqrt(np.dot(vlat[1], vlat[1]))
+                                break
+                        vlat[2] = np.cross(vlat[0], vlat[1])
+                        vlat[2] = vlat[2] / np.sqrt(np.dot(vlat[2], vlat[2]))
+                    elif npbc == 2:
+                        vlat[2] = np.cross(vlat[0], vlat[1])
+                        vlat[2] = vlat[2] / np.sqrt(np.dot(vlat[2], vlat[2]))
+                    data_lat = np.ascontiguousarray(vlat.T)  # cell = [a, b, c]
+                    data_lat /= LEN_CONV["Bohr"][xsf_units[0]]
+                    for line in fh:
+                        if line[0] == "E":
+                            break
+                        else:
+                            line = line.split()
+                            l = list(map(float, line))
+                            data.extend(l)
+                    data = np.asarray(data)
+                    if np.size(data) > np.prod(nrx):  # double xsf grid data
+                        data = data[: np.prod(nrx)]
+                    data = np.reshape(data, nrx, order="F")
+                    blocks.append(data)
+                if line.strip().startswith('END_BLOCK_DATAGRID'): break
 
-        if not data:
-            raise AttributeError("!!!ERROR : XSF file have some problem")
-        data = np.asarray(data)
-        if np.size(data) > np.prod(nrx):  # double xsf grid data
-            data = data[: np.prod(nrx)]
-        data = np.reshape(data, nrx, order="F")
-        if pbc:
-            bound = nrx.copy()
-            for i in range(len(nrx)):
-                if nrx[i] > 1:
-                    bound[i] = nrx[i] - 1
-                else:
-                    bound[i] = nrx[i]
-            data = data[: bound[0], : bound[1], : bound[2]]
-            nrx = bound.copy()
-        data *= LEN_CONV["Bohr"][xsf_units[1]] ** 3
+            if not blocks:
+                raise AttributeError("!!!ERROR : XSF file have some problem")
 
-        grid = DirectGrid(lattice=data_lat, nr=nrx, full=full)
-        plot = DirectField(grid=grid, griddata_3d=data, rank=1)
-        if data_type == 'potential' :
-            plot *= ENERGY_CONV["eV"]["Hartree"]
-        # plot = DirectField(grid=grid, griddata_F=data, rank=1)
-        return System(atoms, grid, name="xsf", field=plot)
+            nrx_prev = None
+            rank = len(blocks)
+            for spin in range(rank):
+                data = blocks[spin]
+                nrx = np.array(data.shape)
+                if nrx_prev is not None :
+                    if not np.all(nrx_prev == nrx):
+                        raise AttributeError("All DATAGRID should have same shape.")
+                else :
+                    nrx_prev = nrx.copy()
+                if pbc:
+                    for i in range(len(nrx)):
+                        if nrx[i] > 1: nrx[i] -= 1
+                    data = data[: nrx[0], : nrx[1], : nrx[2]]
+                data *= LEN_CONV["Bohr"][xsf_units[1]] ** 3
+                blocks[spin] = data
+
+            grid = DirectGrid(lattice=data_lat, nr=nrx, full=full)
+            plot = DirectField(grid=grid, griddata_3d=blocks, rank=rank)
+            if data_type == 'potential' :
+                plot *= ENERGY_CONV["eV"]["Hartree"]
+            system = System(atoms, grid, name="xsf", field=plot)
+    return system
 
 def write_xsf(filexsf, system, field = None, **kwargs):
     return XSF(filexsf).write(system, field, **kwargs)
@@ -196,35 +206,42 @@ class XSF(object):
         if ndim < 2:
             return  # XSF format doesn't support one data grids
         val_per_line = 5
-        values = plot.get_values_flatarray(pad=1, order="F") / LEN_CONV["Bohr"][self.xsf_units] ** 3
+        rank = plot.rank
+        grid = plot.grid
+        if rank == 1 :
+            plot = [plot]
+        data = []
+        for p in plot :
+            values = p.get_values_flatarray(pad=1, order="F") / LEN_CONV["Bohr"][self.xsf_units] ** 3
+            data.append(values)
         if data_type == 'potential' :
             values = values * ENERGY_CONV["Hartree"]["eV"]
 
         mywrite(fileout, "BEGIN_BLOCK_DATAGRID_{}D".format(ndim), True)
-        mywrite(fileout, "{}d_datagrid_from_pbcpy".format(ndim), True)
-        mywrite(fileout, "BEGIN_DATAGRID_{}D".format(ndim), True)
-        nnr = len(values)
-        origin = plot.grid.origin * LEN_CONV["Bohr"][self.xsf_units]
-        if ndim == 3:
-            mywrite(fileout, (plot.grid.nr[0] + 1, plot.grid.nr[1] + 1, plot.grid.nr[2] + 1), True)
-        elif ndim == 2:
-            mywrite(fileout, (plot.grid.nr[0] + 1, plot.grid.nr[1] + 1), True)
-        mywrite(
-            fileout, origin, True
-        )  # TODO, there might be an actual origin if we're dealing with a custom cut of the grid
-        for ilat in range(ndim):
-            latt = plot.grid.lattice[:, ilat] * LEN_CONV["Bohr"][self.xsf_units]
-            mywrite(fileout, latt, True)
+        mywrite(fileout, "{}d_datagrid_{}".format(ndim, data_type), True)
+        for i, values in enumerate(data) :
+            mywrite(fileout, "BEGIN_DATAGRID_{}D#{}".format(ndim, i), True)
+            origin = grid.origin * LEN_CONV["Bohr"][self.xsf_units]
+            if ndim == 3:
+                mywrite(fileout, (grid.nr[0] + 1, grid.nr[1] + 1, grid.nr[2] + 1), True)
+            elif ndim == 2:
+                mywrite(fileout, (grid.nr[0] + 1, grid.nr[1] + 1), True)
+            mywrite(
+                fileout, origin, True
+            )  # TODO, there might be an actual origin if we're dealing with a custom cut of the grid
+            for ilat in range(ndim):
+                latt = grid.lattice[:, ilat] * LEN_CONV["Bohr"][self.xsf_units]
+                mywrite(fileout, latt, True)
 
-        nlines = nnr // val_per_line
+            nnr = len(values)
+            nlines = nnr // val_per_line
+            for iline in range(nlines):
+                igrid = iline * val_per_line
+                mywrite(fileout, values[igrid : igrid + val_per_line], True)
+            igrid = nlines * val_per_line
+            if igrid < nnr : mywrite(fileout, values[igrid:nnr], True)
+            mywrite(fileout, "END_DATAGRID_{}D".format(ndim), True)
 
-        for iline in range(nlines):
-            igrid = iline * val_per_line
-            mywrite(fileout, values[igrid : igrid + val_per_line], True)
-        igrid = nlines * val_per_line
-        mywrite(fileout, values[igrid:nnr], True)
-
-        mywrite(fileout, "END_DATAGRID_{}D".format(ndim), True)
         mywrite(fileout, "END_BLOCK_DATAGRID_{}D".format(ndim), True)
 
 

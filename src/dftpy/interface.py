@@ -5,7 +5,7 @@ from dftpy.optimization import Optimization
 from dftpy.functional import Functional
 from dftpy.functional.total_functional import TotalFunctional
 from dftpy.constants import LEN_CONV, ENERGY_CONV, STRESS_CONV
-from dftpy.formats.io import read, read_density, write, read_system
+from dftpy.formats.io import read_density, write, read_system
 from dftpy.ewald import ewald
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
@@ -18,6 +18,7 @@ from dftpy.config.config import PrintConf, ReadConf
 from dftpy.system import System
 from dftpy.inverter import Inverter
 from dftpy.properties import get_electrostatic_potential
+from dftpy.utils import field2distrib
 
 
 def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = None):
@@ -73,6 +74,7 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
     ############################## Grid  ##############################
     if grid is None:
         grid = DirectGrid(lattice=lattice, nr=nr, full=config["GRID"]["gfull"], cplx=config["GRID"]["cplx"], mp=mp)
+    if mp is None : mp = grid.mp
     ############################## PSEUDO  ##############################
     PPlist = {}
     for key in config["PP"]:
@@ -102,6 +104,8 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
     kedf_config = config["KEDF"].copy()
     if kedf_config.get('temperature', None):
         kedf_config['temperature'] *= ENERGY_CONV['eV']['Hartree']
+    if kedf_config.get('temperature0', None):
+        kedf_config['temperature0'] *= ENERGY_CONV['eV']['Hartree']
     KE = Functional(type="KEDF", name=config["KEDF"]["kedf"], **kedf_config)
     ############################## XC and Hartree ##############################
     HARTREE = Functional(type="HARTREE")
@@ -113,50 +117,31 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
     E_v_Evaluator = TotalFunctional(KineticEnergyFunctional=KE, XCFunctional=XC, HARTREE=HARTREE, PSEUDO=PSEUDO,
                                 DYNAMIC=DYNAMIC)
     ############################## Initial density ##############################
-    zerosA = np.empty(grid.nnr, dtype=float)
-    rho_ini = DirectField(grid=grid, griddata_C=zerosA, rank=1)
+    nspin=config["DENSITY"]["nspin"]
+    rho_ini = DirectField(grid=grid, rank=nspin)
     density = None
+    root = 0
     if rhoini is not None:
         density = rhoini
     elif config["DENSITY"]["densityini"] == "HEG":
         charge_total = ions.ncharge
         rho_ini[:] = charge_total / ions.pos.cell.volume
-        # -----------------------------------------------------------------------
-        # rho_ini[:] = charge_total/ions.pos.cell.volume + np.random.random(np.shape(rho_ini)) * 1E-2
-        # rho_ini *= (charge_total / (np.sum(rho_ini) * rho_ini.grid.dV ))
-        # -----------------------------------------------------------------------
+        if nspin>1 : rho_ini[:] /= nspin
     elif config["DENSITY"]["densityini"] == "Read":
-        density = read_density(config["DENSITY"]["densityfile"])
+        density = []
+        if mp.rank == root :
+            density = read_density(config["DENSITY"]["densityfile"])
+
     if density is not None:
-        # gathered density
-        if np.all(grid.nrR == density.shape[:3]):
-            grid.scatter(density, out = rho_ini)
-        else :
-            linterp = True
-            # distributed density also need has grid, otherwise treat it as gathered density
-            if hasattr(density, 'grid'):
-                if np.all(grid.nrR == density.grid.nrR):
-                    rho_ini[:] = density
-                    linterp = False
-                else :
-                    # gather the density
-                    density = density.grid.gather(density)
-            if linterp :
-                density = interpolation_3d(density, grid.nrR)
-                # density = prolongation(density)
-                density[density < 1e-12] = 1e-12
-                grid.scatter(density, out = rho_ini)
+        field2distrib(density, rho_ini, root = root)
     # normalization the charge (e.g. the cell changed)
     charge_total = ions.ncharge
-    rho_ini *= charge_total / rho_ini.integral()
+    rho_ini *= charge_total / np.sum(rho_ini.integral())
     ############################## add spin magmom ##############################
-    nspin=config["DENSITY"]["nspin"]
     if nspin > 1 :
         magmom = config["DENSITY"]["magmom"]
-        rho_spin = np.tile(rho_ini, (nspin, 1, 1, 1))
         for ip in range(nspin):
-            rho_spin[ip] = 1.0/nspin * rho_spin[ip] + 1.0/nspin *(-1)**ip * magmom/ ions.pos.cell.volume
-        rho_ini = DirectField(grid=grid, griddata_3d=rho_spin, rank=nspin)
+            rho_ini[ip] += 1.0/nspin *(-1)**ip * magmom/ ions.pos.cell.volume
     #-----------------------------------------------------------------------
     struct = System(ions, grid, name='density', field=rho_ini)
     # The last is a dictionary, which return some properties are used for different situations.
@@ -200,10 +185,9 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2 = None):
             sprint("MULTI-STEP: Perform %d optimization step" % istep)
             sprint("Grid size of %d" % istep, " step is ", nr)
             grid2 = DirectGrid(lattice=grid.lattice, nr=nr, full=config["GRID"]["gfull"], mp=grid.mp)
-            rho_ini = interpolation_3d(rho, nr)
-            rho_ini[rho_ini < 1e-12] = 1e-12
-            rho_ini = DirectField(grid=grid2, griddata_3d=rho_ini, rank=1)
-            rho_ini *= charge_total / (np.sum(rho_ini) * rho_ini.grid.dV)
+            rho_ini = DirectField(grid=grid2, rank=rho.rank)
+            field2distrib(rho, rho_ini, root = 0)
+            rho_ini *= charge_total / (np.sum(rho_ini.integral()))
             # ions.restart()
             if hasattr(E_v_Evaluator, 'PSEUDO'):
                 PSEUDO=E_v_Evaluator.PSEUDO
@@ -247,11 +231,13 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2 = None):
     values = [item.energy for item in ep]
     values = rho.mp.vsum(values)
     ep_w = dict(zip(keys, values))
+    ke_energy = 0.0
     for key in sorted(keys):
         if key == "TOTAL":
             continue
         value = ep_w[key]
         sprint("{:>10s} energy (eV): {:22.15E}".format(key, ep_w[key]* ENERGY_CONV["Hartree"]["eV"]))
+        if key.startswith('KEDF'): ke_energy += ep_w[key]
     etot = ep_w['TOTAL']
     sprint("{:>10s} energy (eV): {:22.15E}".format("TOTAL", etot * ENERGY_CONV["Hartree"]["eV"]))
     sprint("-" * 80)
@@ -259,6 +245,8 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2 = None):
     etot_eV = etot * ENERGY_CONV["Hartree"]["eV"]
     etot_eV_patom = etot * ENERGY_CONV["Hartree"]["eV"] / ions.nat
     fstr = "  {:<30s} : {:30.15f}"
+    sprint(fstr.format("kedfs energy (a.u.)", ke_energy))
+    sprint(fstr.format("kedfs energy (eV)", ke_energy* ENERGY_CONV["Hartree"]["eV"]))
     sprint(fstr.format("total energy (a.u.)", etot))
     sprint(fstr.format("total energy (eV)", etot_eV))
     sprint(fstr.format("total energy (eV/atom)", etot_eV_patom))
@@ -345,7 +333,7 @@ def GetEnergyPotential(ions, rho, EnergyEvaluator, calcType={"E","V"}, linearii=
             results = func(rho, calcType=calcType, split=True)
             for key2 in results:
                 energypotential["TOTAL"] += results[key2]
-                energypotential["KEDF-" + key2] = results[key2]
+                energypotential["KEDF-" + key2.split('-')[-1]] = results[key2]
         else :
             results = func(rho, calcType=calcType)
             energypotential["TOTAL"] += results
@@ -369,7 +357,7 @@ def GetForces(ions, rho, EnergyEvaluator, linearii=True, linearie=True, PPlist=N
     return forces
 
 
-def GetStress(
+def GetStress_old(
     ions,
     rho,
     EnergyEvaluator,
@@ -387,10 +375,10 @@ def GetStress(
     #-----------------------------------------------------------------------
     KEDF_Stress_L= {
             "TF" : ["TF"],
-            "vW": ["TF"],
-            "x_TF_y_vW": ["TF", "vW"],
-            "TFvW": ["TF", "vW"],
-            "WT": ["TF", "vW", "NL"],
+            "VW": ["VW"],
+            "X_TF_Y_VW": ["TF", "VW"],
+            "TFVW": ["TF", "VW"],
+            "WT": ["TF", "VW", "NL"],
             }
     ke = ke_options["kedf"]
     if ke not in KEDF_Stress_L :
@@ -430,8 +418,8 @@ def GetStress(
         elif key1.startswith('KEDF') :
             if "TF" in key1 :
                 stress[key1] = KEDFStress(rho, name="TF", energy=energy[key1], **ke_options)
-            if "vW" in key1 :
-                stress[key1] = KEDFStress(rho, name="vW", energy=energy[key1], **ke_options)
+            if "VW" in key1 :
+                stress[key1] = KEDFStress(rho, name="VW", energy=energy[key1], **ke_options)
             if 'NL' in key1 :
                 stress[key1] = KEDFStress(rho, name=ke, energy=energy[key1], **ke_options)
         else :
@@ -461,3 +449,43 @@ def InvertRunner(config, struct, EnergyEvaluater):
     write(file_v_out, data=ext.v, ions=struct.ions, data_type='potential')
 
     return ext
+
+def GetStress(
+    ions,
+    rho,
+    EnergyEvaluator,
+    linearii=True,
+    ewaldobj= None,
+    **kwargs
+):
+    """
+    Get stress tensor
+    """
+    #-----------------------------------------------------------------------
+    stress = {}
+    if ewaldobj is None :
+        ewaldobj = ewald(rho=rho, ions=ions, verbose=False, PME=linearii)
+    stress['II'] = ewaldobj.stress
+    stress['TOTAL'] = stress['II'].copy()
+
+    funcDict = EnergyEvaluator.funcDict
+    for key, func in funcDict.items():
+        if func.type == "KEDF":
+            results = func.stress(rho, split=True)
+            for key2 in results:
+                stress["TOTAL"] += results[key2]
+                stress["KEDF-" + key2.split('-')[-1]] = results[key2]
+        else :
+            results = func.stress(rho)
+            stress["TOTAL"] += results
+            stress[func.type] = results
+
+    for i in range(1, 3):
+        for j in range(i - 1, -1, -1):
+            stress["TOTAL"][i, j] = stress["TOTAL"][j, i]
+
+    keys, values = zip(*stress.items())
+    values = rho.mp.vsum(values)
+    stress = dict(zip(keys, values))
+
+    return stress

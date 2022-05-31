@@ -8,26 +8,14 @@ class SerialComm :
         self.size = 1
         self.root = True
 
-    def Barrier(self):
-        pass
-
-    def Ibarrier(self):
-        pass
-
-    def barrier(self):
-        pass
-
-    def Clone(self):
-        return self.__class__()
-
-    def Free(self):
-        pass
-
     def Get_rank(self):
         return self.rank
 
     def Get_size(self):
         return self.size
+
+    def Get_name(self):
+        return 'SerialComm'
 
     def Is_inter(self):
         return False
@@ -35,6 +23,70 @@ class SerialComm :
     def Is_intra(self):
         return True
 
+    # add all Communication of generic Python objects
+    def allgather(self, data, *args, **kwargs):
+        return data
+
+    def allreduce(self, data, *args, **kwargs):
+        return data
+
+    def alltoall(self, data, *args, **kwargs):
+        return data
+
+    def barrier(self, *args, **kwargs):
+        pass
+
+    def bcast(self, data, *args, **kwargs):
+        return data
+
+    def bsend(self, data, *args, **kwargs):
+        return data
+
+    def f2py(self, data, *args, **kwargs):
+        return data
+
+    def gather(self, data, *args, **kwargs):
+        return data
+
+    def py2f(self, *args, **kwargs):
+        # It's serial version, so return None instead of int .
+        return None
+
+    def recv(self, buf=None, *args, **kwargs):
+        return buf
+
+    def reduce(self, data, *args, **kwargs):
+        return data
+
+    def scatter(self, data, *args, **kwargs):
+        return data
+
+    def send(self, data, *args, **kwargs):
+        return data
+
+    def sendrecv(self, data, *args, **kwargs):
+        return data
+
+    def ssend(self, data, *args, **kwargs):
+        return data
+
+    # Some used functions
+    def Barrier(self):
+        pass
+
+    def Bcast(self, *args, **kwargs):
+        pass
+
+    def Clone(self):
+        return self.__class__()
+
+    def Dup(self):
+        return self.__class__()
+
+    def Free(self):
+        pass
+
+    # Passed nonblocking functions and some other functions
     def __getattr__(self, attr):
         if attr in self.__dir__():
             return getattr(self, attr)
@@ -91,6 +143,15 @@ class MP :
             return self._MPI
         else :
             raise AttributeError("Only works for parallel version")
+
+    def free(self, comm_free=False):
+        if self.is_mpi :
+            from dftpy.mpi.mp_mpi4py import fft_saved
+            key = id(self.comm)
+            if key in fft_saved :
+                delfft = fft_saved.pop(key)
+                delfft.destroy()
+        if comm_free and self.comm : self.comm.Free()
 
     def _get_local_fft_shape_mpi4py(self, nr, realspace = True, decomposition = None, backend = None, fft = None, **kwargs):
         """

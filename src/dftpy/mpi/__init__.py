@@ -4,8 +4,7 @@ from .utils import mp, sprint, pmi
 from .mpi import MP, SerialComm, MPIFile, PMI
 
 import builtins
-from functools import partial
-builtins.print = partial(print, flush = True)
+builtins.__dict__['sprint'] = sprint
 
 # numpy array print without truncation
 np.set_printoptions(threshold=sys.maxsize)

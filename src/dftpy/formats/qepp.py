@@ -253,3 +253,12 @@ def mywrite(fileobj, iterable, newline):
             fileobj.write(str(ele) + "    ")
     except:
         fileobj.write(str(iterable) + "    ")
+
+
+def read_qepp(infile, **kwargs):
+    system = PP(infile).read(**kwargs)
+    return system
+
+def write_qepp(infile, system, **kwargs):
+    PP(infile).write(system, **kwargs)
+    return

@@ -78,7 +78,7 @@ class BasePseudo(AbstractPseudo):
 
     @property
     def core_density_grid(self):
-        if self._atomic_density_grid is None :
+        if self._core_density_grid is None :
             return self.radial_grid
         else :
             return self._core_density_grid
