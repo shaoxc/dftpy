@@ -1196,6 +1196,7 @@ def GGA(rho: DirectField, functional: str = "LKT", calcType: Set[str] = {"E", "V
                flag='standard' to flag='smooth'. The results with smooth math are
                slightly different.
     """
+    functional = functional.upper()
     rhom = rho.copy()
     tol = 1e-16
     rhom[rhom < tol] = tol
