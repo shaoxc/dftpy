@@ -104,7 +104,7 @@ class BaseGrid(BaseCell):
         return self._spacings
 
     @property
-    def lat_paras(self):
+    def latparas(self):
         return self._latparas
 
     @property
