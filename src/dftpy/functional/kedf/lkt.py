@@ -23,6 +23,7 @@ def LKT(rho: DirectField, calcType: Set[str] = {'E','V'}, params = None, y: floa
     -------
 
     '''
+    kwargs.pop('functional', None)
     OutFunctional = GGA(rho, functional='LKT-VW', calcType=calcType, params=params, **kwargs)
     OutFunctional += vW(rho, y=y, calcType=calcType, **kwargs)
     OutFunctional.name = 'LKT'
