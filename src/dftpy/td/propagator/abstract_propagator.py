@@ -15,8 +15,10 @@ class AbstractPropagator(ABC):
 
         Parameters
         ----------
-        hamiltonian: the time-dependent Hamiltonian
-        interval: the time interval for one time step
+        hamiltonian: Hamiltonian
+            the time-dependent Hamiltonian
+        interval: float
+            the time interval for one time step
 
         """
 
@@ -48,13 +50,16 @@ class AbstractPropagator(ABC):
         Abstract method that performs one step of propagation. Should be implemented in child classes.
         Parameters
         ----------
-        psi0: the initial wavefunction.
+        psi0: DirectField or ReciprocalField
+            the initial wavefunction.
 
         Returns
         -------
         A tuple (psi1, status)
-        psi1: Union[DirectField, ReciprocalField], the final wavefunction.
-        status: int, 0: no issue, other numbers: has issues
+        psi1: DirectField or ReciprocalField, same as psi0
+            The final wavefunction.
+        status: int
+            0: no issue, other numbers: has issues
 
         """
         pass
