@@ -11,7 +11,9 @@ from dftpy.td.operator import Operator
 
 class Hamiltonian(Operator):
     """
-    Hamiltonian: \hat{H} = \frac{1}{2}\left(-i\nabla-\frac{\mathbf{A}}{c}\right)^2 + v
+    Hamiltonian: 
+    .. :math::
+        \hat{H} = \frac{1}{2}\left(-i\nabla-\frac{\mathbf{A}}{c}\right)^2 + v
     """
 
     def __init__(self, v=None, A=None, full=True):
