@@ -12,7 +12,7 @@ from dftpy.td.operator import Operator
 class Hamiltonian(Operator):
     """
     Hamiltonian: 
-    .. :math::
+    .. math::
         \hat{H} = \frac{1}{2}\left(-i\nabla-\frac{\mathbf{A}}{c}\right)^2 + v
     """
 
