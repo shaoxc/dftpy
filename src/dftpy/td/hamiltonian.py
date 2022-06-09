@@ -158,3 +158,19 @@ class Hamiltonian(Operator):
         else:
             eigenvalue_list, psis = eigsh(A, k=numeig, which='SA', return_eigenvectors=return_eigenvectors)
             return eigenvalue_list,
+
+    def energy(self, psi):
+        """
+        Calculate the expectation value of Hamiltonian on wavefunction psi
+
+        Parameters
+        ----------
+        psi: DirectField or ReciprocalField
+            The wavefunction
+
+        Returns
+        -------
+        energy: DirectField or ReciprocalField
+
+        """
+        return np.real(np.conj(psi) * self(psi)).integral()

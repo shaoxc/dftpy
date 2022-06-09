@@ -5,6 +5,7 @@ import numpy as np
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.mpi.utils import sprint
 from dftpy.td.hamiltonian import Hamiltonian
+from dftpy.td.operator import Operator
 from dftpy.td.propagator.abstract_propagator import AbstractPropagator
 from dftpy.time_data import timer
 
@@ -14,7 +15,7 @@ class Taylor(AbstractPropagator):
     Taylor propagator for real-time propagation
     """
 
-    def __init__(self, hamiltonian: Hamiltonian, interval: float, order: int = 1, **kwargs) -> None:
+    def __init__(self, hamiltonian: Operator, interval: float, order: int = 1, **kwargs) -> None:
         """
 
         Parameters

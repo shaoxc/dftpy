@@ -16,7 +16,7 @@ class PredictorCorrector(Dynamics):
     """
 
     def __init__(self,
-                 system,
+                 psi,
                  propagator=None,
                  tol=None,
                  atol=None,
@@ -32,7 +32,7 @@ class PredictorCorrector(Dynamics):
 
         Parameters
         ----------
-        system: System
+        psi: DirectField
 
         propagator: Propagator
         tol: float
@@ -58,7 +58,7 @@ class PredictorCorrector(Dynamics):
             Number of electrons in the system.
 
         """
-        Dynamics.__init__(self, system=system)
+        Dynamics.__init__(self)
         self.propagator = propagator
         self.max_steps = max_steps
         self.tol = tol
@@ -66,7 +66,7 @@ class PredictorCorrector(Dynamics):
         self.propagate_vector_potential = propagate_vector_potential
         self.int_t = int_t
         self.functionals = functionals
-        self.psi = self.system.field
+        self.psi = psi
         self.rho = calc_rho(self.psi)
         self.j = calc_j(self.psi)
         self.atol_rho = _get_atol(tol, atol, self.rho.norm())

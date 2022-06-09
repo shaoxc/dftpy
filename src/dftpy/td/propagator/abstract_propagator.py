@@ -3,6 +3,7 @@ from typing import Union
 
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.td.hamiltonian import Hamiltonian
+from dftpy.td.operator import Operator
 
 
 class AbstractPropagator(ABC):
@@ -10,30 +11,30 @@ class AbstractPropagator(ABC):
     Abstract class for real-time propagators
     """
 
-    def __init__(self, hamiltonian: Hamiltonian, interval: float):
+    def __init__(self, hamiltonian: Operator, interval: float):
         """
 
         Parameters
         ----------
-        hamiltonian: Hamiltonian
+        hamiltonian: Operator
             the time-dependent Hamiltonian
         interval: float
             the time interval for one time step
 
         """
 
-        if isinstance(hamiltonian, Hamiltonian):
+        if isinstance(hamiltonian, Operator):
             self._hamiltonian = hamiltonian
         else:
-            raise TypeError("hamiltonian must be a DFTpy Hamiltonian.")
+            raise TypeError("hamiltonian must be a DFTpy Operator.")
         self._interval = interval
 
     @property
-    def hamiltonian(self) -> Hamiltonian:
+    def hamiltonian(self) -> Operator:
         return self._hamiltonian
 
     @hamiltonian.setter
-    def hamiltonian(self, hamiltonian: Hamiltonian) -> None:
+    def hamiltonian(self, hamiltonian: Operator) -> None:
         self._hamiltonian = hamiltonian
 
     @property
