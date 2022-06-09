@@ -60,9 +60,9 @@ class Hamiltonian(Operator):
         if new_A is None:
             self._A = None
         else:
-            self._A = np.asarray(new_A)
             if np.size(new_A) != 3:
                 raise AttributeError('Size of the A must be 3.')
+            self._A = np.asarray(new_A)
             ones = np.ones(self.grid.nr)
             self.a_field = DirectField(self.grid, rank=3, griddata_3d=np.asarray(
                 [self._A[0] * ones, self._A[1] * ones, self._A[2] * ones]) / SPEED_OF_LIGHT)
