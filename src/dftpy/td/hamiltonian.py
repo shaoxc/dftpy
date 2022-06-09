@@ -11,7 +11,9 @@ from dftpy.td.operator import Operator
 
 class Hamiltonian(Operator):
     """
-    Hamiltonian: \hat{H} = \frac{1}{2}\left(-i\nabla-\frac{\mathbf{A}}{c}\right)^2 + v
+    Hamiltonian: 
+    .. math::
+        \hat{H} = \frac{1}{2}\left(-i\nabla-\frac{\mathbf{A}}{c}\right)^2 + v
     """
 
     def __init__(self, v=None, A=None, full=True):
@@ -46,7 +48,7 @@ class Hamiltonian(Operator):
             if v.grid.full == self.full:
                 self.grid = v.grid
             else:
-                self.grid = DirectGrid(lattice=v.grid.lattice, nr=v.grid.nr, origin=v.grid.origin, full=self.full)
+                self.grid = DirectGrid(lattice=v.grid.lattice, nr=v.grid.nr, origin=v.grid.origin, full=self.full, mp=v.grid.mp)
         elif v is None:
             self._v = None
             self.grid = None
@@ -58,9 +60,9 @@ class Hamiltonian(Operator):
         if new_A is None:
             self._A = None
         else:
-            self._A = np.asarray(new_A)
             if np.size(new_A) != 3:
                 raise AttributeError('Size of the A must be 3.')
+            self._A = np.asarray(new_A)
             ones = np.ones(self.grid.nr)
             self.a_field = DirectField(self.grid, rank=3, griddata_3d=np.asarray(
                 [self._A[0] * ones, self._A[1] * ones, self._A[2] * ones]) / SPEED_OF_LIGHT)
