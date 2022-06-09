@@ -2,7 +2,6 @@ import numpy as np
 import gc
 import os
 import importlib.util
-import resource
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.grid import ReciprocalGrid
 from dftpy.math_utils import interpolation_3d
@@ -204,6 +203,7 @@ def get_mem_info(pid = None, width = 8):
         line = templ.format(str(pid), bytes2human(uss), bytes2human(pss), bytes2human(swap), bytes2human(rss), width = width)
     else :
         try:
+            import resource
             mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
             if os.uname().sysname == 'Linux' : # kB
                 mem = bytes2human(mem*1024)
