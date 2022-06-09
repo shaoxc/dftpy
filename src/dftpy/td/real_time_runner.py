@@ -18,9 +18,25 @@ from dftpy.utils.utils import calc_rho, calc_j
 from dftpy.time_data import TimeData, timer
 from dftpy.constants import LEN_CONV
 
+
 class RealTimeRunner(Dynamics):
+    """
+    Interface class for running a real-time propagation from a config file.
+    """
 
     def __init__(self, system, config, functionals):
+        """
+
+        Parameters
+        ----------
+        system: System
+
+        config: dict
+            Configuration from the config file.
+        functionals: TotalFunctional
+            Total functional
+
+        """
         self.outfile = config["TD"]["outfile"]
         Dynamics.__init__(self, system, self.outfile)
         self.int_t = config["TD"]["timestep"]
@@ -51,7 +67,7 @@ class RealTimeRunner(Dynamics):
         self.correct_potential = None
         self.timer = None
 
-        #self.z_split = 0
+        # self.z_split = 0
         self.z_split = config["TD"]['z_split'] * LEN_CONV["Angstrom"]["Bohr"]
 
         if self.vector_potential:
@@ -82,7 +98,8 @@ class RealTimeRunner(Dynamics):
             self.attach(self.save, interval=-self.max_steps)
 
         hamiltonian = Hamiltonian()
-        self.propagator = Propagator(hamiltonian, self.int_t, name=config["PROPAGATOR"]["propagator"], **config["PROPAGATOR"])
+        self.propagator = Propagator(hamiltonian, self.int_t, name=config["PROPAGATOR"]["propagator"],
+                                     **config["PROPAGATOR"])
 
         if self.restart:
             self.load()
@@ -99,6 +116,14 @@ class RealTimeRunner(Dynamics):
         sprint("{:20s}{:30s}{:24s}".format('Iter', 'Num. of Predictor-corrector', 'Total Cost(s)'))
 
     def step(self):
+        """
+        Perform a time step.
+
+        Returns
+        -------
+        None
+
+        """
         system = System(field=self.psi)
         self.predictor_corrector = PredictorCorrector(system, **self.predictor_corrector_arguments())
         converged = self.predictor_corrector.run()
@@ -107,7 +132,8 @@ class RealTimeRunner(Dynamics):
 
         if self.correction:
             self.correct_potential = self.correct_functionals(self.rho, calcType=['V'], current=self.j).potential
-            self.predictor_corrector.psi_pred = self.predictor_corrector.psi_pred - 1.0j * self.int_t * self.correct_potential * self.psi
+            self.predictor_corrector.psi_pred = self.predictor_corrector.psi_pred - 1.0j * self.int_t * \
+                                                self.correct_potential * self.psi
             self.predictor_corrector.psi_pred.normalize(N=self.N0)
             self.predictor_corrector.rho_pred = calc_rho(self.predictor_corrector.psi_pred)
             self.predictor_corrector.j_pred = calc_j(self.predictor_corrector.psi_pred)
@@ -127,9 +153,25 @@ class RealTimeRunner(Dynamics):
 
     @timer('Real-time propagation')
     def run(self):
+        """
+        Perform real-time propagation.
+
+        Returns
+        -------
+        None
+
+        """
         return Dynamics.run(self)
 
     def log(self):
+        """
+        Write the result to file.
+
+        Returns
+        -------
+        None
+
+        """
         if mp.is_root:
             if self.nsteps == 0:
                 real_time_runner_print_title(self.logfile, self.vector_potential)
@@ -137,6 +179,14 @@ class RealTimeRunner(Dynamics):
                                         self.A_t if self.vector_potential else None)
 
     def predictor_corrector_arguments(self):
+        """
+        Pack the arguments for creating a propagator object.
+
+        Returns
+        -------
+        arguments: dict
+
+        """
         arguments = {
             'propagator': self.propagator,
             'tol': self.tol,
@@ -156,6 +206,14 @@ class RealTimeRunner(Dynamics):
         return arguments
 
     def apply_initial_field(self):
+        """
+        Apply the initial field.
+
+        Returns
+        -------
+        None
+
+        """
         if self.vector_potential:
             self.psi = np.complex128(np.sqrt(self.system.field))
             self.A_t = np.zeros(3)
@@ -171,12 +229,28 @@ class RealTimeRunner(Dynamics):
         self.psi.cplx = True
 
     def update_hamiltonian(self):
+        """
+        Update the Hamiltonian.
+
+        Returns
+        -------
+        None
+
+        """
         func = self.functionals(self.rho, calcType=["V"], current=self.j)
         self.propagator.hamiltonian.v = func.potential
         if self.vector_potential:
             self.propagator.hamiltonian.A = self.A_t
 
     def calc_obeservables(self):
+        """
+        Calculate dipole moment, current and energy.
+
+        Returns
+        -------
+        None
+
+        """
         delta_rho = self.rho - self.system.field
         if self.z_split == 0:
             self.delta_mu = (delta_rho * delta_rho.grid.r).integral()
@@ -190,10 +264,18 @@ class RealTimeRunner(Dynamics):
         self.calc_energy()
 
     def calc_energy(self):
+        """
+        Calculate energy.
+
+        Returns
+        -------
+        None
+
+        """
         if self.correction:
             self.E = np.real(
                 np.conj(self.psi) * (
-                            self.propagator.hamiltonian(self.psi) + self.correct_potential * self.psi)).integral()
+                        self.propagator.hamiltonian(self.psi) + self.correct_potential * self.psi)).integral()
         else:
             self.E = np.real(np.conj(self.psi) * self.propagator.hamiltonian(self.psi)).integral()
         if self.propagate_vector_potential:
@@ -201,6 +283,14 @@ class RealTimeRunner(Dynamics):
                     np.dot((self.A_t - self.A_tm1), (self.A_t - self.A_tm1)) / self.int_t / self.int_t)
 
     def load(self):
+        """
+        Load data for restart.
+
+        Returns
+        -------
+        None
+
+        """
         fname = ''.join(['./tmp/', self.restart_input])
         if mp.size > 1:
             f = MPIFile(fname, mp, amode=mp.MPI.MODE_RDONLY)
@@ -215,6 +305,14 @@ class RealTimeRunner(Dynamics):
         f.close()
 
     def save(self):
+        """
+        Save data for restart.
+
+        Returns
+        -------
+        None
+
+        """
         sprint('Save wavefunction data.')
         if not os.path.isdir('./tmp') and mp.is_root:
             os.mkdir('./tmp')
@@ -232,6 +330,14 @@ class RealTimeRunner(Dynamics):
         f.close()
 
     def safe_quit(self):
+        """
+        Perform clean exit when max run time is reached.
+
+        Returns
+        -------
+        None
+
+        """
         self.timer = TimeData.Time('Real-time propagation')
         if self.timer > self.max_runtime:
             self.save()
@@ -240,6 +346,21 @@ class RealTimeRunner(Dynamics):
 
 
 def real_time_runner_print_title(fileobj, vector_potential=False):
+    """
+    Help function to print the title of output file
+
+    Parameters
+    ----------
+    fileobj:
+        handle of the output file
+    vector_potential: bool
+        Whether to print vector potential or not
+
+    Returns
+    -------
+    None
+
+    """
     sprint("{0:^17s} {1:^17s} {2:^17s} {3:^17s} {4:^17s} {5:^17s} {6:^17s} {7:^17s}".format('t', 'E', 'mu_x', 'mu_y',
                                                                                             'mu_z',
                                                                                             'j_x', 'j_y', 'j_z'),
@@ -252,6 +373,29 @@ def real_time_runner_print_title(fileobj, vector_potential=False):
 
 
 def real_time_runner_print_data(fileobj, t, E, mu, j, A=None):
+    """
+    Help function to print results to the output file.
+
+    Parameters
+    ----------
+    fileobj:
+        handle of the output file
+    t: float
+        time
+    E: float
+        energy
+    mu: np.ndarray
+        dipole moment
+    j: np.ndarray
+        current
+    A: np.ndarray or None
+        Vector potential. Should be None if vector_potential=False in real_time_runner_print_title().
+
+    Returns
+    -------
+    None
+
+    """
     sprint("{0:17.10e}".format(t), end='', fileobj=fileobj)
     sprint(" {0:17.10e}".format(E), end='', fileobj=fileobj)
     if not isinstance(mu[0], np.ndarray):

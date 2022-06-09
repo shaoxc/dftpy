@@ -10,8 +10,23 @@ from dftpy.td.operator import Operator
 
 
 class Hamiltonian(Operator):
+    """
+    Hamiltonian: \hat{H} = \frac{1}{2}\left(-i\nabla-\frac{\mathbf{A}}{c}\right)^2 + v
+    """
 
     def __init__(self, v=None, A=None, full=True):
+        """
+
+        Parameters
+        ----------
+        v: DirectField
+            Effective scalar potential
+        A: np.ndarray
+            Vector potential which is constant in space
+        full: bool
+            Must be True if complex numbers are involved in the computation
+
+        """
         self.full = full
         self.v = v
         self.A = A
@@ -51,6 +66,25 @@ class Hamiltonian(Operator):
                 [self._A[0] * ones, self._A[1] * ones, self._A[2] * ones]) / SPEED_OF_LIGHT)
 
     def __call__(self, psi, force_real=None, sigma=0.025):
+        """
+        Performs the Hamiltonian operation on psi.
+
+        Parameters
+        ----------
+        psi: DirectField or ReciprocalField
+            The wavefunction
+        force_real: None or bool
+            Determines the force_real flag for inverse FFT. If set to None, the flag will be determined base on
+            whether psi is real or complex.
+        sigma: float
+            The smearing factor for gradient.
+
+        Returns
+        -------
+        result: DirectField or ReciprocalField
+        The result
+
+        """
         if isinstance(psi, DirectField):
             if force_real is None:
                 if np.isrealobj(psi):
@@ -78,6 +112,27 @@ class Hamiltonian(Operator):
 
     @timer('Diagonalize')
     def diagonalize(self, numeig: int, return_eigenvectors: bool = True, reciprocal: bool = False) -> Tuple:
+        """
+        Diagonalize the Hamiltonian and returns the lowest eigenvalues and optionally eigenvectors
+
+        Parameters
+        ----------
+        numeig: int
+            Number of eigenvalues to return.
+        return_eigenvectors: bool
+            Determine whether the eigenvectors will be returned.
+        reciprocal: bool
+            Determine the eigenvectors are calculated in real or reciprocal space.
+
+        Returns
+        -------
+        Tuple (eigenvalue_list, ) or (eigenvalue_list, psi_list)
+        eigenvalue_list: List[int]
+            The list of eigenvalues
+        psi_list: List[DirectField or ReciprocalField]
+            The list of eigenvectors
+
+        """
 
         if reciprocal:
             reci_grid = self.grid.get_reciprocal()

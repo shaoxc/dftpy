@@ -140,7 +140,7 @@ class Dynamics(IOContext):
         return converged
 
     def converged(self, *args):
-        """" a dummy function as placeholder for a real criterion, e.g. in
+        """ a dummy function as placeholder for a real criterion, e.g. in
         Optimizer """
         return False
 
