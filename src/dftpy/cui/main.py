@@ -39,7 +39,7 @@ def RunJob(args):
         TimeData.Begin("TOTAL")
 
         if "Propagate" in config["JOB"]["task"]:
-            realtimerunner = RealTimeRunner(others["struct"], config, others["E_v_Evaluator"])
+            realtimerunner = RealTimeRunner(others["struct"].field, config, others["E_v_Evaluator"])
             realtimerunner()
         elif "Casida" in config["JOB"]["task"]:
             CasidaRunner(config, others["struct"].field, others["E_v_Evaluator"])
