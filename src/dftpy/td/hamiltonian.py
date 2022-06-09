@@ -48,7 +48,7 @@ class Hamiltonian(Operator):
             if v.grid.full == self.full:
                 self.grid = v.grid
             else:
-                self.grid = DirectGrid(lattice=v.grid.lattice, nr=v.grid.nr, origin=v.grid.origin, full=self.full)
+                self.grid = DirectGrid(lattice=v.grid.lattice, nr=v.grid.nr, origin=v.grid.origin, full=self.full, mp=v.grid.mp)
         elif v is None:
             self._v = None
             self.grid = None
