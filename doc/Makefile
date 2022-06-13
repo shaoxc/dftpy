@@ -7,7 +7,7 @@ SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 SOURCEDIR     = .
 BUILDDIR      = build
-PYTHON = python
+PYTHON = python3.9
 
 # Put it first so that "make" without argument is like "make help".
 #

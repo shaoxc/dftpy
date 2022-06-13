@@ -16,7 +16,8 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.viewcode',
               'sphinx.ext.napoleon',
               'sphinx.ext.intersphinx',
-              'nbsphinx']
+              'nbsphinx',
+              'sphinx_design']
 
 templates_path = ['templates']
 exclude_patterns = ['build']
