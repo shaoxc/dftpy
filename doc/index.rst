@@ -3,21 +3,6 @@
 DFTpy: Density Functional Theory with Python
 ============================================
 
-.. button-link:: https://lists.rutgers.edu/mm3/archives/list/dftpy_forum@email.rutgers.edu/
-    :color: primary
-    :outline:
-    :expand:
-    
-    Help (forum)
-
-.. button-link:: https://gitlab.com/pavanello-research-group/dftpy/-/issues
-    :color: primary
-    :outline:
-    :expand:
-    
-    Submit an issue on GitLab
-
-
 ++++++++++++++
 What is DFTpy?
 ++++++++++++++
@@ -41,6 +26,7 @@ In these docs:
    source/tutorials/tutorials
    source/releases
    source/ofdft
+   source/faq
 
 
 
