@@ -19,5 +19,5 @@ How do I find out more about DFTpy?
 
     Check out the DFTpy forum 
 
-or send an email to `<dftpy_forum@email.rutgers.edu>`_
+or send an email to `dftpy_forum@email.rutgers.edu <dftpy_forum@email.rutgers.edu>`_
 
