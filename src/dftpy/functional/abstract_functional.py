@@ -14,7 +14,7 @@ class AbstractFunctional(ABC):
         pass
 
     def __repr__(self):
-        rep = self.name + ',' + self.kwargs.__repr__()
+        rep = self.name + ', ' + self.__dict__.__repr__()
         return rep
 
     def __call__(self, rho, *args, **kwargs):
