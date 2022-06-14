@@ -84,6 +84,12 @@ Short note on the implementation
 In DFTpy, the electron density is represented in a discrete set of points given by a Cartesian `grid` and contained in a simulation `cell` that is specified by 3 `lattice vectors`. The number of grid points and the cell size are regulated by the user. The Cartesian grid allows for an efficient parallelization of data and work (we use `mpi4py`), and for the exploitation of Fast Fourier Transforms for solving convolution integrals (such as the one needed to compute :math:`E_H[n]`). Either `NumPy.fft` or `PyFFT` are used depending on user input.
 
 
+References
+----------
+* `DFTpy release paper (ground state and td-OF-DFT) <https://wires.onlinelibrary.wiley.com/doi/abs/10.1002/wcms.1482>`_
+* `DFTpy td-OF-DFT (Casida) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.103.245102>`_
+* `DFTpy td-OF-DFT (JP nonadiabatic Pauli potential) <https://journals.aps.org/prb/abstract/10.1103/PhysRevB.104.235110>`_
+* `OESCF solver for OF-DFT <https://pubs.acs.org/doi/abs/10.1021/acs.jpclett.1c00716>`_
 
 
 .. _KEDF: tutorials/config.html#kedf
