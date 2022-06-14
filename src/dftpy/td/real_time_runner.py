@@ -195,7 +195,6 @@ class RealTimeRunner(Dynamics):
             'atol': self.atol,
             'max_steps': self.max_pred_corr,
             'propagate_vector_potential': self.propagate_vector_potential,
-            'int_t': self.int_t,
             'functionals': self.functionals,
         }
         if self.propagate_vector_potential:

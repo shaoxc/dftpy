@@ -18,11 +18,10 @@ class PredictorCorrector(Dynamics):
     def __init__(self,
                  psi,
                  propagator=None,
-                 tol=None,
+                 tol=1.0e-8,
                  atol=None,
-                 max_steps=None,
+                 max_steps=2,
                  propagate_vector_potential=False,
-                 int_t=None,
                  functionals=None,
                  Omega=None,
                  A_t=None,
@@ -44,8 +43,6 @@ class PredictorCorrector(Dynamics):
         propagate_vector_potential: bool
             Whether the vector potential will be propagated or be constant over time. Irrelevant if vector potential is
             not used.
-        int_t: float
-            Interval for each time step.
         functionals: TotalFunctional
             Total functionals
         Omega: float
@@ -64,7 +61,7 @@ class PredictorCorrector(Dynamics):
         self.tol = tol
         self.atol = atol
         self.propagate_vector_potential = propagate_vector_potential
-        self.int_t = int_t
+        self.int_t = self.propagator.interval
         self.functionals = functionals
         self.psi = psi
         self.rho = calc_rho(self.psi)
