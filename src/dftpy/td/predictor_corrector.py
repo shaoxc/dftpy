@@ -5,8 +5,8 @@ from dftpy.linear_solver import _get_atol
 from dftpy.mpi import sprint
 from dftpy.optimize import Dynamics
 from dftpy.utils.utils import calc_rho, calc_j
-from dftpy.functional import TotalFunctional
-from dftpy.td.propagator import Propagator
+from dftpy.functional.abstract_functional import AbstractFunctional
+from dftpy.td.propagator.abstract_propagator import AbstractPropagator
 from dftpy.system import System
 
 
@@ -33,7 +33,7 @@ class PredictorCorrector(Dynamics):
         ----------
         psi: DirectField
 
-        propagator: Propagator
+        propagator: AbstractPropagator
         tol: float
             relative tolerance for convergence
         atol: float
@@ -43,7 +43,7 @@ class PredictorCorrector(Dynamics):
         propagate_vector_potential: bool
             Whether the vector potential will be propagated or be constant over time. Irrelevant if vector potential is
             not used.
-        functionals: TotalFunctional
+        functionals: AbstractFunctional
             Total functionals
         Omega: float
             Volume of the cavity. Irrelevant if vector potential is not used.

@@ -7,10 +7,9 @@ from dftpy.constants import SPEED_OF_LIGHT
 from dftpy.field import DirectField
 from dftpy.formats import npy
 from dftpy.functional import Functional
-from dftpy.functional.total_functional import TotalFunctional
+from dftpy.functional.abstract_functional import AbstractFunctional
 from dftpy.mpi import mp, sprint, MPIFile
 from dftpy.optimize import Dynamics
-from dftpy.system import System
 from dftpy.td.hamiltonian import Hamiltonian
 from dftpy.td.predictor_corrector import PredictorCorrector
 from dftpy.td.propagator import Propagator
@@ -30,11 +29,11 @@ class RealTimeRunner(Dynamics):
 
         Parameters
         ----------
-        system: System
-
+        rho0: DirectField
+            The initial density.
         config: dict
             Configuration from the config file.
-        functionals: TotalFunctional
+        functionals: AbstractFunctional
             Total functional
 
         """
