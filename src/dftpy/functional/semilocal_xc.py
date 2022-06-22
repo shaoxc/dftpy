@@ -12,7 +12,7 @@ from dftpy.time_data import TimeData
 
 
 class XC(AbstractFunctional):
-    def __init__(self, xc=None, core_density=None, libxc=None, name=None, **kwargs):
+    def __init__(self, xc=None, core_density=None, libxc=None, name=None, pseudo = None, **kwargs):
         self.type = 'XC'
         self.name = name or 'XC'
         self.energy = None
@@ -20,6 +20,7 @@ class XC(AbstractFunctional):
         self.options = kwargs
         self.options['xc'] = xc
         self._core_density = core_density
+        self.pseudo = pseudo # For NLCC
         if libxc is False :
             if xc and xc.lower() == 'lda' :
                 self.xcfun = LDA
@@ -37,6 +38,8 @@ class XC(AbstractFunctional):
 
     @property
     def core_density(self):
+        if self._core_density is None and self.pseudo is not None :
+            self._core_density = self.pseudo.core_density
         return self._core_density
 
     @core_density.setter
@@ -59,6 +62,30 @@ class XC(AbstractFunctional):
         functional = self.xcfun(new_density, calcType=calcType, **options)
         if 'E' in calcType : self.energy = functional.energy
         return functional
+
+    def forces(self, density, pseudo = None, **kwargs):
+        if pseudo is None : pseudo = self.pseudo
+        if pseudo is None : return None
+        reciprocal_grid = density.grid.get_reciprocal()
+        forces = np.zeros((pseudo.ions.nat, 3))
+        mask = reciprocal_grid.mask
+        g = reciprocal_grid.g
+
+        pot = self.compute(density, calcType={"V"}, **kwargs).potential
+        if pot.rank == 2 : pot = 0.5*(pot[0]+pot[1])
+        potg = pot.fft()
+
+        for key in sorted(pseudo.ions.Zval):
+                rhocg = pseudo.vlines_core[key]
+                if rhocg is None : continue
+                for i in range(pseudo.ions.nat):
+                    if pseudo.ions.labels[i] == key:
+                        strf = pseudo.ions.istrf(reciprocal_grid, i)
+                        den = (potg[mask] * rhocg[mask] * strf[mask]).imag
+                        for j in range(3):
+                            forces[i, j] = np.einsum("i, i->", g[j][mask], den)
+        forces *= 2.0 / density.grid.volume
+        return forces
 
     def stress(self, density, **kwargs):
         options = copy.deepcopy(self.options)

@@ -106,6 +106,10 @@ class LocalPseudo(AbstractLocalPseudo):
         return self.readpp.vloc_interp
 
     @property
+    def vloc_interp_core(self):
+        return self.readpp._vloc_interp_core
+
+    @property
     def _gp(self):
         return self.readpp.gp
 
@@ -116,6 +120,22 @@ class LocalPseudo(AbstractLocalPseudo):
     @property
     def PP_list(self):
         return self.readpp.PP_list
+
+    @property
+    def core_density(self):
+        if self._core_density is None :
+            self._core_density = {}
+            reciprocal_grid = self.grid.get_reciprocal()
+            q = reciprocal_grid.q
+            v = np.zeros_like(q, dtype=np.complex128)
+            for key in sorted(self.vloc_interp_core):
+                for i in range(len(self.ions.pos)):
+                    if self.ions.labels[i] == key:
+                        if self.vlines_core[key] is None : continue
+                        strf = self.ions.strf(reciprocal_grid, i)
+                        v += self.vlines_core[key] * strf
+            self._core_density = ReciprocalField(reciprocal_grid, griddata_3d=v).ifft(force_real=True)
+        return self._core_density
 
     def __repr__(self):
         return 'LOCALPSEUDO'
@@ -131,10 +151,12 @@ class LocalPseudo(AbstractLocalPseudo):
             return pseudo
 
         self._vlines = {}  # PP for each atomic species on 3D PW grid
+        self._vlines_core = {}  # Core density for each atomic species on 3D PW grid
         self._v = None  # PP for atom on 3D PW grid
         self._vreal = None  # PP for atom on 3D real space
         self._ions = None
         self._grid = None
+        self._core_density = None
         self.zval = {}
         if ions is not None:
             self.ions = ions
@@ -209,6 +231,7 @@ class LocalPseudo(AbstractLocalPseudo):
             raise AttributeError("Must specify rho")
         if not isinstance(rho, (DirectField)):
             raise TypeError("rho must be DirectField")
+        self.local_PP()
         if self.usePME:
             s = self._StressPME(rho, energy)
         else:
@@ -220,6 +243,7 @@ class LocalPseudo(AbstractLocalPseudo):
             raise AttributeError("Must specify rho")
         if not isinstance(rho, (DirectField)):
             raise TypeError("rho must be DirectField")
+        self.local_PP()
         if self.usePME:
             f = self._ForcePME(rho)
         else:
@@ -275,6 +299,34 @@ class LocalPseudo(AbstractLocalPseudo):
                 # vloc[mask] = splev(q[mask], vloc_interp, der=0)-self.zval[key]/gg[mask]
                 self._vlines[key] = vloc.copy()
         return self._vlines
+
+    @property
+    def vlines_core(self):
+        if not self._vlines_core:
+            reciprocal_grid = self.grid.get_reciprocal()
+            q = reciprocal_grid.q
+            vloc = np.empty_like(q)
+            for key in sorted(self.vloc_interp_core):
+                vloc_interp = self.vloc_interp_core[key]
+                if vloc_interp is None :
+                    self._vlines_core[key] = None
+                    continue
+                vloc[:] = 0.0
+                mask = q < self.readpp._core_density_grid[key][-1]
+                qmask = q[mask]
+                if len(qmask)>0 :
+                    vloc[mask] = splev(qmask, vloc_interp, der=0)
+                # quartic interpolation for small q
+                # -----------------------------------------------------------------------
+                mask = q < self.readpp._core_density_grid[key][1]
+                vp = self.readpp._core_density[key]
+                dp = vp[1] - vp[0]
+                f = [vp[2], vp[1], vp[0], vp[1], vp[2]]
+                dx = q[mask] / dp
+                vloc[mask] = quartic_interpolation(f, dx)
+                # -----------------------------------------------------------------------
+                self._vlines_core[key] = vloc.copy()
+        return self._vlines_core
 
     def _PP_Reciprocal(self):
         TimeData.Begin("Vion")
@@ -492,6 +544,7 @@ class ReadPseudo(object):
         self._v = {}  # PP on 1D PP grid r-space
         self._info = {}
         self._vloc_interp = {}  # Interpolates recpot PP
+        self._vloc_interp_core = {}  # Interpolates core density
         self._core_density_grid = {}
         self._core_density = {}  # the radial core charge density for the non-linear core correction in g-space
         self._atomic_density_grid = {}
@@ -536,6 +589,10 @@ class ReadPseudo(object):
         """
         vloc_interp = splrep(self._gp[key][1:], self._vp[key][1:], k=k)
         self._vloc_interp[key] = vloc_interp
+        if self._core_density[key] is not None :
+            self._vloc_interp_core[key] = splrep(self._core_density_grid[key][1:], self._core_density[key][1:], k=k)
+        else :
+            self._vloc_interp_core[key] = None
 
     @staticmethod
     def _real2recip(r, v, zval=0, MaxPoints=10000, Gmax=30, Gmin=1E-4, method='simpson', comm=None, mp=None):
@@ -668,6 +725,12 @@ class ReadPseudo(object):
         if not self._vloc_interp:
             raise AttributeError("Must init ReadPseudo")
         return self._vloc_interp
+
+    @property
+    def vloc_interp_core(self):
+        if not self._vloc_interp_core:
+            raise AttributeError("Must init ReadPseudo")
+        return self._vloc_interp_core
 
     @property
     def gp(self):
