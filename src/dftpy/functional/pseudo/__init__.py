@@ -250,6 +250,39 @@ class LocalPseudo(AbstractLocalPseudo):
             f = self._Force(rho)
         return f
 
+    def calc_force_cc(self, pot = None, core = None):
+        """Calculate the core correction forces
+
+        Parameters
+        ----------
+        pot : field
+            Potential in real space.
+        core :
+            core density of each element in reciprocal space
+        """
+        #
+        if core is None : core = self.vlines_core
+        #
+        reciprocal_grid = self.grid.get_reciprocal()
+        forces = np.zeros((self.ions.nat, 3))
+        mask = reciprocal_grid.mask
+        g = reciprocal_grid.g
+
+        if pot.rank == 2 : pot = 0.5*(pot[0]+pot[1])
+        potg = pot.fft()
+
+        for key in sorted(self.ions.Zval):
+                rhocg = core[key]
+                if rhocg is None : continue
+                for i in range(self.ions.nat):
+                    if self.ions.labels[i] == key:
+                        strf = self.ions.istrf(reciprocal_grid, i)
+                        den = (potg[mask] * rhocg[mask] * strf[mask]).imag
+                        for j in range(3):
+                            forces[i, j] = np.einsum("i, i->", g[j][mask], den)
+        forces *= 2.0 / self.grid.volume
+        return forces
+
     @property
     def vreal(self):
         """

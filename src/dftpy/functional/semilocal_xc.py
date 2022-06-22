@@ -66,25 +66,8 @@ class XC(AbstractFunctional):
     def forces(self, density, pseudo = None, **kwargs):
         if pseudo is None : pseudo = self.pseudo
         if pseudo is None : return None
-        reciprocal_grid = density.grid.get_reciprocal()
-        forces = np.zeros((pseudo.ions.nat, 3))
-        mask = reciprocal_grid.mask
-        g = reciprocal_grid.g
-
         pot = self.compute(density, calcType={"V"}, **kwargs).potential
-        if pot.rank == 2 : pot = 0.5*(pot[0]+pot[1])
-        potg = pot.fft()
-
-        for key in sorted(pseudo.ions.Zval):
-                rhocg = pseudo.vlines_core[key]
-                if rhocg is None : continue
-                for i in range(pseudo.ions.nat):
-                    if pseudo.ions.labels[i] == key:
-                        strf = pseudo.ions.istrf(reciprocal_grid, i)
-                        den = (potg[mask] * rhocg[mask] * strf[mask]).imag
-                        for j in range(3):
-                            forces[i, j] = np.einsum("i, i->", g[j][mask], den)
-        forces *= 2.0 / density.grid.volume
+        forces = pseudo.calc_force_cc(pot)
         return forces
 
     def stress(self, density, **kwargs):
