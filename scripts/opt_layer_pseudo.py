@@ -23,6 +23,32 @@ from dftpy.optimization import Optimization
 from dftpy.time_data import TimeData
 from dftpy.system import System
 from dftpy.mpi import sprint
+from scipy.signal import quadratic
+from typing import Optional, Tuple
+
+
+def bisec(func: callable, xstart: float, xend: float, tol: float = 1.0e-4,
+          ystart: Optional[float] = None, yend: Optional[float] = None) -> Tuple[float, float]:
+
+    if ystart is None:
+        ystart = func(xstart)
+    if yend is None:
+        yend = func(xend)
+
+    xmid = (xstart + xend) / 2.0
+    ymid = func(xmid)
+
+    if ystart < yend:
+        xend, yend = xmid, ymid
+    else:
+        xstart, ystart = xmid, ymid
+
+    if np.abs(ystart - yend) <= tol:
+        return (xstart, ystart) if ystart <= yend else (xend, yend)
+
+    sprint(xstart, xend, ystart, yend)
+    bisec(func, xstart, xend, tol, ystart, yend)
+
 
 
 
@@ -49,7 +75,8 @@ def optimize_layer_pseudo(config: Dict, system: System, total_functional: TotalF
     # print(rho.integral())
 
     def delta_rho(a):
-        ls.vr = a[0] * (np.cos(ls.r / 1 * 2 * np.pi) - 1) + a[1] * (np.sin(ls.r / 1 * 2 * np.pi))
+        #ls.vr = a[0] * (np.cos(ls.r / 1 * 2 * np.pi) - 1) + a[1] * (np.sin(ls.r / 1 * 2 * np.pi))
+        ls.vr = a[0] * quadratic(r / r_cut * 3 - 1.5)
         #ls.vr[ls.r > 2 * a[1]] = 0
         #ls.update_v()
         rho = opt.optimize_rho(guess_rho=rho_ini)
@@ -57,11 +84,14 @@ def optimize_layer_pseudo(config: Dict, system: System, total_functional: TotalF
 
     # print(delta_rho(0.19))
 
-    res = minimize(delta_rho, a)
+    #res = minimize(delta_rho, a)
 
-    sprint(delta_rho(a))
-    sprint(res.x)
-    sprint(delta_rho(res.x))
+    #sprint(delta_rho(a))
+    #sprint(res.x)
+    #sprint(delta_rho(res.x))
+
+    res = bisec(delta_rho, -1, 0, 0.01)
+    sprint(res)
 
 
 def RunJob(args):
