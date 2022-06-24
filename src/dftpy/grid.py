@@ -422,7 +422,7 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
         gg : square of each g vector
     """
 
-    def __init__(self, lattice, nr, units=None, origin=np.array([0.0, 0.0, 0.0]), full=False, uppergrid = None, **kwargs):
+    def __init__(self, lattice, nr, units=None, origin=np.array([0.0, 0.0, 0.0]), full=False, uppergrid = None, gmax = None, **kwargs):
         """
         Parameters
         ----------
@@ -445,6 +445,8 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
         self._ggF = None
         self._invgg = None
         self._invq = None
+        # set gmax
+        self.gmax = gmax
 
     def __eq__(self, other):
         """
@@ -672,3 +674,25 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
     def full(self, value):
         if self._full != value :
             self._full = value
+
+    @property
+    def gmax(self):
+        return self._gmax
+
+    @gmax.setter
+    def gmax(self, value):
+        self._gmax = value
+        if self.gmax is not None :
+            self._gmask = self.gg < self.gmax
+            self._gmask_inv = self.gg > self.gmax
+        else :
+            self._gmask = slice(None)
+            self._gmask_inv = False
+
+    @property
+    def gmask(self):
+        return self._gmask
+
+    @property
+    def gmask_inv(self):
+        return self._gmask_inv

@@ -345,11 +345,13 @@ class DirectField(BaseField):
         reciprocal_grid = self.grid.get_reciprocal()
         if self.rank == 1:
             griddata_3d = self.fft_object(self) * self.grid.dV
+            griddata_3d[reciprocal_grid.gmask_inv] = 0.0
         else:
             nr = self.rank, *reciprocal_grid.nr
             griddata_3d = np.empty(nr, dtype='complex128')
             for i in range(self.rank):
                 griddata_3d[i] = self.fft_object(self[i]) * self.grid.dV
+                griddata_3d[reciprocal_grid.gmask_inv] = 0.0
         TimeData.End("FFT")
         fft_data=ReciprocalField(
             grid=reciprocal_grid, memo=self.memo, rank=self.rank, griddata_3d=griddata_3d, cplx=self.cplx
