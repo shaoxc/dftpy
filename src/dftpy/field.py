@@ -345,13 +345,11 @@ class DirectField(BaseField):
         reciprocal_grid = self.grid.get_reciprocal()
         if self.rank == 1:
             griddata_3d = self.fft_object(self) * self.grid.dV
-            griddata_3d[reciprocal_grid.gmask_inv] = 0.0
         else:
             nr = self.rank, *reciprocal_grid.nr
             griddata_3d = np.empty(nr, dtype='complex128')
             for i in range(self.rank):
                 griddata_3d[i] = self.fft_object(self[i]) * self.grid.dV
-                griddata_3d[i][reciprocal_grid.gmask_inv] = 0.0
         TimeData.End("FFT")
         fft_data=ReciprocalField(
             grid=reciprocal_grid, memo=self.memo, rank=self.rank, griddata_3d=griddata_3d, cplx=self.cplx
@@ -646,6 +644,11 @@ class DirectField(BaseField):
         from dftpy.formats import io as dftpy_io
         self[:] = dftpy_io.read_density(filename, format=format, **kwargs)
 
+    def cut_highg(self, g2max = None):
+        if g2max is None : return self.copy()
+        recip = self.fft().cut_highg(g2max)
+        return recip.ifft()
+
 
 class ReciprocalField(BaseField):
     def __new__(cls, grid, memo="", rank=1, data = None, order = 'C', cplx=False, **kwargs):
@@ -749,7 +752,7 @@ class ReciprocalField(BaseField):
         if environ["FFTLIB"] == "numpy":
             fft_kwargs['s'] = self.grid.nrR
         if self.rank == 1:
-            self[self.grid.gmask_inv] = 0.0
+            # self[self.grid.get_gmask_inv(self.grid.g2max)] = 0.0
             griddata_3d = self.ifft_object(self, **fft_kwargs) / direct_grid.dV
         else:
             if self.cplx or np.all(self.grid.nrG == self.grid.nrR):  # Can only use numpy.fft
@@ -757,7 +760,7 @@ class ReciprocalField(BaseField):
             else:
                 griddata_3d = np.empty(nr)
             for i in range(self.rank):
-                self[i][self.grid.gmask_inv] = 0.0
+                # self[i][self.grid.get_gmask_inv(self.grid.g2max)] = 0.0
                 griddata_3d[i] = self.ifft_object(self[i], **fft_kwargs) / direct_grid.dV
         if check_real:
             if np.isclose(np.imag(griddata_3d), 0.0, atol=1.0e-16).all():
@@ -782,3 +785,11 @@ class ReciprocalField(BaseField):
         self._cplx = value
         if self._cplx and not self.grid.full :
             self.grid.full = True
+
+    def cut_highg(self, g2max = None):
+        if self.rank == 1:
+            self[self.grid.get_gmask_inv(g2max)] = 0.0
+        else:
+            for i in range(self.rank):
+                self[i][self.grid.get_gmask_inv(g2max)] = 0.0
+        return self

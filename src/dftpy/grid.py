@@ -1,5 +1,6 @@
 import numpy as np
 from dftpy.base import BaseCell, DirectCell, ReciprocalCell
+from dftpy.math_utils import spacing2ecut
 
 
 class BaseGrid(BaseCell):
@@ -49,6 +50,8 @@ class BaseGrid(BaseCell):
         self._nnr = np.prod(self._nr)
         # print('nr_local', self.mp.comm.rank, self._nr, realspace, self.mp.comm.size, flush = True)
         self._full = full
+        #
+        self.g2max = 2*spacing2ecut(self.spacings.mean()) + 1.0
 
     def __eq__(self, other):
         if not super().__eq__(other):
@@ -422,7 +425,7 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
         gg : square of each g vector
     """
 
-    def __init__(self, lattice, nr, units=None, origin=np.array([0.0, 0.0, 0.0]), full=False, uppergrid = None, gmax = None, **kwargs):
+    def __init__(self, lattice, nr, units=None, origin=np.array([0.0, 0.0, 0.0]), full=False, uppergrid = None, **kwargs):
         """
         Parameters
         ----------
@@ -445,8 +448,6 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
         self._ggF = None
         self._invgg = None
         self._invq = None
-        # set gmax
-        self.gmax = gmax
 
     def __eq__(self, other):
         """
@@ -675,24 +676,16 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
         if self._full != value :
             self._full = value
 
-    @property
-    def gmax(self):
-        return self._gmax
-
-    @gmax.setter
-    def gmax(self, value):
-        self._gmax = value
-        if self.gmax is not None :
-            self._gmask = self.gg < self.gmax
-            self._gmask_inv = self.gg > self.gmax
+    def get_gmask(self, g2max = None):
+        if g2max is not None :
+            self._gmask = self.gg < g2max
         else :
             self._gmask = slice(None)
-            self._gmask_inv = False
-
-    @property
-    def gmask(self):
         return self._gmask
 
-    @property
-    def gmask_inv(self):
+    def get_gmask_inv(self, g2max = None):
+        if g2max is not None :
+            self._gmask_inv = self.gg > g2max
+        else :
+            self._gmask_inv = False
         return self._gmask_inv
