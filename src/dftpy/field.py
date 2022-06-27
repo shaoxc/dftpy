@@ -351,7 +351,7 @@ class DirectField(BaseField):
             griddata_3d = np.empty(nr, dtype='complex128')
             for i in range(self.rank):
                 griddata_3d[i] = self.fft_object(self[i]) * self.grid.dV
-                griddata_3d[reciprocal_grid.gmask_inv] = 0.0
+                griddata_3d[i][reciprocal_grid.gmask_inv] = 0.0
         TimeData.End("FFT")
         fft_data=ReciprocalField(
             grid=reciprocal_grid, memo=self.memo, rank=self.rank, griddata_3d=griddata_3d, cplx=self.cplx
@@ -749,6 +749,7 @@ class ReciprocalField(BaseField):
         if environ["FFTLIB"] == "numpy":
             fft_kwargs['s'] = self.grid.nrR
         if self.rank == 1:
+            self[self.grid.gmask_inv] = 0.0
             griddata_3d = self.ifft_object(self, **fft_kwargs) / direct_grid.dV
         else:
             if self.cplx or np.all(self.grid.nrG == self.grid.nrR):  # Can only use numpy.fft
@@ -756,6 +757,7 @@ class ReciprocalField(BaseField):
             else:
                 griddata_3d = np.empty(nr)
             for i in range(self.rank):
+                self[i][self.grid.gmask_inv] = 0.0
                 griddata_3d[i] = self.ifft_object(self[i], **fft_kwargs) / direct_grid.dV
         if check_real:
             if np.isclose(np.imag(griddata_3d), 0.0, atol=1.0e-16).all():
