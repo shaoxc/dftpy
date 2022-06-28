@@ -76,7 +76,7 @@ class CrankNicholson(AbstractPropagator):
         "cg": {"func": dftpy.linear_solver.cg, "scipy": False},
     }
 
-    def __init__(self, hamiltonian: Hamiltonian, interval: float, linear_solver: str = "cg", tol: float = 1e-8,
+    def __init__(self, hamiltonian: Hamiltonian, interval: float, linearsolver: str = "cg", tol: float = 1e-8,
                  maxiter: int = 100, atol: Union[float, None] = None, **kwargs) -> None:
         """
 
@@ -86,7 +86,7 @@ class CrankNicholson(AbstractPropagator):
             the time-dependent Hamiltonian
         interval: float
             the time interval for one time step
-        linear_solver: str
+        linearsolver: str
             the name of the linear solver to solve the Ax=b problem. Options:
             "bicg_scipy", "bicgstab_scipy", "cg_scipy", "cgs_scipy", "gmres_scipy", "lgmres_scipy", "minres_scipy",
             "qmr_scipy", "bicg", "bicgstab", "cg"
@@ -101,7 +101,7 @@ class CrankNicholson(AbstractPropagator):
         """
         super(CrankNicholson, self).__init__(hamiltonian, interval)
         self._a = CrankNicholsonOperator(self._hamiltonian, self._interval)
-        self.linear_solver = linear_solver
+        self.linear_solver = linearsolver
         self.tol = tol
         self.maxiter = maxiter
         self.atol = atol
