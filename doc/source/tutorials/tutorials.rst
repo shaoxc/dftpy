@@ -37,4 +37,5 @@ Do it on a Jupyter Notebook!
    :maxdepth: 1
 
    jupyter/optimization
+   jupyter/td-ofdft
 
