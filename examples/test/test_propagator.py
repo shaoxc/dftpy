@@ -11,6 +11,7 @@ from dftpy.td.hamiltonian import Hamiltonian
 from dftpy.utils.utils import calc_rho
 from dftpy.formats import io
 from dftpy.constants import Units
+from dftpy.td.utils import initial_kick
 
 ang2bohr = 1.0/Units.Bohr
 
@@ -41,15 +42,14 @@ class TestPropagator(unittest.TestCase):
             HARTREE=HARTREE,
             PSEUDO=PSEUDO)
 
-        x = rho0.grid.r[0]
+        x = 0
         k = 1.0e-3
-        psi0 = np.sqrt(rho0) * np.exp(1j * k * x)
-        psi0.cplx = True
+        psi0 = initial_kick(k, x, np.sqrt(rho0))
 
         psi = psi0
         func = E_v_Evaluator.compute(rho0, calcType=["V"])
         self.hamiltonian.v = func.potential
-        E0 = np.real(np.conj(psi) * self.hamiltonian(psi)).integral()
+        E0 = self.hamiltonian.energy(psi)
 
         for i_t in range(10):
             psi, info = self.taylor(psi)
@@ -57,7 +57,7 @@ class TestPropagator(unittest.TestCase):
             func = E_v_Evaluator.compute(rho, calcType=["V"])
             self.hamiltonian.v = func.potential
 
-        E = np.real(np.conj(psi) * self.hamiltonian(psi)).integral()
+        E = self.hamiltonian.energy(psi)
         self.assertTrue(np.isclose(E, E0, rtol=1e-3))
 
         delta_rho = rho - rho0
@@ -74,7 +74,7 @@ class TestPropagator(unittest.TestCase):
             func = E_v_Evaluator.compute(rho, calcType=["V"])
             self.hamiltonian.v = func.potential
 
-        E = np.real(np.conj(psi) * self.hamiltonian(psi)).integral()
+        E = self.hamiltonian.energy(psi)
         self.assertTrue(np.isclose(E, E0, rtol=1e-3))
 
         delta_rho = rho - rho0

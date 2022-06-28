@@ -1,8 +1,8 @@
 .. _jupyter:
 
-============================
-Do it on a Jupyter Notebook!
-============================
+====================
+Density Optimization
+====================
 
 Check out `this notebook <density_optimization.ipynb>`_.
 

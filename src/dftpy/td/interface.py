@@ -3,7 +3,7 @@ import os.path
 
 import numpy as np
 
-from dftpy.formats.xsf import XSF
+from dftpy.formats import io
 from dftpy.mpi import sprint
 from dftpy.td.casida import Casida
 from dftpy.td.hamiltonian import Hamiltonian
@@ -48,12 +48,12 @@ def CasidaRunner(config, rho0, E_v_Evaluator):
     #        with open('{0:s}/x_minus_y{1:d}',format(ev_path, i), 'w') as fw:
 
 
-def DiagonalizeRunner(config, struct, E_v_Evaluator):
+def DiagonalizeRunner(config, field, ions, E_v_Evaluator):
     numeig = config["CASIDA"]["numeig"]
     eigfile = config["TD"]["outfile"]
     direct_to_psi = './xsf'
 
-    potential = E_v_Evaluator(struct.field, calcType={'V'}).potential
+    potential = E_v_Evaluator(field, calcType={'V'}).potential
     hamiltonian = Hamiltonian(potential)
     sprint('Start diagonalizing Hamiltonian.')
     eigs, psi_list = hamiltonian.diagonalize(numeig)
@@ -64,7 +64,7 @@ def DiagonalizeRunner(config, struct, E_v_Evaluator):
     if not os.path.isdir(direct_to_psi):
         os.mkdir(direct_to_psi)
     for i in range(len(eigs)):
-        XSF(filexsf='{0:s}/psi{1:d}.xsf'.format(direct_to_psi, i)).write(system=struct, field=psi_list[i])
+        io.write('{0:s}/psi{1:d}.xsf'.format(direct_to_psi, i), ions, psi_list[i])
 
 # def SternheimerRunner(config, rho0, E_v_Evaluator):
 #     outfile = config["TD"]["outfile"]

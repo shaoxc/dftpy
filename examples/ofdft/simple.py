@@ -15,8 +15,8 @@ ions = io.read('../DATA/fcc.vasp')
 # PP_list = {'Al': '../DATA/al.lda.recpot'}
 PP_list = ['../DATA/al.lda.recpot']
 #
-nr = ecut2nr(ecut = 20, lattice = ions.pos.cell.lattice)
-grid = DirectGrid(lattice=ions.pos.cell.lattice, nr=nr, mp=mp)
+nr = ecut2nr(ecut = 20, lattice = ions.cell)
+grid = DirectGrid(lattice=ions.cell, nr=nr, mp=mp)
 rho_ini = DirectField(grid=grid)
 #
 PSEUDO = LocalPseudo(grid=grid, ions=ions, PP_list=PP_list)
@@ -24,7 +24,7 @@ KE = Functional(type='KEDF', name='WT')
 XC = Functional(type='XC', name='LDA')
 HARTREE = Functional(type='HARTREE')
 #
-rho_ini[:] = ions.ncharge / ions.pos.cell.volume
+rho_ini[:] = ions.get_ncharges() / ions.cell.volume
 #
 funcDict = {'KE' :KE, 'XC' :XC, 'HARTREE' :HARTREE, 'PSEUDO' :PSEUDO}
 EnergyEvaluator = TotalFunctional(**funcDict)

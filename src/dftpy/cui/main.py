@@ -44,7 +44,7 @@ def RunJob(args):
         elif "Casida" in config["JOB"]["task"]:
             CasidaRunner(config, others["field"], others["E_v_Evaluator"])
         elif "Diagonalize" in config["JOB"]["task"]:
-            DiagonalizeRunner(config, others["field"], others["E_v_Evaluator"])
+            DiagonalizeRunner(config, others["field"], others["ions"], others["E_v_Evaluator"])
         elif "Inversion" in config["JOB"]["task"]:
             InvertRunner(config, others["field"], others["E_v_Evaluator"])
         else:

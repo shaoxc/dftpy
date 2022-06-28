@@ -8,29 +8,59 @@ from dftpy.utils.utils import calc_rho, calc_j
 
 
 class PredictorCorrector(Dynamics):
+    """
+    The predictor-Corrector for real-time propagation.
+    """
 
     def __init__(self,
-                 system,
+                 psi,
                  propagator=None,
-                 tol=None,
+                 tol=1.0e-8,
                  atol=None,
-                 max_steps=None,
+                 max_steps=2,
                  propagate_vector_potential=False,
-                 int_t=None,
                  functionals=None,
                  Omega=None,
                  A_t=None,
                  A_tm1=None,
                  N0=None):
-        Dynamics.__init__(self, system=system)
+        """
+
+        Parameters
+        ----------
+        psi: DirectField
+
+        propagator: AbstractPropagator
+        tol: float
+            relative tolerance for convergence
+        atol: float
+            absolute tolerance for convergence
+        max_steps: int
+            Max amount of predictor-corrector steps
+        propagate_vector_potential: bool
+            Whether the vector potential will be propagated or be constant over time. Irrelevant if vector potential is
+            not used.
+        functionals: AbstractFunctional
+            Total functionals
+        Omega: float
+            Volume of the cavity. Irrelevant if vector potential is not used.
+        A_t: np.ndarray
+            Vector potential at the start of the current time step. Irrelevant if vector potential is not used.
+        A_tm1: np.ndarray
+            Vector potential at the start of the previous time step. Irrelevant if vector potential is not used.
+        N0: float
+            Number of electrons in the system.
+
+        """
+        Dynamics.__init__(self)
         self.propagator = propagator
         self.max_steps = max_steps
         self.tol = tol
         self.atol = atol
         self.propagate_vector_potential = propagate_vector_potential
-        self.int_t = int_t
+        self.int_t = self.propagator.interval
         self.functionals = functionals
-        self.psi = self.system.field
+        self.psi = psi
         self.rho = calc_rho(self.psi)
         self.j = calc_j(self.psi)
         self.atol_rho = _get_atol(tol, atol, self.rho.norm())
@@ -52,6 +82,14 @@ class PredictorCorrector(Dynamics):
         self.diff_j = None
 
     def step(self):
+        """
+        Do one predictor-corrector step.
+
+        Returns
+        -------
+        None
+
+        """
         if self.nsteps > 0:
             self.old_rho_pred = self.rho_pred
             self.old_j_pred = self.j_pred
@@ -62,7 +100,8 @@ class PredictorCorrector(Dynamics):
         if self.propagate_vector_potential:
             self.A_t_pred = np.empty_like(self.A_t)
             self.A_t_pred[:] = np.real(
-                2 * self.A_t - self.A_tm1 - 4 * np.pi * self.N0 * self.A_t / self.Omega * self.int_t * self.int_t - 4.0 * np.pi * SPEED_OF_LIGHT * self.N0 / self.Omega * self.psi_pred.para_current(
+                2 * self.A_t - self.A_tm1 - 4 * np.pi * self.N0 * self.A_t / self.Omega * self.int_t * self.int_t
+                - 4.0 * np.pi * SPEED_OF_LIGHT * self.N0 / self.Omega * self.psi_pred.para_current(
                     sigma=0.025) * self.int_t * self.int_t)
 
         self.rho_corr = (self.rho + self.rho_pred) * 0.5
@@ -74,11 +113,33 @@ class PredictorCorrector(Dynamics):
             self.propagator.hamiltonian.A = self.A_t_corr
 
     def converged(self, *args):
+        """
+        Check convergence. The convergence is achieved when both density and current density meet the convergence
+        threshold.
+
+        Parameters
+        ----------
+        args:
+            Not used. Only be here to fulfill the parent class requirement.
+
+        Returns
+        -------
+        converged: bool
+
+        """
         self.diff_rho = (self.old_rho_pred - self.rho_pred).norm()
         self.diff_j = np.max((self.old_j_pred - self.j_pred).norm())
         return self.diff_rho < self.atol_rho and self.diff_j < self.atol_j
 
     def print_not_converged_info(self):
+        """
+        If convergence is not reached, print the information of density and/or current density.
+
+        Returns
+        -------
+        None
+
+        """
         if self.max_steps > 1:
             sprint('Convergence not reached for Predictor-corrector')
             if self.diff_rho >= self.atol_rho:

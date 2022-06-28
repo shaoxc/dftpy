@@ -280,13 +280,13 @@ def OptimizeDensityConf(config, ions, rho, E_v_Evaluator, nr2 = None):
     if config["DENSITY"]["densityoutput"]:
         sprint("Write Density...")
         outfile = config["DENSITY"]["densityoutput"]
-        write(outfile, rho, ions = ions)
+        write(outfile, rho, ions)
     ############################## Output ##############################
     if config["OUTPUT"]["electrostatic_potential"]:
         sprint("Write electrostatic potential...")
         outfile = config["OUTPUT"]["electrostatic_potential"]
         v = get_electrostatic_potential(rho, E_v_Evaluator)
-        write(outfile, v, ions = ions)
+        write(outfile, v, ions)
     results = {}
     results["density"] = rho
     results["energypotential"] = energypotential

@@ -7,7 +7,7 @@ from dftpy.constants import SPEED_OF_LIGHT
 from dftpy.field import DirectField
 from dftpy.formats import npy
 from dftpy.functional import Functional
-from dftpy.functional.total_functional import TotalFunctional
+from dftpy.functional.abstract_functional import AbstractFunctional
 from dftpy.mpi import mp, sprint, MPIFile
 from dftpy.optimize import Dynamics
 from dftpy.td.hamiltonian import Hamiltonian
@@ -16,12 +16,30 @@ from dftpy.td.propagator import Propagator
 from dftpy.utils.utils import calc_rho, calc_j
 from dftpy.time_data import TimeData, timer
 from dftpy.constants import Units
+from dftpy.td.utils import initial_kick, initial_kick_vector_potential, vector_potential_energy, PotentialOperator
+
 
 class RealTimeRunner(Dynamics):
+    """
+    Interface class for running a real-time propagation from a config file.
+    """
 
-    def __init__(self, system, config, functionals):
+    def __init__(self, rho0, config, functionals):
+        """
+
+        Parameters
+        ----------
+        rho0: DirectField
+            The initial density.
+        config: dict
+            Configuration from the config file.
+        functionals: AbstractFunctional
+            Total functional
+
+        """
         self.outfile = config["TD"]["outfile"]
-        Dynamics.__init__(self, system, self.outfile)
+        Dynamics.__init__(self, self.outfile)
+        self.rho0 = rho0
         self.int_t = config["TD"]["timestep"]
         self.t_max = config["TD"]["tmax"]
         self.max_pred_corr = config["TD"]["max_pc"]
@@ -41,14 +59,14 @@ class RealTimeRunner(Dynamics):
             self.propagate_vector_potential = False
         self.max_steps = int(self.t_max / self.int_t)
         self.functionals = functionals
-        self.N0 = self.system.field.integral()
+        self.N0 = self.rho0.integral()
         self.psi = None
         self.predictor_corrector = None
         self.delta_mu = None
         self.j_int = None
         self.E = None
-        self.correct_potential = None
         self.timer = None
+        self.correct_propagator = None
 
         #self.z_split = 0
         self.z_split = config["TD"]['z_split'] / Units.Bohr
@@ -58,9 +76,9 @@ class RealTimeRunner(Dynamics):
             self.A_tm1 = None
             self.Omega = config["TD"]["omega"]
             if self.Omega <= 0:
-                self.Omega = self.system.field.grid.Volume
+                self.Omega = self.rho0.grid.Volume
             else:
-                self.Omega = self.system.field.grid.Volume * self.Omega
+                self.Omega = self.rho0.grid.Volume * self.Omega
 
         if self.correction:
             correct_potential_dict = dict()
@@ -81,7 +99,8 @@ class RealTimeRunner(Dynamics):
             self.attach(self.save, interval=-self.max_steps)
 
         hamiltonian = Hamiltonian()
-        self.propagator = Propagator(hamiltonian, self.int_t, name=config["PROPAGATOR"]["propagator"], **config["PROPAGATOR"])
+        self.propagator = Propagator(hamiltonian, self.int_t, name=config["PROPAGATOR"]["propagator"],
+                                     **config["PROPAGATOR"])
 
         if self.restart:
             self.load()
@@ -92,22 +111,31 @@ class RealTimeRunner(Dynamics):
         self.j = calc_j(self.psi)
         self.update_hamiltonian()
         if self.correction:
-            self.correct_potential = self.correct_functionals(self.rho, calcType=['V'], current=self.j).potential
+            correct_potential = self.correct_functionals(self.rho, calcType=['V'], current=self.j).potential
+            self.correct_propagator = Propagator(name='taylor', hamiltonian=PotentialOperator(v=correct_potential),
+                                                 interval=self.int_t, order=1)
 
     def initialize(self):
         sprint("{:20s}{:30s}{:24s}".format('Iter', 'Num. of Predictor-corrector', 'Total Cost(s)'))
 
     def step(self):
-        system = System(field=self.psi)
-        self.predictor_corrector = PredictorCorrector(system, **self.predictor_corrector_arguments())
+        """
+        Perform a time step.
+
+        Returns
+        -------
+        None
+
+        """
+        self.predictor_corrector = PredictorCorrector(self.psi, **self.predictor_corrector_arguments())
         converged = self.predictor_corrector.run()
         if not converged:
             self.predictor_corrector.print_not_converged_info()
 
         if self.correction:
-            self.correct_potential = self.correct_functionals(self.rho, calcType=['V'], current=self.j).potential
-            self.predictor_corrector.psi_pred = self.predictor_corrector.psi_pred - 1.0j * self.int_t * self.correct_potential * self.psi
-            self.predictor_corrector.psi_pred.normalize(N=self.N0)
+            correct_potential = self.correct_functionals(self.rho, calcType=['V'], current=self.j).potential
+            self.correct_propagator.hamiltonian.v = correct_potential
+            self.predictor_corrector.psi_pred = self.correct_propagator(self.predictor_corrector.psi_pred)
             self.predictor_corrector.rho_pred = calc_rho(self.predictor_corrector.psi_pred)
             self.predictor_corrector.j_pred = calc_j(self.predictor_corrector.psi_pred)
 
@@ -126,9 +154,25 @@ class RealTimeRunner(Dynamics):
 
     @timer('Real-time propagation')
     def run(self):
+        """
+        Perform real-time propagation.
+
+        Returns
+        -------
+        None
+
+        """
         return Dynamics.run(self)
 
     def log(self):
+        """
+        Write the result to file.
+
+        Returns
+        -------
+        None
+
+        """
         if mp.is_root:
             if self.nsteps == 0:
                 real_time_runner_print_title(self.logfile, self.vector_potential)
@@ -136,13 +180,20 @@ class RealTimeRunner(Dynamics):
                                         self.A_t if self.vector_potential else None)
 
     def predictor_corrector_arguments(self):
+        """
+        Pack the arguments for creating a propagator object.
+
+        Returns
+        -------
+        arguments: dict
+
+        """
         arguments = {
             'propagator': self.propagator,
             'tol': self.tol,
             'atol': self.atol,
             'max_steps': self.max_pred_corr,
             'propagate_vector_potential': self.propagate_vector_potential,
-            'int_t': self.int_t,
             'functionals': self.functionals,
         }
         if self.propagate_vector_potential:
@@ -155,65 +206,106 @@ class RealTimeRunner(Dynamics):
         return arguments
 
     def apply_initial_field(self):
+        """
+        Apply the initial field.
+
+        Returns
+        -------
+        None
+
+        """
+        psi0 = np.sqrt(self.rho0)
         if self.vector_potential:
-            self.psi = np.complex128(np.sqrt(self.system.field))
-            self.A_t = np.zeros(3)
-            self.A_t[self.direc] = self.k * SPEED_OF_LIGHT
+            self.psi, self.A_t = initial_kick_vector_potential(self.k, self.direc, psi0)
             self.A_tm1 = self.A_t.copy()
         else:
             if self.z_split == 0:
-                x = self.system.field.grid.r[self.direc]
+                mask = None
             else:
-                mask = self.system.field.grid.r[2] >= self.z_split
-                x = self.system.field.grid.r[self.direc] * mask
-            self.psi = np.sqrt(self.system.field) * np.exp(1j * self.k * x)
-        self.psi.cplx = True
+                mask = self.rho0.grid.r[2] >= self.z_split
+            self.psi = initial_kick(self.k, self.direc, psi0, mask)
 
     def update_hamiltonian(self):
+        """
+        Update the Hamiltonian.
+
+        Returns
+        -------
+        None
+
+        """
         func = self.functionals(self.rho, calcType=["V"], current=self.j)
         self.propagator.hamiltonian.v = func.potential
         if self.vector_potential:
             self.propagator.hamiltonian.A = self.A_t
 
     def calc_obeservables(self):
-        delta_rho = self.rho - self.system.field
+        """
+        Calculate dipole moment, current and energy.
+
+        Returns
+        -------
+        None
+
+        """
+        delta_rho = self.rho - self.rho0
         if self.z_split == 0:
             self.delta_mu = (delta_rho * delta_rho.grid.r).integral()
         else:
-            mask = self.system.field.grid.r[2] >= self.z_split
+            mask = self.rho0.grid.r[2] >= self.z_split
             self.delta_mu = [(delta_rho * mask * delta_rho.grid.r).integral()]
-            mask = self.system.field.grid.r[2] < self.z_split
+            mask = self.rho0.grid.r[2] < self.z_split
             self.delta_mu.append((delta_rho * mask * delta_rho.grid.r).integral())
 
         self.j_int = self.j.integral()
         self.calc_energy()
 
     def calc_energy(self):
+        """
+        Calculate energy.
+
+        Returns
+        -------
+        None
+
+        """
+        self.E = self.propagator.hamiltonian.energy(self.psi)
         if self.correction:
-            self.E = np.real(
-                np.conj(self.psi) * (
-                            self.propagator.hamiltonian(self.psi) + self.correct_potential * self.psi)).integral()
-        else:
-            self.E = np.real(np.conj(self.psi) * self.propagator.hamiltonian(self.psi)).integral()
+            self.E += self.correct_propagator.hamiltonian.energy(self.psi)
         if self.propagate_vector_potential:
-            self.E += self.Omega / 8.0 / np.pi / SPEED_OF_LIGHT ** 2 * (
-                    np.dot((self.A_t - self.A_tm1), (self.A_t - self.A_tm1)) / self.int_t / self.int_t)
+            self.E += vector_potential_energy(self.int_t, self.Omega, self.A_t, self.A_tm1)
 
     def load(self):
+        """
+        Load data for restart.
+
+        Returns
+        -------
+        None
+
+        """
         fname = ''.join(['./tmp/', self.restart_input])
         if mp.size > 1:
             f = MPIFile(fname, mp, amode=mp.MPI.MODE_RDONLY)
         else:
             f = open(fname, "rb")
         self.nsteps = npy.read(f, single=True) + 1
-        psi = npy.read(f, grid=self.system.field.grid)
-        self.psi = DirectField(grid=self.system.field.grid, rank=1, griddata_3d=psi, cplx=True)
+        psi = npy.read(f, grid=self.rho0.grid)
+        self.psi = DirectField(grid=self.rho0.grid, rank=1, griddata_3d=psi, cplx=True)
         if self.vector_potential:
             self.A_t = npy.read(f, single=True)
             self.A_tm1 = npy.read(f, single=True)
         f.close()
 
     def save(self):
+        """
+        Save data for restart.
+
+        Returns
+        -------
+        None
+
+        """
         sprint('Save wavefunction data.')
         if not os.path.isdir('./tmp') and mp.is_root:
             os.mkdir('./tmp')
@@ -231,6 +323,14 @@ class RealTimeRunner(Dynamics):
         f.close()
 
     def safe_quit(self):
+        """
+        Perform clean exit when max run time is reached.
+
+        Returns
+        -------
+        None
+
+        """
         self.timer = TimeData.Time('Real-time propagation')
         if self.timer > self.max_runtime:
             self.save()
@@ -239,6 +339,21 @@ class RealTimeRunner(Dynamics):
 
 
 def real_time_runner_print_title(fileobj, vector_potential=False):
+    """
+    Help function to print the title of output file
+
+    Parameters
+    ----------
+    fileobj:
+        handle of the output file
+    vector_potential: bool
+        Whether to print vector potential or not
+
+    Returns
+    -------
+    None
+
+    """
     sprint("{0:^17s} {1:^17s} {2:^17s} {3:^17s} {4:^17s} {5:^17s} {6:^17s} {7:^17s}".format('t', 'E', 'mu_x', 'mu_y',
                                                                                             'mu_z',
                                                                                             'j_x', 'j_y', 'j_z'),
@@ -251,6 +366,29 @@ def real_time_runner_print_title(fileobj, vector_potential=False):
 
 
 def real_time_runner_print_data(fileobj, t, E, mu, j, A=None):
+    """
+    Help function to print results to the output file.
+
+    Parameters
+    ----------
+    fileobj:
+        handle of the output file
+    t: float
+        time
+    E: float
+        energy
+    mu: np.ndarray
+        dipole moment
+    j: np.ndarray
+        current
+    A: np.ndarray or None
+        Vector potential. Should be None if vector_potential=False in real_time_runner_print_title().
+
+    Returns
+    -------
+    None
+
+    """
     sprint("{0:17.10e}".format(t), end='', fileobj=fileobj)
     sprint(" {0:17.10e}".format(E), end='', fileobj=fileobj)
     if not isinstance(mu[0], np.ndarray):
