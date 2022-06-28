@@ -2,7 +2,6 @@ import numpy as np
 import gc
 import os
 import importlib.util
-import resource
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.grid import ReciprocalGrid
 from dftpy.math_utils import interpolation_3d
@@ -15,8 +14,8 @@ def dipole_moment(rho, ions = None, center = [0.0, 0.0, 0.0]):
     dm = np.einsum('lijk, ijk -> l', r, rho) * rho.grid.dV
     if ions is not None :
         for i in range(ions.nat) :
-            z = ions.Zval[ions.labels[i]]
-            dm -= z * (ions.pos[i] - rcenter)
+            z = ions.charges[i]
+            dm -= z * (ions.positions[i] - rcenter)
     return dm
 
 
@@ -27,8 +26,8 @@ def dipole_correction(rho, axis=2, ions=None, center = [0.0, 0.0, 0.0], coef=10.
     dm = np.einsum('ijk, ijk ->', r, rho) * rho.grid.dV
     if ions is not None :
         for i in range(ions.nat) :
-            z = ions.Zval[ions.labels[i]]
-            dm -= z * (ions.pos[i][axis] - rcenter[axis])
+            z = ions.charges[i]
+            dm -= z * (ions.positions[i][axis] - rcenter[axis])
 
     s = rho.grid.s[axis,...] - center[axis]
     rho_add = s * np.exp(coef * s * s)
@@ -197,6 +196,7 @@ def get_mem_info(pid = None, width = 8):
         line = templ.format(str(pid), bytes2human(uss), bytes2human(pss), bytes2human(swap), bytes2human(rss), width = width)
     else :
         try:
+            import resource
             mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
             if os.uname().sysname == 'Linux' : # kB
                 mem = bytes2human(mem*1024)

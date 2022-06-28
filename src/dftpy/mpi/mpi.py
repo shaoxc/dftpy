@@ -153,7 +153,7 @@ class MP :
                 delfft.destroy()
         if comm_free and self.comm : self.comm.Free()
 
-    def _get_local_fft_shape_mpi4py(self, nr, realspace = True, decomposition = None, backend = None, fft = None, **kwargs):
+    def _get_local_fft_shape_mpi4py(self, nr, direct = True, decomposition = None, backend = None, fft = None, **kwargs):
         """
         TIP :
             When the environment variable LD_PRELOAD is defined, sometimes backend = 'fftw' will give a wrong results
@@ -163,8 +163,8 @@ class MP :
         if fft is None :
             from .mp_mpi4py import get_mpi4py_fft
             fft = get_mpi4py_fft(self.comm, nr, decomposition=decomposition, backend=backend, **kwargs)
-        s = fft.local_slice(not realspace)
-        shape = fft.shape(not realspace)
+        s = fft.local_slice(not direct)
+        shape = fft.shape(not direct)
         offsets = np.zeros_like(s, dtype = np.int32)
         for i, item in enumerate(s):
             if item.start is not None :
@@ -172,13 +172,13 @@ class MP :
         shape = np.asarray(shape)
         return (s, shape, offsets)
 
-    def _get_local_fft_shape_serial(self, nr, realspace = True, full = False, cplx = False, **kwargs):
+    def _get_local_fft_shape_serial(self, nr, direct = True, full = False, cplx = False, **kwargs):
         s = []
         for item in nr :
             s.append(slice(None))
         s = tuple(s)
         shape = np.array(nr)
-        if not full and not realspace and not cplx:
+        if not full and not direct and not cplx:
             shape[-1] = shape[-1]//2 + 1
         offsets = np.zeros_like(nr, dtype = np.int32)
         return (s, shape, offsets)

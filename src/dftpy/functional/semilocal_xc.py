@@ -545,7 +545,7 @@ def get_libxc_names(xc = None, libxc = None, name = None, code = None, **kwargs)
             v = xcformats.get(xc, {}).get('libxc', None)
             if v : libxc = v
     elif isinstance(libxc, str):
-        libxc =[libxc]
+        libxc =libxc.split()
 
     # compatible with older version
     libxc_old = [v for k, v in kwargs.items() if k in ["k_str", "x_str", "c_str"] and v is not None]

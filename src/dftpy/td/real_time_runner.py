@@ -10,13 +10,12 @@ from dftpy.functional import Functional
 from dftpy.functional.total_functional import TotalFunctional
 from dftpy.mpi import mp, sprint, MPIFile
 from dftpy.optimize import Dynamics
-from dftpy.system import System
 from dftpy.td.hamiltonian import Hamiltonian
 from dftpy.td.predictor_corrector import PredictorCorrector
 from dftpy.td.propagator import Propagator
 from dftpy.utils.utils import calc_rho, calc_j
 from dftpy.time_data import TimeData, timer
-from dftpy.constants import LEN_CONV
+from dftpy.constants import Units
 
 class RealTimeRunner(Dynamics):
 
@@ -52,7 +51,7 @@ class RealTimeRunner(Dynamics):
         self.timer = None
 
         #self.z_split = 0
-        self.z_split = config["TD"]['z_split'] * LEN_CONV["Angstrom"]["Bohr"]
+        self.z_split = config["TD"]['z_split'] / Units.Bohr
 
         if self.vector_potential:
             self.A_t = None

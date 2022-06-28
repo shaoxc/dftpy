@@ -1,11 +1,5 @@
 import numpy as np
-from dftpy.system import System
-from dftpy.atom import Atom
-from dftpy.cell import BaseCell, DirectCell
-from dftpy.constants import LEN_CONV
-
-BOHR2ANG = LEN_CONV["Bohr"]["Angstrom"]
-
+from dftpy.ions import Ions
 
 def read_POSCAR(infile, names=None, **kwargs):
     if hasattr(infile, 'close'):
@@ -22,8 +16,7 @@ def read_POSCAR(infile, names=None, **kwargs):
     lat = []
     for i in range(2, 5):
         lat.append(list(map(float, fh.readline().split())))
-    lat = np.asarray(lat).T / BOHR2ANG
-    lat = np.ascontiguousarray(lat)
+    lat = np.asarray(lat)
     for i in range(3):
         lat[i] *= scale[i]
     lineL = fh.readline().split()
@@ -33,12 +26,9 @@ def read_POSCAR(infile, names=None, **kwargs):
         names = lineL
         typ = list(map(int, fh.readline().split()))
     if names is None:
-        raise AttributeError("Must input the atoms names")
+        raise AttributeError("Must input the ions names")
     Format = fh.readline().strip()[0]
-    if Format.lower() == "d" :
-        Format = "Crystal"
-    elif Format.lower() in ['f', 'c'] :
-        Format = "Cartesian"
+
     nat = sum(typ)
     pos = []
     i = 0
@@ -48,46 +38,48 @@ def read_POSCAR(infile, names=None, **kwargs):
             break
         else:
             pos.append(list(map(float, line.split()[:3])))
-    # pos = np.asarray(pos)
-    if Format == "Cartesian" :
-        pos = np.asarray(pos) / BOHR2ANG
+    pos = np.asarray(pos)
 
-    labels = []
+    if Format.lower() in ['c', 'k'] :
+        positions=pos
+        scaled_positions=None
+    else :
+        positions=None
+        scaled_positions=pos
+
+    symbols = []
     for i in range(len(names)):
-        labels.extend([names[i]] * typ[i])
+        symbols.extend([names[i]] * typ[i])
 
-    cell = DirectCell(lat)
-    atoms = Atom(label=labels, pos=pos, cell=cell, basis=Format)
+    ions = Ions(symbols=symbols, positions=positions, scaled_positions=scaled_positions, cell=lat, units = 'ase')
 
     if not hasattr(infile, 'close'): fh.close()
-    return atoms
+    return ions
 
 def read_vasp(infile, **kwargs):
-    atoms = read_POSCAR(infile, **kwargs)
-    system = System(ions = atoms)
-    return system
+    ions = read_POSCAR(infile, **kwargs)
+    return ions
 
-def write_vasp(infile, system, direct = False, fmt = '%22.15f', header = 'DFTpy', **kwargs):
+def write_vasp(infile, ions, direct = False, fmt = '%22.15f', header = 'DFTpy', **kwargs):
     if hasattr(infile, 'close'):
         fh = infile
     else :
         fh = open(infile, "w")
 
-    ions = system.ions
+    ions = ions.to_ase()
 
     fh.write(header + '\n')
     fh.write('1.0\n')
-    for i in range(3):
-        vec = ions.pos.cell.lattice[:, i] * BOHR2ANG
+    for vec in ions.cell:
         for x in vec : fh.write(fmt % x)
         fh.write('\n')
 
     if direct :
-        pos = ions.pos.to_crys()
+        pos = ions.get_scaled_positions()
     else :
-        pos = ions.pos.to_cart()
+        pos = ions.get_positions()
 
-    names, indices, counts = np.unique(ions.labels, return_inverse=True, return_counts=True)
+    names, indices, counts = np.unique(ions.symbols, return_inverse=True, return_counts=True)
 
     for x in names : fh.write(f' {x:<3s}')
     fh.write('\n')
@@ -101,7 +93,6 @@ def write_vasp(infile, system, direct = False, fmt = '%22.15f', header = 'DFTpy'
         fh.write('Direct\n')
     else:
         fh.write('Cartesian\n')
-        pos = pos*BOHR2ANG
 
     for i, ps in enumerate(pos):
         fh.write(f'{fmt%ps[0]} {fmt%ps[1]} {fmt%ps[2]}\n')

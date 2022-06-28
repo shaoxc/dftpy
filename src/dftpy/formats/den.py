@@ -1,5 +1,4 @@
 import numpy as np
-from dftpy.system import System
 
 def read_data_den(infile, order="F", **kwargs):
     with open(infile, "r") as fr:
@@ -33,8 +32,7 @@ def write_data_den(outfile, density, order = "F", **kwargs):
 
 def read_den(infile, **kwargs):
     data = read_data_den(infile, **kwargs)
-    system = System(None, field=data)
-    return system
+    return data
 
-def write_den(outfile, system, **kwargs):
-    return write_data_den(outfile, system.field, **kwargs)
+def write_den(outfile, ions = None, data = None, **kwargs):
+    return write_data_den(outfile, data, **kwargs)

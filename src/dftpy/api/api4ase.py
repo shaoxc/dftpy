@@ -1,8 +1,7 @@
 import numpy as np
-from dftpy.atom import Atom
-from dftpy.cell import DirectCell
 from dftpy.constants import LEN_CONV, ENERGY_CONV, FORCE_CONV, STRESS_CONV
 from dftpy.interface import ConfigParser, OptimizeDensityConf
+from dftpy.ions import Ions
 
 
 class DFTpyCalculator(object):
@@ -17,8 +16,8 @@ class DFTpyCalculator(object):
     def check_restart(self, atoms=None):
         if (
             self.atoms
-            and np.allclose(self.atoms["lattice"], atoms.cell[:])
-            and np.allclose(self.atoms["position"], atoms.get_scaled_positions())
+            and np.allclose(self.atoms["lattice"], atoms.cell)
+            and np.allclose(self.atoms["positions"], atoms.positions)
             and self.results is not None
         ):
             return False
@@ -27,11 +26,8 @@ class DFTpyCalculator(object):
 
     def get_potential_energy(self, atoms=None, **kwargs):
         if self.check_restart(atoms):
-            lattice = atoms.cell[:]
-            Z = atoms.numbers
-            # pos = atoms.get_positions()
-            # pos /= LEN_CONV['Bohr']['Angstrom']
-            pos = atoms.get_scaled_positions()
+            lattice = atoms.cell
+            pos = atoms.positions
             if self.results is not None and len(self.atoms) > 0 :
                 pseudo = self.results["pseudo"]
                 if np.allclose(self.atoms["lattice"], atoms.cell[:]):
@@ -44,17 +40,16 @@ class DFTpyCalculator(object):
 
             # Save the information of structure
             self.atoms["lattice"] = lattice.copy()
-            self.atoms["position"] = pos.copy()
-            lattice = np.asarray(lattice).T / LEN_CONV["Bohr"]["Angstrom"]
-            cell = DirectCell(lattice)
-            ions = Atom(Z=Z, pos=pos, cell=cell, basis="Crystal")
-            # ions.restart()
+            self.atoms["positions"] = pos.copy()
+            #
+            ions = Ions.from_ase(atoms)
+            #
             if self.results is not None and self.config["MATH"]["reuse"]:
                 config, others = ConfigParser(self.config, ions=ions, rhoini=self.results["density"], pseudo=pseudo, grid=grid, mp = self.mp)
-                results = OptimizeDensityConf(config, others["struct"], others["E_v_Evaluator"], others["nr2"])
+                results = OptimizeDensityConf(config, others["ions"], others["field"], others["E_v_Evaluator"], others["nr2"])
             else:
                 config, others = ConfigParser(self.config, ions=ions, pseudo=pseudo, grid=grid, mp = self.mp)
-                results = OptimizeDensityConf(config, others["struct"], others["E_v_Evaluator"], others["nr2"])
+                results = OptimizeDensityConf(config, others["ions"], others["field"], others["E_v_Evaluator"], others["nr2"])
             self.results = results
         energy = self.results["energypotential"]["TOTAL"].energy * ENERGY_CONV["Hartree"]["eV"]
         energy = self.results["density"].grid.mp.asum(energy)

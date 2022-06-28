@@ -9,10 +9,10 @@ from dftpy.functional.pseudo import LocalPseudo
 from dftpy.td.propagator import Propagator
 from dftpy.td.hamiltonian import Hamiltonian
 from dftpy.utils.utils import calc_rho
-from dftpy.formats.xsf import read_xsf
-from dftpy.constants import LEN_CONV
+from dftpy.formats import io
+from dftpy.constants import Units
 
-ang2bohr = LEN_CONV["Angstrom"]["Bohr"]
+ang2bohr = 1.0/Units.Bohr
 
 
 class TestPropagator(unittest.TestCase):
@@ -26,22 +26,21 @@ class TestPropagator(unittest.TestCase):
 
     def test_call(self):
         dftpy_data_path = os.environ.get('DFTPY_DATA_PATH')
-        sys = read_xsf(dftpy_data_path + '/GaAs_random.xsf', full=True)
-        sys.field *= ang2bohr ** 3
+        ions, rho0, _ = io.read_all(dftpy_data_path + '/GaAs_random.xsf', full=True)
+        rho0 *= ang2bohr ** 3 # why?
 
         KE = Functional(type='KEDF', name='TF')
         XC = Functional(type='XC', name='LDA')
         HARTREE = Functional(type="HARTREE")
         PPlist = {'Ga': dftpy_data_path + '/Ga_lda.oe04.recpot',
                   'As': dftpy_data_path + '/As_lda.oe04.recpot'}
-        PSEUDO = LocalPseudo(grid=sys.cell, ions=sys.ions, PP_list=PPlist)
+        PSEUDO = LocalPseudo(grid=rho0.grid, ions=ions, PP_list=PPlist)
         E_v_Evaluator = TotalFunctional(
             KineticEnergyFunctional=KE,
             XCFunctional=XC,
             HARTREE=HARTREE,
             PSEUDO=PSEUDO)
 
-        rho0 = sys.field
         x = rho0.grid.r[0]
         k = 1.0e-3
         psi0 = np.sqrt(rho0) * np.exp(1j * k * x)

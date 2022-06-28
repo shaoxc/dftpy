@@ -1,8 +1,7 @@
 import numpy as np
-from dftpy.cell import BaseCell, DirectCell, ReciprocalCell
+from ase.cell import Cell
 
-
-class BaseGrid(BaseCell):
+class BaseGrid:
     """
     Object representing a grid (Cell (lattice) plus discretization)
     extends Cell
@@ -20,44 +19,42 @@ class BaseGrid(BaseCell):
 
     """
 
-    def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), convention="mic", full=False, realspace=True,
+    def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), full=False, direct=True,
                  cplx=False, mp=None, **kwargs):
         if mp is None :
             from dftpy.mpi import MP
             mp = MP()
-        super().__init__(lattice=lattice, origin=origin, **kwargs)
+        self._origin = np.asarray(origin)
+        if not isinstance(lattice, Cell):
+            cell=Cell(lattice)
+        else:
+            cell=lattice
         #
         self.cplx = cplx
+        self._cell = cell
+        self._direct = direct
         #
         self._nrR = np.array(nr, dtype = np.int32)
         self._nnrR = np.prod(self._nrR)
-        self._dV = np.abs(self.volume) / self._nnrR
+        self._dV = np.abs(self.cell.volume) / self._nnrR
         self._nrG = self._nrR.copy()
         if not full :
             self._nrG[-1] = self._nrG[-1] // 2 + 1
         self._nnrG = np.prod(self._nrG)
-        metric = np.dot(lattice.T, lattice)
-        latparas = np.zeros(3)
-        for i in range(3):
-            latparas[i] = np.sqrt(metric[i, i])
-        self._spacings = latparas / self._nrR
-        self._latparas= latparas
+        self._spacings = self.cell.cellpar()[:3] / self._nrR
         self._mp = mp
         if self.cplx :
             full = True
-        self.local_slice(nr, realspace = realspace, full = full, cplx = cplx, **kwargs)
+        self.local_slice(nr, direct = direct, full = full, cplx = cplx, **kwargs)
         self._nnr = np.prod(self._nr)
-        # print('nr_local', self.mp.comm.rank, self._nr, realspace, self.mp.comm.size, flush = True)
+        # print('nr_local', self.mp.comm.rank, self._nr, direct, self.mp.comm.size, flush = True)
         self._full = full
 
     def __eq__(self, other: 'BaseGrid') -> bool:
-        if not super().__eq__(other):
+        if np.allclose(self.lattice, other.lattice) and np.allclose(self.nrR, other.nrR):
+            return True
+        else :
             return False
-        for ilat in range(3):
-            if self._nr[ilat] != other._nr[ilat]:
-                return False
-
-        return True
 
     @property
     def mp(self):
@@ -96,23 +93,33 @@ class BaseGrid(BaseCell):
         return self._dV
 
     @property
-    def Volume(self):
-        return self._volume
+    def volume(self):
+        return self.cell.volume
 
     @property
     def spacings(self):
         return self._spacings
 
     @property
-    def latparas(self):
-        return self._latparas
+    def cell(self):
+        return self._cell
 
     @property
     def full(self):
         return self._full
 
+    @property
+    def direct(self):
+        return self._direct
+
+    @property
+    def origin(self):
+        return self._origin
+
     def tile(self, reps=1):
         # it only repeat last three dimensions with same rep
+        if self.mp.size > 1:
+            raise ValueError("Only works for serial version.")
         try:
             tup = tuple(reps)
         except TypeError:
@@ -122,9 +129,9 @@ class BaseGrid(BaseCell):
             reps[i] = x
         lattice = self.lattice.copy()
         for i in range(3):
-            lattice[:, i] *= reps[i]
+            lattice[i] *= reps[i]
         nr = self.nr * reps
-        results = self.__class__(lattice, nr, origin=self.origin, full=self.full, cplx=self.cplx)
+        results = self.__class__(lattice, nr, origin=self.origin, full=self.full, cplx=self.cplx, direct=self.direct)
         return results
 
     def repeat(self, rep=1):
@@ -229,8 +236,12 @@ class BaseGrid(BaseCell):
     def free(self):
         self.mp.free()
 
+    @property
+    def lattice(self):
+        return self.cell.array
 
-class DirectGrid(BaseGrid, DirectCell):
+
+class DirectGrid(BaseGrid):
     """
         Attributes:
         ----------
@@ -248,11 +259,7 @@ class DirectGrid(BaseGrid, DirectCell):
         lattice : array_like[3,3]
             matrix containing the direct lattice vectors (as its colums)
         """
-        # internally always convert the units to Bohr
-        # print("DirectGrid __init__")
-        # lattice is already scaled inside the super()__init__, no need to do it here
-        # lattice *= LEN_CONV[units]["Bohr"]
-        super().__init__(lattice=lattice, nr=nr, origin=origin, full=full, realspace=True, **kwargs)
+        super().__init__(lattice=lattice, nr=nr, origin=origin, full=full, direct=True, **kwargs)
         self._r = None
         self._rr = None
         self._s = None
@@ -264,9 +271,7 @@ class DirectGrid(BaseGrid, DirectCell):
         Implement the == operator in the DirectGrid class.
         Refer to the __eq__ method of Grid for more information.
         """
-        if not isinstance(other, (BaseGrid, DirectGrid)):
-            if isinstance(other, DirectCell):
-                return DirectCell.__eq__(self, other)
+        if not isinstance(other, DirectGrid):
             raise TypeError("You can only compare a DirectGrid with another DirectGrid")
         return BaseGrid.__eq__(self, other)
 
@@ -287,8 +292,7 @@ class DirectGrid(BaseGrid, DirectCell):
 
     def _calc_grid_cart_points(self):
         if self._r is None:
-            # self._r = self.s.to_cart()
-            self._r = np.einsum("j...,kj->k...", self.s, self.lattice)
+            self._r = np.einsum("j...,jk->k...", self.s, self.lattice)
 
     @property
     def r(self):
@@ -353,8 +357,7 @@ class DirectGrid(BaseGrid, DirectCell):
             fac = 2 * np.pi
             bg = fac * np.linalg.inv(self.lattice)
             bg = bg.T
-            # bg = bg/LEN_CONV["Bohr"][self.units]
-            reciprocal_lat = np.einsum("ij,j->ij", bg, scale)
+            reciprocal_lat = np.einsum("ij,i->ij", bg, scale)
 
             self.RPgrid = ReciprocalGrid(lattice=reciprocal_lat, nr=self.nrR, full=self.full, uppergrid=self,
                                          cplx=self.cplx, mp=self.mp)
@@ -364,7 +367,7 @@ class DirectGrid(BaseGrid, DirectCell):
         '''Only support for serial'''
         if self._Rtable is None:
             self._Rtable = {}
-            metric = np.dot(self.lattice.T, self.lattice)
+            metric = np.dot(self.lattice, self.lattice.T)
             latticeConstants = np.sqrt(np.diag(metric))
             gaps = latticeConstants / self.nr
             Nmax = np.ceil(rcut / gaps).astype(np.int32) + 1
@@ -381,7 +384,7 @@ class DirectGrid(BaseGrid, DirectCell):
             mgrid[1] /= self.nr[1]
             mgrid[2] /= self.nr[2]
             gridpos = mgrid.astype(np.float64)
-            array = np.einsum("jklm,ij->iklm", gridpos, self.lattice)
+            array = np.einsum("jklm,ji->iklm", gridpos, self.lattice)
             dists = np.sqrt(np.einsum("ijkl,ijkl->jkl", array, array))
             self._Rtable["Nmax"] = Nmax
             self._Rtable["table"] = dists
@@ -406,7 +409,7 @@ class DirectGrid(BaseGrid, DirectCell):
         return mask
 
 
-class ReciprocalGrid(BaseGrid, ReciprocalCell):
+class ReciprocalGrid(BaseGrid):
     """
         Attributes:
         ----------
@@ -424,11 +427,7 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
         lattice : array_like[3,3]
             matrix containing the direct lattice vectors (as its colums)
         """
-        # internally always convert the units to Bohr
-        # print("ReciprocalGrid __init__")
-        # lattice is already scaled inside the super()__init__, no need to do it here
-        # lattice /= LEN_CONV[units]["Bohr"]
-        super().__init__(lattice=lattice, nr=nr, origin=origin, full=full, realspace=False, **kwargs)
+        super().__init__(lattice=lattice, nr=nr, origin=origin, full=full, direct=False, **kwargs)
         self._g = None
         self._gg = None
         self.Dgrid = uppergrid
@@ -444,9 +443,7 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
         Implement the == operator in the ReciprocalGrid class.
         Refer to the __eq__ method of Grid for more information.
         """
-        if not isinstance(other, (BaseGrid, ReciprocalGrid)):
-            if isinstance(other, ReciprocalCell):
-                return ReciprocalCell.__eq__(self, other)
+        if not isinstance(other, ReciprocalGrid):
             raise TypeError("You can only compare a ReciprocalGrid with another ReciprocalGrid")
         return BaseGrid.__eq__(self, other)
 
@@ -510,7 +507,6 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
             e^{2\pi i G \cdot R} =1
             In this case bg^T = at^{-1}
             -----------------------------
-            Note2: We have to use 'Bohr' units to avoid changing hbar value
         """
         # TODO define in constants module hbar value for all units allowed
         if self.Dgrid is None or scale is not None:
@@ -521,8 +517,7 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
             if convention == "physics" or convention == "p":
                 fac = 1.0 / (2 * np.pi)
             at = np.linalg.inv(self.lattice.T * fac)
-            # at = at*LEN_CONV["Bohr"][self.units]
-            direct_lat = np.einsum("ij,j->ij", at, 1.0 / scale)
+            direct_lat = np.einsum("ij,i->ij", at, 1.0 / scale)
             self.Dgrid = DirectGrid(lattice=direct_lat, nr=self.nrR, full=self.full, uppergrid=self, cplx=self.cplx,
                                     mp=self.mp)
         return self.Dgrid
@@ -561,7 +556,7 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
         AX = [a[sl] for a, sl in zip(ax, self.slice)]
         S = np.meshgrid(*AX, indexing="ij")
         S_cart = np.asarray(S)
-        S_cart = np.einsum("j...,kj->k...", S_cart, self.lattice)
+        S_cart = np.einsum("j...,jk->k...", S_cart, self.lattice)
 
         return S_cart
 
@@ -656,12 +651,3 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
             self._ggF = ggF
             # self._ggF = np.reshape(gg, (*self._gF.shape, 1))
         return self._ggF
-
-    @property
-    def full(self):
-        return self._full
-
-    @full.setter
-    def full(self, value):
-        if self._full != value :
-            self._full = value

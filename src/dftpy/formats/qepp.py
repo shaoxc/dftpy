@@ -1,8 +1,7 @@
 import numpy as np
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
-from dftpy.system import System
-from dftpy.atom import Atom
+from dftpy.ions import Ions
 
 
 class PP(object):
@@ -11,7 +10,7 @@ class PP(object):
         self.title = ""
         self.cutoffvars = {}
 
-    def read(self, full=True, data_type='density', **kwargs):
+    def read(self, full=True, data_type='density', kind='all', **kwargs):
 
         with open(self.filepp) as filepp:
             # title
@@ -28,23 +27,22 @@ class PP(object):
             ibrav = int(linesplt[0])
             celldm = np.asarray(linesplt[1:], dtype=float)
 
-            # at(:,i) three times
+            # at(i) three times
             if ibrav == 0:
                 at = np.zeros((3, 3), dtype=float)
                 for ilat in range(3):
                     linesplt = filepp.readline().split()
-                    at[:, ilat] = np.asarray(linesplt, dtype=float)
-                    # at[:,i] = (float(x) for x in filepp.readline().split())
+                    at[ilat] = np.asarray(linesplt, dtype=float)
                 at *= celldm[0]
             else:
                 at = self.celldm2at(ibrav, celldm)
             grid = DirectGrid(lattice=at, nr=nrx, full=full)
 
             # gcutm, dual, ecut, plot_num
-            # gcutm, dual, ecut, plot_num = (float(x) for x in filepp.readline().split())
-            # plot_num = int(plot_num)
-            filepp.readline()
-            gcutm, dual, ecut, plot_num = 1.0, 1.0, 1.0, 0
+            gcutm, dual, ecut, plot_num = (float(x) for x in filepp.readline().split())
+            plot_num = int(plot_num)
+            # filepp.readline()
+            # gcutm, dual, ecut, plot_num = 1.0, 1.0, 1.0, 0
             self.cutoffvars["ibrav"] = ibrav
             self.cutoffvars["celldm"] = celldm
             self.cutoffvars["gcutm"] = gcutm
@@ -54,12 +52,12 @@ class PP(object):
             # ntyp
             atm = []
             zv = np.empty(ntyp, dtype=float)
-            Zval = {}
+            zval = {}
             for ity in range(ntyp):
                 linesplt = filepp.readline().split()
                 atm.append(linesplt[1])
                 zv[ity] = float(linesplt[2])
-                Zval[linesplt[1]] = float(linesplt[2])
+                zval[linesplt[1]] = float(linesplt[2])
             # tau
             # tau = np.zeros((nat,3), dtype=float)
             # tau = np.zeros(3, dtype=float)
@@ -74,17 +72,16 @@ class PP(object):
                 ity = int(linesplt[4]) - 1
                 label.append(atm[ity])
                 pos.append(tau)
-                # atoms.append(Atom(Zval=zv[ity], label=atm[
-                # ity], pos=tau, cell=grid, basis = 'Crystal'))
-                # ity], pos=tau * celldm[0], cell=grid))
             pos = np.asarray(pos)
             if ibrav == 0 :
                 pos *= celldm[0]
-                atoms = Atom(Zval=Zval, label=label, pos=pos, cell=grid, basis="Cartesian")
+                ions = Ions(symbols = label, positions = pos, cell = grid.cell, units = 'au')
             else :
-                atoms = Atom(Zval=Zval, label=label, pos=pos, cell=grid, basis="Crystal")
+                ions = Ions(symbols = label, scaled_positions = pos, cell = grid.cell, units = 'au')
 
-            # self.atoms = Ions( nat, ntyp, atm, zv, tau*celldm[0], ityp, self.grid)
+            ions.set_charges(zval)
+
+            if kind == 'ions' : return ions
 
             # plot
             blocksize = 1024 * 8
@@ -110,7 +107,9 @@ class PP(object):
             if data_type == 'potential' :
                 plot *= 0.5 # Ry to Hartree
 
-            return System(atoms, grid, name=self.title, field=plot)
+            if kind == 'data' : return plot
+
+            return ions, plot, self.cutoffvars
 
     def writepp(self, system, **kwargs):
 
@@ -202,7 +201,7 @@ class PP(object):
             mywrite(filepp, celldm, False)
 
             for ilat in range(3):
-                mywrite(filepp, grid.lattice[:, ilat]/celldm[0], True)
+                mywrite(filepp, grid.lattice[ilat]/celldm[0], True)
 
             # gcutm, dual, ecut, plot_num
             mywrite(filepp, info["gcutm"], True)
@@ -212,14 +211,14 @@ class PP(object):
 
             # ntyp
             for ity, spc in enumerate(system.ions.nsymbols):
-                mywrite(filepp, [ity + 1, spc, system.ions.Zval.get(spc, 1.0)], True)
+                mywrite(filepp, [ity + 1, spc, system.ions.zval.get(spc, 1.0)], True)
 
             # tau
-            tau = system.ions.pos.to_cart() / celldm[0]
+            tau = system.ions.positions / celldm[0]
             for iat in range(system.ions.nat):
                 mywrite(filepp, iat + 1, True)
                 mywrite(filepp, tau[iat], False)
-                mywrite(filepp, np.where(system.ions.nsymbols == system.ions.labels[iat])[0] + 1, False)
+                mywrite(filepp, np.where(system.ions.nsymbols == system.ions.symbols[iat])[0] + 1, False)
 
             # plot
             nlines = system.field.grid.nnr // val_per_line
@@ -233,17 +232,6 @@ class PP(object):
             mywrite(filepp, grid_pp[igrid : grid.nnr], True)
 
 
-class Ions(object):
-    def __init__(self, nat, ntyp, atm, zv, tau, ityp, cell):
-        self.species = []
-        self.ions = []
-        for ity in range(ntyp):
-            self.species.append([atm[ity], zv[ity]])
-
-        for iat in range(nat):
-            self.ions.append(Atom(Zval=zv[ityp[iat]], pos=tau[:, iat], typ=ityp[iat], label=atm[ityp[iat]], cell=cell))
-
-
 def mywrite(fileobj, iterable, newline):
     if newline:
         fileobj.write("\n  ")
@@ -251,7 +239,7 @@ def mywrite(fileobj, iterable, newline):
     try:
         for ele in iterable:
             fileobj.write(str(ele) + "    ")
-    except:
+    except Exception:
         fileobj.write(str(iterable) + "    ")
 
 
@@ -259,6 +247,6 @@ def read_qepp(infile, **kwargs):
     system = PP(infile).read(**kwargs)
     return system
 
-def write_qepp(infile, system, **kwargs):
-    PP(infile).write(system, **kwargs)
+def write_qepp(infile, ions = None, data = None, **kwargs):
+    PP(infile).write(ions = ions, data = data, **kwargs)
     return

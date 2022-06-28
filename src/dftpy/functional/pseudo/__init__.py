@@ -5,7 +5,6 @@ import numpy as np
 import scipy.special as sp
 from scipy.interpolate import splrep, splev
 
-from dftpy.atom import Atom
 from dftpy.ewald import CBspline
 from dftpy.field import ReciprocalField, DirectField
 from dftpy.functional.abstract_functional import AbstractFunctional
@@ -116,6 +115,10 @@ class LocalPseudo(AbstractLocalPseudo):
     def PP_list(self):
         return self.readpp.PP_list
 
+    @property
+    def zval(self):
+        return self.readpp.zval
+
     def __repr__(self):
         return 'LOCALPSEUDO'
 
@@ -134,7 +137,6 @@ class LocalPseudo(AbstractLocalPseudo):
         self._vreal = None  # PP for atom on 3D real space
         self._ions = None
         self._grid = None
-        self.zval = {}
         if ions is not None:
             self.ions = ions
         if grid is not None:
@@ -162,14 +164,12 @@ class LocalPseudo(AbstractLocalPseudo):
 
     @ions.setter
     def ions(self, value):
-        if not isinstance(value, (Atom)):
-            raise TypeError("Ions must be an array of Atom classes")
-        for key in set(value.labels[:]):
+        for key in value.symbols_uniq :
             if key not in self.PP_list:
                 raise ValueError("There is no pseudopotential for {:4s} atom".format(key))
         self._ions = value
-        # update Zval in ions
-        self.readpp.get_Zval(self._ions)
+        # update zval in ions
+        self._ions.set_charges(self.zval)
 
     def compute(self, density, calcType={"E", "V"}, **kwargs):
         if self._vreal is None:
@@ -270,8 +270,6 @@ class LocalPseudo(AbstractLocalPseudo):
                 dx = q[mask] / dp
                 vloc[mask] = quartic_interpolation(f, dx)
                 # -----------------------------------------------------------------------
-                # mask[0, 0, 0] = False
-                # vloc[mask] = splev(q[mask], vloc_interp, der=0)-self.zval[key]/gg[mask]
                 self._vlines[key] = vloc.copy()
         return self._vlines
 
@@ -281,8 +279,8 @@ class LocalPseudo(AbstractLocalPseudo):
         q = reciprocal_grid.q
         v = np.zeros_like(q, dtype=np.complex128)
         for key in sorted(self._vloc_interp):
-            for i in range(len(self.ions.pos)):
-                if self.ions.labels[i] == key:
+            for i in range(len(self.ions.positions)):
+                if self.ions.symbols[i] == key:
                     strf = self.ions.strf(reciprocal_grid, i)
                     v += self.vlines[key] * strf
         self._v = ReciprocalField(reciprocal_grid, griddata_3d=v)
@@ -296,11 +294,12 @@ class LocalPseudo(AbstractLocalPseudo):
         q = reciprocal_grid.q
         v = np.zeros_like(q, dtype=np.complex128)
         QA = np.empty(self.grid.nr)
+        scaled_postions=self.ions.get_scaled_positions()
         for key in sorted(self._vloc_interp):
             QA[:] = 0.0
-            for i in range(len(self.ions.pos)):
-                if self.ions.labels[i] == key:
-                    QA = self.Bspline.get_PME_Qarray(i, QA)
+            for i in range(len(self.ions.positions)):
+                if self.ions.symbols[i] == key:
+                    QA = self.Bspline.get_PME_Qarray(scaled_postions[i], QA)
             Qarray = DirectField(grid=self.grid, griddata_3d=QA, rank=1)
             v = v + self.vlines[key] * Qarray.fft()
         v = v * self.Bspline.Barray * self.grid.nnrR / self.grid.volume
@@ -316,19 +315,19 @@ class LocalPseudo(AbstractLocalPseudo):
         vloc_deriv[q < np.max(self._gp[key])] = splev(q[q < np.max(self._gp[key])], vloc_interp, der=1)
         return ReciprocalField(reciprocal_grid, griddata_3d=vloc_deriv)
 
-    def _PP_Derivative(self, labels=None):
+    def _PP_Derivative(self, symbols=None):
         reciprocal_grid = self.grid.get_reciprocal()
         q = reciprocal_grid.q
         v = np.zeros_like(q, dtype=np.complex128)
         vloc_deriv = np.empty_like(q, dtype=np.complex128)
-        if labels is None:
-            labels = sorted(self._gp)
-        for key in labels:
+        if symbols is None:
+            symbols = sorted(self._gp)
+        for key in symbols:
             vloc_interp = self._vloc_interp[key]
             vloc_deriv[:] = 0.0
             vloc_deriv[q < np.max(self._gp[key])] = splev(q[q < np.max(self._gp[key])], vloc_interp, der=1)
-            for i in range(len(self.ions.pos)):
-                if self.ions.labels[i] == key:
+            for i in range(len(self.ions.positions)):
+                if self.ions.symbols[i] == key:
                     strf = self.ions.strf(reciprocal_grid, i)
                     v += vloc_deriv * np.conjugate(strf)
         return v
@@ -371,7 +370,7 @@ class LocalPseudo(AbstractLocalPseudo):
         mask = reciprocal_grid.mask
         for i in range(self.ions.nat):
             strf = self.ions.istrf(reciprocal_grid, i)
-            den = self.vlines[self.ions.labels[i]][mask] * (rhoG[mask] * strf[mask]).imag
+            den = self.vlines[self.ions.symbols[i]][mask] * (rhoG[mask] * strf[mask]).imag
             for j in range(3):
                 Forces[i, j] = np.einsum("i, i->", g[j][mask], den)
         Forces *= 2.0 / self.grid.volume
@@ -389,19 +388,20 @@ class LocalPseudo(AbstractLocalPseudo):
         Barray = np.conjugate(Barray)
         denG = rhoG * Barray
         nrR = self.grid.nrR
-        # cell_inv = np.linalg.inv(self.ions.pos[0].cell.lattice)
+        # cell_inv = np.linalg.inv(self.ions.positions[0].cell.lattice)
         cell_inv = reciprocal_grid.lattice.T / 2 / np.pi
         Forces = np.zeros((self.ions.nat, 3))
         ixyzA = np.mgrid[: self.BsplineOrder, : self.BsplineOrder, : self.BsplineOrder].reshape((3, -1))
         Q_derivativeA = np.zeros((3, self.BsplineOrder * self.BsplineOrder * self.BsplineOrder))
-        for key in sorted(self.ions.Zval):
+        scaled_postions=self.ions.get_scaled_positions()
+        for key in self.ions.symbols_uniq :
             denGV = denG * self.vlines[key]
             if rho.mp.rank == 0 :
                 denGV[0, 0, 0] = 0.0 + 0.0j
             rhoPB = denGV.ifft(force_real=True)
             for i in range(self.ions.nat):
-                if self.ions.labels[i] == key:
-                    Up = np.array(self.ions.pos[i].to_crys()) * nrR
+                if self.ions.symbols[i] == key:
+                    Up = scaled_postions[i] * nrR
                     if self.Bspline.check_out_cell(Up):
                         continue
                     Mn = []
@@ -445,12 +445,13 @@ class LocalPseudo(AbstractLocalPseudo):
         nr = self.grid.nr
         stress = np.zeros((3, 3))
         QA = np.empty(nr)
-        for key in sorted(self.ions.Zval):
+        scaled_postions=self.ions.get_scaled_positions()
+        for key in self.ions.symbols_uniq :
             rhoGBV = rhoGB * self._PP_Derivative_One(key=key)
             QA[:] = 0.0
             for i in range(self.ions.nat):
-                if self.ions.labels[i] == key:
-                    QA = self.Bspline.get_PME_Qarray(i, QA)
+                if self.ions.symbols[i] == key:
+                    QA = self.Bspline.get_PME_Qarray(scaled_postions[i], QA)
             Qarray = DirectField(grid=self.grid, griddata_3d=QA, rank=1)
             rhoGBV = rhoGBV * Qarray.fft()
             for i in range(3):
@@ -509,17 +510,6 @@ class ReadPseudo(object):
             if not os.path.isfile(self.PP_list[key]):
                 raise FileNotFoundError("'{}' PP file for atom type {} not found".format(self.PP_list[key], key))
             self._init_pp(key, **kwargs)
-            self.get_vloc_interp(key)
-
-    def get_vloc_interp(self, key, k=3):
-        """get the representation of PP
-
-        Args:
-            key: Atomic symbol
-            k: The degree of the spline fit of splrep, should keep use 3.
-        """
-        vloc_interp = splrep(self._gp[key][1:], self._vp[key][1:], k=k)
-        self._vloc_interp[key] = vloc_interp
 
     @staticmethod
     def _real2recip(r, v, zval=0, MaxPoints=10000, Gmax=30, Gmin=1E-4, method='simpson', comm=None, mp=None):
@@ -593,11 +583,6 @@ class ReadPseudo(object):
         rhop[0] = rhop[1]
         return rhop
 
-    def get_Zval(self, ions):
-        for key in self._gp:
-            ions.Zval[key] = self._zval[key]
-        # self.zval = ions.Zval.copy()
-
     def _self_energy(self, r, vr, rhop):
         dr = np.empty_like(r)
         dr[1:] = r[1:] - r[:-1]
@@ -606,7 +591,20 @@ class ReadPseudo(object):
         # sprint('Ne ', np.sum(r *r * rhop * dr) * 4 * np.pi)
         return ene
 
-    def _init_pp(self, key, engine = None, **kwargs):
+    def _init_pp(self, key, engine = None, k = 3, **kwargs):
+        """ initialize the pseudopotential
+
+        Parameters
+        ----------
+        key :
+            The key of pseudopotential, which usually is the symbol of ion.
+        engine :
+            The engine for reading pseudopotential file
+        k :
+            k: The degree of the spline fit of splrep.
+        kwargs :
+            kwargs
+        """
         if engine is None :
             suffix = os.path.splitext(self.PP_list[key])[1][1:].lower()
             engine = PPEngines.get(suffix, None)
@@ -646,6 +644,7 @@ class ReadPseudo(object):
                 self._core_density_grid[key], self._core_density[key] = self._real2recip(self._core_density_grid[key], self._core_density[key], 0, comm=comm, **kwargs)
             if self._atomic_density[key] is not None :
                 self._atomic_density_grid[key], self._atomic_density[key] = self._real2recip(self._atomic_density_grid[key], self._atomic_density[key], 0, comm=comm, **kwargs)
+        self._vloc_interp[key] = splrep(self._gp[key][1:], self._vp[key][1:], k=k)
 
     @property
     def vloc_interp(self):
@@ -664,6 +663,12 @@ class ReadPseudo(object):
         if not self._vp:
             raise AttributeError("Must init ReadPseudo")
         return self._vp
+
+    @property
+    def zval(self):
+        if not self._zval:
+            raise AttributeError("Must init ReadPseudo")
+        return self._zval
 
     @property
     def info(self):

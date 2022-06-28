@@ -5,7 +5,7 @@ __version__ = "1.1.0"
 __date__ = "2021-09-08"
 
 from .config import *
-from .mpi import mp
+from .mpi import mp, sprint
 
 try:
     from importlib.metadata import version # python >= 3.8

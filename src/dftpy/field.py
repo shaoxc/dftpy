@@ -1,13 +1,11 @@
 import warnings
 import numpy as np
-from functools import lru_cache
 from scipy import ndimage
 from scipy import signal
 from dftpy.grid import DirectGrid, ReciprocalGrid
 from dftpy.constants import environ
 from dftpy.math_utils import PYfft, PYifft
 from dftpy.time_data import timer
-from dftpy.coord import Coord
 
 
 class BaseField(np.ndarray):
@@ -129,6 +127,10 @@ class BaseField(np.ndarray):
 
     def amin(self):
         return self.mp.amin(self)
+
+    @property
+    def cell(self):
+        return self.grid.cell
 
 
 class DirectField(BaseField):
@@ -381,7 +383,7 @@ class DirectField(BaseField):
         z = np.linspace(0, 1, nr_new[2], endpoint=False) * self.grid.nr[2] + self.spl_order
         X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
         new_values = ndimage.map_coordinates(self.spl_coeffs, [X, Y, Z], mode="wrap")
-        new_lattice = self.grid.lattice  # *LEN_CONV["Bohr"][self.grid.units]
+        new_lattice = self.grid.lattice 
         new_grid = DirectGrid(new_lattice, nr_new)
         return DirectField(new_grid, self.memo, griddata_3d=new_values)
 
@@ -399,11 +401,11 @@ class DirectField(BaseField):
         z = np.linspace(0, 1, nr_new[2], endpoint=False) * self.grid.nr[2]
         X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
         new_values = ndimage.map_coordinates(self[0], (X, Y, Z), mode="wrap")
-        new_lattice = self.grid.lattice  # *LEN_CONV["Bohr"][self.grid.units]
+        new_lattice = self.grid.lattice
         new_grid = DirectGrid(new_lattice, nr_new)
         return DirectField(new_grid, self.memo, griddata_3d=new_values)
 
-    def get_cut(self, r0, r1=None, r2=None, origin=None, center=None, nr=10, basis = 'Crystal'):
+    def get_cut(self, r0, r1=None, r2=None, origin=None, center=None, nr=10, basis = 'crystal'):
         """
         Only support for serial.
         general routine to get the arbitrary cuts of a Grid_Function_Base object in 1,2,
@@ -416,11 +418,6 @@ class DirectField(BaseField):
             nr[i] = number points to discretize each direction ; i = 0,1,2
         r0, r1, r2, origin, center are instances of Coord
         """
-        if not isinstance(r0, Coord): r0 = Coord(r0, self.grid, basis = basis).to_cart()
-        if not isinstance(r1, (Coord, type(None))): r1 = Coord(r1, self.grid, basis = basis).to_cart()
-        if not isinstance(r2, (Coord, type(None))): r2 = Coord(r2, self.grid, basis = basis).to_cart()
-        if not isinstance(origin, (Coord, type(None))): origin = Coord(origin, self.grid, basis = basis).to_cart()
-        if not isinstance(center, (Coord, type(None))): center = Coord(center, self.grid, basis = basis).to_cart()
 
         if self.rank > 1:
             raise Exception("get_cut is only implemented for scalar fields")
@@ -435,22 +432,26 @@ class DirectField(BaseField):
         elif center is not None:
             do_center = True
 
-        if do_center:
-            x0 = center.to_crys()
-        else:
-            x0 = origin.to_crys()
+        if basis.lower() != 'crystal' :
+            if r0 is not None: r0 = self.grid.cell.scaled_positions([r0])[0]
+            if r1 is not None: r1 = self.grid.cell.scaled_positions([r1])[0]
+            if r2 is not None: r2 = self.grid.cell.scaled_positions([r2])[0]
+            if origin is not None: origin = self.grid.cell.scaled_positions([origin])[0]
+            if center is not None: center = self.grid.cell.scaled_positions([center])[0]
 
-        r0 = r0.to_crys()
+        if do_center:
+            x0 = center
+        else:
+            x0 = origin
+
         if do_center:
             x0 = x0 - 0.5 * r0
 
         if r1 is not None:
-            r1 = r1.to_crys()
             if do_center:
                 x0 = x0 - 0.5 * r1
             span += 1
             if r2 is not None:
-                r2 = r2.to_crys()
                 if do_center:
                     x0 = x0 - 0.5 * r2
                 span += 1
@@ -487,9 +488,9 @@ class DirectField(BaseField):
         values = self.get_value_at_points(points)
 
         # generate a new grid (possibly 1D/2D/3D)
-        origin = x0.to_cart()
+        origin = self.grid.cell.cartesian_positions([x0])[0]
         at = np.identity(3)
-        v0 = r0.to_cart()
+        v0 = self.grid.cell.cartesian_positions([r0])[0]
         v1 = np.zeros(3)
         v2 = np.zeros(3)
         # We still need to define 3 lattice vectors even if the plot is in 1D/2D
@@ -506,12 +507,12 @@ class DirectField(BaseField):
             v2 = np.cross(v0, v1)
             v2 = v2 / np.sqrt(np.dot(v2, v2))
         elif span == 2:
-            v1 = r1.to_cart()
+            v1 = self.grid.cell.cartesian_positions([r1])
             v2 = np.cross(v0, v1)
             v2 = v2 / np.sqrt(np.dot(v2, v2))
         elif span == 3:
-            v1 = r1.to_cart()
-            v2 = r2.to_cart()
+            v1 = self.grid.cell.cartesian_positions([r1])
+            v2 = self.grid.cell.cartesian_positions([r2])
         at[:, 0] = v0
         at[:, 1] = v1
         at[:, 2] = v2

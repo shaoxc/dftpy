@@ -7,7 +7,7 @@ from scipy.optimize import minimize
 from typing import Dict
 
 from dftpy import __version__
-from dftpy.atom import Atom
+from dftpy.ions import Ions
 from dftpy.cui.main import GetConf
 from dftpy.field import DirectField
 from dftpy.formats.io import write
@@ -21,7 +21,6 @@ from dftpy.math_utils import interpolation_3d
 from dftpy.mpi import mp, sprint
 from dftpy.optimization import Optimization
 from dftpy.time_data import TimeData
-from dftpy.system import System
 from dftpy.mpi import sprint
 
 

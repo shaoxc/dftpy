@@ -1,12 +1,56 @@
 import os
 import sys
-import numpy as np
-### Import fft library
+from ase import units as Units
 try:
     import pyfftw
     FFTLIB = "pyfftw"
 except Exception:
     FFTLIB = "numpy"
+
+# _Grav = Units._Grav
+# _Nav = Units._Nav
+# _amu = Units._amu
+# _auf = Units._auf
+# _aup = Units._aup
+# _aut = Units._aut
+# _auv = Units._auv
+# _c = Units._c
+# _e = Units._e
+# _eps0 = Units._eps0
+# _hbar = Units._hbar
+# _hplanck = Units._hplanck
+# _k = Units._k
+# _me = Units._me
+# _mp = Units._mp
+# _mu0 = Units._mu0
+# alpha = Units.alpha
+# eV = Units.eV
+# fs = Units.fs
+# invcm = Units.invcm
+# kB = Units.kB
+# kJ = Units.kJ
+# kcal = Units.kcal
+# kg = Units.kg
+# m = Units.m
+# mol = Units.mol
+# nm = Units.nm
+# s = Units.s
+# second = Units.second
+# A = Units.A
+# AUT = Units.AUT
+# Ang = Units.Ang
+# Angstrom = Units.Angstrom
+# Bohr = Units.Bohr
+# C = Units.C
+# Debye = Units.Debye
+# GPa = Units.GPa
+# Ha = Units.Ha
+# Hartree = Units.Hartree
+# J = Units.J
+# Pascal = Units.Pascal
+# bar = Units.bar
+# Ry = Units.Ry
+# Rydberg = Units.Rydberg
 
 LEN_UNITS = ["Bohr", "Angstrom", "nm", "m"]
 
@@ -42,8 +86,6 @@ TKF0 = 6.18733545256027186194
 
 CBRT_TWO = 1.25992104989487316477
 
-units_warning = "All the quantities in atomic units"
-
 ZERO = 1E-30
 # set to 0 if smaller than ZERO
 
@@ -61,4 +103,6 @@ except Exception :
     4 : error
 """
 environ['FFTLIB'] = os.environ.get('DFTPY_FFTLIB', FFTLIB)
-#environ['SAVEFFT'] = os.environ.get('DFTPY_SAVEFFT', False)
+# DFTpy old units
+# Units.Bohr = 0.5291772106712
+# Units.Ha = 27.2113834279111

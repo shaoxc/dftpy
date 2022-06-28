@@ -1,5 +1,5 @@
 from dftpy.functional.external_potential import ExternalPotential
-from dftpy.atom import Atom
+from dftpy.ions import Ions
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
 import numpy as np

@@ -118,7 +118,7 @@ class AtomicDensity(object):
 #         if ncharge is None :
 #             ncharge = 0.0
 #             for i in range(ions.nat) :
-#                 ncharge += ions.Zval[ions.labels[i]]
+#                 ncharge += ions.charges[i]]
 #         if rho is None :
 #             rho = DirectField(grid=grid)
 #             rho[:] = 1.0
@@ -152,10 +152,10 @@ class AtomicDensity(object):
 #             prho = np.zeros((2 * border[0]+1, 2 * border[1]+1, 2 * border[2]+1))
 #             tck = splrep(r, arho)
 #             for i in range(ions.nat):
-#                 if ions.labels[i] != key:
+#                 if ions.symbols[i] != key:
 #                     continue
 #                 prho[:] = 0.0
-#                 posi = ions.pos[i].reshape((1, 3))
+#                 posi = ions.positions[i].reshape((1, 3))
 #                 atomp = np.array(posi.to_crys()) * nr
 #                 atomp = atomp.reshape((3, 1))
 #                 ipoint = np.floor(atomp)
@@ -173,7 +173,7 @@ class AtomicDensity(object):
 #         if ncharge is None :
 #             ncharge = 0.0
 #             for i in range(ions.nat) :
-#                 ncharge += ions.Zval[ions.labels[i]]
+#                 ncharge += ions.charges[i]]
 #         if ncharge > 1E-6 : rho[:] *= ncharge / nc
 #         return rho
 #
@@ -203,8 +203,8 @@ class AtomicDensity(object):
 #             radial[key] = RadialGrid(r0, arho0, direct = False)
 #             vlines[key] = radial[key].to_3d_grid(reciprocal_grid.q)
 #             qa[:] = 0.0
-#             for i in range(len(ions.pos)):
-#                 if ions.labels[i] == key:
+#             for i in range(len(ions.positions)):
+#                 if ions.symbols[i] == key:
 #                     qa = Bspline.get_PME_Qarray(i, qa)
 #             qarray = Field(grid=grid, data=qa, direct = True)
 #             rho_g += vlines[key] * qarray.fft()
@@ -216,7 +216,7 @@ class AtomicDensity(object):
 #             radial[key] = RadialGrid(r0, arho0, direct = False)
 #             vlines[key] = radial[key].to_3d_grid(reciprocal_grid.q)
 #             for i in range(ions.nat):
-#                 if ions.labels[i] == key:
+#                 if ions.symbols[i] == key:
 #                     strf = ions.strf(reciprocal_grid, i)
 #                     rho_g += vlines[key] * strf
 #
@@ -231,7 +231,7 @@ class AtomicDensity(object):
 #         if ncharge is None :
 #             ncharge = 0.0
 #             for i in range(ions.nat) :
-#                 ncharge += ions.Zval[ions.labels[i]]
+#                 ncharge += ions.charges[i]]
 #         if ncharge > 1E-6 :
 #             rho[:] *= ncharge / nc
 #             sprint('Guess density (Scale): ', rho.integral(), comm=grid.mp.comm)
@@ -308,10 +308,10 @@ class AtomicDensity(object):
             self.i += 1
 
     def step(self):
-        if self.ions.labels[self.i] != self.key:
+        if self.ions.symbols[self.i] != self.key:
             return None
         self.prho[:] = 0.0
-        posi = self.ions.pos[self.i].reshape((1, 3))
+        posi = self.ions.positions[self.i].reshape((1, 3))
         atomp = np.array(posi.to_crys()) * self.grid.nr
         atomp = atomp.reshape((3, 1))
         ipoint = np.floor(atomp + 1E-8)
@@ -340,6 +340,7 @@ def gen_gaussian_density(ions, grid, options={}, density = None):
     if density is None : density = DirectField(grid=grid)
     ncharge = 0.0
     sigma_min = np.max(gaps) * 2 / fwhm
+    scaled_postions=ions.get_scaled_positions()
     for key, option in options.items() :
         rcut = option.get('rcut', 5.0)
         sigma = option.get('sigma', 0.3)
@@ -352,11 +353,11 @@ def gen_gaussian_density(ions, grid, options={}, density = None):
         ixyzA = np.mgrid[-border[0]:border[0]+1, -border[1]:border[1]+1, -border[2]:border[2]+1].reshape((3, -1))
         prho = np.zeros((2 * border[0]+1, 2 * border[1]+1, 2 * border[2]+1))
         for i in range(ions.nat):
-            if ions.labels[i] != key:
+            if ions.symbols[i] != key:
                 continue
             prho[:] = 0.0
-            posi = ions.pos[i].reshape((1, 3))
-            atomp = np.array(posi.to_crys()) * nr
+            posi = scaled_postions[i].reshape((1, 3))
+            atomp = posi * nr
             atomp = atomp.reshape((3, 1))
             ipoint = np.floor(atomp + 1E-8)
             # ipoint = np.floor(atomp)
@@ -394,8 +395,8 @@ def build_pseudo_density(pos, grid, scale = 0.0, sigma = 0.3, rcut = 5.0, densit
     border = np.minimum(border, nr//2)
     ixyzA = np.mgrid[-border[0]:border[0]+1, -border[1]:border[1]+1, -border[2]:border[2]+1].reshape((3, -1))
     prho = np.zeros((2 * border[0]+1, 2 * border[1]+1, 2 * border[2]+1))
-    posi = Coord(pos.reshape((1, 3)), grid.lattice, basis = 'Cartesian')
-    atomp = np.array(posi.to_crys()) * nr
+    posi = grid.cell.scaled_positions(pos)
+    atomp = posi * nr
     atomp = atomp.reshape((3, 1))
     ipoint = np.floor(atomp + 1E-8)
     # ipoint = np.floor(atomp)

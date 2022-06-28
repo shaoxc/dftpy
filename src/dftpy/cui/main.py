@@ -39,16 +39,16 @@ def RunJob(args):
         TimeData.Begin("TOTAL")
 
         if "Propagate" in config["JOB"]["task"]:
-            realtimerunner = RealTimeRunner(others["struct"], config, others["E_v_Evaluator"])
+            realtimerunner = RealTimeRunner(others["field"], config, others["E_v_Evaluator"])
             realtimerunner()
         elif "Casida" in config["JOB"]["task"]:
-            CasidaRunner(config, others["struct"].field, others["E_v_Evaluator"])
+            CasidaRunner(config, others["field"], others["E_v_Evaluator"])
         elif "Diagonalize" in config["JOB"]["task"]:
-            DiagonalizeRunner(config, others["struct"], others["E_v_Evaluator"])
+            DiagonalizeRunner(config, others["field"], others["E_v_Evaluator"])
         elif "Inversion" in config["JOB"]["task"]:
-            InvertRunner(config, others["struct"], others["E_v_Evaluator"])
+            InvertRunner(config, others["field"], others["E_v_Evaluator"])
         else:
-            OptimizeDensityConf(config, others["struct"], others["E_v_Evaluator"], others["nr2"])
+            OptimizeDensityConf(config, others["ions"], others["field"], others["E_v_Evaluator"], others["nr2"])
 
         TimeData.End("TOTAL")
         TimeData.output(config)

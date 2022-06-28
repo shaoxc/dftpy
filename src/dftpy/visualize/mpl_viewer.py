@@ -1,8 +1,11 @@
 import numpy as np
-from skimage import measure
 import matplotlib.pyplot as plt
 from itertools import combinations,product
-from mpl_toolkits.mplot3d import Axes3D
+
+try:
+    from skimage import measure
+except Exception:
+    raise ModuleNotFoundError("Must install skimage")
 
 
 class BasePlot(object):

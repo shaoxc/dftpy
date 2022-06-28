@@ -1,4 +1,3 @@
-from dftpy.system import System
 import numpy as np
 try:
     import ipyvolume as ipv
@@ -25,4 +24,3 @@ def view_ions(val, tol2 = 2E-6, color = None):
     ipv.scatter(val[:,0],val[:,1],val[:,2], marker='sphere', size=8, color='blue')
     ipv.xyzlim(0-tol2, 1+tol2)
     ipv.show()
-

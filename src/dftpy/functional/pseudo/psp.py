@@ -13,8 +13,6 @@ class PSP(BasePseudo):
 
     def read(self, fname):
         # Only support psp8 format
-        # HARTREE2EV = ENERGY_CONV["Hartree"]["eV"]
-        # BOHR2ANG = LEN_CONV["Bohr"]["Angstrom"]
         with open(fname, "r") as fr:
             lines = []
             for i, line in enumerate(fr):
@@ -26,14 +24,14 @@ class PSP(BasePseudo):
         # line 2 :atomic number, pseudoion charge, date
         values = lines[1].split()
         atomicnum = int(float(values[0]))
-        Zval = float(values[1])
+        zval = float(values[1])
         # line 3 :pspcod,pspxc,lmax,lloc,mmax,r2well
         values = lines[2].split()
         if int(values[0]) != 8:
             raise AttributeError("Only support psp8 format pseudopotential with psp")
         info['info'] = lines[:6]
         info['atomicnum'] = atomicnum
-        info['zval'] = Zval
+        info['zval'] = zval
         info['pspcod'] = 8
         info['pspxc'] = int(values[1])
         info['lmax'] = int(values[2])
