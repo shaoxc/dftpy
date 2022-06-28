@@ -255,37 +255,39 @@ class LocalPseudo(AbstractLocalPseudo):
             f = self._Force(rho)
         return f
 
-    def calc_force_cc(self, pot = None, core = None):
-        """Calculate the core correction forces
+    def calc_force_cc(self, potential = None, rhod = None, ions = None):
+        """Calculate the correction forces
 
         Parameters
         ----------
-        pot : field
+        potential : field
             Potential in real space.
-        core :
-            core density of each element in reciprocal space
+        rhod :
+            density of each element in reciprocal space
         """
         #
-        if core is None : core = self.vlines_core
+        if rhod is None : rhod = self.vlines_core
+        if ions is None : ions = self.ions
+        grid = potential.grid
         #
-        reciprocal_grid = self.grid.get_reciprocal()
-        forces = np.zeros((self.ions.nat, 3))
+        reciprocal_grid = grid.get_reciprocal()
+        forces = np.zeros((ions.nat, 3))
         mask = reciprocal_grid.mask
         g = reciprocal_grid.g
 
-        if pot.rank == 2 : pot = 0.5*(pot[0]+pot[1])
-        potg = pot.fft()
+        if potential.rank == 2 : potential = 0.5*(potential[0]+potential[1])
+        potg = potential.fft()
 
-        for key in sorted(self.ions.Zval):
-                rhocg = core[key]
+        for key in sorted(ions.Zval):
+                rhocg = rhod[key]
                 if rhocg is None : continue
-                for i in range(self.ions.nat):
-                    if self.ions.labels[i] == key:
-                        strf = self.ions.istrf(reciprocal_grid, i)
+                for i in range(ions.nat):
+                    if ions.labels[i] == key:
+                        strf = ions.istrf(reciprocal_grid, i)
                         den = (potg[mask] * rhocg[mask] * strf[mask]).imag
                         for j in range(3):
                             forces[i, j] = np.einsum("i, i->", g[j][mask], den)
-        forces *= 2.0 / self.grid.volume
+        forces *= 2.0 / grid.volume
         return forces
 
     @property
