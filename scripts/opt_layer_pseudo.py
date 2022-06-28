@@ -12,11 +12,12 @@ from dftpy.cui.main import GetConf
 from dftpy.field import DirectField
 from dftpy.formats.io import write
 from dftpy.formats.qepp import PP
-from dftpy.functional import Functional
+from dftpy.functional import Functional, ExternalPotential
 from dftpy.functional.pseudo.layer_pseudo import LayerPseudo
 from dftpy.functional.total_functional import TotalFunctional
 from dftpy.grid import DirectGrid
 from dftpy.interface import ConfigParser
+from dftpy.inverter import Inverter
 from dftpy.math_utils import interpolation_3d
 from dftpy.mpi import mp, sprint
 from dftpy.optimization import Optimization
@@ -25,6 +26,7 @@ from dftpy.system import System
 from dftpy.mpi import sprint
 from scipy.signal import quadratic
 from typing import Optional, Tuple
+from dftpy.td.real_time_runner import RealTimeRunner
 
 
 def bisec(func: callable, xstart: float, xend: float, tol: float = 1.0e-4,
@@ -47,16 +49,21 @@ def bisec(func: callable, xstart: float, xend: float, tol: float = 1.0e-4,
         return (xstart, ystart) if ystart <= yend else (xend, yend)
 
     sprint(xstart, xend, ystart, yend)
-    bisec(func, xstart, xend, tol, ystart, yend)
+    return bisec(func, xstart, xend, tol, ystart, yend)
 
 
+def set_ls(ls, a, r_cut):
+    ls.vr = a[0] * quadratic(ls.r / r_cut * 3 - 1.5)
+    ls.vr += a[1] * quadratic(ls.r / r_cut * 3 / 2 - 1.5 / 2)
+    ls.vr += a[2] * quadratic(ls.r / r_cut * 3 / 2 + 1.5 / 2)
 
 
 def optimize_layer_pseudo(config: Dict, system: System, total_functional: TotalFunctional):
     grid = system.field.grid
     r_cut = 3
     r = np.linspace(0, r_cut, 31)
-    a = np.asarray([1, 1])
+    a = np.asarray([-2, 0, 0])
+    #a = np.asarray([-2.93032635, 1.67275963, -33.30823238])
     vr = np.zeros_like(r)
 
     dis = DirectField(grid, griddata_3d=np.zeros(grid.nr))
@@ -76,7 +83,7 @@ def optimize_layer_pseudo(config: Dict, system: System, total_functional: TotalF
 
     def delta_rho(a):
         #ls.vr = a[0] * (np.cos(ls.r / 1 * 2 * np.pi) - 1) + a[1] * (np.sin(ls.r / 1 * 2 * np.pi))
-        ls.vr = a[0] * quadratic(r / r_cut * 3 - 1.5)
+        set_ls(ls, a, r_cut)
         #ls.vr[ls.r > 2 * a[1]] = 0
         #ls.update_v()
         rho = opt.optimize_rho(guess_rho=rho_ini)
@@ -84,14 +91,30 @@ def optimize_layer_pseudo(config: Dict, system: System, total_functional: TotalF
 
     # print(delta_rho(0.19))
 
-    #res = minimize(delta_rho, a)
+    res = minimize(delta_rho, a, method='Powell', tol=1.0e-4)
 
-    #sprint(delta_rho(a))
-    #sprint(res.x)
-    #sprint(delta_rho(res.x))
+    sprint(delta_rho(a))
+    sprint(res.x)
+    sprint(delta_rho(res.x))
 
-    res = bisec(delta_rho, -1, 0, 0.01)
-    sprint(res)
+    # res = bisec(delta_rho, -1.984375, -1.84375)
+    # sprint(res)
+
+    # return ls, a, r_cut
+
+def runner(config, system, functionals):
+    if config['KEDF2']['kedf'] == 'KS':
+        inv = Inverter()
+        ext = inv(system.field, functionals)
+    else:
+        vt0 = functionals.funcDict['KineticEnergyFunctional'](rho=system.field, calcType = {'V'}).potential
+        kedf0 = Functional(type='KEDF', name=config['KEDF2']['kedf'], **config['KEDF2'])
+        vn0t0 = kedf0(rho=system.field, calcType={'V'}).potential
+        ext = ExternalPotential(v=vn0t0-vt0)
+    functionals.UpdateFunctional(newFuncDict={'ext': ext})
+
+    realtimerunner = RealTimeRunner(system.field, config, functionals)
+    realtimerunner()
 
 
 def RunJob(args):
@@ -108,8 +131,11 @@ def RunJob(args):
         sprint("#" * 80)
         TimeData.Begin("TOTAL")
 
-        optimize_layer_pseudo(config, others['struct'], others["E_v_Evaluator"])
-
+        #optimize_layer_pseudo(config, others['struct'], others["E_v_Evaluator"])
+        others["E_v_Evaluator"].funcDict["KineticEnergyFunctional"].options.update({'y': 0})
+        #realtimerunner = RealTimeRunner(others['struct'].field, config, others["E_v_Evaluator"])
+        #realtimerunner()
+        runner(config, others['struct'], others["E_v_Evaluator"])
         TimeData.End("TOTAL")
         TimeData.output(config)
         sprint("-" * 80)
