@@ -93,7 +93,7 @@
       "comment": "The name of atom.",
       "options": "",
       "type": "cstrlist",
-      "default": "Al"
+      "default": null
     },
     "zval": {
       "comment": "The charge of atomic species.",

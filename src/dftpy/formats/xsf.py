@@ -203,9 +203,9 @@ class XSF(object):
         data = []
         for p in plot :
             values = p.get_values_flatarray(pad=1, order="F") / Units.Bohr ** 3
+            if data_type == 'potential' :
+                values = values * Units.Ha
             data.append(values)
-        if data_type == 'potential' :
-            values = values * Units.Ha
 
         mywrite(fileout, "BEGIN_BLOCK_DATAGRID_{}D".format(ndim), True)
         mywrite(fileout, "{}d_datagrid_{}".format(ndim, data_type), True)

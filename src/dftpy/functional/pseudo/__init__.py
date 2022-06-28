@@ -4,6 +4,7 @@ from abc import abstractmethod
 import numpy as np
 import scipy.special as sp
 from scipy.interpolate import splrep, splev
+import re
 
 from dftpy.ewald import CBspline
 from dftpy.field import ReciprocalField, DirectField
@@ -510,6 +511,32 @@ class ReadPseudo(object):
             if not os.path.isfile(self.PP_list[key]):
                 raise FileNotFoundError("'{}' PP file for atom type {} not found".format(self.PP_list[key], key))
             self._init_pp(key, **kwargs)
+            self.get_vloc_interp(key)
+
+    @property
+    def PP_list(self):
+        return self._PP_list
+
+    @PP_list.setter
+    def PP_list(self, value):
+        if isinstance(value, (list, tuple)):
+            dicts = {}
+            pattern = re.compile(r'[.-_@]')
+            for item in value :
+                k = pattern.split(os.path.basename(item))[0]
+                dicts[k.capitalize()] = item
+            value = dicts
+        self._PP_list = value
+
+    def get_vloc_interp(self, key, k=3):
+        """get the representation of PP
+
+        Args:
+            key: Atomic symbol
+            k: The degree of the spline fit of splrep, should keep use 3.
+        """
+        vloc_interp = splrep(self._gp[key][1:], self._vp[key][1:], k=k)
+        self._vloc_interp[key] = vloc_interp
 
     @staticmethod
     def _real2recip(r, v, zval=0, MaxPoints=10000, Gmax=30, Gmin=1E-4, method='simpson', comm=None, mp=None):

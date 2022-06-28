@@ -609,6 +609,14 @@ class DirectField(BaseField):
         value = self.__class__(grid=grid, rank=self.rank, griddata_3d=value, cplx=self.cplx)
         return value
 
+    def write(self, filename, ions = None, format=None, **kwargs):
+        from dftpy.formats import io as dftpy_io
+        dftpy_io.write(filename, data=self, ions=ions, format=format, **kwargs)
+
+    def read(self, filename, format=None, **kwargs):
+        from dftpy.formats import io as dftpy_io
+        self[:] = dftpy_io.read_density(filename, format=format, **kwargs)
+
 
 class ReciprocalField(BaseField):
     def __new__(cls, grid, memo="", rank=1, data = None, order = 'C', cplx=False, **kwargs):
@@ -706,18 +714,18 @@ class ReciprocalField(BaseField):
         """
         direct_grid = self.grid.get_direct()
         nr = self.rank, *direct_grid.nr
+        fft_kwargs = {}
+        if environ["FFTLIB"] == "numpy":
+            fft_kwargs['s'] = self.grid.nrR
         if self.rank == 1:
-            if environ["FFTLIB"] == "numpy":
-                griddata_3d = self.ifft_object(self, s=self.grid.nrR) / direct_grid.dV
-            else:
-                griddata_3d = self.ifft_object(self) / direct_grid.dV
+            griddata_3d = self.ifft_object(self, **fft_kwargs) / direct_grid.dV
         else:
             if self.cplx or np.all(self.grid.nrG == self.grid.nrR):  # Can only use numpy.fft
                 griddata_3d = np.empty(nr, dtype="complex128")
             else:
                 griddata_3d = np.empty(nr)
             for i in range(self.rank):
-                griddata_3d[i] = self.ifft_object(self[i]) / direct_grid.dV
+                griddata_3d[i] = self.ifft_object(self[i], **fft_kwargs) / direct_grid.dV
         if check_real:
             if np.isclose(np.imag(griddata_3d), 0.0, atol=1.0e-16).all():
                 griddata_3d = np.real(griddata_3d)

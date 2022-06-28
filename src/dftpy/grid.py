@@ -165,8 +165,8 @@ class BaseGrid:
         if self.mp.is_mpi :
             reqs = []
             bufs = []
+            rank = 1 if getattr(data, 'ndim', 1) < 4 else data.shape[0]
             if self.mp.rank == root:
-                rank = 1 if getattr(data, 'ndim', 1) < 4 else data.shape[0]
                 if out is None :
                     if nr is None : nr = self.nrR
                     if rank>1 : nr = (rank, *nr)
@@ -184,7 +184,7 @@ class BaseGrid:
             else :
                 req = self.mp.comm.Isend(data, dest = root, tag = self.mp.rank)
                 reqs.append(req)
-                out = np.ones((1, 1, 1))
+                out = np.ones(rank)
             self.mp.MPI.Request.Waitall(reqs)
             if self.mp.rank == root:
                 for i in range(0, self.mp.comm.size):
@@ -193,7 +193,10 @@ class BaseGrid:
                     out[inds] = bufs[i]
             self.mp.comm.Barrier()
         else :
-            out = data.copy()
+            if out is None :
+                out = data.copy()
+            else :
+                out[:] = data
         return out
 
     def scatter(self, data, out = None, root = 0, **kwargs):
