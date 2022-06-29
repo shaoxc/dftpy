@@ -89,7 +89,7 @@ def read(infile, format=None, kind='ions', driver=None, **kwargs):
             values = values[1]
     return values
 
-def write(outfile, ions = None, data = None, format = None, comm = None, driver = None, **kwargs):
+def write(outfile, ions = None, data = None, information = None, format = None, comm = None, driver = None, **kwargs):
     if isinstance(data, Ions):
         if ions is None or isinstance(ions, DirectField):
             ions, data = data, ions
@@ -102,23 +102,25 @@ def write(outfile, ions = None, data = None, format = None, comm = None, driver 
         else :
             comm = SerialComm()
     if driver is not None :
+        if comm.size > 1 and data is not None :
+            data = data.gather()
         if isinstance(driver, str) :
             for key in iounkeys :
                 if key in kwargs : kwargs.pop(key)
             driver = get_io_driver(outfile, driver, mode = 'w')
-            driver.write(outfile, ions, data=data, **kwargs)
+            if comm.rank == 0 : driver.write(outfile, ions = ions, data = data, **kwargs)
         elif hasattr(driver, 'write') :
-            if comm.rank == 0 : driver.write(outfile, ions = ions, data = data, format=format, **kwargs)
+            if comm.rank == 0 : driver.write(outfile, ions = ions, data = data, **kwargs)
         else :
             raise AttributeError(f"Sorry, not support {driver} driver")
     else :
         driver = get_io_driver(outfile, format, mode = 'w')
         if driver.format == "snpy": # only snpy format support MPI-IO
-            return driver.write(outfile, ions=ions, data=data, **kwargs)
+            return driver.write(outfile, ions=ions, data=data, information = information, **kwargs)
         else : # only rank==0 write
-            if comm.size > 1 and 'data' in driver.kind :
+            if comm.size > 1 and data is not None :
                 data = data.gather()
-            if comm.rank == 0 : driver.write(outfile, ions = ions, data=data, **kwargs)
+            if comm.rank == 0 : driver.write(outfile, ions = ions, data=data, information = information, **kwargs)
 
             comm.Barrier()
     return

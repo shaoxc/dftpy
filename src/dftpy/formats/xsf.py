@@ -153,11 +153,11 @@ class XSF(object):
 
     def write(self, ions=None, data=None, data_type = 'density', units = "angstrom", title = 'DFTpy', **kwargs):
         """
-        Write a system object into an xsf file.
+        Write a ions and data into an xsf file.
         Not all specifications of the xsf file format are implemented, they will
         be added as needed.
         So far it can:
-            - write the system cell and atoms
+            - write the ions
             - write the 1D/2D/3D grid data
         """
 

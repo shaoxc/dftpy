@@ -123,3 +123,19 @@ class Ions(Atoms):
     @property
     def nat(self):
         return len(self)
+
+    @property
+    def zval(self):
+        zval = dict.fromkeys(self.symbols_uniq, 0)
+        symbols = self.get_chemical_symbols()
+        try:
+            self.charges[0]
+        except Exception :
+            return zval
+
+        for k in zval :
+            for i in range(self.nat):
+                if symbols[i] == k :
+                    zval[k] = self.charges[i]
+                    break
+        return zval

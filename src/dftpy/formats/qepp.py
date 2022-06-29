@@ -7,8 +7,12 @@ from dftpy.ions import Ions
 class PP(object):
     def __init__(self, filepp):
         self.filepp = filepp
-        self.title = ""
-        self.cutoffvars = {}
+        self.title = "DFTpy"
+        self.cutoffvars = {
+                'gcutm' : 1.0,
+                'dual' : 4.0,
+                'ecut' : 1.0,
+                }
 
     def read(self, full=True, data_type='density', kind='all', **kwargs):
 
@@ -48,6 +52,7 @@ class PP(object):
             self.cutoffvars["gcutm"] = gcutm
             self.cutoffvars["dual"] = dual
             self.cutoffvars["ecut"] = ecut
+            self.cutoffvars["plot_num"] = plot_num
 
             # ntyp
             atm = []
@@ -111,53 +116,8 @@ class PP(object):
 
             return ions, plot, self.cutoffvars
 
-    def writepp(self, system, **kwargs):
-
-        with open(self.filepp, "w") as filepp:
-            val_per_line = 5
-
-            # title
-            filepp.write(system.name)
-
-            # nr1x, nr2x, nr3x, nr1, nr2, nr3, nat, ntyp
-            mywrite(filepp, system.cell.nrx, False)
-            mywrite(filepp, system.cell.nr, False)
-            mywrite(filepp, [len(self.atoms.ions), len(self.atoms.species)], False)
-
-            # ibrav, celldm
-            mywrite(filepp, self.cell.ibrav, True)
-            mywrite(filepp, self.cell.celldm, False)
-
-            # at(:,i) three times
-            if self.cell.ibrav == 0:
-                for ilat in range(3):
-                    mywrite(filepp, self.cell.at[:, ilat], True)
-
-            # gcutm, dual, ecut, plot_num
-            mywrite(filepp, self.cutoffvars["gcutm"], True)
-            mywrite(filepp, self.cutoffvars["dual"], False)
-            mywrite(filepp, self.cutoffvars["ecut"], False)
-            mywrite(filepp, self.plot.plot_num, False)
-
-            # ntyp
-            for ity, spc in enumerate(self.atoms.species):
-                mywrite(filepp, [ity + 1, spc[0], spc[1]], True)
-
-            # tau
-            for iat, ion in enumerate(self.atoms.ions):
-                mywrite(filepp, iat + 1, True)
-                mywrite(filepp, ion.pos, False)
-                mywrite(filepp, ion.typ + 1, False)
-
-            # plot
-            nlines = system.field.grid.nnr // val_per_line
-            grid_pp = system.field.get_values_1darray(order="F")
-            for iline in range(nlines):
-                igrid = iline * val_per_line
-                mywrite(filepp, grid_pp[igrid : igrid + val_per_line], True)
-            igrid = (iline + 1) * val_per_line
-            mywrite(filepp, grid_pp[igrid : self.grid.nnr], True)
-            # pass
+    def writepp(self, ions, data, **kwargs):
+        self.write(ions, data, **kwargs)
 
     def celldm2at(self, ibrav, celldm):
 
@@ -175,61 +135,68 @@ class PP(object):
 
         return at
 
-    def write(self, system, data_type = 'density', **kwargs):
-        info = {
-                'gcutm' : 1.0,
-                'dual' : 1.0,
-                'ecut' : 1.0,
-                }
-        info.update(kwargs)
+    def write(self, ions, data, data_type = 'density', header = None, information = None, **kwargs):
+        info = self.cutoffvars.copy()
+        if information :
+            info.update(information)
+        fmt = "%22.15e"
         with open(self.filepp, "w") as filepp:
             val_per_line = 5
-            grid = system.field.grid
+            grid = data.grid
 
             # title
-            filepp.write(system.name)
+            header = header or self.title
+            filepp.write(header)
 
             # nr1x, nr2x, nr3x, nr1, nr2, nr3, nat, ntyp
             mywrite(filepp, grid.nrR, True)
             mywrite(filepp, grid.nrR, False)
-            mywrite(filepp, [system.ions.nat, len(system.ions.nsymbols)], False)
+            mywrite(filepp, [ions.nat, len(ions.symbols_uniq)], False)
 
             # ibrav, celldm
-            celldm = np.zeros(6)
-            celldm[0] = grid.latparas[0]
-            mywrite(filepp, 0, True)
+            ibrav = info.get("ibrav", 0)
+            celldm = info.get("celldm", None)
+            if celldm is None :
+                celldm = np.zeros(6)
+                celldm[0] = ions.cell.cellpar()[0]
+            mywrite(filepp, ibrav, True)
             mywrite(filepp, celldm, False)
-
-            for ilat in range(3):
-                mywrite(filepp, grid.lattice[ilat]/celldm[0], True)
-
+            if ibrav == 0:
+                for ilat in range(3):
+                    mywrite(filepp, ions.cell[ilat]/celldm[0], True)
             # gcutm, dual, ecut, plot_num
             mywrite(filepp, info["gcutm"], True)
             mywrite(filepp, info["dual"], False)
             mywrite(filepp, info["ecut"], False)
-            mywrite(filepp, 0, False)
+            if data_type == 'potential' :
+                plot_num = 1
+            else :
+                plot_num = 0
+            mywrite(filepp, info.get('plot_num', plot_num), False)
 
             # ntyp
-            for ity, spc in enumerate(system.ions.nsymbols):
-                mywrite(filepp, [ity + 1, spc, system.ions.zval.get(spc, 1.0)], True)
+            for ity, spc in enumerate(ions.symbols_uniq):
+                mywrite(filepp, [ity + 1, spc, ions.zval.get(spc, 0.0)], True)
 
             # tau
-            tau = system.ions.positions / celldm[0]
-            for iat in range(system.ions.nat):
+            tau = ions.positions / celldm[0]
+            for iat in range(ions.nat):
                 mywrite(filepp, iat + 1, True)
                 mywrite(filepp, tau[iat], False)
-                mywrite(filepp, np.where(system.ions.nsymbols == system.ions.symbols[iat])[0] + 1, False)
+                mywrite(filepp, np.where(ions.symbols_uniq == ions.symbols[iat])[0] + 1, False)
 
             # plot
-            nlines = system.field.grid.nnr // val_per_line
-            grid_pp = system.field.get_values_flatarray(order="F")
+            filepp.write('\n')
+            nlines = data.grid.nnr // val_per_line
+            grid_pp = data.get_values_flatarray(order="F")
             if data_type == 'potential' :
                 grid_pp = grid_pp*2.0 # Hartree to Ry
             for iline in range(nlines):
                 igrid = iline * val_per_line
-                mywrite(filepp, grid_pp[igrid : igrid + val_per_line], True)
+                grid_pp[igrid : igrid + val_per_line].tofile(filepp, sep=" ", format=fmt)
+                filepp.write('\n')
             igrid = (iline + 1) * val_per_line
-            mywrite(filepp, grid_pp[igrid : grid.nnr], True)
+            grid_pp[igrid : grid.nnr].tofile(filepp, sep=" ", format=fmt)
 
 
 def mywrite(fileobj, iterable, newline):
@@ -244,8 +211,7 @@ def mywrite(fileobj, iterable, newline):
 
 
 def read_qepp(infile, **kwargs):
-    system = PP(infile).read(**kwargs)
-    return system
+    return PP(infile).read(**kwargs)
 
 def write_qepp(infile, ions = None, data = None, **kwargs):
     PP(infile).write(ions = ions, data = data, **kwargs)

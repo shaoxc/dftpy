@@ -2,8 +2,7 @@ import numpy as np
 from dftpy.base import DirectCell
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
-from dftpy.system import System
-from dftpy.atom import Atom
+from dftpy.ions import Ions
 
 def read_cube(infile, kind="all", full=False, pbc=True, data_type='density', **kwargs):
     # http://gaussian.com/cubegen/
@@ -23,22 +22,20 @@ def read_cube(infile, kind="all", full=False, pbc=True, data_type='density', **k
             lattice.append(list(map(float, line[1:])))
         nr = np.asarray(nr)
         lattice = np.asarray(lattice)
-        lattice = np.ascontiguousarray(lattice.T)  # cell = [a, b, c]
         for i in range(3):
-            lattice[:, i] *= nr[i]
-        cell = DirectCell(lattice)
+            lattice[i] *= nr[i]
 
-        Z = []
+        numbers = []
         pos = []
         for i in range(natom):
             line = fh.readline().split()
-            Z.append(int(line[0]))
+            numbers.append(int(line[0]))
             pos.append(list(map(float, line[2:])))
 
-        atoms = Atom(Z=Z, pos=pos, cell=cell, basis="Cartesian")
+        ions = Ions(numbers= numbers, positions = pos, cell = lattice, units = 'au')
 
-        if kind == "cell":
-            system = System(ions = atoms)
+        if kind == "ions":
+            values = ions
         else :
             data = []
             for line in fh :
@@ -48,10 +45,10 @@ def read_cube(infile, kind="all", full=False, pbc=True, data_type='density', **k
             data = np.asarray(data)
             grid = DirectGrid(lattice=lattice, nr=nr, full=full, origin=origin)
             plot = DirectField(grid=grid, data=data, rank=1)
-            system = System(atoms, grid, name="cube", field=plot)
-    return system
+            values = (ions, plot, None)
+    return values
 
-def write_cube(filename, system, data_type = 'density', header = None, origin = None, long = True, **kwargs):
+def write_cube(filename, ions, data = None, data_type = 'density', header = None, origin = None, long = True, **kwargs):
     if long :
         fmt = "{0:15}{1:22.15e}{2:22.15e}{3:22.15e}"
         fmt2 = fmt + "{4:22.15e}"
@@ -71,20 +68,18 @@ def write_cube(filename, system, data_type = 'density', header = None, origin = 
     else:
         origin = np.asarray(origin)
 
-    fh.write(fmt.format(system.ions.nat, *origin) + '\n')
-    data = system.field
-    ions = system.ions
-    lattice = ions.pos.cell.lattice
+    fh.write(fmt.format(ions.nat, *origin) + '\n')
+    lattice = ions.cell
 
     shape = data.shape
     for i in range(3):
-        v = lattice[:, i] / shape[i]
+        v = lattice[i] / shape[i]
         fh.write(fmt.format(shape[i], *v) + '\n')
 
     for i in range(ions.nat):
-        z = ions.Z[i]
-        c = ions.Zval.get(ions.labels[i], 0.0)
-        p = ions.pos[i]
+        z = ions.numbers[i]
+        c = ions.charges[i]
+        p = ions.positions[i]
         fh.write(fmt2.format(z, c, *p) + '\n')
 
     # data.tofile(fh, sep="\n", format="%e")

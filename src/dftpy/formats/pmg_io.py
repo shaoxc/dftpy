@@ -33,5 +33,5 @@ def ions2pmg(ions):
 def read_pmg(infile, **kwargs):
     return pmg_read(infile, **kwargs)
 
-def write_pmg(outfile, system, **kwargs):
-    pmg_write(outfile, system.ions, **kwargs)
+def write_pmg(outfile, ions, data = None, **kwargs):
+    pmg_write(outfile, ions, **kwargs)

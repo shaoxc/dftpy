@@ -1,9 +1,15 @@
 def view_on_vesta(ions = None, data = None, saveas=None, **kwargs):
-    '''
-    View DFTpy system on VESTA. Must have VESTA installed.
-    mol: DFTpy system
-    saveas: string
-    '''
+    """ View ions and data on VESTA. Must have VESTA installed.
+
+    Parameters
+    ----------
+    ions : Ions
+        DFTpy Ions
+    data : DirectField
+        DFTpy DirectField
+    saveas : string
+        File name to save the data
+    """
     from dftpy.formats import io
     import sys
     import os
