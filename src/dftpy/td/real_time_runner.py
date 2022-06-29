@@ -6,7 +6,7 @@ import numpy as np
 from dftpy.constants import SPEED_OF_LIGHT
 from dftpy.field import DirectField
 from dftpy.formats import npy
-from dftpy.functional import Functional
+from dftpy.functional import Functional, TotalFunctional
 from dftpy.functional.abstract_functional import AbstractFunctional
 from dftpy.mpi import mp, sprint, MPIFile
 from dftpy.optimize import Dynamics
