@@ -10,7 +10,6 @@ from dftpy.functional import Functional, TotalFunctional
 from dftpy.functional.abstract_functional import AbstractFunctional
 from dftpy.mpi import mp, sprint, MPIFile
 from dftpy.optimize import Dynamics
-from dftpy.system import System
 from dftpy.td.hamiltonian import Hamiltonian
 from dftpy.td.predictor_corrector import PredictorCorrector
 from dftpy.td.propagator import Propagator
@@ -30,8 +29,8 @@ class RealTimeRunner(Dynamics):
 
         Parameters
         ----------
-        system: System
-
+        rho0: DirectField
+            The initial density.
         config: dict
             Configuration from the config file.
         functionals: AbstractFunctional
@@ -195,7 +194,6 @@ class RealTimeRunner(Dynamics):
             'atol': self.atol,
             'max_steps': self.max_pred_corr,
             'propagate_vector_potential': self.propagate_vector_potential,
-            'int_t': self.int_t,
             'functionals': self.functionals,
         }
         if self.propagate_vector_potential:
