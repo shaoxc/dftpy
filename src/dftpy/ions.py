@@ -78,12 +78,12 @@ class Ions(Atoms):
     def get_ncharges(self):
         """Get total number of charges."""
         if not self.has('initial_charges'):
-            raise Exception("Please initialize or set the 'charge'")
+            raise AttributeError("Please call 'set_charges' before use 'charges'.")
         return self.arrays['initial_charges'].sum()
 
-    def get_charges(self, charges=None):
+    def get_charges(self):
         """Get the atomic charges."""
-        self.get_initial_charges(charges=charges)
+        return self.get_initial_charges()
 
     def set_charges(self, charges=None):
         """Set the atomic charges."""
@@ -94,16 +94,22 @@ class Ions(Atoms):
                     raise AttributeError(f"{s} not in the charges")
                 values.append(charges[s])
             charges = values
+        elif isinstance(a, (float,int)):
+            charges = np.ones(self.nat)*charges
         self.set_initial_charges(charges=charges)
 
     @property
     def charges(self):
         """Get the atomic charges."""
+        if not self.has('initial_charges'):
+            raise AttributeError("Please call 'set_charges' before use 'charges'.")
         return self.arrays['initial_charges']
 
     @charges.setter
     def charges(self, value):
         """Set the atomic charges."""
+        if not self.has('initial_charges'):
+            raise AttributeError("Please call 'set_charges' before use 'charges'.")
         self.arrays['initial_charges'][:] = value
 
     def strf(self, reciprocal_grid, iatom):

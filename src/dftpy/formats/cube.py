@@ -1,5 +1,4 @@
 import numpy as np
-from dftpy.base import DirectCell
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
 from dftpy.ions import Ions
@@ -12,8 +11,11 @@ def read_cube(infile, kind="all", full=False, pbc=True, data_type='density', **k
         fh.readline()
         line = fh.readline().split()
         natom = int(line[0])
-        origin = np.asarray(list(map(float, line[1:])))
-
+        origin = np.asarray(list(map(float, line[1:4])))
+        if len(line) > 4 :
+            rank = int(line[4])
+        else :
+            rank = 1
         nr = []
         lattice = []
         for i in range(3):
@@ -44,7 +46,10 @@ def read_cube(infile, kind="all", full=False, pbc=True, data_type='density', **k
                 data.extend(l)
             data = np.asarray(data)
             grid = DirectGrid(lattice=lattice, nr=nr, full=full, origin=origin)
-            plot = DirectField(grid=grid, data=data, rank=1)
+            rank = data.size//grid.nnrR
+            if rank > 1 :
+                data = data.reshape((-1, rank)).ravel('F')
+            plot = DirectField(grid=grid, data=data, rank=rank)
             values = (ions, plot, None)
     return values
 
@@ -68,23 +73,32 @@ def write_cube(filename, ions, data = None, data_type = 'density', header = None
     else:
         origin = np.asarray(origin)
 
-    fh.write(fmt.format(ions.nat, *origin) + '\n')
+    if data.ndim == 4 :
+        rank = data.shape[0]
+        shape = data.shape[1:]
+        data = data.reshape((rank, -1)).ravel('F')
+    else :
+        rank = 1
+        shape = data.shape
+        data = data.ravel()
+
+    fh.write(fmt.format(ions.nat, *origin))
+    if rank > 1 : fh.write('{0:8d}'.format(rank))
+    fh.write('\n')
     lattice = ions.cell
 
-    shape = data.shape
     for i in range(3):
         v = lattice[i] / shape[i]
         fh.write(fmt.format(shape[i], *v) + '\n')
 
+    charges = ions.get_charges()
     for i in range(ions.nat):
         z = ions.numbers[i]
-        c = ions.charges[i]
+        c = charges[i]
         p = ions.positions[i]
         fh.write(fmt2.format(z, c, *p) + '\n')
 
-    # data.tofile(fh, sep="\n", format="%e")
     val_per_line = 6
-    data = data.ravel()
     nnr = data.size
     nlines = nnr // val_per_line
     for iline in range(nlines):
