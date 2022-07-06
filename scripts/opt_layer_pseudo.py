@@ -27,6 +27,7 @@ from dftpy.mpi import sprint
 from scipy.signal import quadratic
 from typing import Optional, Tuple
 from dftpy.td.real_time_runner import RealTimeRunner
+from dftpy.formats.xsf import XSF
 
 
 def bisec(func: callable, xstart: float, xend: float, tol: float = 1.0e-4,
@@ -60,9 +61,10 @@ def set_ls(ls, a, r_cut):
 
 def optimize_layer_pseudo(config: Dict, system: System, total_functional: TotalFunctional):
     grid = system.field.grid
-    r_cut = 3
+    r_cut = 8
     r = np.linspace(0, r_cut, 31)
-    a = np.asarray([-2, 0, 0])
+    a = np.asarray([0, 0, 0])
+    #a = np.asarray([-2, 0, 0])
     #a = np.asarray([-2.93032635, 1.67275963, -33.30823238])
     vr = np.zeros_like(r)
 
@@ -86,8 +88,13 @@ def optimize_layer_pseudo(config: Dict, system: System, total_functional: TotalF
         set_ls(ls, a, r_cut)
         #ls.vr[ls.r > 2 * a[1]] = 0
         #ls.update_v()
-        rho = opt.optimize_rho(guess_rho=rho_ini)
-        return 0.5 * (np.abs(rho - rho_target)).integral()
+        delta_rho.rho = opt.optimize_rho(guess_rho=rho_ini)
+        return 0.5 * (np.abs(delta_rho.rho - rho_target)).integral()
+
+    out = XSF('diff_den_pseudo_8.xsf')
+    # print(delta_rho(a))
+    # print(delta_rho.rho.integral())
+    #out.write(system, field=rho_target-delta_rho.rho)
 
     # print(delta_rho(0.19))
 
@@ -96,6 +103,7 @@ def optimize_layer_pseudo(config: Dict, system: System, total_functional: TotalF
     sprint(delta_rho(a))
     sprint(res.x)
     sprint(delta_rho(res.x))
+    out.write(system, field=rho_target - delta_rho.rho)
 
     # res = bisec(delta_rho, -1.984375, -1.84375)
     # sprint(res)
@@ -131,11 +139,11 @@ def RunJob(args):
         sprint("#" * 80)
         TimeData.Begin("TOTAL")
 
-        #optimize_layer_pseudo(config, others['struct'], others["E_v_Evaluator"])
-        others["E_v_Evaluator"].funcDict["KineticEnergyFunctional"].options.update({'y': 0})
+        optimize_layer_pseudo(config, others['struct'], others["E_v_Evaluator"])
+        #others["E_v_Evaluator"].funcDict["KineticEnergyFunctional"].options.update({'y': 0})
         #realtimerunner = RealTimeRunner(others['struct'].field, config, others["E_v_Evaluator"])
         #realtimerunner()
-        runner(config, others['struct'], others["E_v_Evaluator"])
+        #runner(config, others['struct'], others["E_v_Evaluator"])
         TimeData.End("TOTAL")
         TimeData.output(config)
         sprint("-" * 80)
