@@ -1,13 +1,6 @@
 import numpy as np
 from numpy import linalg as LA
-from scipy.interpolate import splrep, splev
-import os
-from dftpy.ewald import CBspline
-from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
-from dftpy.coord import Coord
-from dftpy.mpi import sprint
-from dftpy.functional.pseudo import ReadPseudo
 
 class AtomicDensity(object):
     """
@@ -311,8 +304,8 @@ class AtomicDensity(object):
         if self.ions.symbols[self.i] != self.key:
             return None
         self.prho[:] = 0.0
-        posi = self.ions.positions[self.i].reshape((1, 3))
-        atomp = np.array(posi.to_crys()) * self.grid.nr
+        posi = self.ions.get_scaled_positions()[self.i].reshape((1, 3))
+        atomp = np.array(posi) * self.grid.nr
         atomp = atomp.reshape((3, 1))
         ipoint = np.floor(atomp + 1E-8)
         px = atomp - ipoint
