@@ -133,7 +133,7 @@ class CBspline(object):
         # -----------------------------------------------------------------------
         return False
 
-    @timer('_calc_PME_Qarray')
+    @timer()
     def _calc_PME_Qarray(self, ions = None):
         """
         Using the smooth particle mesh Ewald method to calculate structure factors.
@@ -282,7 +282,7 @@ class ewald(object):
                 eta = eta - 0.01
         return eta
 
-    @timer('Ewald_Energy_Real')
+    @timer()
     def Energy_real(self):
         L = np.sqrt(np.einsum("ij->i", self.grid.lattice ** 2))
         prec = sp.erfcinv(self.precision / 3.0)
@@ -326,7 +326,7 @@ class ewald(object):
 
         return Esum
 
-    @timer('Ewald_Energy_Real_Fast')
+    @timer()
     def Energy_real_fast(self):
         L = np.sqrt(np.einsum("ij->i", self.grid.lattice ** 2))
         prec = sp.erfcinv(self.precision / 3.0)
@@ -373,7 +373,7 @@ class ewald(object):
 
         return Esum
 
-    @timer('Ewald_Energy_Real')
+    @timer()
     def Energy_real_fast2(self):
         L = np.sqrt(np.einsum("ij->i", self.grid.lattice ** 2))
         prec = sp.erfcinv(self.precision / 3.0)
@@ -450,7 +450,7 @@ class ewald(object):
 
         return Esum
 
-    @timer('Ewald_Energy_Rec')
+    @timer()
     def Energy_rec(self):
         ions = self.ions
         # rec space sum
@@ -469,7 +469,7 @@ class ewald(object):
 
         return energy
 
-    @timer('Ewald_Energy_corr')
+    @timer()
     def Energy_corr(self):
         # double counting term
         const = -np.sqrt(self.eta / np.pi)
@@ -487,7 +487,7 @@ class ewald(object):
         return energy
 
     @property
-    @timer('Ewald_Energy')
+    @timer()
     def energy(self):
         if self._energy is None:
             e_corr = self.Energy_corr()
@@ -511,7 +511,7 @@ class ewald(object):
         return self._energy
 
     @property
-    @timer('Ewald_Force')
+    @timer()
     def forces(self):
         if self._forces is None:
             Ewald_Forces = self.Forces_real()
@@ -524,7 +524,7 @@ class ewald(object):
         return self._forces
 
     @property
-    @timer('Ewald_Stress')
+    @timer()
     def stress(self):
         if self._stress is None:
 
@@ -542,7 +542,7 @@ class ewald(object):
             self._stress = Ewald_Stress
         return self._stress
 
-    @timer('Ewald_Force_real')
+    @timer()
     def Forces_real(self):
         L = np.sqrt(np.einsum("ij->i", self.grid.lattice ** 2))
         prec = sp.erfcinv(self.precision / 3.0)
@@ -581,7 +581,7 @@ class ewald(object):
 
         return F_real
 
-    @timer('Ewald_Force_rec')
+    @timer()
     def Forces_rec(self):
         reciprocal_grid = self.grid.get_reciprocal()
         gg = reciprocal_grid.gg
@@ -787,7 +787,7 @@ class ewald(object):
             Qarray[l123A[0][mask], l123A[1][mask], l123A[2][mask]] += Mn_multi.ravel()[mask]
         return DirectField(self.grid, griddata_3d=np.reshape(Qarray, np.shape(self.rho)), rank=1)
 
-    @timer('Ewald_Energy_Rec_PME')
+    @timer()
     def Energy_rec_PME(self):
         QarrayF = self.Bspline.PME_Qarray
         # bm = self.Bspline.bm
@@ -811,7 +811,7 @@ class ewald(object):
         energy /= self.grid.dV ** 2
         return energy
 
-    @timer('Ewald_Force_Rec_PME')
+    @timer()
     def Forces_rec_PME(self):
         QarrayF = self.Bspline.PME_Qarray
         strf = QarrayF.fft()
@@ -916,7 +916,7 @@ class ewald(object):
 
         return S_rec
 
-    @timer('Ewald_Stress_Rec_PME')
+    @timer()
     def Stress_rec_PME(self):
         QarrayF = self.Bspline.PME_Qarray
         # bm = self.Bspline.bm

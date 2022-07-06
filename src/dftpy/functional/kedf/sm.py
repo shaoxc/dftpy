@@ -3,7 +3,7 @@ import numpy as np
 from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.functional.kedf.kernel import SMKernel
 from dftpy.mpi import sprint
-from dftpy.time_data import TimeData
+from dftpy.time_data import timer
 
 """
 E. Smargiassi and P.A. Madden : Orbital-free kinetic-energy functionals for first-principles molecular dynamics.
@@ -88,9 +88,9 @@ def SMStress(rho, energy=None):
     pass
 
 
+@timer()
 def SM(rho, x=1.0, y=1.0, sigma=None, alpha=0.5, beta=0.5, rho0=None, calcType={"E", "V"}, split=False,
        ke_kernel_saved=None, **kwargs):
-    TimeData.Begin("SM")
     # alpha = beta = 5.0/6.0
     q = rho.grid.get_reciprocal().q
     if rho0 is None:

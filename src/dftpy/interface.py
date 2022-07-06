@@ -295,7 +295,6 @@ def OptimizeDensityConf(config, ions, rho, E_v_Evaluator, nr2 = None):
     if hasattr(E_v_Evaluator, 'PSEUDO'):
         results["pseudo"] = PSEUDO
     # sprint('-' * 31, 'Time information', '-' * 31)
-    # TimeData.reset() #Cleanup the data in TimeData
     # -----------------------------------------------------------------------
     return results
 

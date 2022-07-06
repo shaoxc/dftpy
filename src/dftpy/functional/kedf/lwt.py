@@ -6,7 +6,7 @@ from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.functional.kedf.kernel import MGPKernelTable, MGPOmegaE
 from dftpy.functional.kedf.kernel import WTKernelTable, LWTKernelKf
 from dftpy.mpi import sprint
-from dftpy.time_data import TimeData
+from dftpy.time_data import timer
 
 __all__ = ["LWT", "LWTStress", "LMGP", "LMGPA", "LMGPG"]
 
@@ -498,6 +498,7 @@ def LWTLineIntegral(
     return NL
 
 
+@timer()
 def LWT(
         rho,
         x=1.0,
@@ -523,7 +524,6 @@ def LWT(
         ke_kernel_saved=None,
         **kwargs
 ):
-    TimeData.Begin("LWT")
     # Only performed once for each grid
     q = rho.grid.get_reciprocal().q
     rho0 = rho.amean()
@@ -565,7 +565,6 @@ def LWT(
     NL = LWTPotentialEnergy(rho, alpha=alpha, beta=beta, etamax=etamax, ratio=ratio, nsp=nsp, kdd=kdd, delta=delta,
                             interp=interp, calcType=calcType, ke_kernel_saved=KE_kernel_saved, **kwargs)
     # NL = LWTLineIntegral(rho, alpha=alpha, beta=beta, etamax=etamax, ratio=ratio, nsp=nsp, kdd=kdd, delta=delta, interp=interp, calcType=calcType, ke_kernel_saved = KE_kernel_saved, **kwargs)
-    TimeData.End("LWT")
     return NL
 
 

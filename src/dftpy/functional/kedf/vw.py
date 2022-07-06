@@ -5,7 +5,7 @@ import numpy as np
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.functional.kedf.tf import TF
-from dftpy.time_data import TimeData
+from dftpy.time_data import timer
 
 __all__ = ['vW', 'vonWeizsackerStress']
 
@@ -111,8 +111,8 @@ def vonWeizsackerStress(rho, y=1.0, energy=None, **kwargs):
     return stress
 
 
+@timer()
 def vW(rho, y=1.0, sigma=None, calcType={"E", "V"}, split=False, **kwargs):
-    TimeData.Begin("vW")
     pot = vonWeizsackerPotential(rho, sigma, **kwargs)
     OutFunctional = FunctionalOutput(name="vW")
     if "E" in calcType:
@@ -125,7 +125,6 @@ def vW(rho, y=1.0, sigma=None, calcType={"E", "V"}, split=False, **kwargs):
     if 'D' in calcType:
         OutFunctional.energydensity = pot * y * rho
 
-    TimeData.End("vW")
     if split:
         return {"vW": OutFunctional}
     else:

@@ -6,6 +6,7 @@ __date__ = "2021-09-08"
 
 from .config import *
 from .mpi import mp, sprint
+from .time_data import TimeData, timer
 
 try:
     from importlib.metadata import version # python >= 3.8

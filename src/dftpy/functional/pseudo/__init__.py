@@ -13,7 +13,7 @@ from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.grid import DirectGrid
 from dftpy.math_utils import quartic_interpolation
 from dftpy.mpi import sprint, SerialComm, MP
-from dftpy.time_data import TimeData
+from dftpy.time_data import timer
 
 from dftpy.functional.pseudo.psp import PSP
 from dftpy.functional.pseudo.recpot import RECPOT
@@ -189,6 +189,7 @@ class LocalPseudo(AbstractLocalPseudo):
             pot = pot.tile((density.rank, 1, 1, 1))
         return FunctionalOutput(name="eN", energy=ene, potential=pot)
 
+    @timer()
     def local_PP(self, BsplineOrder=10):
         """
         """
@@ -275,7 +276,6 @@ class LocalPseudo(AbstractLocalPseudo):
         return self._vlines
 
     def _PP_Reciprocal(self):
-        TimeData.Begin("Vion")
         reciprocal_grid = self.grid.get_reciprocal()
         q = reciprocal_grid.q
         v = np.zeros_like(q, dtype=np.complex128)
@@ -285,11 +285,9 @@ class LocalPseudo(AbstractLocalPseudo):
                     strf = self.ions.strf(reciprocal_grid, i)
                     v += self.vlines[key] * strf
         self._v = ReciprocalField(reciprocal_grid, griddata_3d=v)
-        TimeData.End("Vion")
         return "PP successfully interpolated"
 
     def _PP_Reciprocal_PME(self):
-        TimeData.Begin("Vion_PME")
         self.Bspline = CBspline(ions=self.ions, grid=self.grid, order=self.BsplineOrder)
         reciprocal_grid = self.grid.get_reciprocal()
         q = reciprocal_grid.q
@@ -305,7 +303,6 @@ class LocalPseudo(AbstractLocalPseudo):
             v = v + self.vlines[key] * Qarray.fft()
         v = v * self.Bspline.Barray * self.grid.nnrR / self.grid.volume
         self._v = v
-        TimeData.End("Vion_PME")
         return "PP successfully interpolated"
 
     def _PP_Derivative_One(self, key=None):

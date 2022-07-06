@@ -7,7 +7,9 @@ from dftpy.constants import C_TF, TKF0
 from dftpy.math_utils import PowerInt
 from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.field import DirectField
+from dftpy.time_data import timer
 
+@timer()
 def LKT(rho: DirectField, calcType: Set[str] = {'E','V'}, params = None, y: float = 1.0, **kwargs) -> FunctionalOutput:
     '''
     LKT functional
