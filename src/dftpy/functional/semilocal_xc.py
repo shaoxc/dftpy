@@ -30,7 +30,7 @@ class XC(AbstractFunctional):
             self.options['libxc'] = libxc
             if CheckLibXC(False):
                 self.xcfun = LibXC
-            elif xc.lower() == 'lda':
+            elif xc and xc.lower() == 'lda':
                 self.xcfun = LDA
             else :
                 raise ModuleNotFoundError("Install pylibxc to use this functionality")
@@ -350,7 +350,6 @@ def LDA(rho, calcType={"E", "V"}, **kwargs):
     return OutFunctional
 
 
-@timer()
 def LDAStress(rho, energy=None, potential=None, **kwargs):
     if energy is None:
         EnergyPotential = LDA(rho, calcType={"E", "V"})
@@ -488,7 +487,9 @@ def _GGAStress(density, xc_str='gga_x_pbe', energy=None, flag='standard', **kwar
 
 
 @timer()
-def XCStress(density, libxc=None, energy=None, flag='standard', **kwargs):
+def XCStress(density, libxc=None, energy=None, flag='standard', xc=None, **kwargs):
+    if xc and xc.lower() == 'lda' :
+        return LDAStress(density, energy=energy, **kwargs)
     libxc = get_libxc_names(libxc = libxc, **kwargs)
     stress = np.zeros((3, 3))
     if energy is not None : energy = energy / len(libxc)

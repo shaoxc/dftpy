@@ -35,8 +35,7 @@ class Test(unittest.TestCase):
         thefuncclass = Functional(type='KEDF', name='LMGP')
         func = thefuncclass(rho=rho_r)
         print(func.energy)
-        # self.assertTrue(np.isclose(func.energy, 2.9146409624966725)) # with np.geomspace numpy.1.16
-        self.assertTrue(np.isclose(func.energy, 2.9147420609863923))
+        self.assertTrue(np.isclose(func.energy, 2.9145872498710492, atol = 1E-3))
 
 
 if __name__ == "__main__":
