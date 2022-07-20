@@ -21,12 +21,12 @@ In these docs:
 .. toctree::
    :maxdepth: 1
 
-   source/contact
-   source/install
-   source/tutorials/tutorials
-   source/releases
-   source/ofdft
-   source/faq
+   contact
+   install
+   tutorials/tutorials
+   releases
+   ofdft
+   faq
 
 
 
