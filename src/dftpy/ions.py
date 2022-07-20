@@ -3,10 +3,16 @@ from ase import Atoms
 from dftpy.constants import Units
 
 class Ions(Atoms):
-    """Ions object based on ase.Atoms
-    Units :
-        positions : Bohr
-        cell : Bohr
+    """Ions object based on `ase.Atoms <https://wiki.fysik.dtu.dk/ase/ase/atoms.html>`_
+
+    .. note::
+
+        Only change the units of length, and others still keep the units of ASE.
+
+             - positions : Bohr
+             - cell : Bohr
+             - celldisp : Bohr
+
     """
     def __init__(self,
             symbols=None,
@@ -65,15 +71,11 @@ class Ions(Atoms):
             if self.has('positions'):
                 self.positions[:] /= Units.Bohr
             self._celldisp /= Units.Bohr
-            # if self.has('momenta'):
-                # self.arrays['momenta'] /= Units._auv
         else :
             self.cell.array[:] *= Units.Bohr
             if self.has('positions'):
                 self.positions[:] *= Units.Bohr
             self._celldisp *= Units.Bohr
-            # if self.has('momenta'):
-                # self.arrays['momenta'] *= Units._auv
 
     def get_ncharges(self):
         """Get total number of charges."""
@@ -94,7 +96,7 @@ class Ions(Atoms):
                     raise AttributeError(f"{s} not in the charges")
                 values.append(charges[s])
             charges = values
-        elif isinstance(a, (float,int)):
+        elif isinstance(charges, (float,int)):
             charges = np.ones(self.nat)*charges
         self.set_initial_charges(charges=charges)
 
@@ -124,14 +126,17 @@ class Ions(Atoms):
 
     @property
     def symbols_uniq(self):
+        """Unique symbols of ions"""
         return sorted(np.unique(self.symbols))
 
     @property
     def nat(self):
+        """Number of atoms"""
         return len(self)
 
     @property
     def zval(self):
+        """Valance charge (atomic charge) of each atomic type"""
         zval = dict.fromkeys(self.symbols_uniq, 0)
         symbols = self.get_chemical_symbols()
         try:
