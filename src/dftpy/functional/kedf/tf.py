@@ -4,7 +4,7 @@ import numpy as np
 
 from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.math_utils import PowerInt
-from dftpy.time_data import TimeData
+from dftpy.time_data import timer
 from dftpy.field import DirectField
 
 __all__ = ['TF', 'ThomasFermiStress', 'TTF']
@@ -62,8 +62,8 @@ def ThomasFermiStress(rho, x=1.0, energy=None, **kwargs):
     return stress
 
 
+@timer()
 def TF(rho, x=1.0, calcType={"E", "V"}, split=False, **kwargs):
-    TimeData.Begin("TF")
     OutFunctional = FunctionalOutput(name="TF")
     if "E" in calcType or "D" in calcType:
         energydensity = ThomasFermiEnergyDensity(rho)
@@ -77,11 +77,10 @@ def TF(rho, x=1.0, calcType={"E", "V"}, split=False, **kwargs):
     if "V2" in calcType:
         v2rho2 = ThomasFermiF(rho)
         OutFunctional.v2rho2 = v2rho2 * x
-    TimeData.End("TF")
     return OutFunctional
 
+@timer()
 def TTF(rho, x=1.0, calcType={"E", "V"}, temperature=1E-3, temperature0 = None, **kwargs):
-    TimeData.Begin("TTF")
     OutFunctional = FunctionalOutput(name="TTF")
     if "D" in calcType:
         raise AttributeError("Sorry TTF not support energy density")
@@ -96,7 +95,6 @@ def TTF(rho, x=1.0, calcType={"E", "V"}, temperature=1E-3, temperature0 = None, 
             OutFunctional.energy = TemperatureTFEnergy(rho, temperature)*x
     if "V" in calcType:
         OutFunctional.potential = TemperatureTFPotential(rho, temperature)*x
-    TimeData.End("TTF")
     return OutFunctional
 
 

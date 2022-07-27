@@ -50,11 +50,12 @@ class TimeObj(object):
         sort : Label(0), Cost(1), Number(2), Avg(3)
         """
         column = {
-            'Label': 0,
-            'Cost': 1,
-            'Number': 2,
-            'Avg': 3,
+            'label': 0,
+            'cost': 1,
+            'number': 2,
+            'avg': 3,
         }
+        if isinstance(sort, str) : sort = sort.lower()
         if sort in column:
             idx = column[sort]
         elif isinstance(sort, (int, float)):
@@ -64,7 +65,10 @@ class TimeObj(object):
         else:
             idx = 0
         sprint(format("Time information", "-^80"), comm=comm)
-        sprint("{:28s}{:24s}{:16s}{:24s}".format("Label", "Cost(s)", "Number", "Avg. Cost(s)"), comm=comm)
+        lenk = max(max([len(x) for x in self.cost]), 28)
+        fmth = "{:"+str(lenk)+"s}{:24s}{:16s}{:24s}"
+        sprint(fmth.format("Label", "Cost(s)", "Number", "Avg. Cost(s)"), comm=comm)
+        fmt = "{:"+str(lenk)+"s}{:<24.4f}{:<16d}{:<24.4f}"
         if config:
             if isinstance(config, dict) and not config["OUTPUT"]["time"]:
                 lprint = False
@@ -77,17 +81,17 @@ class TimeObj(object):
                 item = [key, cost, self.number[key], cost / self.number[key]]
                 info.append(item)
             for item in sorted(info, key=lambda d: d[idx]):
-                sprint("{:28s}{:<24.4f}{:<16d}{:<24.4f}".format(*item), comm=comm)
+                sprint(fmt.format(*item), comm=comm)
         key = "TOTAL"
-        sprint("{:28s}{:<24.4f}{:<16d}{:<24.4f}".format(key, self.cost[key], self.number[key],
-                                                        self.cost[key] / self.number[key]), comm=comm)
-        # print(sorted(self.toc.keys()))
+        if key in self.cost :
+            sprint(fmt.format(key, self.cost[key], self.number[key],
+                                                            self.cost[key] / self.number[key]), comm=comm)
 
 
 TimeData = TimeObj()
 
 
-def timer(label: str):
+def timer(label: str = None):
     """
     A decorator times the function
     Parameters
@@ -102,9 +106,15 @@ def timer(label: str):
     def decorator(function):
         @wraps(function)
         def wrapper(*args, **kwargs):
-            TimeData.Begin(label)
+            tag = label
+            if tag is None:
+                if hasattr(function, '__qualname__'):
+                    tag = function.__qualname__
+                else :
+                    tag = function.__class__.__name__
+            TimeData.Begin(tag)
             results = function(*args, **kwargs)
-            TimeData.End(label)
+            TimeData.End(tag)
             return results
 
         return wrapper

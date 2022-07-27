@@ -1,6 +1,6 @@
 import numpy as np
 
-from dftpy.constants import LEN_CONV, ENERGY_CONV
+from dftpy.constants import Units
 from dftpy.functional.pseudo.abstract_pseudo import BasePseudo
 
 
@@ -11,8 +11,8 @@ class RECPOT(BasePseudo):
     def read(self, fname):
         """Reads CASTEP-like recpot PP file
         Returns tuple (g, v)"""
-        HARTREE2EV = ENERGY_CONV["Hartree"]["eV"]
-        BOHR2ANG = LEN_CONV["Bohr"]["Angstrom"]
+        HARTREE2EV = Units.Ha
+        BOHR2ANG = Units.Bohr
         with open(fname, "r") as outfil:
             lines = outfil.readlines()
 

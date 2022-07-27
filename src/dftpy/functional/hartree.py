@@ -5,7 +5,7 @@ import copy
 
 from dftpy.functional.abstract_functional import AbstractFunctional
 from dftpy.functional.functional_output import FunctionalOutput
-from dftpy.time_data import TimeData
+from dftpy.time_data import timer
 
 
 class Hartree(AbstractFunctional):
@@ -20,8 +20,8 @@ class Hartree(AbstractFunctional):
         return 'HARTREE'
 
     @classmethod
+    @timer()
     def compute(cls, density, calcType={"E", "V"}, **kwargs):
-        TimeData.Begin("Hartree_Func")
         invgg = density.grid.get_reciprocal().invgg
         if density.rank > 1:
             rho = np.sum(density, axis=0)
@@ -40,7 +40,6 @@ class Hartree(AbstractFunctional):
             e_h = 0
         if density.rank > 1:
             v_h_of_r = v_h_of_r.tile((density.rank, 1, 1, 1))
-        TimeData.End("Hartree_Func")
         functional=FunctionalOutput(name="Hartree", potential=v_h_of_r, energy=e_h)
         if 'E' in calcType : cls._energy = functional.energy
         return functional
@@ -65,8 +64,8 @@ def HartreePotentialReciprocalSpace(density):
     return v_h
 
 
+@timer()
 def HartreeFunctionalStress(density, energy=None):
-    TimeData.Begin("Hartree_Stress")
     if energy is None:
         hartree = Hartree()
         energy = hartree(density, calcType={"E"}).energy
@@ -89,5 +88,4 @@ def HartreeFunctionalStress(density, energy=None):
             stress[i, j] = stress[j, i] = Etmp.real * 8.0 * np.pi / rho.grid.volume ** 2
             if i == j:
                 stress[i, j] -= energy / rho.grid.volume
-    TimeData.End("Hartree_Stress")
     return stress

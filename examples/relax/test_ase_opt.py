@@ -15,25 +15,16 @@ from dftpy.api.api4ase import DFTpyCalculator
 
 ############################## initial config ##############################
 conf = DefaultOption()
-conf['PATH']['pppath'] = os.environ.get('DFTPY_DATA_PATH') 
-# conf['PP']['Ga'] = 'Ga_lda.oe04.recpot'
-# conf['PP']['As'] = 'As_lda.oe04.recpot'
-# conf['PP']['Al'] = 'Al_lda.oe01.recpot'
+conf['PATH']['pppath'] = os.environ.get('DFTPY_DATA_PATH')
 conf['PP']['Al'] = 'al.lda.recpot'
 conf['JOB']['calctype'] = 'Energy Force Stress'
-# conf['JOB']['calctype'] = 'Energy Force'
 conf['OPT']['method'] = 'TN'
-# conf['KEDF']['kedf'] = 'x_TF_y_vW'
-# conf['OUTPUT']['time'] = False
 conf['OUTPUT']['stress'] = False
-# conf['MATH']['reuse'] = False
 conf = ConfSpecialFormat(conf)
 PrintConf(conf)
 #-----------------------------------------------------------------------
-path = os.environ.get('DFTPY_DATA_PATH') 
-# atoms = ase.io.read(path+'/'+'GaAs.vasp')
+path = os.environ.get('DFTPY_DATA_PATH')
 atoms = ase.io.read(path+'/'+'fcc.vasp')
-# atoms = ase.io.read(path+'/'+'20.vasp')
 trajfile = 'opt.traj'
 
 calc = DFTpyCalculator(config = conf)
@@ -41,7 +32,7 @@ atoms.set_calculator(calc)
 
 ############################## Relaxation type ##############################
 '''
-Ref : 
+Ref :
     https ://wiki.fysik.dtu.dk/ase/ase/optimize.html#module-optimize
     https ://wiki.fysik.dtu.dk/ase/ase/constraints.html
 '''

@@ -10,6 +10,7 @@ from dftpy.constants import C_TF, TKF0, CBRT_TWO
 from dftpy.field import DirectField
 from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.math_utils import PowerInt
+from dftpy.time_data import timer
 
 __all__ = ["GGA", "GGAFs", "GGA_KEDF_list"]
 
@@ -1186,6 +1187,7 @@ def GGAFs(s, functional="LKT", calcType={"E", "V"}, params=None, gga_remove_vw=N
     return F, dFds2
 
 
+@timer()
 def GGA(rho: DirectField, functional: str = "LKT", calcType: Set[str] = {"E", "V"}, split: bool = False, params=None,
         sigma=None, gga_remove_vw=None, **kwargs):
     """

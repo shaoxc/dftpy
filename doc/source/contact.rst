@@ -1,6 +1,6 @@
-=======
-Contact
-=======
+========
+Contacts
+========
 
 DFTpy Developers
 ================
@@ -11,21 +11,27 @@ Feel free to contact the developers:
  - `Michele Pavanello <https://sasn.rutgers.edu/about-us/faculty-staff/michele-pavanello>`_
  - `Alessandro Genova <mailto: ales.genova@gmail.com>`_
 
-On-line
-=======
+Find out more about the `Pavanello Research Group <http://sites.rutgers.edu/prg>`_. 
 
-To find out more about the `Pavanello Research Group <http://sites.rutgers.edu/prg>`_. Or simply send us an email.
+DFTpy Forum
+===========
+
+Feel free to ask questions and browse for answers on the DFTpy forum
+
+.. button-link:: https://lists.rutgers.edu/mm3/archives/list/dftpy_forum@email.rutgers.edu/
+   :color: secondary
+   :outline:
+
+    DFTpy Forum
+
 
 GitLab
 ======
 
-Feel free to create new issues, merge requests or fork your own `DFTpy` on our gitlab page: https://gitlab.com/pavanello-research-group/dftpy
+Feel free to create new issues, merge requests or fork your own `DFTpy` on DFTpy's `GitLab` page: 
 
-Make sure to let us know about your developments!
+.. button-link:: https://gitlab.com/pavanello-research-group/dftpy
+   :color: secondary
+   :outline:
 
-References
-==========
-
-DFTpy
------
- - Shao, X., Jiang, K., Mi, W., Genova, A., & Pavanello, M. (2021). DFTpy: An efficient and object‐oriented platform for orbital‐free DFT simulations. Wiley Interdisciplinary Reviews: Computational Molecular Science, 11(1), e1482. (https://doi.org/10.1002/wcms.1482)
+   DFTpy GitLab repo

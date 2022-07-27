@@ -3,15 +3,14 @@ import os
 import unittest
 import numpy as np
 
-from dftpy.formats.io import read
-from dftpy.ewald import ewald
+from dftpy.formats import io
 from dftpy.functional.pseudo import LocalPseudo
 
 
 class Test(unittest.TestCase):
     def setUp(self):
         self.dftpy_data_path = os.environ.get('DFTPY_DATA_PATH')
-        self.mol= read(self.dftpy_data_path + "/Al_fde_rho.pp", kind=all)
+        self.ions, self.rho, _ = io.read_all(self.dftpy_data_path + "/Al_fde_rho.pp")
         self.ref_energy = 1.3497046
 
     def test_recpot(self):
@@ -27,8 +26,8 @@ class Test(unittest.TestCase):
         self._run_energy(PP_list)
 
     def _run_energy(self, PP_list):
-        PSEUDO = LocalPseudo(grid=self.mol.cell, ions=self.mol.ions, PP_list=PP_list)
-        energy = PSEUDO(self.mol.field).energy
+        PSEUDO = LocalPseudo(grid=self.rho.grid, ions=self.ions, PP_list=PP_list)
+        energy = PSEUDO(self.rho).energy
 
         print('energy', energy, self.ref_energy)
         self.assertTrue(np.isclose(energy, self.ref_energy, atol=1.E-4))

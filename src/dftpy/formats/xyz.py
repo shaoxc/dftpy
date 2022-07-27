@@ -1,11 +1,7 @@
 import numpy as np
 import re
-from dftpy.system import System
-from dftpy.atom import Atom
-from dftpy.cell import DirectCell
-from dftpy.constants import LEN_CONV
+from dftpy.ions import Ions
 
-BOHR2ANG = LEN_CONV["Bohr"]["Angstrom"]
 """
 Ref :
     http://atomsk.univ-lille1.fr/doc/en/format_xyz.html
@@ -27,39 +23,37 @@ def read_xyz(infile, **kwargs):
         lattice = np.zeros((3, 3))
     else :
         lattice = np.fromstring(m.group(2), dtype=float, sep=" ")
-        lattice = np.asarray(lattice).reshape((3, 3)) / BOHR2ANG
-    labels = []
+        lattice = np.asarray(lattice).reshape((3, 3)).T
+    symbols = []
     pos = []
     for i in range(natom):
         line = fh.readline().split()
-        labels.append(line[0])
+        symbols.append(line[0])
         pos.append(list(map(float, line[1:4])))
-    pos = np.asarray(pos) / BOHR2ANG
+    pos = np.asarray(pos)
 
-    cell = DirectCell(lattice)
-    atoms = Atom(label=labels, pos=pos, cell=cell, basis='Cartesian')
+    ions = Ions(symbols=symbols, positions=pos, cell=lattice, units = 'ase')
 
     if not hasattr(infile, 'close'): fh.close()
-    system = System(ions = atoms)
-    return system
+    return ions
 
-def write_xyz(infile, system = None, comment = None, fmt = '%22.15f', **kwargs):
+def write_xyz(infile, ions = None, comment = None, fmt = '%22.15f', **kwargs):
     if hasattr(infile, 'close'):
         fh = infile
     else :
         fh = open(infile, "w")
 
-    ions = system.ions
+    atoms = ions.to_ase()
 
     if comment is None :
-        comment = 'Lattice="' + " ".join(map(str, (ions.pos.cell.lattice*BOHR2ANG).ravel(order = 'F').tolist())) + '"'
+        comment = 'Lattice="' + " ".join(map(str, (atoms.cell.T).ravel(order = 'F').tolist())) + '"'
         comment += ' Properties=species:S:1:pos:R:3'
 
     comment = comment.rstrip()
-    natoms = len(ions.pos)
+    natoms = len(atoms.positions)
     fh.write(f'{natoms}\n{comment}\n')
-    pos = ions.pos*BOHR2ANG
-    for s, ps in zip(ions.labels, pos):
+    pos = atoms.positions
+    for s, ps in zip(atoms.symbols, pos):
         fh.write(f'{s:3s} {fmt%ps[0]} {fmt%ps[1]} {fmt%ps[2]}\n')
 
     if not hasattr(infile, 'close'): fh.close()

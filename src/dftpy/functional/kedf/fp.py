@@ -4,7 +4,7 @@ from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.functional.kedf.kernel import SMKernel, WTKernel
 from dftpy.math_utils import PowerInt
 from dftpy.mpi import sprint
-from dftpy.time_data import TimeData
+from dftpy.time_data import timer
 
 """
 F. Perrot : Hydrogen-hydrogen interaction in an electron gas.
@@ -62,9 +62,9 @@ def FPStress(rho, energy=None):
     pass
 
 
+@timer()
 def FP_origin(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType={"E", "V"},
               ke_kernel_saved=None, **kwargs):
-    TimeData.Begin("FP")
     q = rho.grid.get_reciprocal().q
     rho0 = rho.amean()
     if ke_kernel_saved is None:
@@ -101,13 +101,12 @@ def FP_origin(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType={"E",
     OutFunctional = FunctionalOutput(name="FP")
     OutFunctional.potential = pot
     OutFunctional.energy = ene
-    TimeData.End("FP")
     return OutFunctional
 
 
+@timer()
 def FP0(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType={"E", "V"}, split=False,
         ke_kernel_saved=None, **kwargs):
-    TimeData.Begin("FP")
     # Only performed once for each grid
     q = rho.grid.get_reciprocal().q
     rho0 = rho.amean()
@@ -146,9 +145,9 @@ def FP0(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, calcType={"E", "V"},
     return NL
 
 
+@timer()
 def FP(rho, x=1.0, y=1.0, sigma=None, alpha=1.0, beta=1.0, rho0=None, calcType={"E", "V"}, split=False,
        ke_kernel_saved=None, **kwargs):
-    TimeData.Begin("FP")
     q = rho.grid.get_reciprocal().q
     if rho0 is None:
         rho0 = rho.amean()

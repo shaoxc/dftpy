@@ -1,10 +1,8 @@
 import numpy as np
-from dftpy.constants import LEN_CONV, ENERGY_CONV
-from dftpy.cell import DirectCell
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
-from dftpy.system import System
-from dftpy.atom import Atom
+from dftpy.ions import Ions
+from dftpy.constants import Units
 
 def xsf_readline(fr):
     for line in fr:
@@ -14,15 +12,8 @@ def xsf_readline(fr):
         else :
             yield line
 
-def read_xsf(infile, kind="all", full=False, pbc=True, units='Angstrom', data_type='density', **kwargs):
+def read_xsf(infile, kind="all", full=False, pbc=True, units='angstrom', data_type='density', **kwargs):
     # http ://www.xcrysden.org/doc/XSF.html
-    if isinstance(units, str):
-        xsf_units = [units, units]
-    elif isinstance(units, list):
-        xsf_units = units
-    else :
-        raise AttributeError("!!!ERROR : Wrong type of the `units`")
-
     with open(infile, "r") as fr:
         fh = xsf_readline(fr)
         celltype = next(fh).upper()
@@ -34,8 +25,7 @@ def read_xsf(infile, kind="all", full=False, pbc=True, units='Angstrom', data_ty
             for i in range(3):
                 l = list(map(float, fr.readline().split()))
                 lattice.append(l)
-            lattice = np.asarray(lattice) / LEN_CONV["Bohr"][xsf_units[0]]
-            lattice = np.ascontiguousarray(lattice.T)  # cell = [a, b, c]
+            lattice = np.asarray(lattice)
             line = next(fh).upper()
 
         label = []
@@ -52,14 +42,17 @@ def read_xsf(infile, kind="all", full=False, pbc=True, units='Angstrom', data_ty
                 label.append(line[0])
                 p = list(map(float, line[1:4]))
                 pos.append(p)
-            pos = np.asarray(pos) / LEN_CONV["Bohr"][xsf_units[0]]
+            pos = np.asarray(pos)
             line = next(fh).upper()
 
-        cell = DirectCell(lattice)
-        atoms = Atom(label=label, pos=pos, cell=cell, basis="Cartesian")
+        if units.lower() == 'angstrom' :
+            ions_units = 'ase'
+        else :
+            ions_units = 'au'
+        ions = Ions(symbols = label, positions = pos, cell = lattice, units = ions_units)
 
-        if kind == "cell":
-            system = System(ions = atoms)
+        if kind == "ions":
+            return ions
         else :
             if line.startswith("BEGIN_BLOCK_DATAGRID_"):
                 line = next(fh)
@@ -97,8 +90,10 @@ def read_xsf(infile, kind="all", full=False, pbc=True, units='Angstrom', data_ty
                     elif npbc == 2:
                         vlat[2] = np.cross(vlat[0], vlat[1])
                         vlat[2] = vlat[2] / np.sqrt(np.dot(vlat[2], vlat[2]))
-                    data_lat = np.ascontiguousarray(vlat.T)  # cell = [a, b, c]
-                    data_lat /= LEN_CONV["Bohr"][xsf_units[0]]
+                    if units.lower() == 'angstrom' :
+                        data_lat = vlat / Units.Bohr
+                    else :
+                        data_lat = vlat
                     for line in fh:
                         if line[0] == "E":
                             break
@@ -130,53 +125,50 @@ def read_xsf(infile, kind="all", full=False, pbc=True, units='Angstrom', data_ty
                     for i in range(len(nrx)):
                         if nrx[i] > 1: nrx[i] -= 1
                     data = data[: nrx[0], : nrx[1], : nrx[2]]
-                data *= LEN_CONV["Bohr"][xsf_units[1]] ** 3
+                #
+                if units.lower() == 'angstrom' :
+                    data *= Units.Bohr**3
+                else :
+                    data_lat = vlat
                 blocks[spin] = data
 
             grid = DirectGrid(lattice=data_lat, nr=nrx, full=full)
-            plot = DirectField(grid=grid, griddata_3d=blocks, rank=rank)
+            field = DirectField(grid=grid, griddata_3d=blocks, rank=rank)
             if data_type == 'potential' :
-                plot *= ENERGY_CONV["eV"]["Hartree"]
-            system = System(atoms, grid, name="xsf", field=plot)
-    return system
+                field /= Units.Ha
+    if kind == 'data' :
+        return field
+    else :
+        return ions, field, None
 
-def write_xsf(filexsf, system, field = None, **kwargs):
-    return XSF(filexsf).write(system, field, **kwargs)
+def write_xsf(filexsf, ions = None, data = None, **kwargs):
+    return XSF(filexsf).write(ions, data, **kwargs)
 
 
 class XSF(object):
 
-    xsf_units = "Angstrom"
-
-    def __init__(self, filexsf, title = 'DFTpy'):
+    def __init__(self, filexsf):
         self.filexsf = filexsf
-        self.title = title
         self.cutoffvars = {}
 
-    def write(self, system, field=None, data_type = 'density', **kwargs):
+    def write(self, ions=None, data=None, data_type = 'density', units = "angstrom", title = 'DFTpy', **kwargs):
         """
-        Write a system object into an xsf file.
+        Write a ions and data into an xsf file.
         Not all specifications of the xsf file format are implemented, they will
         be added as needed.
         So far it can:
-            - write the system cell and atoms
+            - write the ions
             - write the 1D/2D/3D grid data
         """
 
-        title = system.name
-        cell = system.cell
-        ions = system.ions
-
-        # it can be useful to override the plot inside the system object,
-        # for example if we want to plot a 2D/3D custom cut of the density grid
-        if field is None:
-            field = system.field
-
         with open(self.filexsf, "w") as fileout:
+            if units.lower() == 'angstrom' :
+                ions = ions.to_ase()
             self._write_header(fileout, title)
-            self._write_cell(fileout, cell)
+            self._write_cell(fileout, ions.cell)
             self._write_coord(fileout, ions)
-            self._write_datagrid(fileout, field, data_type = data_type)
+            # the data always in 'angstrom' units
+            self._write_datagrid(fileout, data, data_type = data_type)
 
         return
 
@@ -190,16 +182,14 @@ class XSF(object):
     def _write_cell(self, fileout, cell):
         mywrite(fileout, "PRIMVEC", True)
         for ilat in range(3):
-            latt = cell.lattice[:, ilat] * LEN_CONV["Bohr"][self.xsf_units]
+            latt = cell[ilat]
             mywrite(fileout, latt, True)
 
     def _write_coord(self, fileout, ions):
         mywrite(fileout, "PRIMCOORD", True)
-        mywrite(fileout, (len(ions.pos), 1), True)
-        for i in range(len(ions.pos)):
-            mywrite(fileout, (ions.labels[i], ions.pos[i] * LEN_CONV["Bohr"][self.xsf_units]), True)
-        # for iat, atom in enumerate(ions):
-        # mywrite(fileout, (atom.label, atom.pos*LEN_CONV["Bohr"][self.xsf_units]), True)
+        mywrite(fileout, (len(ions.positions), 1), True)
+        for i in range(len(ions.positions)):
+            mywrite(fileout, (ions.symbols[i], ions.positions[i]), True)
 
     def _write_datagrid(self, fileout, plot, data_type = 'density', **kwargs):
         ndim = plot.span  # 2D or 3D grid?
@@ -212,16 +202,16 @@ class XSF(object):
             plot = [plot]
         data = []
         for p in plot :
-            values = p.get_values_flatarray(pad=1, order="F") / LEN_CONV["Bohr"][self.xsf_units] ** 3
+            values = p.get_values_flatarray(pad=1, order="F") / Units.Bohr ** 3
+            if data_type == 'potential' :
+                values = values * Units.Ha
             data.append(values)
-        if data_type == 'potential' :
-            values = values * ENERGY_CONV["Hartree"]["eV"]
 
         mywrite(fileout, "BEGIN_BLOCK_DATAGRID_{}D".format(ndim), True)
         mywrite(fileout, "{}d_datagrid_{}".format(ndim, data_type), True)
         for i, values in enumerate(data) :
             mywrite(fileout, "BEGIN_DATAGRID_{}D#{}".format(ndim, i), True)
-            origin = grid.origin * LEN_CONV["Bohr"][self.xsf_units]
+            origin = grid.origin * Units.Bohr
             if ndim == 3:
                 mywrite(fileout, (grid.nr[0] + 1, grid.nr[1] + 1, grid.nr[2] + 1), True)
             elif ndim == 2:
@@ -230,7 +220,7 @@ class XSF(object):
                 fileout, origin, True
             )  # TODO, there might be an actual origin if we're dealing with a custom cut of the grid
             for ilat in range(ndim):
-                latt = grid.lattice[:, ilat] * LEN_CONV["Bohr"][self.xsf_units]
+                latt = grid.lattice[ilat] * Units.Bohr
                 mywrite(fileout, latt, True)
 
             nnr = len(values)

@@ -2,10 +2,7 @@
 import unittest
 import numpy as np
 
-from dftpy.cell import DirectCell, ReciprocalCell
-from dftpy.coord import Coord
-from dftpy.grid import DirectGrid, ReciprocalGrid
-from dftpy.constants import LEN_CONV
+from dftpy.grid import DirectGrid
 
 from .common import run_test_orthorombic, run_test_triclinic, make_orthorombic_cell, make_triclinic_cell
 
@@ -19,10 +16,7 @@ class TestCell(unittest.TestCase):
         nr = 100
         a, b, c = 10.,12.,14.
         run_test_orthorombic(self, DirectGrid, nr=[nr,nr,nr])
-        # check if we can compare equality between Cell and Grid
         grid = make_orthorombic_cell(a,b,c,nr=[nr,nr,nr],CellClass=DirectGrid)
-        cell = make_orthorombic_cell(a,b,c,CellClass=DirectCell)
-        self.assertEqual(grid,cell)
 
         # calculate grid points
         r = grid.r
@@ -38,7 +32,3 @@ class TestCell(unittest.TestCase):
         print("*"*50)
         print("Testing triclinic DirectGrid")
         run_test_triclinic(self, DirectGrid, nr=[10,10,10])
-        # check if we can compare equality between Cell and Grid
-        grid = make_triclinic_cell(10,12,14,np.pi/2,np.pi/4,np.pi/3, nr=[10,10,10],CellClass=DirectGrid)
-        cell = make_triclinic_cell(10,12,14,np.pi/2,np.pi/4,np.pi/3, CellClass=DirectCell)
-        self.assertEqual(grid,cell)

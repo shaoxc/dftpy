@@ -2,7 +2,6 @@ import numpy as np
 import gc
 import os
 import importlib.util
-import resource
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.grid import ReciprocalGrid
 from dftpy.math_utils import interpolation_3d
@@ -15,8 +14,8 @@ def dipole_moment(rho, ions = None, center = [0.0, 0.0, 0.0]):
     dm = np.einsum('lijk, ijk -> l', r, rho) * rho.grid.dV
     if ions is not None :
         for i in range(ions.nat) :
-            z = ions.Zval[ions.labels[i]]
-            dm -= z * (ions.pos[i] - rcenter)
+            z = ions.charges[i]
+            dm -= z * (ions.positions[i] - rcenter)
     return dm
 
 
@@ -27,8 +26,8 @@ def dipole_correction(rho, axis=2, ions=None, center = [0.0, 0.0, 0.0], coef=10.
     dm = np.einsum('ijk, ijk ->', r, rho) * rho.grid.dV
     if ions is not None :
         for i in range(ions.nat) :
-            z = ions.Zval[ions.labels[i]]
-            dm -= z * (ions.pos[i][axis] - rcenter[axis])
+            z = ions.charges[i]
+            dm -= z * (ions.positions[i][axis] - rcenter[axis])
 
     s = rho.grid.s[axis,...] - center[axis]
     rho_add = s * np.exp(coef * s * s)
@@ -86,7 +85,8 @@ def grid_map_data(data, nr = None, direct = True, index = None, grid = None):
         value = data.fft()
     else :
         value = data
-    nr1_g = np.array(value.shape, dtype = int)
+    nr1_g = value.grid.nrG
+    rank = value.rank
     if grid is not None :
         if not isinstance(grid, ReciprocalGrid):
             grid2 = grid.get_reciprocal()
@@ -98,15 +98,22 @@ def grid_map_data(data, nr = None, direct = True, index = None, grid = None):
         nr2_g[2] = nr2_g[2]//2+1
         grid2 = ReciprocalGrid(value.grid.lattice, nr)
 
-    value2= ReciprocalField(grid2)
+    value2= ReciprocalField(grid2, rank=rank)
 
     index, lfine = grid_map_index(nr1_g, nr2_g)
 
     bd = np.minimum(nr1_g, nr2_g)
-    if lfine :
-        value2[index[0], index[1], index[2]] = value[:bd[0], :bd[1], :bd[2]].ravel()
+    if rank == 1 :
+        value2_s, value_s = [value2], [value]
     else :
-        value2[:bd[0], :bd[1], :bd[2]] = value[index[0], index[1], index[2]].reshape(bd)
+        value2_s, value_s = value2, value
+    for value2, value in zip(value2_s, value_s):
+        if lfine :
+            value2[index[0], index[1], index[2]] = value[:bd[0], :bd[1], :bd[2]].ravel()
+        else :
+            value2[:bd[0], :bd[1], :bd[2]] = value[index[0], index[1], index[2]].reshape(bd)
+
+    if rank > 1 : value2 = value2_s
 
     if direct :
         results = value2.ifft(force_real=True)
@@ -119,7 +126,6 @@ def grid_map_data(data, nr = None, direct = True, index = None, grid = None):
         elif not isinstance(grid, ReciprocalGrid) and direct :
             results.grid = grid
     return results
-
 
 def coarse_to_fine(data, nr_fine, direct = True, index = None):
     """
@@ -197,6 +203,7 @@ def get_mem_info(pid = None, width = 8):
         line = templ.format(str(pid), bytes2human(uss), bytes2human(pss), bytes2human(swap), bytes2human(rss), width = width)
     else :
         try:
+            import resource
             mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
             if os.uname().sysname == 'Linux' : # kB
                 mem = bytes2human(mem*1024)

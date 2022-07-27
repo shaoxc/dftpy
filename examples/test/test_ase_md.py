@@ -26,6 +26,7 @@ class Test(unittest.TestCase):
         conf['PP']['Al'] = '/Al_lda.oe01.recpot'
         conf['OPT']['method'] = 'TN'
         conf['KEDF']['kedf'] = 'WT'
+        conf['EXC']['xc'] = 'LDA'
         conf['JOB']['calctype'] = 'Energy Force'
         conf['OUTPUT']['time'] = False
         conf = OptionFormat(conf)

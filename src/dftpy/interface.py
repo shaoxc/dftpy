@@ -5,17 +5,16 @@ from dftpy.optimization import Optimization
 from dftpy.functional import Functional
 from dftpy.functional.total_functional import TotalFunctional
 from dftpy.constants import LEN_CONV, ENERGY_CONV, STRESS_CONV
-from dftpy.formats.io import read_density, write, read_system
+from dftpy.formats.io import read_density, write, read
 from dftpy.ewald import ewald
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
-from dftpy.math_utils import bestFFTsize, interpolation_3d
+from dftpy.math_utils import ecut2nr
 from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.functional.semilocal_xc import XCStress
 from dftpy.functional.kedf import KEDFStress
 from dftpy.functional.hartree import HartreeFunctionalStress
 from dftpy.config.config import PrintConf, ReadConf
-from dftpy.system import System
 from dftpy.inverter import Inverter
 from dftpy.properties import get_electrostatic_potential
 from dftpy.utils import field2distrib
@@ -34,36 +33,25 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
         raise AttributeError("Given the 'grid', can't use 'multistep' method anymore.")
 
     if ions is None:
-        struct = read_system(
+        ions, field, _ = read(
             config["PATH"]["cellpath"] +os.sep+ config["CELL"]["cellfile"],
             format=config["CELL"]["format"],
             names=config["CELL"]["elename"],
+            kind = 'all',
         )
-        ions = struct.ions
     else :
-        struct = None
-    lattice = ions.pos.cell.lattice
-    metric = np.dot(lattice.T, lattice)
+        field = None
+    lattice = ions.cell
     if config["GRID"]["nr"] is not None:
         nr = np.asarray(config["GRID"]["nr"])
-    elif struct is not None and struct.field is not None :
-        nr = struct.field.grid.nr
-        rhoini = struct.field
+    elif field is not None and field is not None :
+        nr = field.grid.nr
+        rhoini = field
     else:
-        # spacing = config['GRID']['spacing']
         spacing = config["GRID"]["spacing"] * LEN_CONV["Angstrom"]["Bohr"]
-        nr = np.zeros(3, dtype="int32")
-        for i in range(3):
-            nr[i] = int(np.sqrt(metric[i, i]) / spacing)
-        sprint("The initial grid size is ", nr)
-        nproc = 1
-        # nr0 = nr.copy()
-        for i in range(3):
-            # if i == 0 :
-                # if mp is not None : nproc = mp.comm.size
-            # else :
-                # nr[i] *= nr[0]/nr0[0]
-            nr[i] = bestFFTsize(nr[i], nproc=nproc, **config["GRID"])
+        grid_options = config["GRID"].copy()
+        grid_options.pop("spacing", None)
+        nr = ecut2nr(lattice=lattice, spacing=spacing, **grid_options)
     sprint("The final grid size is ", nr)
     nr2 = nr.copy()
     if config["MATH"]["multistep"] > 1:
@@ -84,13 +72,7 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
     optional_kwargs["PP_list"] = PPlist
     optional_kwargs["ions"] = ions
     optional_kwargs["PME"] = config["MATH"]["linearie"]
-    if not ions.Zval:
-        if config["CELL"]["zval"]:
-            elename = config["CELL"]["elename"]
-            zval = config["CELL"]["zval"]
-            for ele, z in zip(elename, zval):
-                ions.Zval[ele] = z
-
+    #
     linearie = config["MATH"]["linearie"]
     if pseudo is None:
         # PSEUDO = LocalPseudo(grid=grid, ions=ions, PP_list=PPlist, PME=linearie)
@@ -124,8 +106,8 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
     if rhoini is not None:
         density = rhoini
     elif config["DENSITY"]["densityini"] == "HEG":
-        charge_total = ions.ncharge
-        rho_ini[:] = charge_total / ions.pos.cell.volume
+        charge_total = ions.get_ncharges()
+        rho_ini[:] = charge_total / ions.cell.volume
         if nspin>1 : rho_ini[:] /= nspin
     elif config["DENSITY"]["densityini"] == "Read":
         density = []
@@ -135,32 +117,31 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
     if density is not None:
         field2distrib(density, rho_ini, root = root)
     # normalization the charge (e.g. the cell changed)
-    charge_total = ions.ncharge
+    charge_total = ions.get_ncharges()
     rho_ini *= charge_total / np.sum(rho_ini.integral())
     ############################## add spin magmom ##############################
     if nspin > 1 :
         magmom = config["DENSITY"]["magmom"]
         for ip in range(nspin):
-            rho_ini[ip] += 1.0/nspin *(-1)**ip * magmom/ ions.pos.cell.volume
+            rho_ini[ip] += 1.0/nspin *(-1)**ip * magmom/ ions.cell.volume
     #-----------------------------------------------------------------------
-    struct = System(ions, grid, name='density', field=rho_ini)
     # The last is a dictionary, which return some properties are used for different situations.
     others = {
-        "struct": struct,
+        "ions": ions,
+        "field": rho_ini,
         "E_v_Evaluator": E_v_Evaluator,
         "nr2": nr2,
     }
     return config, others
 
 
-def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2 = None):
-    ions = struct.ions
-    rho_ini = struct.field
+def OptimizeDensityConf(config, ions, rho, E_v_Evaluator, nr2 = None):
+    rho_ini = rho
     grid = rho_ini.grid
     if hasattr(E_v_Evaluator, 'PSEUDO'):
         PSEUDO=E_v_Evaluator.PSEUDO
     nr = grid.nr
-    charge_total = ions.ncharge
+    charge_total = ions.get_ncharges()
     if "Optdensity" in config["JOB"]["task"]:
         optimization_options = config["OPT"]
         optimization_options["econv"] *= ions.nat
@@ -199,8 +180,6 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2 = None):
             )
             rho = opt.optimize_rho(guess_rho=rho_ini)
         optimization_options["econv"] /= ions.nat  # reset the value
-    else:
-        rho = rho_ini
     ############################## calctype  ##############################
     linearii = config["MATH"]["linearii"]
     linearie = config["MATH"]["linearie"]
@@ -301,13 +280,13 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2 = None):
     if config["DENSITY"]["densityoutput"]:
         sprint("Write Density...")
         outfile = config["DENSITY"]["densityoutput"]
-        write(outfile, rho, ions = ions)
+        write(outfile, rho, ions)
     ############################## Output ##############################
     if config["OUTPUT"]["electrostatic_potential"]:
         sprint("Write electrostatic potential...")
         outfile = config["OUTPUT"]["electrostatic_potential"]
         v = get_electrostatic_potential(rho, E_v_Evaluator)
-        write(outfile, v, ions = ions)
+        write(outfile, v, ions)
     results = {}
     results["density"] = rho
     results["energypotential"] = energypotential
@@ -316,7 +295,6 @@ def OptimizeDensityConf(config, struct, E_v_Evaluator, nr2 = None):
     if hasattr(E_v_Evaluator, 'PSEUDO'):
         results["pseudo"] = PSEUDO
     # sprint('-' * 31, 'Time information', '-' * 31)
-    # TimeData.reset() #Cleanup the data in TimeData
     # -----------------------------------------------------------------------
     return results
 
@@ -436,17 +414,17 @@ def GetStress_old(
 
     return stress
 
-def InvertRunner(config, struct, EnergyEvaluater):
+def InvertRunner(config, ions, EnergyEvaluater):
     file_rho_in = config["INVERSION"]["rho_in"]
     file_v_out = config["INVERSION"]["v_out"]
-    rho_in_struct = read_system(file_rho_in, data_type='density')
+    field = read_density(file_rho_in)
 
-    if struct.cell != rho_in_struct.cell:
+    if ions.cell != field.cell :
         raise ValueError('The grid of the input density does not match the grid of the system')
 
     inv = Inverter()
-    ext = inv(rho_in_struct.field, EnergyEvaluater)
-    write(file_v_out, data=ext.v, ions=struct.ions, data_type='potential')
+    ext = inv(field, EnergyEvaluater)
+    write(file_v_out, data=ext.v, ions=ions, data_type='potential')
 
     return ext
 

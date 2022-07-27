@@ -163,7 +163,7 @@ class Atom(object):
 
 
 z2lab = [
-    "NA",
+    "Gh",
     "H",
     "He",
     "Li",

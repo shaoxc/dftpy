@@ -5,9 +5,6 @@ from dftpy.linear_solver import _get_atol
 from dftpy.mpi import sprint
 from dftpy.optimize import Dynamics
 from dftpy.utils.utils import calc_rho, calc_j
-from dftpy.functional.abstract_functional import AbstractFunctional
-from dftpy.td.propagator.abstract_propagator import AbstractPropagator
-from dftpy.system import System
 
 
 class PredictorCorrector(Dynamics):

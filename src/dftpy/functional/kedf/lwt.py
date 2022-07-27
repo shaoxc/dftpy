@@ -6,7 +6,7 @@ from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.functional.kedf.kernel import MGPKernelTable, MGPOmegaE
 from dftpy.functional.kedf.kernel import WTKernelTable, LWTKernelKf
 from dftpy.mpi import sprint
-from dftpy.time_data import TimeData
+from dftpy.time_data import timer
 
 __all__ = ["LWT", "LWTStress", "LMGP", "LMGPA", "LMGPG"]
 
@@ -82,10 +82,10 @@ def guess_kf_bound(kf, kfmin=None, kfmax=None, kftol=1E-3, ke_kernel_saved=None)
 def LWTPotentialEnergy(
         rho,
         etamax=100.0,
-        ratio=1.1,
+        ratio=1.15,
         nsp=None,
         delta=None,
-        kdd=1,
+        kdd=3,
         alpha=5.0 / 6.0,
         beta=5.0 / 6.0,
         interp="linear",
@@ -344,10 +344,10 @@ def LWTPotentialEnergy(
 def LWTLineIntegral(
         rho,
         etamax=100.0,
-        ratio=1.1,
+        ratio=1.15,
         nsp=None,
         delta=None,
-        kdd=1,
+        kdd=3,
         alpha=5.0 / 6.0,
         beta=5.0 / 6.0,
         nt=500,
@@ -498,6 +498,7 @@ def LWTLineIntegral(
     return NL
 
 
+@timer()
 def LWT(
         rho,
         x=1.0,
@@ -512,8 +513,8 @@ def LWT(
         etamax=50.0,
         maxpoints=1000,
         fd=1,
-        kdd=1,
-        ratio=1.2,
+        kdd=3,
+        ratio=1.15,
         nsp=None,
         delta=None,
         neta=50000,
@@ -523,7 +524,6 @@ def LWT(
         ke_kernel_saved=None,
         **kwargs
 ):
-    TimeData.Begin("LWT")
     # Only performed once for each grid
     q = rho.grid.get_reciprocal().q
     rho0 = rho.amean()
@@ -565,155 +565,14 @@ def LWT(
     NL = LWTPotentialEnergy(rho, alpha=alpha, beta=beta, etamax=etamax, ratio=ratio, nsp=nsp, kdd=kdd, delta=delta,
                             interp=interp, calcType=calcType, ke_kernel_saved=KE_kernel_saved, **kwargs)
     # NL = LWTLineIntegral(rho, alpha=alpha, beta=beta, etamax=etamax, ratio=ratio, nsp=nsp, kdd=kdd, delta=delta, interp=interp, calcType=calcType, ke_kernel_saved = KE_kernel_saved, **kwargs)
-    TimeData.End("LWT")
     return NL
 
 
-def LMGP(
-        rho,
-        x=1.0,
-        y=1.0,
-        sigma=None,
-        interp="linear",
-        kerneltype="MGP",
-        symmetrization=None,
-        lumpfactor=None,
-        alpha=5.0 / 6.0,
-        beta=5.0 / 6.0,
-        etamax=50.0,
-        maxpoints=1000,
-        fd=1,
-        kdd=1,
-        ratio=1.2,
-        nsp=None,
-        delta=None,
-        neta=50000,
-        order=3,
-        calcType={"E", "V"},
-        split=False,
-        **kwargs
-):
-    return LWT(
-        rho,
-        x,
-        y,
-        sigma,
-        interp,
-        "MGP",
-        symmetrization,
-        lumpfactor,
-        alpha,
-        beta,
-        etamax,
-        maxpoints,
-        fd,
-        kdd,
-        ratio,
-        nsp,
-        delta,
-        neta,
-        order,
-        calcType,
-        split,
-        **kwargs
-    )
+def LMGP(rho, kerneltype="MGP", **kwargs):
+    return LWT(rho, kerneltype=kerneltype, **kwargs)
 
+def LMGPA(rho, kerneltype="MGPA", **kwargs):
+    return LWT(rho, kerneltype=kerneltype, **kwargs)
 
-def LMGPA(
-        rho,
-        x=1.0,
-        y=1.0,
-        sigma=None,
-        interp="linear",
-        kerneltype="MGPA",
-        symmetrization=None,
-        lumpfactor=None,
-        alpha=5.0 / 6.0,
-        beta=5.0 / 6.0,
-        etamax=50.0,
-        maxpoints=1000,
-        fd=1,
-        kdd=1,
-        ratio=1.2,
-        nsp=None,
-        delta=None,
-        neta=50000,
-        order=3,
-        calcType={"E", "V"},
-        split=False,
-        **kwargs
-):
-    return LWT(
-        rho,
-        x,
-        y,
-        sigma,
-        interp,
-        "MGPA",
-        symmetrization,
-        lumpfactor,
-        alpha,
-        beta,
-        etamax,
-        maxpoints,
-        fd,
-        kdd,
-        ratio,
-        nsp,
-        delta,
-        neta,
-        order,
-        calcType,
-        split,
-        **kwargs
-    )
-
-
-def LMGPG(
-        rho,
-        x=1.0,
-        y=1.0,
-        sigma=None,
-        interp="linear",
-        kerneltype="MGPG",
-        symmetrization=None,
-        lumpfactor=None,
-        alpha=5.0 / 6.0,
-        beta=5.0 / 6.0,
-        etamax=50.0,
-        maxpoints=1000,
-        fd=1,
-        kdd=1,
-        ratio=1.2,
-        nsp=None,
-        delta=None,
-        neta=50000,
-        order=3,
-        calcType={"E", "V"},
-        split=False,
-        **kwargs
-):
-    return LWT(
-        rho,
-        x,
-        y,
-        sigma,
-        interp,
-        "MGPG",
-        symmetrization,
-        lumpfactor,
-        alpha,
-        beta,
-        etamax,
-        maxpoints,
-        fd,
-        kdd,
-        ratio,
-        nsp,
-        delta,
-        neta,
-        order,
-        calcType,
-        split,
-        **kwargs
-    )
+def LMGPG(rho, kerneltype="MGPG", **kwargs):
+    return LWT(rho, kerneltype=kerneltype, **kwargs)

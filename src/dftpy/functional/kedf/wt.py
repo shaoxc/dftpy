@@ -4,7 +4,7 @@ from dftpy.constants import ZERO
 from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.functional.kedf.kernel import WTKernel, LindhardDerivative
 from dftpy.mpi import sprint
-from dftpy.time_data import TimeData
+from dftpy.time_data import timer
 
 __all__ = ["WT", "WTStress"]
 
@@ -101,9 +101,9 @@ def WTStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, ene
     return stress
 
 
+@timer()
 def WT(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, rho0=None, calcType={"E", "V"}, split=False,
        ke_kernel_saved=None, **kwargs):
-    TimeData.Begin("WT")
     q = rho.grid.get_reciprocal().q
     if rho0 is None:
         rho0 = rho.amean()
@@ -137,5 +137,4 @@ def WT(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, rho0=None
             NL.energydensity = energydensity
         NL.energy = energydensity.sum() * rho.grid.dV
 
-    TimeData.End("WT")
     return NL

@@ -1,28 +1,28 @@
 import os
 from collections import namedtuple
 from importlib import import_module
-from dftpy.system import System
-from dftpy.atom import Atom
 from dftpy.field import DirectField
 from dftpy.mpi import SerialComm
+from dftpy.ions import Ions
 
 ioformat = namedtuple('ioformat', ['format', 'module', 'read', 'write', 'kind'])
 iounkeys = ['mp', 'comm', 'kind', 'data_type', 'grid', 'names']
 
 IOFormats= {
-            "snpy"    : ioformat('snpy', 'dftpy.formats.snpy'  , 'read_snpy', 'write_snpy', ['cell', 'field', 'all']),
-            "xsf"     : ioformat('xsf' , 'dftpy.formats.xsf'   , 'read_xsf' , 'write_xsf' , ['cell', 'field', 'all']),
-            "pp"      : ioformat('qepp', 'dftpy.formats.qepp'  , 'read_qepp', 'write_qepp', ['cell', 'field', 'all']),
-            "qepp"    : ioformat('qepp', 'dftpy.formats.qepp'  , 'read_qepp', 'write_qepp', ['cell', 'field', 'all']),
-            "den"     : ioformat('den' , 'dftpy.formats.den'   , 'read_den' , 'write_den' , ['field']),
-            "xyz"     : ioformat('xyz' , 'dftpy.formats.xyz'   , 'read_xyz' , 'write_xyz' , ['cell']),
-            "extxyz"  : ioformat('xyz' , 'dftpy.formats.xyz'   , 'read_xyz' , 'write_xyz' , ['cell']),
-            "vasp"    : ioformat('vasp', 'dftpy.formats.vasp'  , 'read_vasp', 'write_vasp', ['cell']),
-            "poscar"  : ioformat('vasp', 'dftpy.formats.vasp'  , 'read_vasp', 'write_vasp', ['cell']),
-            "contcar" : ioformat('vasp', 'dftpy.formats.vasp'  , 'read_vasp', 'write_vasp', ['cell']),
-            "ase"     : ioformat('ase' , 'dftpy.formats.ase_io', 'read_ase' , 'write_ase' , ['cell']),
-            "pmg"     : ioformat('pmg' , 'dftpy.formats.pmg_io', 'read_pmg' , 'write_pmg' , ['cell']),
-            "pymatgen": ioformat('pmg' , 'dftpy.formats.pmg_io', 'read_pmg' , 'write_pmg' , ['cell']),
+            "snpy"    : ioformat('snpy', 'dftpy.formats.snpy'  , 'read_snpy', 'write_snpy', ['ions', 'data', 'all']),
+            "xsf"     : ioformat('xsf' , 'dftpy.formats.xsf'   , 'read_xsf' , 'write_xsf' , ['ions', 'data', 'all']),
+            "pp"      : ioformat('qepp', 'dftpy.formats.qepp'  , 'read_qepp', 'write_qepp', ['ions', 'data', 'all']),
+            "qepp"    : ioformat('qepp', 'dftpy.formats.qepp'  , 'read_qepp', 'write_qepp', ['ions', 'data', 'all']),
+            "cube"    : ioformat('cube', 'dftpy.formats.cube'  , 'read_cube', 'write_cube', ['ions', 'data', 'all']),
+            "den"     : ioformat('den' , 'dftpy.formats.den'   , 'read_den' , 'write_den' , ['data']),
+            "xyz"     : ioformat('xyz' , 'dftpy.formats.xyz'   , 'read_xyz' , 'write_xyz' , ['ions']),
+            "extxyz"  : ioformat('xyz' , 'dftpy.formats.xyz'   , 'read_xyz' , 'write_xyz' , ['ions']),
+            "vasp"    : ioformat('vasp', 'dftpy.formats.vasp'  , 'read_vasp', 'write_vasp', ['ions']),
+            "poscar"  : ioformat('vasp', 'dftpy.formats.vasp'  , 'read_vasp', 'write_vasp', ['ions']),
+            "contcar" : ioformat('vasp', 'dftpy.formats.vasp'  , 'read_vasp', 'write_vasp', ['ions']),
+            "ase"     : ioformat('ase' , 'dftpy.formats.ase_io', 'read_ase' , 'write_ase' , ['ions']),
+            "pmg"     : ioformat('pmg' , 'dftpy.formats.pmg_io', 'read_pmg' , 'write_pmg' , ['ions']),
+            "pymatgen": ioformat('pmg' , 'dftpy.formats.pmg_io', 'read_pmg' , 'write_pmg' , ['ions']),
         }
 
 def guessType(infile, **kwargs):
@@ -63,77 +63,90 @@ def get_io_driver(infile, format = None, mode = 'r'):
 
     return iof
 
-def read_system(infile, format=None, driver=None, **kwargs):
+def read(infile, format=None, kind='ions', driver=None, **kwargs):
     if driver is None :
         driver = get_io_driver(infile, format, mode = 'r')
-        system = driver.read(infile, **kwargs)
     elif isinstance(driver, str) :
         for key in iounkeys :
             if key in kwargs : kwargs.pop(key)
         driver = get_io_driver(infile, driver, mode = 'r')
-        system = driver.read(infile, **kwargs)
-    elif hasattr(driver, 'read') :
-        system = driver.read(infile, format=format, **kwargs)
+    #
+    if hasattr(driver, 'read') :
+        values = driver.read(infile, format=format, **kwargs)
     else :
         raise AttributeError(f"Sorry, not support {driver} driver")
-    return system
+    #
+    if kind == 'all' :
+        if 'ions' not in driver.kind :
+            values = (None, values, None)
+        elif 'data' not in driver.kind :
+            values = (values, None, None)
+        elif len(values) == 2 :
+            values = *values, None
+        elif len(values) != 3 :
+            raise AttributeError(f"Sorry, the {driver} driver should only return 3 values.")
+    if kind == 'data' :
+        if len(values) == 2 or len(values) == 3 :
+            values = values[1]
+    return values
 
-def write_system(outfile, system, format = None, comm = None, driver = None, **kwargs):
+def write(outfile, ions = None, data = None, information = None, format = None, comm = None, driver = None, **kwargs):
+    if isinstance(data, Ions):
+        if ions is None or isinstance(ions, DirectField):
+            ions, data = data, ions
+        else :
+            raise AttributeError("Please check the input data")
+
     if comm is None :
-        if hasattr(system.field, 'mp') :
-            comm = system.field.mp.comm
+        if hasattr(data, 'mp') :
+            comm = data.mp.comm
         else :
             comm = SerialComm()
     if driver is not None :
+        if comm.size > 1 and data is not None :
+            data = data.gather()
         if isinstance(driver, str) :
             for key in iounkeys :
                 if key in kwargs : kwargs.pop(key)
             driver = get_io_driver(outfile, driver, mode = 'w')
-            driver.write(outfile, system, **kwargs)
+            if comm.rank == 0 : driver.write(outfile, ions = ions, data = data, **kwargs)
         elif hasattr(driver, 'write') :
-            if comm.rank == 0 : driver.write(outfile, system, format=format, **kwargs)
+            if comm.rank == 0 : driver.write(outfile, ions = ions, data = data, **kwargs)
         else :
             raise AttributeError(f"Sorry, not support {driver} driver")
     else :
         driver = get_io_driver(outfile, format, mode = 'w')
         if driver.format == "snpy": # only snpy format support MPI-IO
-            return driver.write(outfile, system, **kwargs)
+            return driver.write(outfile, ions=ions, data=data, information = information, **kwargs)
         else : # only rank==0 write
-            if comm.size > 1 and 'field' in driver.kind :
-                total = system.field.gather()
-                system = System(system.ions, name="DFTpy", field=total)
-
-            if comm.rank == 0 : driver.write(outfile, system, **kwargs)
+            if comm.size > 1 and data is not None :
+                data = data.gather()
+            if comm.rank == 0 : driver.write(outfile, ions = ions, data=data, information = information, **kwargs)
 
             comm.Barrier()
     return
 
+def read_data(infile, format=None, **kwargs):
+    return read(infile, format=format, kind='data', **kwargs)
+
+def read_all(infile, format=None, **kwargs):
+    return read(infile, format=format, kind='all', **kwargs)
+
 def read_density(infile, format=None, **kwargs):
-    struct = read_system(infile, format=format, **kwargs)
-    return struct.field
+    kwargs.pop('data_type', None)
+    return read(infile, format=format, kind='data', data_type='density', **kwargs)
 
-def read(infile, format=None, **kwargs):
-    struct = read_system(infile, format=format, **kwargs)
-    kind = kwargs.get('kind', 'cell')
-    if kind == 'cell' :
-        return struct.ions
-    elif kind == 'field' :
-        return struct.field
-    else :
-        return struct
+def read_potential(infile, format=None, **kwargs):
+    kwargs.pop('data_type', None)
+    return read(infile, format=format, kind='data', data_type='potential', **kwargs)
 
-def write(outfile, data = None, ions = None, format=None, **kwargs):
-    if isinstance(data, System):
-        system = data
-    elif isinstance(data, DirectField):
-        system = System(ions, name="DFTpy", field=data)
-    elif isinstance(data, Atom):
-        if ions is None or isinstance(ions, DirectField):
-            ions, data = data, ions
-            system = System(ions, name="DFTpy", field=data)
-        else :
-            raise AttributeError("Please check the input data")
-    else :
-        raise AttributeError("Please check the input data")
+def write_all(outfile, ions = None, data = None, information = None, format=None, **kwargs):
+    return write(outfile, ions = None, data = None, information = None, format=format, **kwargs)
 
-    return write_system(outfile, system, format=format, **kwargs)
+def write_density(outfile, data = None, ions = None, format = None, **kwargs):
+    kwargs.pop('data_type', None)
+    return write(outfile, data = data, ions = ions, format = format, data_type='density', **kwargs)
+
+def write_potential(outfile, data = None, ions = None, format = None, **kwargs):
+    kwargs.pop('data_type', None)
+    return write(outfile, data = data, ions = ions, format = format, data_type='potential', **kwargs)

@@ -15,7 +15,7 @@ from dftpy.td.predictor_corrector import PredictorCorrector
 from dftpy.td.propagator import Propagator
 from dftpy.utils.utils import calc_rho, calc_j
 from dftpy.time_data import TimeData, timer
-from dftpy.constants import LEN_CONV
+from dftpy.constants import Units
 from dftpy.td.utils import initial_kick, initial_kick_vector_potential, vector_potential_energy, PotentialOperator
 
 
@@ -68,8 +68,8 @@ class RealTimeRunner(Dynamics):
         self.timer = None
         self.correct_propagator = None
 
-        # self.z_split = 0
-        self.z_split = config["TD"]['z_split'] * LEN_CONV["Angstrom"]["Bohr"]
+        #self.z_split = 0
+        self.z_split = config["TD"]['z_split'] / Units.Bohr
 
         if self.vector_potential:
             self.A_t = None

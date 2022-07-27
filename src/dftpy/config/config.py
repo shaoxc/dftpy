@@ -4,8 +4,8 @@ import copy
 import numpy as np
 
 from dftpy.config.config_entry import ConfigEntry
-from dftpy.constants import ENERGY_CONV, LEN_CONV
 from dftpy.mpi import sprint
+from dftpy.constants import Units
 
 
 def config_map(mapping_function, premap_conf):
@@ -66,16 +66,10 @@ def ConfSpecialFormat(conf):
     """
     if conf["GRID"]["spacing"]:  # Here units are : spacing (Angstrom),  ecut (eV), same as input.
         conf["GRID"]["ecut"] = (
-                np.pi ** 2
-                / (2 * conf["GRID"]["spacing"] ** 2)
-                * ENERGY_CONV["Hartree"]["eV"]
-                / LEN_CONV["Angstrom"]["Bohr"] ** 2
-        )
+                np.pi ** 2 / (2 * conf["GRID"]["spacing"] ** 2) * Units.Ha * Units.Bohr**2)
     else:
         conf["GRID"]["spacing"] = (
-                np.sqrt(np.pi ** 2 / conf["GRID"]["ecut"] * 0.5 / ENERGY_CONV["eV"]["Hartree"])
-                * LEN_CONV["Bohr"]["Angstrom"]
-        )
+                np.sqrt(np.pi ** 2 / conf["GRID"]["ecut"] * 0.5 * Units.Ha) * Units.Bohr)
 
     for section in conf:
         if section == 'KEDF' or ('copy' in conf[section] and conf[section]['copy'] == 'KEDF'):

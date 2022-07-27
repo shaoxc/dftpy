@@ -343,7 +343,7 @@ def spacing2ecut(spacing):
 def ecut2spacing(ecut):
     return np.sqrt(np.pi ** 2 / ecut * 0.5)
 
-def ecut2nr(ecut, lattice, optfft = True, spacing = None, **kwargs):
+def ecut2nr(ecut = None, lattice = None, optfft = True, spacing = None, nproc = 1, **kwargs):
     spacings = np.ones(3)
     optffts = np.ones(3, dtype = 'bool')
     optffts[:] = optfft
@@ -352,13 +352,13 @@ def ecut2nr(ecut, lattice, optfft = True, spacing = None, **kwargs):
         spacings[:] = ecut2spacing(ecut)
     else :
         spacings[:] = spacing
-    metric = np.dot(lattice.T, lattice)
+    metric = np.dot(lattice, lattice.T)
     for i in range(3):
         # nr[i] = np.ceil(np.sqrt(metric[i, i])/spacings[i])
         nr[i] = int(np.sqrt(metric[i, i])/spacings[i])
         nr[i] += nr[i] %2
         if optffts[i] :
-            nr[i] = bestFFTsize(nr[i], **kwargs)
+            nr[i] = bestFFTsize(nr[i], nproc = nproc, **kwargs)
     return nr
 
 

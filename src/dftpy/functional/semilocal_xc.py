@@ -8,7 +8,7 @@ import json
 from dftpy.field import DirectField
 from dftpy.functional.abstract_functional import AbstractFunctional
 from dftpy.functional.functional_output import FunctionalOutput
-from dftpy.time_data import TimeData
+from dftpy.time_data import timer
 
 
 class XC(AbstractFunctional):
@@ -30,7 +30,7 @@ class XC(AbstractFunctional):
             self.options['libxc'] = libxc
             if CheckLibXC(False):
                 self.xcfun = LibXC
-            elif xc.lower() == 'lda':
+            elif xc and xc.lower() == 'lda':
                 self.xcfun = LDA
             else :
                 raise ModuleNotFoundError("Install pylibxc to use this functionality")
@@ -222,6 +222,7 @@ def Get_LibXC_Output(out, density):
     return OutFunctional
 
 
+@timer()
 def LibXC(density, libxc=None, calcType={"E", "V"}, **kwargs):
     """
      Output:
@@ -230,7 +231,6 @@ def LibXC(density, libxc=None, calcType={"E", "V"}, **kwargs):
         - density: a DirectField (rank=1)
         - libxc: strings like "gga_k_lc94", "gga_x_pbe" and "gga_c_pbe"
     """
-    TimeData.Begin("LibXC")
     if CheckLibXC():
         from pylibxc.functional import LibXCFunctional
 
@@ -276,16 +276,13 @@ def LibXC(density, libxc=None, calcType={"E", "V"}, **kwargs):
     out_functional = None
     for value in libxc :
         func = LibXCFunctional(value, polarization)
-        TimeData.Begin("libxc_eval")
         out = func.compute(inp, **kargs)
-        TimeData.End("libxc_eval")
         if out_functional is not None :
             out_functional += Get_LibXC_Output(out, density)
             out_functional.name += "_" + value
         else:
             out_functional = Get_LibXC_Output(out, density)
             out_functional.name = value
-    TimeData.End("LibXC")
     return out_functional
 
 
@@ -297,10 +294,10 @@ def LDA_XC(density, calcType={"E", "V"}):
     return LibXC(density=density, libxc = ["lda_x", "lda_c_pz"], calcType=calcType)
 
 
+@timer()
 def LDA(rho, calcType={"E", "V"}, **kwargs):
     if rho.rank > 1:
         return LDA_XC(rho, calcType)
-    TimeData.Begin("LDA")
     OutFunctional = FunctionalOutput(name="XC")
     a = (0.0311, 0.01555)
     b = (-0.048, -0.0269)
@@ -350,12 +347,10 @@ def LDA(rho, calcType={"E", "V"}, **kwargs):
 
         OutFunctional.v2rho2 = fx + fc
 
-    TimeData.End("LDA")
     return OutFunctional
 
 
 def LDAStress(rho, energy=None, potential=None, **kwargs):
-    TimeData.Begin("LDA_Stress")
     if energy is None:
         EnergyPotential = LDA(rho, calcType={"E", "V"})
         potential = EnergyPotential.potential
@@ -369,7 +364,6 @@ def LDAStress(rho, energy=None, potential=None, **kwargs):
         Etmp = energy - np.asum(potential * rho) * rho.grid.dV
     for i in range(3):
         stress[i, i] = Etmp / rho.grid.volume
-    TimeData.End("LDA_Stress")
     return stress
 
 
@@ -492,8 +486,10 @@ def _GGAStress(density, xc_str='gga_x_pbe', energy=None, flag='standard', **kwar
     return stress / rho.grid.volume
 
 
-def XCStress(density, libxc=None, energy=None, flag='standard', **kwargs):
-    TimeData.Begin("XCStress")
+@timer()
+def XCStress(density, libxc=None, energy=None, flag='standard', xc=None, **kwargs):
+    if xc and xc.lower() == 'lda' :
+        return LDAStress(density, energy=energy, **kwargs)
     libxc = get_libxc_names(libxc = libxc, **kwargs)
     stress = np.zeros((3, 3))
     if energy is not None : energy = energy / len(libxc)
@@ -504,7 +500,6 @@ def XCStress(density, libxc=None, energy=None, flag='standard', **kwargs):
             stress += _GGAStress(density, xc_str=key, energy=energy, flag=flag, **kwargs)
         else :
             raise AttributeError('Hybrid and Meta-GGA functionals have not been implemented yet')
-    TimeData.End("XCStress")
     return stress
 
 
@@ -545,7 +540,7 @@ def get_libxc_names(xc = None, libxc = None, name = None, code = None, **kwargs)
             v = xcformats.get(xc, {}).get('libxc', None)
             if v : libxc = v
     elif isinstance(libxc, str):
-        libxc =[libxc]
+        libxc =libxc.split()
 
     # compatible with older version
     libxc_old = [v for k, v in kwargs.items() if k in ["k_str", "x_str", "c_str"] and v is not None]

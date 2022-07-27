@@ -92,8 +92,8 @@ class TotalFunctional(AbstractFunctional):
                 Obj += evalfunctional(rho, calcType=calcType, *args, **kwargs)
             # sss = evalfunctional(rho, ["E","V"])
             # sss.energy = rho.mp.vsum(sss.energy)
-            # sprint('key', key, sss.energy)
-        # sprint('-' * 80)
+            # print('key', key, sss.energy)
+        # print('-' * 80)
         if Obj is None:
             Obj = FunctionalOutput(name='NONE')
         if 'E' in calcType:
@@ -106,4 +106,5 @@ class TotalFunctional(AbstractFunctional):
         ewald_ = ewald(rho=rho, ions=ions, PME=usePME)
         total_e = self.compute(rho, calcType={"E"})
         ewald_energy = rho.mp.vsum(ewald_.energy)
+        # print('ewald', ewald_energy)
         return ewald_energy + total_e.energy

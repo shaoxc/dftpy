@@ -2,13 +2,13 @@ import numpy as np
 
 # Global variables
 #-----------------------------------------------------------------------
-def get_local_fft_shape(nr, realspace = True, full = False, **kwargs):
+def get_local_fft_shape(nr, direct = True, full = False, **kwargs):
     s = []
     for item in nr :
         s.append(slice(None))
     s = tuple(s)
     shape = np.array(nr)
-    if not full and not realspace :
+    if not full and not direct :
         shape[-1] = shape[-1]//2 + 1
     offsets = np.zeros_like(nr, dtype = np.int32)
     return (s, shape, offsets)

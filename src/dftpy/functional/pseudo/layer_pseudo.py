@@ -1,21 +1,20 @@
 from dftpy.functional.external_potential import ExternalPotential
-from dftpy.atom import Atom
+from dftpy.ions import Ions
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
 import numpy as np
-from dftpy.math_utils import PowerInt
 from dftpy.density.density import AtomicDensity
 from scipy.interpolate import splrep, splev
 
 
 class LayerPseudo(ExternalPotential):
 
-    def __init__(self, vr=None, r=None, grid: DirectGrid = None, ions: Atom = None, **kwargs):
+    def __init__(self, vr=None, r=None, grid: DirectGrid = None, ions: Ions = None, **kwargs):
         super().__init__()
         self.grid = grid
         self.ions = ions
         if self.ions is not None:
-            self.key = self.ions.labels[0]
+            self.key = self.ions[0].symbol
         self._vr = vr
         self.r = r
         if r is not None:

@@ -6,8 +6,8 @@ SNPY format
 snpy format is just contains some numpy NPY files, but has a definite order which contains structure information.
  - description of snpy (1d integer array)
    1. lattice matrix  (3x3 float array)
-   2. symbols of atoms (1d integer array)
-   3. positions of atoms (Nx3 float array)
+   2. numbers of ions (1d integer array)
+   3. positions of ions (Nx3 float array)
    4. volumetric data (3d float array)
    5. other data
  - repeat
@@ -19,19 +19,15 @@ Notes :
     snpy format also can be directly replace with numpy npz format, but it's need parallel compress and decompress
 """
 import numpy as np
-from dftpy.cell import DirectCell
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
-from dftpy.system import System
-from dftpy.atom import Atom
+from dftpy.ions import Ions
 from dftpy.formats import npy
 from dftpy.mpi import MP, MPIFile, sprint
 
 MAGIC_PREFIX = b'\x93DFTPY'
 
-def write(fname, system, kind = 'all', desc = None, mp = None, **kwargs):
-    ions = system.ions
-    data = system.field
+def write(fname, ions = None, data = None, kind = 'all', desc = None, mp = None, **kwargs):
     if mp is None :
         mp = data.grid.mp
     if hasattr(fname, 'close'):
@@ -43,7 +39,7 @@ def write(fname, system, kind = 'all', desc = None, mp = None, **kwargs):
             fh = open(fname, "wb")
 
     if desc is None :
-        if kind == 'cell' :
+        if kind == 'ions' :
             desc = np.arange(1, 4)
         else :
             desc = np.arange(1, 5)
@@ -53,11 +49,11 @@ def write(fname, system, kind = 'all', desc = None, mp = None, **kwargs):
 
     for key in desc :
         if key == 1 : # write cell
-            if mp.rank == 0 : npy.write(fh, ions.pos.cell.lattice, single = True)
-        elif key == 2 : # write labels
-            if mp.rank == 0 : npy.write(fh, ions.Z, single = True)
+            if mp.rank == 0 : npy.write(fh, ions.cell, single = True)
+        elif key == 2 : # write numbers
+            if mp.rank == 0 : npy.write(fh, ions.numbers, single = True)
         elif key == 3 : # write coordinates
-            if mp.rank == 0 : npy.write(fh, ions.pos, single = True)
+            if mp.rank == 0 : npy.write(fh, ions.positions, single = True)
         elif key == 4 : # write volumetric data
             npy.write(fh, data)
 
@@ -83,7 +79,7 @@ def read(fname, mp=None, grid=None, kind="all", full=False, datarep='native', de
     else :
         fh = fname
 
-    atoms = None
+    ions = None
     if desc is None :
         # read description
         desc = npy.read(fh, single = True)
@@ -93,15 +89,14 @@ def read(fname, mp=None, grid=None, kind="all", full=False, datarep='native', de
     for key in desc :
         if key == 1 : # read cell
             lattice = npy.read(fh, single = True)
-        elif key == 2 : # read labels
-            labels = npy.read(fh, single = True)
+        elif key == 2 : # read numbers
+            numbers = npy.read(fh, single = True)
         elif key == 3 : # read coordinates
             pos = npy.read(fh, single = True)
-            cell = DirectCell(lattice)
-            atoms = Atom(label=labels, pos=pos, cell=cell, basis="Cartesian")
-            if kind == 'cell' :
+            ions = Ions(numbers=numbers, positions=pos, cell=lattice)
+            if kind == 'ions' :
                 if isinstance(fname, str): fh.close()
-                return atoms
+                return ions
         elif key == 4 : # read volumetric data
             if mp.size == 1 :
                 data = npy.read(fh, single=True)
@@ -132,7 +127,10 @@ def read(fname, mp=None, grid=None, kind="all", full=False, datarep='native', de
                 npy._read_value(fh, data, datarep=datarep, fortran_order=fortran_order)
 
     if isinstance(fname, str): fh.close()
-    return System(atoms, grid, name="DFTpy", field=data)
+    if len(desc) == 1 :
+        return data
+    else :
+        return ions, data, None
 
 def read_snpy(fname, **kwargs):
     return read(fname, **kwargs)

@@ -3,7 +3,7 @@ import os
 import unittest
 import numpy as np
 
-from dftpy.formats.qepp import PP
+from dftpy.formats import io
 from dftpy.ewald import ewald
 from dftpy.functional.pseudo import LocalPseudo
 
@@ -14,20 +14,18 @@ class Test(unittest.TestCase):
         print()
         print("*" * 50)
         print("Testing loading pseudopotentials")
-        mol = PP(filepp=dftpy_data_path + "/Al_fde_rho.pp").read()
+        ions, rho, _ = io.read_all(dftpy_data_path + "/Al_fde_rho.pp")
         PP_list = {'Al': dftpy_data_path + "/Al_lda.oe01.recpot"}
-        ions = mol.ions
-        grid = mol.cell
-        rho = mol.field
+        grid = rho.grid
 
         PSEUDO = LocalPseudo(grid=grid, ions=ions, PP_list=PP_list, PME=False)
-        func = PSEUDO(mol.field)
+        func = PSEUDO(rho)
         IE_Energy = func.energy
         IE_Force = PSEUDO.force(rho)
         IE_Stress = PSEUDO.stress(rho, energy=IE_Energy)
 
         PSEUDO = LocalPseudo(grid=grid, ions=ions, PP_list=PP_list, PME=True)
-        func = PSEUDO(mol.field)
+        func = PSEUDO(rho)
         IE_Energy_PME = func.energy
         IE_Force_PME = PSEUDO.force(rho)
         IE_Stress_PME = PSEUDO.stress(rho, energy=IE_Energy_PME)
@@ -44,12 +42,9 @@ class Test(unittest.TestCase):
         print()
         print("*" * 50)
         print("Testing particle mesh Ewald method")
-        mol = PP(filepp=dftpy_data_path + "/Al_fde_rho.pp").read()
-        Ewald_ = ewald(rho=mol.field, ions=mol.ions, verbose=False)
-        Ewald_PME = ewald(rho=mol.field,
-                          ions=mol.ions,
-                          verbose=False,
-                          PME=True)
+        ions, rho, _ = io.read_all(dftpy_data_path + "/Al_fde_rho.pp")
+        Ewald_ = ewald(rho=rho, ions=ions, verbose=False)
+        Ewald_PME = ewald(rho=rho, ions=ions, verbose=False, PME=True)
 
         print('Ewald energy', Ewald_.energy, Ewald_PME.energy)
         self.assertTrue(

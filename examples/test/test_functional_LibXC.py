@@ -6,15 +6,14 @@ import pytest
 
 from dftpy.functional import Functional
 from dftpy.functional.semilocal_xc import LibXC, PBE
-from dftpy.formats.qepp import PP
+from dftpy.formats import io
 
 
 class Test(unittest.TestCase):
     def test_libxc_lda(self):
         pytest.importorskip("pylibxc")
         dftpy_data_path = os.environ.get('DFTPY_DATA_PATH')
-        mol = PP(filepp=dftpy_data_path + "/Al_fde_rho.pp").read()
-        rho_r = mol.field
+        rho_r = io.read_density(dftpy_data_path + "/Al_fde_rho.pp")
         thefuncclass = Functional(type='XC',
                                   name='LDA',
                                   libxc=False)
@@ -29,8 +28,7 @@ class Test(unittest.TestCase):
     def test_libxc_pbe(self):
         pytest.importorskip("pylibxc")
         dftpy_data_path = os.environ.get('DFTPY_DATA_PATH')
-        mol = PP(filepp=dftpy_data_path + "/Al_fde_rho.pp").read()
-        rho_r = mol.field
+        rho_r = io.read_density(dftpy_data_path + "/Al_fde_rho.pp")
         Functional_LibXC = LibXC(density=rho_r,
                               x_str='gga_x_pbe',
                               c_str='gga_c_pbe')
