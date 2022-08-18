@@ -61,6 +61,12 @@ class TotalFunctional(AbstractFunctional):
 
     def __repr__(self):
         return self.funcDict.__repr__()
+    
+    def __getitem__(self, key):
+        return self.funcDict[key]
+    
+    def __setitem__(self, key, value):
+        self.funcDict.update({key: value})
 
     def UpdateNameType(self):
         self.name = ""

@@ -25,10 +25,11 @@ def RunJob(args):
         sprint("#" * 80)
         TimeData.Begin("TOTAL")
 
-        system = others['struct']
-        system.field = np.abs(system.field)
+        ions = others['ions']
+        field = others['field']
+        field = np.abs(field)
         outfile = config["DENSITY"]["densityoutput"]
-        write(outfile=outfile, data=system.field, ions=system.ions)
+        write(outfile=outfile, data=field, ions=ions)
 
         TimeData.End("TOTAL")
         TimeData.output(config)
