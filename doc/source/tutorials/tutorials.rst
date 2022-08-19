@@ -32,5 +32,5 @@ TDDFT
 Do it on a Jupyter Notebook!
 ----------------------------
 
-    - `Density Optimization <jupyter/density_optimization.ipynb>`_.
-    - `TD-OFDFT <jupyter/td-ofdft-tutorial.ipynb>`_.
+  - `Density Optimization <jupyter/density_optimization.ipynb>`_.
+  - `TD-OFDFT <jupyter/td-ofdft-tutorial.ipynb>`_.
