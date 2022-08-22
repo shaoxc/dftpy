@@ -3,18 +3,17 @@ import copy
 
 import numpy as np
 
-from dftpy.field import DirectField
 from dftpy.functional.abstract_functional import AbstractFunctional
 from dftpy.functional.functional_output import FunctionalOutput, ZeroFunctional
-from dftpy.functional.kedf.fp import *
-from dftpy.functional.kedf.gga import *
-from dftpy.functional.kedf.hc import *
-from dftpy.functional.kedf.lwt import *
-from dftpy.functional.kedf.mgp import *
-from dftpy.functional.kedf.sm import *
-from dftpy.functional.kedf.tf import *
-from dftpy.functional.kedf.vw import *
-from dftpy.functional.kedf.wt import *
+from dftpy.functional.kedf.fp import FP
+from dftpy.functional.kedf.gga import GGA, GGA_KEDF_list, GGAFs
+from dftpy.functional.kedf.hc import HC, revHC
+from dftpy.functional.kedf.lwt import LWT, LMGP, LMGPA, LMGPG
+from dftpy.functional.kedf.mgp import MGP, MGPA, MGPG
+from dftpy.functional.kedf.sm import SM
+from dftpy.functional.kedf.tf import TF, TTF, ThomasFermiStress
+from dftpy.functional.kedf.vw import vW, vonWeizsackerStress
+from dftpy.functional.kedf.wt import WT, WTStress
 from dftpy.functional.semilocal_xc import LibXC
 from dftpy.mpi import sprint
 from dftpy.utils import name2functions
@@ -41,6 +40,7 @@ KEDFEngines= {
         "LMGPA-NL": LMGPA,
         "LMGPG-NL": LMGPG,
         "HC-NL": HC,
+        "REVHC-NL": revHC,
         "DTTF": TTF,
         "LIBXC_KEDF": LibXC,
         "X_TF_Y_VW": ("TF", "VW"),
@@ -57,6 +57,7 @@ KEDFEngines= {
         "LMGPA": ("TF", "VW", "LMGPA-NL"),
         "LMGPG": ("TF", "VW", "LMGPG-NL"),
         "HC": ("TF", "VW", "HC-NL"),
+        "REVHC": ("TF", "VW", "REVHC-NL"),
         "TTF": TF,
         }
 
@@ -104,7 +105,8 @@ class KEDF(AbstractFunctional):
         name = name.upper()
         options = copy.deepcopy(self.options)
         options.update(kwargs)
-        options['functional'] = options.get('k_str', None) # For GGA functional
+        options['functional'] = options.pop('k_str', None) # For GGA functional
+        options = {k :v for k, v in options.items() if v is not None}
         functional = {}
         if density.ndim > 3:
             nspin = density.rank

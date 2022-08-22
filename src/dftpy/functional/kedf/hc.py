@@ -77,7 +77,7 @@ def one_point_potential_energy(
         ldw=None,
         rho0=None,
         ke_kernel_saved=None,
-        k_str='REVAPBEK',
+        functional='REVAPBEK',
         params=None,
         **kwargs
 ):
@@ -119,9 +119,9 @@ def one_point_potential_energy(
     # np.savetxt('s.dat', np.c_[rho.ravel(), s.ravel()])
     # -----------------------------------------------------------------------
     # GGAFs use s /= 2*(3*\pi^2)^{1/3}, which is 38.283120002509214 for s^2
-    if k_str.upper() == 'HC':
+    if functional.upper() == 'HC':
         """
-        Also can reproduce with k_str = 'TFVW' and  params = 1 hc_lambda*3.0/5.0*38.283120002509214
+        Also can reproduce with functional = 'TFVW' and  params = 1 hc_lambda*3.0/5.0*38.283120002509214
         """
         if params is None:
             hc_lambda = 0.0
@@ -130,7 +130,7 @@ def one_point_potential_energy(
         F = 1 + hc_lambda * s * s
         dFds2 = 2 * hc_lambda
     else:
-        F, dFds2 = GGAFs(s, functional=k_str.upper(), calcType=calcType, params=params, **kwargs)
+        F, dFds2 = GGAFs(s, functional=functional, calcType=calcType, params=params, **kwargs)
     # -----------------------------------------------------------------------
     q = rho.grid.get_reciprocal().q
     kf_std = np.cbrt(3.0 * np.pi ** 2 * rho)
@@ -310,17 +310,17 @@ def HC(
         x=1.0,
         y=1.0,
         sigma=None,
-        interp="linear",
+        interp="hermite",
         kerneltype="HC",
         symmetrization=None,
         lumpfactor=None,
-        alpha=5.0 / 6.0,
-        beta=5.0 / 6.0,
+        alpha=2.0,
+        beta=2.0/3.0,
         etamax=50.0,
         maxpoints=1000,
         fd=1,
-        kdd=1,
-        ratio=1.2,
+        kdd=3,
+        ratio=1.15,
         nsp=None,
         delta=None,
         neta=50000,
@@ -328,7 +328,7 @@ def HC(
         calcType=["E", "V"],
         split=False,
         ke_kernel_saved=None,
-        **kwargs
+        **kwargs,
 ):
     # Only performed once for each grid
     q = rho.grid.get_reciprocal().q
@@ -376,8 +376,64 @@ def HC(
                                     delta=delta, interp=interp, calcType=calcType, ke_kernel_saved=KE_kernel_saved,
                                     **kwargs)
     # -----------------------------------------------------------------------
-    # kwargs['k_str'] = 'HC'
+    # kwargs['functional'] = 'HC'
     # kwargs['params'] = [0.01]
     # one_point_potential_energy(rho, alpha=alpha, beta=beta, etamax=etamax, ratio=ratio, nsp=nsp, kdd=kdd, delta=delta, interp=interp, calcType=calcType, ke_kernel_saved = KE_kernel_saved, **kwargs)
     # -----------------------------------------------------------------------
     return NL
+
+@timer()
+def revHC(
+        rho,
+        x=1.0,
+        y=1.0,
+        sigma=None,
+        interp="hermite",
+        kerneltype="HC",
+        symmetrization=None,
+        lumpfactor=None,
+        alpha=2.0,
+        beta=2.0/3.0,
+        etamax=50.0,
+        maxpoints=1000,
+        fd=1,
+        kdd=3,
+        ratio=1.15,
+        nsp=None,
+        delta=None,
+        neta=50000,
+        order=3,
+        calcType=["E", "V"],
+        split=False,
+        ke_kernel_saved=None,
+        params = [0.1, 0.45],
+        functional = 'PBE2',
+        **kwargs
+):
+    return HC(
+        rho,
+        x=x,
+        y=y,
+        sigma=sigma,
+        interp=interp,
+        kerneltype=kerneltype,
+        symmetrization=symmetrization,
+        lumpfactor=lumpfactor,
+        alpha=alpha,
+        beta=beta,
+        etamax=etamax,
+        maxpoints=maxpoints,
+        fd=fd,
+        kdd=kdd,
+        ratio=ratio,
+        nsp=nsp,
+        delta=delta,
+        neta=neta,
+        order=order,
+        calcType=calcType,
+        split=split,
+        ke_kernel_saved=ke_kernel_saved,
+        params=params,
+        functional=functional,
+        **kwargs,
+        )
