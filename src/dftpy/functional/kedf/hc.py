@@ -328,6 +328,7 @@ def HC(
         calcType=["E", "V"],
         split=False,
         ke_kernel_saved=None,
+        functional='HC',
         **kwargs,
 ):
     # Only performed once for each grid
@@ -374,7 +375,7 @@ def HC(
         KE_kernel_saved["rho0"] = rho0
     NL = one_point_potential_energy(rho, alpha=alpha, beta=beta, etamax=etamax, ratio=ratio, nsp=nsp, kdd=kdd,
                                     delta=delta, interp=interp, calcType=calcType, ke_kernel_saved=KE_kernel_saved,
-                                    **kwargs)
+                                    functional = functional, **kwargs)
     # -----------------------------------------------------------------------
     # kwargs['functional'] = 'HC'
     # kwargs['params'] = [0.01]
