@@ -12,16 +12,21 @@ from dftpy.cui.main import GetConf
 from dftpy.field import DirectField
 from dftpy.formats.io import write
 from dftpy.formats.qepp import PP
-from dftpy.functional import Functional
+from dftpy.functional import Functional, ExternalPotential
 from dftpy.functional.pseudo.layer_pseudo import LayerPseudo
 from dftpy.functional.total_functional import TotalFunctional
 from dftpy.grid import DirectGrid
 from dftpy.interface import ConfigParser
+from dftpy.inverter import Inverter
 from dftpy.math_utils import interpolation_3d
 from dftpy.mpi import mp, sprint
 from dftpy.optimization import Optimization
 from dftpy.time_data import TimeData
 from dftpy.mpi import sprint
+from scipy.signal import quadratic
+from typing import Optional, Tuple
+from dftpy.td.real_time_runner import RealTimeRunner
+from dftpy.formats.xsf import XSF
 
 
 def bisec(func: callable, xstart: float, xend: float, tol: float = 1.0e-4,
@@ -81,7 +86,8 @@ def optimize_layer_pseudo(config: Dict, rho_target: DirectField, ions: Ions, tot
     # print(rho.integral())
 
     def delta_rho(a):
-        ls.vr = a[0] * (np.cos(ls.r / 1 * 2 * np.pi) - 1) + a[1] * (np.sin(ls.r / 1 * 2 * np.pi))
+        #ls.vr = a[0] * (np.cos(ls.r / 1 * 2 * np.pi) - 1) + a[1] * (np.sin(ls.r / 1 * 2 * np.pi))
+        set_ls(ls, a, r_cut)
         #ls.vr[ls.r > 2 * a[1]] = 0
         #ls.update_v()
         delta_rho.rho = opt.optimize_rho(guess_rho=rho_ini)
@@ -94,7 +100,7 @@ def optimize_layer_pseudo(config: Dict, rho_target: DirectField, ions: Ions, tot
 
     # print(delta_rho(0.19))
 
-    res = minimize(delta_rho, a)
+    res = minimize(delta_rho, a, method='Powell', tol=1.0e-4)
 
     sprint(delta_rho(a))
     sprint(res.x)
