@@ -13,18 +13,18 @@ from dftpy.functional.external_potential import ExternalPotential
 from dftpy.inverter import Inverter
 
 
-def runner(config, system, functionals):
+def runner(config, rho, functionals):
     if config['KEDF2']['kedf'] == 'KS':
         inv = Inverter()
-        ext = inv(system.field, functionals)
+        ext = inv(rho, functionals)
     else:
-        vt0 = functionals.funcDict['KineticEnergyFunctional'](rho=system.field, calcType = {'V'}).potential
+        vt0 = functionals.funcDict['KineticEnergyFunctional'](rho=rho.field, calcType = {'V'}).potential
         kedf0 = Functional(type='KEDF', name=config['KEDF2']['kedf'], **config['KEDF2'])
-        vn0t0 = kedf0(rho=system.field, calcType={'V'}).potential
+        vn0t0 = kedf0(rho=rho.field, calcType={'V'}).potential
         ext = ExternalPotential(v=vn0t0-vt0)
     functionals.UpdateFunctional(newFuncDict={'ext': ext})
 
-    realtimerunner = RealTimeRunner(system, config, functionals)
+    realtimerunner = RealTimeRunner(rho, config, functionals)
     realtimerunner()
 
 
@@ -43,7 +43,7 @@ def RunJob(args):
         sprint("#" * 80)
         TimeData.Begin("TOTAL")
 
-        runner(config, others["struct"], others["E_v_Evaluator"])
+        runner(config, others["field"], others["E_v_Evaluator"])
 
         TimeData.End("TOTAL")
         TimeData.output(config)
