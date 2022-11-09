@@ -546,7 +546,7 @@ def LWT(
         # Add MGP kinetic electron
         if lumpfactor is not None:
             # sprint('Calculate MGP kinetic electron({})'.format(lumpfactor), rho.mp.comm, level=1)
-            Ne = rho0 * rho.grid.Volume
+            Ne = rho0 * rho.grid.volume
             MGPKernelE = MGPOmegaE(q, Ne, lumpfactor)
             KE_kernel_saved["MGPKernelE"] = MGPKernelE
         # Different method to interpolate the kernel

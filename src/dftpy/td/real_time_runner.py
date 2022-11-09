@@ -76,9 +76,9 @@ class RealTimeRunner(Dynamics):
             self.A_tm1 = None
             self.Omega = config["TD"]["omega"]
             if self.Omega <= 0:
-                self.Omega = self.rho0.grid.Volume
+                self.Omega = self.rho0.grid.volume
             else:
-                self.Omega = self.rho0.grid.Volume * self.Omega
+                self.Omega = self.rho0.grid.volume * self.Omega
 
         if self.correction:
             correct_potential_dict = dict()

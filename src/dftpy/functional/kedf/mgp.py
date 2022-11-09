@@ -40,7 +40,7 @@ def MGP(
         sprint("Re-calculate KE_kernel", comm=rho.mp.comm, level=1)
         KE_kernel = MGPKernel(q, rho0, maxpoints=maxpoint, symmetrization=symmetrization)
         if lumpfactor is not None:
-            Ne = rho0 * rho.grid.Volume
+            Ne = rho0 * rho.grid.volume
             KE_kernel += MGPOmegaE(q, Ne, lumpfactor)
         # -----------------------------------------------------------------------
         # rh0 = 0.03;lumpfactor = 0.0;q = np.linspace(1E-3, 8, 10000).reshape((1, 1, 1, -1))
