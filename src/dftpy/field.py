@@ -617,6 +617,11 @@ class DirectField(BaseField):
         from dftpy.formats import io as dftpy_io
         self[:] = dftpy_io.read_density(filename, format=format, **kwargs)
 
+    def cut_highg(self, g2max = None):
+        if g2max is None : return self.copy()
+        recip = self.fft().cut_highg(g2max)
+        return recip.ifft()
+
 
 class ReciprocalField(BaseField):
     def __new__(cls, grid, memo="", rank=1, data = None, order = 'C', cplx=False, **kwargs):
@@ -743,3 +748,11 @@ class ReciprocalField(BaseField):
         self._cplx = value
         if self._cplx and not self.grid.full :
             self.grid.full = True
+
+    def cut_highg(self, g2max = None):
+        if self.rank == 1:
+            self[self.grid.get_gmask_inv(g2max)] = 0.0
+        else:
+            for i in range(self.rank):
+                self[i][self.grid.get_gmask_inv(g2max)] = 0.0
+        return self

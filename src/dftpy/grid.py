@@ -1,5 +1,6 @@
 import numpy as np
 from ase.cell import Cell
+from dftpy.math_utils import spacing2ecut
 
 class BaseGrid:
     """
@@ -49,6 +50,8 @@ class BaseGrid:
         self._nnr = np.prod(self._nr)
         # print('nr_local', self.mp.comm.rank, self._nr, direct, self.mp.comm.size, flush = True)
         self._full = full
+        #
+        self.g2max = 2*spacing2ecut(self.spacings.mean()) + 1.0
 
     def __eq__(self, other: 'BaseGrid') -> bool:
         if np.allclose(self.lattice, other.lattice) and np.allclose(self.nrR, other.nrR):
@@ -654,3 +657,26 @@ class ReciprocalGrid(BaseGrid):
             self._ggF = ggF
             # self._ggF = np.reshape(gg, (*self._gF.shape, 1))
         return self._ggF
+
+    @property
+    def full(self):
+        return self._full
+
+    @full.setter
+    def full(self, value):
+        if self._full != value :
+            self._full = value
+
+    def get_gmask(self, g2max = None):
+        if g2max is not None :
+            self._gmask = self.gg < g2max
+        else :
+            self._gmask = slice(None)
+        return self._gmask
+
+    def get_gmask_inv(self, g2max = None):
+        if g2max is not None :
+            self._gmask_inv = self.gg > g2max
+        else :
+            self._gmask_inv = False
+        return self._gmask_inv
