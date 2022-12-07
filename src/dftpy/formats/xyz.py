@@ -27,7 +27,7 @@ def read_xyz(infile, **kwargs):
         lattice = np.zeros((3, 3))
     else :
         lattice = np.fromstring(m.group(2), dtype=float, sep=" ")
-        lattice = np.asarray(lattice).reshape((3, 3)) / BOHR2ANG
+        lattice = np.asarray(lattice).reshape((3, 3)).T / BOHR2ANG
     labels = []
     pos = []
     for i in range(natom):
