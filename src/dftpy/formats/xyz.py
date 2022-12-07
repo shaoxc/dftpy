@@ -23,7 +23,7 @@ def read_xyz(infile, **kwargs):
         lattice = np.zeros((3, 3))
     else :
         lattice = np.fromstring(m.group(2), dtype=float, sep=" ")
-        lattice = np.asarray(lattice).reshape((3, 3)).T
+        lattice = np.asarray(lattice).reshape((3, 3))
     symbols = []
     pos = []
     for i in range(natom):
