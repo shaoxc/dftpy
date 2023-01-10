@@ -35,11 +35,15 @@ with open('README.md') as fh :
 
 scripts = ['scripts/dftpy']
 extras_require = {
-        'libxc' : ['pylibxc2'],
+        'libxc' : [
+            'pylibxc2; python_version<"3.10"',
+            'pylibxc @ git+https://gitlab.com/libxc/libxc.git;python_version>"3.9"',
+            ],
         'upf' : ['xmltodict', 'upf_to_json'],
         'mpi': ['mpi4py', 'mpi4py-fft'],
         'all' : [
-            'pylibxc2',
+            'pylibxc2; python_version<"3.10"',
+            'pylibxc @ git+https://gitlab.com/libxc/libxc.git;python_version>"3.9"',
             'ase>=3.21.1',
             'xmltodict',
             'upf_to_json',
