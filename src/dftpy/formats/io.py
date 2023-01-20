@@ -1,8 +1,9 @@
 import os
 from collections import namedtuple
 from importlib import import_module
+from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
-from dftpy.mpi import SerialComm
+from dftpy.mpi import SerialComm, MP
 from dftpy.ions import Ions
 
 ioformat = namedtuple('ioformat', ['format', 'module', 'read', 'write', 'kind'])
@@ -63,7 +64,7 @@ def get_io_driver(infile, format = None, mode = 'r'):
 
     return iof
 
-def read(infile, format=None, kind='ions', driver=None, **kwargs):
+def read(infile, format=None, kind='ions', ecut=None, driver=None, mp=None, grid=None, **kwargs):
     if driver is None :
         driver = get_io_driver(infile, format, mode = 'r')
     elif isinstance(driver, str) :
@@ -71,23 +72,60 @@ def read(infile, format=None, kind='ions', driver=None, **kwargs):
             if key in kwargs : kwargs.pop(key)
         driver = get_io_driver(infile, driver, mode = 'r')
     #
+    if mp is None :
+        if grid is None :
+            mp = MP()
+        else :
+            mp = grid.mp
     if hasattr(driver, 'read') :
-        values = driver.read(infile, format=format, **kwargs)
+        if mp.is_root or driver.format == "snpy": # only snpy format support MPI-IO
+            values = driver.read(infile, kind=kind, mp=mp, grid=grid, **kwargs)
+        else :
+            values = [None, ]*3
     else :
         raise AttributeError(f"Sorry, not support {driver} driver")
-    #
-    if kind == 'all' :
+
+    ions = data = info = None
+    if kind == 'ions' :
+        ions = values
+    elif kind == 'data' :
+        data = values
+    else :
         if 'ions' not in driver.kind :
-            values = (None, values, None)
+            data = values
         elif 'data' not in driver.kind :
-            values = (values, None, None)
+            ions = values
         elif len(values) == 2 :
-            values = *values, None
-        elif len(values) != 3 :
+            ions, data = values
+        elif len(values) == 3 :
+            ions, data, info = values
+        else :
             raise AttributeError(f"Sorry, the {driver} driver should only return 3 values.")
-    if kind == 'data' :
-        if len(values) == 2 or len(values) == 3 :
-            values = values[1]
+    #-----------------------------------------------------------------------
+    if mp.size > 1 and driver.format != "snpy":
+        ions_options = getattr(ions, 'init_options', 0)
+        ions_options = mp.comm.bcast(ions_options)
+        if ions_options :
+            ions = Ions(**ions_options)
+        grid_options = getattr(getattr(data, 'grid', 0), 'init_options', 0)
+        grid_options = mp.comm.bcast(grid_options)
+        if grid_options :
+            grid_options['mp'] = mp
+            grid = DirectGrid(**grid_options)
+            data_options = getattr(data, 'init_options', 0)
+            data_options = mp.comm.bcast(data_options)
+            data2 = DirectField(grid=grid, **data_options)
+            grid.scatter(data, out = data2)
+            data = data2
+        info = mp.comm.bcast(info)
+    #-----------------------------------------------------------------------
+    if ecut and hasattr(data, 'grid') : data.grid.ecut = ecut
+    if kind == 'ions' :
+        values = ions
+    elif kind == 'data' :
+        values = data
+    else :
+        values = (ions, data, info)
     return values
 
 def write(outfile, ions = None, data = None, information = None, format = None, comm = None, driver = None, **kwargs):

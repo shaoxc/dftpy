@@ -40,7 +40,6 @@ class PP(object):
                 at *= celldm[0]
             else:
                 at = self.celldm2at(ibrav, celldm)
-            grid = DirectGrid(lattice=at, nr=nrx, full=full)
 
             # gcutm, dual, ecut, plot_num
             gcutm, dual, ecut, plot_num = (float(x) for x in filepp.readline().split())
@@ -53,6 +52,7 @@ class PP(object):
             self.cutoffvars["dual"] = dual
             self.cutoffvars["ecut"] = ecut
             self.cutoffvars["plot_num"] = plot_num
+            grid = DirectGrid(lattice=at, nr=nrx, full=full, ecut=ecut)
 
             # ntyp
             atm = []
