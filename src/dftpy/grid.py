@@ -21,7 +21,7 @@ class BaseGrid:
     """
 
     def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), full=False, direct=True,
-                 cplx=False, mp=None, **kwargs):
+                 cplx=False, mp=None, ecut = None, **kwargs):
         if mp is None :
             from dftpy.mpi import MP
             mp = MP()
@@ -50,8 +50,7 @@ class BaseGrid:
         self._nnr = np.prod(self._nr)
         # print('nr_local', self.mp.comm.rank, self._nr, direct, self.mp.comm.size, flush = True)
         self._full = full
-        #
-        self.g2max = 2*spacing2ecut(self.spacings.mean()) + 1.0
+        self._ecut = ecut
 
     def __eq__(self, other: 'BaseGrid') -> bool:
         if np.allclose(self.lattice, other.lattice) and np.allclose(self.nrR, other.nrR):
@@ -246,6 +245,31 @@ class BaseGrid:
     def lattice(self):
         return self.cell.array
 
+    @property
+    def ecut(self):
+        if self._ecut is None :
+            if hasattr(self, 'guess_ecut'):
+                ecut = self.guess_ecut()
+            elif hasattr(self, 'get_direct'):
+                ecut = self.get_direct().guess_ecut()
+            else :
+                ecut = None
+        else :
+            ecut = self._ecut
+        return ecut
+
+    @ecut.setter
+    def ecut(self, value):
+        self._ecut = value
+        if hasattr(self, 'Dgrid'):
+            self._qmask = None
+            if hasattr(self.Dgrid, '_ecut'):
+                self.Dgrid._ecut = value
+        elif hasattr(self, 'RPgrid'):
+            if hasattr(self.RPgrid, '_ecut'):
+                self.RPgrid._ecut = value
+                self.RPgrid._qmask = None
+
 
 class DirectGrid(BaseGrid):
     """
@@ -265,6 +289,10 @@ class DirectGrid(BaseGrid):
         lattice : array_like[3,3]
             matrix containing the direct lattice vectors (as its colums)
         """
+        self.init_options = locals()
+        for k in ['__class__', 'self', 'kwargs', 'uppergrid'] :
+            self.init_options.pop(k, None)
+        self.init_options.update(kwargs)
         super().__init__(lattice=lattice, nr=nr, origin=origin, full=full, direct=True, **kwargs)
         self._r = None
         self._rr = None
@@ -366,7 +394,7 @@ class DirectGrid(BaseGrid):
             reciprocal_lat = np.einsum("ij,i->ij", bg, scale)
 
             self.RPgrid = ReciprocalGrid(lattice=reciprocal_lat, nr=self.nrR, full=self.full, uppergrid=self,
-                                         cplx=self.cplx, mp=self.mp)
+                                         cplx=self.cplx, mp=self.mp, ecut = self.ecut)
         return self.RPgrid
 
     def get_Rtable(self, rcut=10):
@@ -414,6 +442,8 @@ class DirectGrid(BaseGrid):
         # -----------------------------------------------------------------------
         return mask
 
+    def guess_ecut(self):
+        return spacing2ecut(self.spacings.max())
 
 class ReciprocalGrid(BaseGrid):
     """
@@ -433,6 +463,10 @@ class ReciprocalGrid(BaseGrid):
         lattice : array_like[3,3]
             matrix containing the direct lattice vectors (as its colums)
         """
+        self.init_options = locals()
+        for k in ['__class__', 'self', 'kwargs', 'uppergrid'] :
+            self.init_options.pop(k, None)
+        self.init_options.update(kwargs)
         super().__init__(lattice=lattice, nr=nr, origin=origin, full=full, direct=False, **kwargs)
         self._g = None
         self._gg = None
@@ -443,6 +477,7 @@ class ReciprocalGrid(BaseGrid):
         self._ggF = None
         self._invgg = None
         self._invq = None
+        self._gmask = None
 
     def __eq__(self, other):
         """
@@ -525,7 +560,7 @@ class ReciprocalGrid(BaseGrid):
             at = np.linalg.inv(self.lattice.T * fac)
             direct_lat = np.einsum("ij,i->ij", at, 1.0 / scale)
             self.Dgrid = DirectGrid(lattice=direct_lat, nr=self.nrR, full=self.full, uppergrid=self, cplx=self.cplx,
-                                    mp=self.mp)
+                                    mp=self.mp, ecut = self.ecut)
         return self.Dgrid
 
     def _calc_grid_points(self, full=None):
@@ -579,7 +614,6 @@ class ReciprocalGrid(BaseGrid):
             if np.all(self.nr == self.nrR):
                 mask[:, :, Dnr[2] + 1 :] = False
 
-            mask[0, 0, 0] = False
             mask[0, Dnr[1] + 1 :, 0] = False
             mask[Dnr[0] + 1 :, :, 0] = False
             if Dmod[2] == 0:
@@ -613,8 +647,6 @@ class ReciprocalGrid(BaseGrid):
             if np.all(self.nrG == self.nrR):
                 mask[:, :, Dnr[2] + 1 :] = False
 
-            if np.all(self.offsets == 0):
-                mask[0, 0, 0] = False
             if self.offsets[0] == self.offsets[2] == 0 :
                 mask[0, Dnr[1] + 1 :, 0] = False
             if self.offsets[2] == 0 :
@@ -667,16 +699,17 @@ class ReciprocalGrid(BaseGrid):
         if self._full != value :
             self._full = value
 
-    def get_gmask(self, g2max = None):
-        if g2max is not None :
-            self._gmask = self.gg < g2max
-        else :
-            self._gmask = slice(None)
-        return self._gmask
+    @property
+    def g2max(self):
+        return 2.0*self.ecut
 
-    def get_gmask_inv(self, g2max = None):
-        if g2max is not None :
-            self._gmask_inv = self.gg > g2max
-        else :
-            self._gmask_inv = False
-        return self._gmask_inv
+    def get_gmask(self, g2max = None):
+        if g2max is None : return self.gmask
+        gmask = self.gg <= g2max
+        return gmask
+
+    @property
+    def gmask(self):
+        if self._gmask is None :
+            self._gmask = self.get_gmask(self.g2max)
+        return self._gmask

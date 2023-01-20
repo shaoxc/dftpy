@@ -33,6 +33,10 @@ class Ions(Atoms):
             velocities=None,
             units = 'au'):
 
+        self.init_options = locals()
+        for k in ['__class__', 'self'] :
+            self.init_options.pop(k, None)
+
         super().__init__(
             symbols=symbols,
             positions=positions,

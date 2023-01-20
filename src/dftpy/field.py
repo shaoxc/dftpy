@@ -137,10 +137,17 @@ class DirectField(BaseField):
     spl_order = 3
 
     def __new__(cls, grid, memo="", rank=1, data = None, order = 'C', cplx=False, **kwargs):
+        if hasattr(grid, 'get_direct'): grid = grid.get_direct()
         if not isinstance(grid, DirectGrid):
             raise TypeError("the grid argument is not an instance of DirectGrid")
         obj = super().__new__(
             cls, grid, memo="", rank=rank, data = data, order = order, cplx = cplx, **kwargs)
+        #
+        obj.init_options = locals()
+        for k in ['__class__', 'cls', 'obj', 'kwargs', 'grid', 'data'] :
+            obj.init_options.pop(k, None)
+        # obj.init_options.update(kwargs)
+        #
         obj._N = None
         obj.spl_coeffs = None
         obj._cplx = cplx
@@ -618,17 +625,23 @@ class DirectField(BaseField):
         self[:] = dftpy_io.read_density(filename, format=format, **kwargs)
 
     def cut_highg(self, g2max = None):
-        if g2max is None : return self.copy()
         recip = self.fft().cut_highg(g2max)
         return recip.ifft()
 
 
 class ReciprocalField(BaseField):
     def __new__(cls, grid, memo="", rank=1, data = None, order = 'C', cplx=False, **kwargs):
+        if hasattr(grid, 'get_reciprocal'): grid = grid.get_reciprocal()
         if not isinstance(grid, ReciprocalGrid):
             raise TypeError("the grid argument is not an instance of ReciprocalGrid")
         obj = super().__new__(
             cls, grid, memo="", rank=rank, data = data, order = order, cplx = True, **kwargs)
+        #
+        obj.init_options = locals()
+        for k in ['__class__', 'cls', 'obj', 'kwargs', 'grid', 'data'] :
+            obj.init_options.pop(k, None)
+        # obj.init_options.update(kwargs)
+        #
         obj.spl_coeffs = None
         obj._cplx = cplx
         if obj.mp.is_mpi :
@@ -751,8 +764,8 @@ class ReciprocalField(BaseField):
 
     def cut_highg(self, g2max = None):
         if self.rank == 1:
-            self[self.grid.get_gmask_inv(g2max)] = 0.0
+            self[~self.grid.get_gmask(g2max)] = 0.0
         else:
             for i in range(self.rank):
-                self[i][self.grid.get_gmask_inv(g2max)] = 0.0
+                self[i][~self.grid.get_gmask(g2max)] = 0.0
         return self
