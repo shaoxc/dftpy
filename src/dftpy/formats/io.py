@@ -12,19 +12,20 @@ iounkeys = ['mp', 'comm', 'kind', 'data_type', 'grid', 'names']
 IOFormats= {
             "snpy"    : ioformat('snpy', 'dftpy.formats.snpy'  , 'read_snpy', 'write_snpy', ['ions', 'data', 'all']),
             "xsf"     : ioformat('xsf' , 'dftpy.formats.xsf'   , 'read_xsf' , 'write_xsf' , ['ions', 'data', 'all']),
-            "pp"      : ioformat('qepp', 'dftpy.formats.qepp'  , 'read_qepp', 'write_qepp', ['ions', 'data', 'all']),
             "qepp"    : ioformat('qepp', 'dftpy.formats.qepp'  , 'read_qepp', 'write_qepp', ['ions', 'data', 'all']),
             "cube"    : ioformat('cube', 'dftpy.formats.cube'  , 'read_cube', 'write_cube', ['ions', 'data', 'all']),
             "den"     : ioformat('den' , 'dftpy.formats.den'   , 'read_den' , 'write_den' , ['data']),
             "xyz"     : ioformat('xyz' , 'dftpy.formats.xyz'   , 'read_xyz' , 'write_xyz' , ['ions']),
-            "extxyz"  : ioformat('xyz' , 'dftpy.formats.xyz'   , 'read_xyz' , 'write_xyz' , ['ions']),
             "vasp"    : ioformat('vasp', 'dftpy.formats.vasp'  , 'read_vasp', 'write_vasp', ['ions']),
-            "poscar"  : ioformat('vasp', 'dftpy.formats.vasp'  , 'read_vasp', 'write_vasp', ['ions']),
-            "contcar" : ioformat('vasp', 'dftpy.formats.vasp'  , 'read_vasp', 'write_vasp', ['ions']),
             "ase"     : ioformat('ase' , 'dftpy.formats.ase_io', 'read_ase' , 'write_ase' , ['ions']),
             "pmg"     : ioformat('pmg' , 'dftpy.formats.pmg_io', 'read_pmg' , 'write_pmg' , ['ions']),
-            "pymatgen": ioformat('pmg' , 'dftpy.formats.pmg_io', 'read_pmg' , 'write_pmg' , ['ions']),
         }
+
+IOFormats['pp'] = IOFormats['qepp']
+IOFormats['extxyz'] = IOFormats['xyz']
+IOFormats['poscar'] = IOFormats['vasp']
+IOFormats['contcar'] = IOFormats['vasp']
+IOFormats['pymatgen'] = IOFormats['pmg']
 
 def guessType(infile, **kwargs):
     return guess_format(infile, **kwargs)
@@ -77,9 +78,13 @@ def read(infile, format=None, kind='ions', ecut=None, driver=None, mp=None, grid
             mp = MP()
         else :
             mp = grid.mp
+
     if hasattr(driver, 'read') :
         if mp.is_root or driver.format == "snpy": # only snpy format support MPI-IO
-            values = driver.read(infile, kind=kind, mp=mp, grid=grid, **kwargs)
+            if driver.format in ['ase', 'pmg'] :
+                values = driver.read(infile, format=format, **kwargs)
+            else :
+                values = driver.read(infile, kind=kind, mp=mp, grid=grid, **kwargs)
         else :
             values = [None, ]*3
     else :
