@@ -232,6 +232,7 @@ class RVV10(AbstractFunctional) :
 
     def compute(self, density, **kwargs):
         functional = self.rvv10nl(density, **kwargs)
+        kwargs.pop('libxc', None)
         fun = self.xcfun(density, libxc = self.libxc, **kwargs)
         functional += fun
         return functional
