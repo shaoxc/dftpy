@@ -34,7 +34,7 @@ class MPI4PYFFTRUN :
         return results
 
 
-def get_mpi4py_fft(comm, nr, decomposition = 'Slab', backend = None, grid = None, max_saved = 10, cplx = False, **kwargs):
+def get_mpi4py_fft(comm, nr, decomposition = 'Slab', backend = None, grid = None, max_saved = 10, cplx = False, full = False, **kwargs):
     """
     Note :
         'max_saved' means the number of fft objects saved. It should be manual release. see MP.free()
@@ -46,6 +46,7 @@ def get_mpi4py_fft(comm, nr, decomposition = 'Slab', backend = None, grid = None
     if backend not in fft_support :
         backend = 'numpy'
 
+    cplx = cplx or full
     if cplx :
         backend = 'numpy' # If cplx, use numpy for safe
         dtype = np.complex
