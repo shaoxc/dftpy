@@ -560,7 +560,7 @@ class ReciprocalGrid(BaseGrid):
             at = np.linalg.inv(self.lattice.T * fac)
             direct_lat = np.einsum("ij,i->ij", at, 1.0 / scale)
             self.Dgrid = DirectGrid(lattice=direct_lat, nr=self.nrR, full=self.full, uppergrid=self, cplx=self.cplx,
-                                    mp=self.mp, ecut = self.ecut)
+                                    mp=self.mp, ecut = self._ecut)
         return self.Dgrid
 
     def _calc_grid_points(self, full=None):
