@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.interpolate import splrep, splev
 from ase.cell import Cell
 from dftpy.math_utils import spacing2ecut
 
@@ -713,3 +714,43 @@ class ReciprocalGrid(BaseGrid):
         if self._gmask is None :
             self._gmask = self.get_gmask(self.g2max)
         return self._gmask
+
+
+class RadialGrid(object):
+    def __init__(self, r = None, v = None, direct = True, **kwargs):
+        self._r = r
+        self._v = v
+        self._v_interp = None
+        self.direct = direct
+
+    @property
+    def r(self):
+        return self._r
+
+    @r.setter
+    def r(self, r):
+        self._r = r
+
+    @property
+    def v(self):
+        return self._v
+
+    @v.setter
+    def v(self, v):
+        self._v = v
+
+    @property
+    def v_interp(self):
+        if self._v_interp is None :
+            self._v_interp = splrep(self.r, self.v)
+        return self._v_interp
+
+    def to_3d_grid(self, dist, direct = None, out = None):
+        if out is None :
+            results = np.zeros_like(dist)
+        else :
+            results = out
+        mask = dist < self._r[-1]
+        if np.count_nonzero(mask) > 0 :
+            results[mask] = splev(dist[mask], self.v_interp, der=0, ext=1)
+        return results
