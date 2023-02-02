@@ -2,4 +2,5 @@ include MANIFEST.in
 include README.md LICENSE.txt
 include requirements.txt
 include scripts/*
-include src/dftpy/*/*json
+include src/dftpy/*/*.json
+include src/dftpy/*/*/*.json
