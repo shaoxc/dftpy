@@ -6,7 +6,7 @@ import numpy as np
 from dftpy.functional.abstract_functional import AbstractFunctional
 from dftpy.functional.functional_output import FunctionalOutput, ZeroFunctional
 from dftpy.functional.kedf.fp import FP
-from dftpy.functional.kedf.gga import GGA, GGA_KEDF_list, GGAFs
+from dftpy.functional.kedf.gga import GGA, GGA_KEDF_list, GGAFs, MGGA, MGGA_KEDF_list
 from dftpy.functional.kedf.hc import HC, revHC
 from dftpy.functional.kedf.lwt import LWT, LMGP, LMGPA, LMGPG
 from dftpy.functional.kedf.mgp import MGP, MGPA, MGPG
@@ -29,6 +29,7 @@ KEDFEngines= {
         "VW": vW,
         "LKT": LKT,
         "GGA": GGA,
+        "MGGA": MGGA,
         "WT-NL": WT,
         "SM-NL": SM,
         "FP-NL": FP,
@@ -105,7 +106,18 @@ class KEDF(AbstractFunctional):
         name = name.upper()
         options = copy.deepcopy(self.options)
         options.update(kwargs)
-        options['functional'] = options.pop('k_str', None) # For GGA functional
+        #-----------------------------------------------------------------------
+        k_str = options.pop('k_str', None) # For GGA functional
+        if name.startswith('GGA_'):
+            k_str = name[4:]
+            options['mgga'] = False
+            name = 'GGA'
+        elif name.startswith('MGGA_'):
+            k_str = name[5:]
+            options['mgga'] = True
+            name = 'MGGA'
+        options['functional'] = k_str
+        #-----------------------------------------------------------------------
         options = {k :v for k, v in options.items() if v is not None}
         functional = {}
         if density.ndim > 3:
