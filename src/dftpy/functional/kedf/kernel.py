@@ -330,6 +330,7 @@ def WTKernel(q, rho0, x=1.0, y=1.0, alpha=5.0 / 6.0, beta=5.0 / 6.0):
     cTF = 0.3 * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
     factor = 5.0 / (9.0 * alpha * beta * rho0 ** (alpha + beta - 5.0 / 3.0))
     factor *= cTF
+    y = 1.0 # always remove whole vW
     return LindhardFunction(q / tkf, x, y) * factor
 
 
@@ -342,6 +343,7 @@ def SMKernel(q, rho0, x=1.0, y=1.0, alpha=0.5, beta=0.5):
     cTF = 0.3 * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
     factor = 1.0 / (2.0 * alpha ** 2 * rho0 ** (2.0 * alpha - 2))
     factor *= cTF
+    y = 1.0 # always remove whole vW
     return LindhardFunction(q / tkf, x, y) * factor
 
 
@@ -352,6 +354,7 @@ def WTKernelTable(eta, x=1.0, y=1.0, alpha=5.0 / 6.0, beta=5.0 / 6.0):
     # factor =1.2*np.pi**2/(3.0*np.pi**2)**(1.0/3.0)
     # factor = 5.0 / (9.0 * alpha * beta) * (0.3 * (3.0  *  np.pi ** 2) ** (2.0/3.0))
     factor = 4.0 / 5.0 * 0.3 * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
+    y = 1.0 # always remove whole vW
     return LindhardFunction(eta, x, y) * factor
 
 
@@ -359,6 +362,7 @@ def WTKernelDerivTable(eta, x=1.0, y=1.0, alpha=5.0 / 6.0, beta=5.0 / 6.0):
     factor = 5.0 / (9.0 * alpha * beta)
     cTF = 0.3 * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
     factor *= cTF
+    y = 1.0 # always remove whole vW
     return LindhardDerivative(eta, y) * factor
 
 
@@ -452,6 +456,7 @@ def SmoothKernel(q, rho0, x=1.0, y=1.0, alpha=5.0 / 6.0, beta=5.0 / 6.0):
     coef = 4.0
     factor = factor * np.exp(-(q ** 2) / (coef ** 2 * (tkf / 2.0) ** 2))
     # -----------------------------------------------------------------------
+    y = 1.0 # always remove whole vW
     return LindhardFunction(q / tkf, x, y) * factor
 
 

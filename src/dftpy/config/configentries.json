@@ -451,15 +451,16 @@
     },
     "method": {
       "comment": "The density optimization method.",
-      "type": "str",
+      "type": "ustr",
       "options": "TN, LBFGS, CG-HS, CG-DY, CG-CD, CG-LS, CG-FR, CG-PR",
       "default": "CG-HS"
     },
     "algorithm": {
-      "type": "str",
+      "type": "ustr",
       "default": "EMM",
-      "options": "EMM, RMM",
-      "comment": "The direct minimization method : Energy (EMM) or Residual (RMM)."
+      "options": "EMM, RMM, OESCF",
+      "comment": "Direct energy minimization method (EMM), direct residual minimization method (RMM), and one-orbital ensemble self-consistent field (`OESCF <https://pubs.acs.org/doi/full/10.1021/acs.jpclett.1c00716>`_).",
+      "note": "In `OESCF` solver, the :ref:`kedf<kedf-kedf>` has to contains full `vW` functional."
     },
     "vector": {
       "type": "str",

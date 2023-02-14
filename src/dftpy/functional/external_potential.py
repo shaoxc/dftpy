@@ -32,3 +32,6 @@ class ExternalPotential(AbstractFunctional):
         else:
             ene = 0
         return FunctionalOutput(name="ext", energy=ene, potential=pot)
+
+    def potential(self):
+        return self.v

@@ -444,7 +444,9 @@ class DirectGrid(BaseGrid):
         return mask
 
     def guess_ecut(self):
-        return spacing2ecut(self.spacings.max())
+        spacings2 = self.cell.cellpar()[:3] / (self._nrR - 1)
+        spacings = 0.5*(self.spacings + spacings2)
+        return spacing2ecut(spacings.max())
 
 class ReciprocalGrid(BaseGrid):
     """

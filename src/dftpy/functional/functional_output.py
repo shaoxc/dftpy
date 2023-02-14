@@ -52,7 +52,8 @@ class FunctionalOutput(object):
             if hasattr(self, key):
                 yield key, getattr(self, key)
 
-    def sum(self, other):
+    def sum(self, other = None):
+        if other is None : return self.copy()
         if self.name == other.name:
             name = self.name
         else:

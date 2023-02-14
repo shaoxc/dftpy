@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from dftpy.mpi import sprint
-from dftpy.optimization import Optimization
+from dftpy.optimization import Optimization, OESCF
 from dftpy.functional import Functional
 from dftpy.functional.total_functional import TotalFunctional
 from dftpy.constants import LEN_CONV, ENERGY_CONV, STRESS_CONV
@@ -11,9 +11,6 @@ from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
 from dftpy.math_utils import ecut2nr
 from dftpy.functional.functional_output import FunctionalOutput
-from dftpy.functional.semilocal_xc import XCStress
-from dftpy.functional.kedf import KEDFStress
-from dftpy.functional.hartree import HartreeFunctionalStress
 from dftpy.config.config import PrintConf, ReadConf
 from dftpy.inverter import Inverter
 from dftpy.properties import get_electrostatic_potential
@@ -88,7 +85,16 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
         kedf_config['temperature'] *= ENERGY_CONV['eV']['Hartree']
     if kedf_config.get('temperature0', None):
         kedf_config['temperature0'] *= ENERGY_CONV['eV']['Hartree']
-    KE = Functional(type="KEDF", name=config["KEDF"]["kedf"], **kedf_config)
+    if config['OPT']['algorithm'] == 'OESCF' :
+        KE = Functional(type="KEDF", name='vW')
+        if config["KEDF"]["kedf"].startswith('GGA') or config["KEDF"]["kedf"].startswith('MGGA'):
+            kedf_config['gga_remove_vw'] = True
+        kedf_config['y'] = 0.0
+        kedf_emb = Functional(type="KEDF", name=config["KEDF"]["kedf"], **kedf_config)
+        evaluator_emb = TotalFunctional(KEDF_EMB = kedf_emb)
+    else :
+        KE = Functional(type="KEDF", name=config["KEDF"]["kedf"], **kedf_config)
+        evaluator_emb = None
     ############################## XC and Hartree ##############################
     HARTREE = Functional(type="HARTREE")
     XC = Functional(type="XC", name=config["EXC"]["xc"], **config["EXC"])
@@ -129,29 +135,39 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
     others = {
         "ions": ions,
         "field": rho_ini,
+        "rho": rho_ini,
         "E_v_Evaluator": E_v_Evaluator,
         "nr2": nr2,
+        "evaluator_emb" : evaluator_emb,
     }
     return config, others
 
 
-def OptimizeDensityConf(config, ions, rho, E_v_Evaluator, nr2 = None):
+def OptimizeDensityConf(config, ions = None, rho = None, E_v_Evaluator = None, nr2 = None, evaluator_emb = None, **kwargs):
     rho_ini = rho
     grid = rho_ini.grid
     if hasattr(E_v_Evaluator, 'PSEUDO'):
         PSEUDO=E_v_Evaluator.PSEUDO
     nr = grid.nr
     charge_total = ions.get_ncharges()
+    if config['OPT']['algorithm'] == 'OESCF' :
+        lscf = True
+    else :
+        lscf = False
     if "Optdensity" in config["JOB"]["task"]:
-        optimization_options = config["OPT"]
+        optimization_options = config["OPT"].copy()
         optimization_options["econv"] *= ions.nat
         # if config['MATH']['twostep'] :
         # optimization_options["econv"] *= 10
+        if lscf : optimization_options['algorithm'] = 'EMM'
         opt = Optimization(
             EnergyEvaluator=E_v_Evaluator,
             optimization_options=optimization_options,
             optimization_method=config["OPT"]["method"],
         )
+        if lscf :
+            oescf = OESCF(optimization = opt, evaluator_emb = evaluator_emb)
+            opt = oescf
         rho = opt.optimize_rho(guess_rho=rho_ini)
         # perform second step, dense grid
         # -----------------------------------------------------------------------
@@ -169,18 +185,13 @@ def OptimizeDensityConf(config, ions, rho, E_v_Evaluator, nr2 = None):
             rho_ini = DirectField(grid=grid2, rank=rho.rank)
             field2distrib(rho, rho_ini, root = 0)
             rho_ini *= charge_total / (np.sum(rho_ini.integral()))
-            # ions.restart()
             if hasattr(E_v_Evaluator, 'PSEUDO'):
                 PSEUDO=E_v_Evaluator.PSEUDO
                 PSEUDO.restart(full=False, ions=PSEUDO.ions, grid=grid2)
-            opt = Optimization(
-                EnergyEvaluator=E_v_Evaluator,
-                optimization_options=optimization_options,
-                optimization_method=config["OPT"]["method"],
-            )
             rho = opt.optimize_rho(guess_rho=rho_ini)
         optimization_options["econv"] /= ions.nat  # reset the value
     ############################## calctype  ##############################
+    if lscf : E_v_Evaluator.UpdateFunctional(newFuncDict=evaluator_emb.funcDict)
     linearii = config["MATH"]["linearii"]
     linearie = config["MATH"]["linearie"]
     energypotential = {}
@@ -294,6 +305,7 @@ def OptimizeDensityConf(config, ions, rho, E_v_Evaluator, nr2 = None):
     results["stress"] = stress
     if hasattr(E_v_Evaluator, 'PSEUDO'):
         results["pseudo"] = PSEUDO
+    if lscf : E_v_Evaluator.UpdateFunctional(keysToRemove=evaluator_emb.funcDict)
     # sprint('-' * 31, 'Time information', '-' * 31)
     # -----------------------------------------------------------------------
     return results
@@ -311,7 +323,8 @@ def GetEnergyPotential(ions, rho, EnergyEvaluator, calcType={"E","V"}, linearii=
             results = func(rho, calcType=calcType, split=True)
             for key2 in results:
                 energypotential["TOTAL"] += results[key2]
-                energypotential["KEDF-" + key2.split('-')[-1]] = results[key2]
+                k = "KEDF-" + key2.split('-')[-1]
+                energypotential[k] = results[key2] + energypotential.get(k, None)
         else :
             results = func(rho, calcType=calcType)
             energypotential["TOTAL"] += results
@@ -333,86 +346,6 @@ def GetForces(ions, rho, EnergyEvaluator, linearii=True, linearie=True, PPlist=N
     forces["TOTAL"] = forces["PSEUDO"] + forces["II"]
     forces["TOTAL"] = rho.mp.vsum(forces["TOTAL"])
     return forces
-
-
-def GetStress_old(
-    ions,
-    rho,
-    EnergyEvaluator,
-    energypotential=None,
-    energy=None,
-    xc_options = {'xc' : 'LDA'},
-    ke_options={"kedf" : "WT", "x": 1.0, "y": 1.0},
-    linearii=True,
-    linearie=True,
-    PPlist=None,
-):
-    """
-    Get stress tensor
-    """
-    #-----------------------------------------------------------------------
-    KEDF_Stress_L= {
-            "TF" : ["TF"],
-            "VW": ["VW"],
-            "X_TF_Y_VW": ["TF", "VW"],
-            "TFVW": ["TF", "VW"],
-            "WT": ["TF", "VW", "NL"],
-            }
-    ke = ke_options["kedf"]
-    if ke not in KEDF_Stress_L :
-        raise AttributeError("%s KEDF have not implemented for stress" % ke)
-    kelist = KEDF_Stress_L[ke]
-    #-----------------------------------------------------------------------
-    #Initial energy dict
-    energy = {}
-    if energypotential is not None:
-        for key in energypotential :
-            energy[key] = energypotential[key].energy
-    elif energy is None :
-        funcDict = EnergyEvaluator.funcDict
-        for key in funcDict :
-            func = getattr(EnergyEvaluator, key)
-            if func.type.startwith('KEDF'):
-                for item in kelist :
-                    energy['KEDF-' + item] = None
-            else :
-                energy[func.type] = None
-
-    stress = {}
-    stress['TOTAL'] = np.zeros((3, 3))
-
-    for key1 in energy :
-        if key1 == "TOTAL" :
-            continue
-        elif key1 == "II" :
-            ewaldobj = ewald(rho=rho, ions=ions, verbose=False, PME=linearii)
-            stress[key1] = ewaldobj.stress
-        elif key1 == "XC" :
-            stress[key1] = XCStress(rho, energy=energy[key1], **xc_options)
-        elif key1 == 'HARTREE' :
-            stress[key1] = HartreeFunctionalStress(rho, energy=energy[key1])
-        elif key1 == 'PSEUDO' :
-            stress[key1] = EnergyEvaluator.PSEUDO.stress(rho, energy=energy[key1])
-        elif key1.startswith('KEDF') :
-            if "TF" in key1 :
-                stress[key1] = KEDFStress(rho, name="TF", energy=energy[key1], **ke_options)
-            if "VW" in key1 :
-                stress[key1] = KEDFStress(rho, name="VW", energy=energy[key1], **ke_options)
-            if 'NL' in key1 :
-                stress[key1] = KEDFStress(rho, name=ke, energy=energy[key1], **ke_options)
-        else :
-            raise AttributeError("%s have not implemented for stress" % key1)
-        stress['TOTAL'] += stress[key1]
-
-    for i in range(1, 3):
-        for j in range(i - 1, -1, -1):
-            stress["TOTAL"][i, j] = stress["TOTAL"][j, i]
-
-    keys, values = zip(*stress.items())
-    values = rho.mp.vsum(values)
-    stress = dict(zip(keys, values))
-
-    return stress
 
 def InvertRunner(config, ions, EnergyEvaluater):
     file_rho_in = config["INVERSION"]["rho_in"]
@@ -452,7 +385,8 @@ def GetStress(
             results = func.stress(rho, split=True)
             for key2 in results:
                 stress["TOTAL"] += results[key2]
-                stress["KEDF-" + key2.split('-')[-1]] = results[key2]
+                k = "KEDF-" + key2.split('-')[-1]
+                stress[k] = stress.get(k, 0.0) + results[key2]
         else :
             results = func.stress(rho)
             stress["TOTAL"] += results

@@ -61,10 +61,10 @@ class TotalFunctional(AbstractFunctional):
 
     def __repr__(self):
         return self.funcDict.__repr__()
-    
+
     def __getitem__(self, key):
         return self.funcDict[key]
-    
+
     def __setitem__(self, key, value):
         self.funcDict.update({key: value})
 
@@ -80,7 +80,7 @@ class TotalFunctional(AbstractFunctional):
 
     def UpdateFunctional(self, keysToRemove=[], newFuncDict={}):
         for key in keysToRemove:
-            del self.funcDict[key]
+            self.funcDict.pop(key, None)
 
         self.funcDict.update(newFuncDict)
         self.UpdateNameType()
@@ -106,11 +106,13 @@ class TotalFunctional(AbstractFunctional):
             Obj.energy = rho.mp.vsum(Obj.energy)
         return Obj
 
-    def Energy(self, rho, ions, usePME=False):
+    def Energy(self, rho, ions = None, usePME=False):
         from dftpy.ewald import ewald
-
-        ewald_ = ewald(rho=rho, ions=ions, PME=usePME)
         total_e = self.compute(rho, calcType={"E"})
-        ewald_energy = rho.mp.vsum(ewald_.energy)
-        # print('ewald', ewald_energy)
-        return ewald_energy + total_e.energy
+        if ions is not None :
+            ewald_ = ewald(rho=rho, ions=ions, PME=usePME)
+            ewald_energy = rho.mp.vsum(ewald_.energy)
+            energy = ewald_energy + total_e.energy
+        else :
+            energy = total_e.energy
+        return energy

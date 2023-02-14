@@ -13,7 +13,6 @@ import pytest
 class Test(unittest.TestCase):
     def test_md(self):
         pytest.importorskip("ase")
-        from ase.lattice.cubic import FaceCenteredCubic
         from ase.md.langevin import Langevin
         from ase.md.verlet import VelocityVerlet
         from ase.md.velocitydistribution import MaxwellBoltzmannDistribution

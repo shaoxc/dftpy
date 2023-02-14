@@ -48,10 +48,10 @@ def RunJob(args):
         elif "Inversion" in config["JOB"]["task"]:
             InvertRunner(config, others["field"], others["E_v_Evaluator"])
         else:
-            OptimizeDensityConf(config, others["ions"], others["field"], others["E_v_Evaluator"], others["nr2"])
+            OptimizeDensityConf(config, **others)
 
         TimeData.End("TOTAL")
-        TimeData.output(config)
+        TimeData.output(config, sort=1)
         sprint("-" * 80)
     sprint("#" * 80)
     sprint("DFTpy {} Finished on : {}".format(__version__, time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))

@@ -5,14 +5,11 @@ import numpy as np
 import pytest
 
 from dftpy.config.config import DefaultOption, ConfSpecialFormat
-from dftpy.interface import OptimizeDensityConf
 from dftpy.api.api4ase import DFTpyCalculator
 
 class Test(unittest.TestCase):
     def test_opt(self):
         pytest.importorskip("ase")
-        from ase.calculators.interface import Calculator
-        from ase.lattice.cubic import FaceCenteredCubic
         from ase.optimize import BFGS, LBFGS, FIRE
         from ase.optimize.sciopt import SciPyFminBFGS, SciPyFminCG
         from ase.constraints import StrainFilter, UnitCellFilter

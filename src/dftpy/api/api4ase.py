@@ -46,10 +46,9 @@ class DFTpyCalculator(object):
             #
             if self.results is not None and self.config["MATH"]["reuse"]:
                 config, others = ConfigParser(self.config, ions=ions, rhoini=self.results["density"], pseudo=pseudo, grid=grid, mp = self.mp)
-                results = OptimizeDensityConf(config, others["ions"], others["field"], others["E_v_Evaluator"], others["nr2"])
             else:
                 config, others = ConfigParser(self.config, ions=ions, pseudo=pseudo, grid=grid, mp = self.mp)
-                results = OptimizeDensityConf(config, others["ions"], others["field"], others["E_v_Evaluator"], others["nr2"])
+            results = OptimizeDensityConf(config, **others)
             self.results = results
         energy = self.results["energypotential"]["TOTAL"].energy * ENERGY_CONV["Hartree"]["eV"]
         energy = self.results["density"].grid.mp.asum(energy)
