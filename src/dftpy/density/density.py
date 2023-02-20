@@ -7,6 +7,7 @@ from dftpy.field import DirectField, ReciprocalField
 from dftpy.grid import RadialGrid
 from dftpy.mpi import sprint
 from dftpy.functional.pseudo import ReadPseudo
+from dftpy.math_utils import gaussian
 
 
 class AtomicDensity(object):
@@ -58,56 +59,63 @@ class AtomicDensity(object):
 class DensityGenerator(object):
     """
     """
-    def __init__(self, files = None, pseudo = None, is_core = False, direct = False, **kwargs):
-        self._r = {}
-        self._arho = {}
+    def __init__(self, files = None, pseudo = None, is_core = False, direct = False,
+            r = None, arho = None, **kwargs):
+        self._r = r
+        self._arho = arho
         self.direct = direct # reciprocal method will better
         self.is_core = is_core
+        self.files = files
+        self.pseudo = pseudo
         if self.is_core :
             self.ncharge = 0
         else :
             self.ncharge = None
-        self._init_data(files = files, pseudo = pseudo, **kwargs)
+        self._init_data(**kwargs)
 
-    def _init_data(self, files = None, pseudo = None, **kwargs):
+    @property
+    def r(self):
+        return self._r
+
+    @r.setter
+    def r(self, value):
+        self._r = value
+
+    @property
+    def arho(self):
+        return self._arho
+
+    @arho.setter
+    def arho(self, value):
+        self._arho = value
+
+    def _init_data(self, **kwargs):
         readpp = None
-        if files :
-            for key, infile in files.items() :
+        if self.files :
+            for key, infile in self.files.items() :
                 if not os.path.isfile(infile):
                     raise Exception("Density file " + infile + " for atom type " + str(key) + " not found")
-                else:
-                    if infile[-4:].lower() == "list" :
-                        try :
-                            self._r[key], self._arho[key] = self.read_density_list(infile)
-                        except Exception :
-                            raise Exception("density file '{}' has some problems".format(infile))
-                    else :
-                        readpp = ReadPseudo(files)
-        elif pseudo is not None :
-            readpp = pseudo.readpp
+                else :
+                    readpp = ReadPseudo(self.files)
+        elif self.pseudo is not None :
+            if hasattr(self.pseudo, 'readpp') :
+                readpp = self.pseudo.readpp
+            else :
+                readpp = self.pseudo
 
         if readpp :
             if self.is_core :
                 self._r = readpp._core_density_grid
                 self._arho = readpp._core_density
+            elif self.direct :
+                self._r = readpp._atomic_density_grid_real
+                self._arho = readpp._atomic_density_real
             else :
                 self._r = readpp._atomic_density_grid
                 self._arho = readpp._atomic_density
 
-    def read_density_list(self, infile):
-        with open(infile, "r") as fr:
-            lines = []
-            for i, line in enumerate(fr):
-                lines.append(line)
-
-        ibegin = 0
-        iend = len(lines)
-        data = [line.split()[0:2] for line in lines[ibegin:iend]]
-        data = np.asarray(data, dtype = float)
-
-        r = data[:, 0]
-        v = data[:, 1]
-        return r, v
+        if not self._r or not self._arho :
+            raise AttributeError("Please give correct initial atomic density")
 
     def guess_rho(self, ions, grid = None, ncharge = None, rho = None, dtol=1E-30, nspin = 1, **kwargs):
         ncharge = ncharge or self.ncharge
@@ -172,6 +180,8 @@ class DensityGenerator(object):
 
     def guess_rho_atom(self, ions, grid, ncharge = None, rho = None, dtol=1E-30, **kwargs):
         """
+        Note :
+            Assuming the lattices are more than double of rcut, otherwise please use `get_3d_value_recipe` instead.
         """
         nr = grid.nrR
         dnr = (1.0/nr).reshape((3, 1))
@@ -213,14 +223,17 @@ class DensityGenerator(object):
                 dists = LA.norm(positions, axis = 0).reshape(prho.shape)
                 index = np.logical_and(dists < rcut, dists > rtol)
                 prho[index] = splev(dists[index], tck, der = 0)
-                rho[l123A[0], l123A[1], l123A[2]] += prho.ravel()
+                mask = grid.get_array_mask(l123A)
+                rho[l123A[0][mask], l123A[1][mask], l123A[2][mask]] += prho.ravel()[mask]
         nc = rho.integral()
         sprint('Guess density : ', nc)
         if ncharge is None :
             ncharge = 0.0
             for i in range(ions.nat) :
                 ncharge += ions.charges[i]
-        if ncharge > 1E-6 : rho[:] *= ncharge / nc
+        if ncharge > 1E-6 :
+            rho[:] *= ncharge / nc
+            sprint('Guess density (Scale): ', rho.integral(), comm=grid.mp.comm)
         return rho
 
     def get_3d_value_recipe(self, ions, grid, ncharge = None, rho = None, dtol=1E-30, direct=True, **kwargs):

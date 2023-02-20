@@ -1,7 +1,9 @@
 import numpy as np
 from scipy.interpolate import splrep, splev
+import scipy.special as sp
 from ase.cell import Cell
 from dftpy.math_utils import spacing2ecut
+from dftpy.mpi import MP
 
 class BaseGrid:
     """
@@ -24,7 +26,6 @@ class BaseGrid:
     def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), full=False, direct=True,
                  cplx=False, mp=None, ecut = None, **kwargs):
         if mp is None :
-            from dftpy.mpi import MP
             mp = MP()
         self._origin = np.asarray(origin)
         if not isinstance(lattice, Cell):
@@ -756,3 +757,34 @@ class RadialGrid(object):
         if np.count_nonzero(mask) > 0 :
             results[mask] = splev(dist[mask], self.v_interp, der=0, ext=1)
         return results
+
+    def _ft(self, x, method='simpson', comm=None, mp=None, **kwargs):
+        v = self.v
+        r = self.r
+        if mp is None : mp = MP(comm = comm)
+        vp = np.zeros_like(x)
+
+        if method == 'simpson':
+            from scipy.integrate import simps as integrate
+        elif method == 'trapezoid':
+            from scipy.integrate import trapz as integrate
+
+        vr = v * r * r
+
+        lb, ub = mp.split_number(len(x))
+
+        for k in range(lb, ub):
+            y = sp.spherical_jn(0, x[k] * r) * vr
+            vp[k] = integrate(y, r)
+
+        vp = mp.vsum(vp)
+
+        return vp
+
+    def ft(self, x, method='simpson', mp=None, **kwargs):
+        y = self._ft(x, method=method, mp=mp, **kwargs)
+        if self.direct :
+            y *= (4.0 * np.pi)
+        else :
+            y *= (0.5 / np.pi ** 2)
+        return y

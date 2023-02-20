@@ -464,3 +464,27 @@ def quartic_interpolation(f, dx):
     else :
         raise AttributeError("Error : Not implemented yet")
     return results
+
+
+def gaussian(x, sigma = 0.1, mu = 0.0, dim = 3, deriv = 0):
+    y = 1.0/(np.sqrt(2.0 * np.pi) * sigma) ** dim * np.exp(-0.5 * ((x - mu)/sigma) ** 2.0)
+    if deriv == 0 :
+        pass
+    elif deriv == 1 :
+        y *= (mu-x)/sigma**2
+    else :
+        raise AttributeError(f"Sorry, the gaussian not support 'deriv' with {deriv}")
+    return y
+
+def gaussian_g(x, sigma = 0.1, dim = 3):
+    y = (np.sqrt(2.0 * np.pi) * sigma) ** (dim - 1) * np.exp(-0.5 * (x * sigma) ** 2)
+    return y
+
+def fermi_dirac(x, mu = None, kt = None):
+    if mu is None :
+        mu = 2.0/3.0 * np.max(x)
+    if kt is None :
+        kt = mu * 0.1
+    f = np.exp((x - mu)/kt) + 1.0
+    f = 1.0/f
+    return f

@@ -10,7 +10,7 @@ from dftpy.ewald import CBspline
 from dftpy.field import ReciprocalField, DirectField
 from dftpy.functional.abstract_functional import AbstractFunctional
 from dftpy.functional.functional_output import FunctionalOutput
-from dftpy.grid import DirectGrid
+from dftpy.grid import DirectGrid, RadialGrid
 from dftpy.math_utils import quartic_interpolation
 from dftpy.mpi import sprint, SerialComm, MP
 from dftpy.time_data import timer
@@ -632,64 +632,22 @@ class ReadPseudo(object):
             self._vloc_interp_atomic[key] = None
 
     @staticmethod
-    def _real2recip(r, v, zval=0, MaxPoints=10000, Gmax=30, Gmin=1E-4, method='simpson', comm=None, mp=None):
-        if mp is None : mp = MP(comm = comm)
-        gp = np.logspace(np.log10(Gmin), np.log10(Gmax), num=MaxPoints)
-        gp[0] = 0.0
-        vp = np.zeros_like(gp)
-        if method == 'simpson':
-            try:
-                # new version of scipy=1.6.0 change the name to simpson
-                from scipy.integrate import simpson
-            except Exception:
-                from scipy.integrate import simps as simpson
-            vr = (v * r + zval) * r
-
-            lb, ub = mp.split_number(len(gp))
-            if mp.is_root : lb = 1
-
-            for k in range(lb, ub):
-                y = sp.spherical_jn(0, gp[k] * r) * vr
-                vp[k] = (4.0 * np.pi) * simpson(y, r)
-
-            if mp.is_mpi : vp = mp.vsum(vp)
-
-            vp[0] = (4.0 * np.pi) * simpson(vr, r)
-        else:
-            dr = np.empty_like(r)
-            dr[1:] = r[1:] - r[:-1]
-            dr[0] = r[0]
-            vr = (v * r + zval) * r * dr
-
-            lb, ub = mp.split_number(len(gp))
-            if mp.is_root : lb = 1
-
-            for k in range(lb, ub):
-                vp[k] = (4.0 * np.pi) * np.sum(sp.spherical_jn(0, gp[k] * r) * vr)
-
-            vp = mp.vsum(vp)
-
-            vp[0] = (4.0 * np.pi) * np.sum(vr)
+    def _real2recip(r, v, zval=0, MaxPoints=10000, Gmax=30, Gmin=1E-4, gp=None, **kwargs):
+        v = v.copy()
+        mask = r > 0
+        v[mask] = v[mask] + zval/r[mask]
+        if gp is None :
+            gp = np.logspace(np.log10(Gmin), np.log10(Gmax), num=MaxPoints)
+            gp[0] = 0.0
+        vp = RadialGrid(r, v, direct=True, **kwargs).ft(gp)
         vp[1:] -= 4.0 * np.pi * zval / (gp[1:] ** 2)
         return gp, vp
 
     @staticmethod
-    def _recip2real(gp, vp, MaxPoints=1001, Rmax=10, r=None, comm=None, mp=None):
-        if mp is None : mp = MP(comm = comm)
+    def _recip2real(gp, vp, MaxPoints=1001, Rmax=10, r=None, **kwargs):
         if r is None:
             r = np.linspace(0, Rmax, MaxPoints)
-        v = np.zeros_like(r)
-        dg = np.empty_like(gp)
-        dg[1:] = gp[1:] - gp[:-1]
-        dg[0] = gp[0]
-        vr = vp * gp * gp * dg
-
-        lb, ub = mp.split_number(len(r))
-
-        for i in range(lb, ub):
-            v[i] = (0.5 / np.pi ** 2) * np.sum(sp.spherical_jn(0, r[i] * gp) * vr)
-
-        v = mp.vsum(v)
+        v = RadialGrid(gp, vp, direct=False, **kwargs).ft(r)
         return r, v
 
     @staticmethod
