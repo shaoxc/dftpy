@@ -720,9 +720,10 @@ class ReciprocalGrid(BaseGrid):
 
 
 class RadialGrid(object):
-    def __init__(self, r = None, v = None, direct = True, **kwargs):
+    def __init__(self, r = None, v = None, direct = True, vr = None, **kwargs):
         self._r = r
         self._v = v
+        self._vr = vr
         self._v_interp = None
         self.direct = direct
 
@@ -741,6 +742,10 @@ class RadialGrid(object):
     @v.setter
     def v(self, v):
         self._v = v
+
+    @property
+    def vr(self):
+        return self._vr
 
     @property
     def v_interp(self):
@@ -769,7 +774,10 @@ class RadialGrid(object):
         elif method == 'trapezoid':
             from scipy.integrate import trapz as integrate
 
-        vr = v * r * r
+        if self.vr :
+            vr = v * r
+        else :
+            vr = v * r * r
 
         lb, ub = mp.split_number(len(x))
 

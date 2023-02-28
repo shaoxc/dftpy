@@ -632,15 +632,42 @@ class ReadPseudo(object):
             self._vloc_interp_atomic[key] = None
 
     @staticmethod
-    def _real2recip(r, v, zval=0, MaxPoints=10000, Gmax=30, Gmin=1E-4, gp=None, **kwargs):
-        v = v.copy()
-        mask = r > 0
-        v[mask] = v[mask] + zval/r[mask]
+    def _real2recip(r, v, zval=0, MaxPoints=10000, Gmax=30, Gmin=1E-4, gp=None, rcut=None, **kwargs):
         if gp is None :
             gp = np.logspace(np.log10(Gmin), np.log10(Gmax), num=MaxPoints)
             gp[0] = 0.0
-        vp = RadialGrid(r, v, direct=True, **kwargs).ft(gp)
+        #
+        if rcut :
+            mk = r < rcut + 1E-6
+        else :
+            mk = slice(None)
+        #
+        vr = v*r + zval
+        #
+        vp = RadialGrid(r[mk], vr[mk], direct=True, vr=True, **kwargs).ft(gp)
         vp[1:] -= 4.0 * np.pi * zval / (gp[1:] ** 2)
+        return gp, vp
+
+    @staticmethod
+    def _real2recip_erf(r, v, zval=0, MaxPoints=10000, Gmax=30, Gmin=1E-4, gp=None, rcut=None, **kwargs):
+        if gp is None :
+            gp = np.logspace(np.log10(Gmin), np.log10(Gmax), num=MaxPoints)
+            gp[0] = 0.0
+        #
+        if rcut :
+            mk = r < rcut + 1E-6
+        else :
+            mk = slice(None)
+        #
+        vr = v*r + zval
+        vp = np.zeros_like(gp)
+        #
+        from scipy.integrate import simps as integrate
+        vp[0] = (4.0 * np.pi) * integrate((vr[mk]*r[mk]), r[mk])
+        #
+        vr = v*r + zval*sp.erf(r)
+        vp[1:] = RadialGrid(r[mk], vr[mk], direct=True, vr=True, **kwargs).ft(gp[1:])
+        vp[1:] -= 4.0 * np.pi * zval * np.exp(-gp[1:]**2/4.0) / (gp[1:] ** 2)
         return gp, vp
 
     @staticmethod
