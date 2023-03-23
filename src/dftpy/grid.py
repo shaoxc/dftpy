@@ -23,7 +23,7 @@ class BaseGrid:
 
     """
 
-    def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), full=False, direct=True,
+    def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), full=True, direct=True,
                  cplx=False, mp=None, ecut = None, **kwargs):
         if mp is None :
             mp = MP()
@@ -460,7 +460,7 @@ class ReciprocalGrid(BaseGrid):
         gg : square of each g vector
     """
 
-    def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), full=False, uppergrid=None, **kwargs):
+    def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), full=True, uppergrid=None, **kwargs):
         """
         Parameters
         ----------
