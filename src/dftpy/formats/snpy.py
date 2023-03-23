@@ -94,9 +94,7 @@ def read(fname, mp=None, grid=None, kind="all", full=False, datarep='native', de
         elif key == 3 : # read coordinates
             pos = npy.read(fh, single = True)
             ions = Ions(numbers=numbers, positions=pos, cell=lattice)
-            if kind == 'ions' :
-                if isinstance(fname, str): fh.close()
-                return ions
+            if kind == 'ions' : break
         elif key == 4 : # read volumetric data
             if mp.size == 1 :
                 data = npy.read(fh, single=True)
@@ -127,7 +125,9 @@ def read(fname, mp=None, grid=None, kind="all", full=False, datarep='native', de
                 npy._read_value(fh, data, datarep=datarep, fortran_order=fortran_order)
 
     if isinstance(fname, str): fh.close()
-    if len(desc) == 1 :
+    if kind == 'ions' :
+        return ions
+    elif kind == 'data' :
         return data
     else :
         return ions, data, None
