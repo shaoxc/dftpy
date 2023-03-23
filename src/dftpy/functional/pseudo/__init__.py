@@ -128,6 +128,7 @@ class LocalPseudo(AbstractLocalPseudo):
     def zval(self):
         return self.readpp.zval
 
+    @property
     def core_density(self):
         if self._core_density is None :
             self._core_density = {}
@@ -135,8 +136,8 @@ class LocalPseudo(AbstractLocalPseudo):
             q = reciprocal_grid.q
             v = np.zeros_like(q, dtype=np.complex128)
             for key in sorted(self.vloc_interp_core):
-                for i in range(len(self.ions.pos)):
-                    if self.ions.labels[i] == key:
+                for i in range(len(self.ions.positions)):
+                    if self.ions.symbols[i] == key:
                         if self.vlines_core[key] is None : continue
                         strf = self.ions.strf(reciprocal_grid, i)
                         v += self.vlines_core[key] * strf
