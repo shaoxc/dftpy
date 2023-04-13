@@ -192,58 +192,51 @@ def OptimizeDensityConf(config, ions = None, rho = None, E_v_Evaluator = None, n
         optimization_options["econv"] /= ions.nat  # reset the value
     ############################## calctype  ##############################
     if lscf : E_v_Evaluator.UpdateFunctional(newFuncDict=evaluator_emb.funcDict)
-    linearii = config["MATH"]["linearii"]
-    linearie = config["MATH"]["linearie"]
-    energypotential = {}
     forces = {}
     stress = {}
     sprint("-" * 80)
-    if "Both" in config["JOB"]["calctype"]:
-        sprint("Calculate Energy and Potential...")
-        energypotential = GetEnergyPotential(
-            ions, rho, E_v_Evaluator, calcType=["E","V"], linearii=linearii, linearie=linearie
-        )
-    elif "Potential" in config["JOB"]["calctype"]:
-        sprint("Calculate Potential...")
-        energypotential = GetEnergyPotential(
-            ions, rho, E_v_Evaluator, calcType=["V"], linearii=linearii, linearie=linearie
-        )
-    elif "Density" in config["JOB"]["calctype"]:
-        sprint("Only return density...")
-        energypotential = {'TOTAL' : FunctionalOutput(name ='TOTAL', energy = 0.0)}
-    else:
-        sprint("Calculate Energy...")
-        energypotential = GetEnergyPotential(
-            ions, rho, E_v_Evaluator, calcType=["E"], linearii=linearii, linearie=linearie
-        )
-    sprint(format("Energy information", "-^80"))
-    keys, ep = zip(*energypotential.items())
-    values = [item.energy for item in ep]
-    values = rho.mp.vsum(values)
-    ep_w = dict(zip(keys, values))
-    ke_energy = 0.0
-    for key in sorted(keys):
-        if key == "TOTAL":
-            continue
-        value = ep_w[key]
-        sprint("{:>10s} energy (eV): {:22.15E}".format(key, ep_w[key]* ENERGY_CONV["Hartree"]["eV"]))
-        if key.startswith('KEDF'): ke_energy += ep_w[key]
-    etot = ep_w['TOTAL']
-    sprint("{:>10s} energy (eV): {:22.15E}".format("TOTAL", etot * ENERGY_CONV["Hartree"]["eV"]))
-    sprint("-" * 80)
+    calcType = set()
+    energypotential = {'TOTAL' : FunctionalOutput(name ='TOTAL', energy = 0.0)}
 
-    etot_eV = etot * ENERGY_CONV["Hartree"]["eV"]
-    etot_eV_patom = etot * ENERGY_CONV["Hartree"]["eV"] / ions.nat
-    fstr = "  {:<30s} : {:30.15f}"
-    sprint(fstr.format("kedfs energy (a.u.)", ke_energy))
-    sprint(fstr.format("kedfs energy (eV)", ke_energy* ENERGY_CONV["Hartree"]["eV"]))
-    sprint(fstr.format("total energy (a.u.)", etot))
-    sprint(fstr.format("total energy (eV)", etot_eV))
-    sprint(fstr.format("total energy (eV/atom)", etot_eV_patom))
+    for key in config["JOB"]["calctype"]:
+        print('key', key)
+        if key == 'Both' :
+            calcType.update({"E", "V"})
+        elif key == 'Potential' :
+            calcType.update("V")
+        elif key == 'Energy' :
+            calcType.update("E")
+
+    if len(calcType) > 0 :
+        sprint("Calculate Energy/Potential...")
+        energypotential = E_v_Evaluator.get_energy_potential(rho, calcType=calcType, split = True)
+
+    if 'E' in calcType :
+        sprint(format("Energy information", "-^80"))
+        keys = list(energypotential.keys())
+        ke_energy = 0.0
+        for key in sorted(keys):
+            if key == "TOTAL":
+                continue
+            value = energypotential[key].energy
+            sprint("{:>10s} energy (eV): {:22.15E}".format(key, value * ENERGY_CONV["Hartree"]["eV"]))
+            if key.startswith('KEDF'): ke_energy += value
+        etot = energypotential["TOTAL"].energy
+        sprint("{:>10s} energy (eV): {:22.15E}".format("TOTAL", etot * ENERGY_CONV["Hartree"]["eV"]))
+        sprint("-" * 80)
+
+        etot_eV = etot * ENERGY_CONV["Hartree"]["eV"]
+        etot_eV_patom = etot * ENERGY_CONV["Hartree"]["eV"] / ions.nat
+        fstr = "  {:<30s} : {:30.15f}"
+        sprint(fstr.format("kedfs energy (a.u.)", ke_energy))
+        sprint(fstr.format("kedfs energy (eV)", ke_energy* ENERGY_CONV["Hartree"]["eV"]))
+        sprint(fstr.format("total energy (a.u.)", etot))
+        sprint(fstr.format("total energy (eV)", etot_eV))
+        sprint(fstr.format("total energy (eV/atom)", etot_eV_patom))
     ############################## Force ##############################
     if "Force" in config["JOB"]["calctype"]:
         sprint("Calculate Force...")
-        forces = GetForces(ions, rho, E_v_Evaluator, linearii=linearii, linearie=linearie, PPlist=None)
+        forces = E_v_Evaluator.get_forces(rho, ions = ions, split = True)
         ############################## Output Force ##############################
         f = np.abs(forces["TOTAL"])
         fmax, fmin, fave = np.max(f), np.min(f), np.mean(f)
@@ -251,25 +244,11 @@ def OptimizeDensityConf(config, ions = None, rho = None, E_v_Evaluator = None, n
         sprint(fstr_f.format("Max force (a.u.)", fmax))
         sprint(fstr_f.format("Min force (a.u.)", fmin))
         sprint(fstr_f.format("Ave force (a.u.)", fave))
-        # fstr_f =' ' * 16 + '{0:<22s}{1:<22s}{2:<22s}'
-        # sprint(fstr_f.format('Max (a.u.)', 'Min (a.u.)', 'Ave (a.u.)'))
-        # fstr_f =' ' * 16 + '{0:<22.5f} {1:<22.5f} {2:<22.5f}'
-        # sprint(fstr_f.format(fmax, fmin, fave))
         sprint("-" * 80)
     ############################## Stress ##############################
     if "Stress" in config["JOB"]["calctype"]:
         sprint("Calculate Stress...")
-        stress = GetStress(
-            ions,
-            rho,
-            E_v_Evaluator,
-            energypotential=energypotential,
-            xc_options=config["EXC"],
-            ke_options=config["KEDF"],
-            linearii=linearii,
-            linearie=linearie,
-            PPlist=None,
-        )
+        stress = E_v_Evaluator.get_stress(rho, split=True)
         ############################## Output stress ##############################
         fstr_s = " " * 16 + "{0[0]:12.5f} {0[1]:12.5f} {0[2]:12.5f}"
         if config["OUTPUT"]["stress"]:
@@ -311,42 +290,6 @@ def OptimizeDensityConf(config, ions = None, rho = None, E_v_Evaluator = None, n
     return results
 
 
-def GetEnergyPotential(ions, rho, EnergyEvaluator, calcType={"E","V"}, linearii=True, linearie=True):
-    energypotential = {}
-    ewaldobj = ewald(rho=rho, ions=ions, PME=linearii)
-    energypotential["II"] = FunctionalOutput(name="Ewald", potential=np.zeros_like(rho), energy=ewaldobj.energy)
-
-    energypotential["TOTAL"] = energypotential["II"].copy()
-    funcDict = EnergyEvaluator.funcDict
-    for key, func in funcDict.items():
-        if func.type == "KEDF":
-            results = func(rho, calcType=calcType, split=True)
-            for key2 in results:
-                energypotential["TOTAL"] += results[key2]
-                k = "KEDF-" + key2.split('-')[-1]
-                energypotential[k] = results[key2] + energypotential.get(k, None)
-        else :
-            results = func(rho, calcType=calcType)
-            energypotential["TOTAL"] += results
-            energypotential[func.type] = results
-
-    # keys, ep = zip(*energypotential.items())
-    # values = [item.energy for item in ep]
-    # values = mp.vsum(values)
-    # for item, v in zip(ep, values):
-        # item.energy = v
-    return energypotential
-
-
-def GetForces(ions, rho, EnergyEvaluator, linearii=True, linearie=True, PPlist=None):
-    forces = {}
-    forces["PSEUDO"] = EnergyEvaluator.PSEUDO.force(rho)
-    ewaldobj = ewald(rho=rho, ions=ions, verbose=False, PME=linearii)
-    forces["II"] = ewaldobj.forces
-    forces["TOTAL"] = forces["PSEUDO"] + forces["II"]
-    forces["TOTAL"] = rho.mp.vsum(forces["TOTAL"])
-    return forces
-
 def InvertRunner(config, ions, EnergyEvaluater):
     file_rho_in = config["INVERSION"]["rho_in"]
     file_v_out = config["INVERSION"]["v_out"]
@@ -360,44 +303,3 @@ def InvertRunner(config, ions, EnergyEvaluater):
     write(file_v_out, data=ext.v, ions=ions, data_type='potential')
 
     return ext
-
-def GetStress(
-    ions,
-    rho,
-    EnergyEvaluator,
-    linearii=True,
-    ewaldobj= None,
-    **kwargs
-):
-    """
-    Get stress tensor
-    """
-    #-----------------------------------------------------------------------
-    stress = {}
-    if ewaldobj is None :
-        ewaldobj = ewald(rho=rho, ions=ions, verbose=False, PME=linearii)
-    stress['II'] = ewaldobj.stress
-    stress['TOTAL'] = stress['II'].copy()
-
-    funcDict = EnergyEvaluator.funcDict
-    for key, func in funcDict.items():
-        if func.type == "KEDF":
-            results = func.stress(rho, split=True)
-            for key2 in results:
-                stress["TOTAL"] += results[key2]
-                k = "KEDF-" + key2.split('-')[-1]
-                stress[k] = stress.get(k, 0.0) + results[key2]
-        else :
-            results = func.stress(rho)
-            stress["TOTAL"] += results
-            stress[func.type] = results
-
-    for i in range(1, 3):
-        for j in range(i - 1, -1, -1):
-            stress["TOTAL"][i, j] = stress["TOTAL"][j, i]
-
-    keys, values = zip(*stress.items())
-    values = rho.mp.vsum(values)
-    stress = dict(zip(keys, values))
-
-    return stress

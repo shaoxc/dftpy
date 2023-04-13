@@ -193,14 +193,12 @@ class CBspline(object):
 
 
 class ewald(object):
-    def __init__(self, precision=1.0e-8, ions=None, rho=None, grid = None, verbose=False, BsplineOrder=10, PME=False, Bspline=None):
+    def __init__(self, precision=1.0e-8, ions=None, rho=None, grid = None, verbose=False, BsplineOrder=10, PME=False, Bspline=None, **kwargs):
         """
-        This computes Ewald contributions to the energy given a DirectField rho.
+        This computes Ewald contributions to the energy.
         INPUT: precision  float, should be bigger than the machine precision and
                           smaller than single precision.
                ions       Ions class array.
-               rho        DirectField, the electron density needed to evaluate
-                          the singular parts of the energy.
                verbose    optional, wanna sprint stuff?
         """
 
@@ -209,7 +207,6 @@ class ewald(object):
         self.verbose = verbose
 
         self.grid = grid
-        self.rho = rho
 
         if ions is not None:
             self.ions = ions
@@ -217,10 +214,10 @@ class ewald(object):
             raise AttributeError("Must pass ions to Ewald")
 
         if self.grid is None:
-            if self.rho is not None :
-                self.grid =self.rho.grid
+            if rho is not None :
+                self.grid =rho.grid
             else:
-                raise AttributeError("Must pass rho to Ewald")
+                raise AttributeError("Must pass grid or rho to Ewald")
 
         self.mp = self.grid.mp
 
@@ -230,8 +227,8 @@ class ewald(object):
         self.eta = eta
         self.order = BsplineOrder
 
-        self.usePME = PME
-        if self.usePME:
+        self.PME = PME
+        if self.PME:
             if Bspline is None:
                 self.Bspline = CBspline(ions=self.ions, grid=self.grid, order=self.order)
             else:
@@ -491,7 +488,7 @@ class ewald(object):
     def energy(self):
         if self._energy is None:
             e_corr = self.Energy_corr()
-            if self.usePME:
+            if self.PME:
                 e_real = self.Energy_real_fast2()
                 e_rec = self.Energy_rec_PME()
             else:
@@ -515,7 +512,7 @@ class ewald(object):
     def forces(self):
         if self._forces is None:
             Ewald_Forces = self.Forces_real()
-            if self.usePME:
+            if self.PME:
                 f_rec = self.Forces_rec_PME()
             else:
                 f_rec = self.Forces_rec()
@@ -529,7 +526,7 @@ class ewald(object):
         if self._stress is None:
 
             Ewald_Stress = self.Stress_real()
-            if self.usePME:
+            if self.PME:
                 s_rec = self.Stress_rec_PME()
             else:
                 s_rec = self.Stress_rec()
@@ -785,7 +782,7 @@ class ewald(object):
             l123A = np.mod(np.floor(Up).astype(np.int32).reshape((3, 1)) - ixyzA, nr.reshape((3, 1)))
             mask = self.Bspline.get_Qarray_mask(l123A)
             Qarray[l123A[0][mask], l123A[1][mask], l123A[2][mask]] += Mn_multi.ravel()[mask]
-        return DirectField(self.grid, griddata_3d=np.reshape(Qarray, np.shape(self.rho)), rank=1)
+        return DirectField(self.grid, data=Qarray)
 
     @timer()
     def Energy_rec_PME(self):
@@ -900,7 +897,7 @@ class ewald(object):
 
         Stmp = np.einsum("ijk, ijkl->l", strf_sq * np.exp(-gg / (4.0 * self.eta)) * invgg, sfactor)
 
-        Stmp = Stmp.real * 2.0 * np.pi / self.grid.volume ** 2 / self.rho.grid.dV ** 2
+        Stmp = Stmp.real * 2.0 * np.pi / self.grid.volume ** 2 / self.grid.dV ** 2
         # G = 0 term
         sum = self.ions.get_ncharges()
         S_g0 = sum ** 2 * 4.0 * np.pi * (1.0 / (4.0 * self.eta * self.grid.volume ** 2) / 2.0) / self.mp.comm.size
@@ -956,7 +953,7 @@ class ewald(object):
 
         # Stmp =np.einsum('ijk, ijkl->l', strf_sq*np.exp(-gg/(4.0*self.eta))*invgg, sfactor)
 
-        Stmp = Stmp.real * 2.0 * np.pi / self.grid.volume ** 2 / self.rho.grid.dV ** 2
+        Stmp = Stmp.real * 2.0 * np.pi / self.grid.volume ** 2 / self.grid.dV ** 2
         # G = 0 term
         sum = self.ions.get_ncharges()
         S_g0 = sum ** 2 * 4.0 * np.pi * (1.0 / (4.0 * self.eta * self.grid.volume ** 2) / 2.0) / self.mp.comm.size

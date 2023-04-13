@@ -6,7 +6,7 @@ import scipy.special as sp
 from scipy.interpolate import splrep, splev
 import re
 
-from dftpy.ewald import CBspline
+from dftpy.ewald import CBspline, ewald
 from dftpy.field import ReciprocalField, DirectField
 from dftpy.functional.abstract_functional import AbstractFunctional
 from dftpy.functional.functional_output import FunctionalOutput
@@ -46,7 +46,7 @@ class AbstractLocalPseudo(AbstractFunctional):
         pass
 
     @abstractmethod
-    def force(self):
+    def forces(self):
         pass
 
     @abstractmethod
@@ -76,7 +76,7 @@ class LocalPseudo(AbstractLocalPseudo):
     This is a template class and should never be touched.
     """
 
-    def __init__(self, grid=None, ions=None, PP_list=None, PME=True, readpp = None, comm = None, **kwargs):
+    def __init__(self, grid=None, ions=None, PP_list=None, PME=True, readpp = None, comm = None, BsplineOrder = 10, **kwargs):
 
         self.type = 'PSEUDO'
         self.name = 'PSEUDO'
@@ -95,7 +95,8 @@ class LocalPseudo(AbstractLocalPseudo):
         else:
             raise AttributeError("Must specify PP_list for Pseudopotentials")
 
-        self.usePME = PME
+        self.PME = PME
+        self.BsplineOrder = BsplineOrder
         # if not PME :
             # sprint("Using N^2 method for strf!", comm=comm)
         self.restart(grid, ions)
@@ -165,6 +166,9 @@ class LocalPseudo(AbstractLocalPseudo):
         self._ions = None
         self._grid = None
         self._core_density = None
+        #
+        self._Bspline = None
+        self.ewald = None
         if ions is not None:
             self.ions = ions
         if grid is not None:
@@ -199,6 +203,18 @@ class LocalPseudo(AbstractLocalPseudo):
         # update zval in ions
         self._ions.set_charges(self.zval)
 
+    @property
+    def Bspline(self):
+        if self._Bspline is None :
+            self._Bspline = CBspline(ions=self.ions, grid=self.grid, order=self.BsplineOrder)
+        return self._Bspline
+
+    def get_ewald(self, PME = None):
+        if self.ewald is None :
+            if PME is None : PME = self.PME
+            self.ewald = ewald(ions=self.ions, grid = self.grid, PME=PME, Bspline = self.Bspline)
+        return self.ewald
+
     def compute(self, density, calcType={"E", "V"}, **kwargs):
         if self._vreal is None:
             self.local_PP()
@@ -217,15 +233,11 @@ class LocalPseudo(AbstractLocalPseudo):
         return FunctionalOutput(name="eN", energy=ene, potential=pot)
 
     @timer()
-    def local_PP(self, BsplineOrder=10):
+    def local_PP(self):
         """
         """
-        # if BsplineOrder is not 10:
-        # warnings.warn("BsplineOrder not 10. Do you know what you are doing?")
-        self.BsplineOrder = BsplineOrder
-
         if self._v is None:
-            if self.usePME:
+            if self.PME:
                 self._PP_Reciprocal_PME()
             else:
                 self._PP_Reciprocal()
@@ -238,19 +250,19 @@ class LocalPseudo(AbstractLocalPseudo):
         if not isinstance(rho, (DirectField)):
             raise TypeError("rho must be DirectField")
         self.local_PP()
-        if self.usePME:
+        if self.PME:
             s = self._StressPME(rho, energy)
         else:
             s = self._Stress(rho, energy)
         return s
 
-    def force(self, rho):
+    def forces(self, rho):
         if rho is None:
             raise AttributeError("Must specify rho")
         if not isinstance(rho, (DirectField)):
             raise TypeError("rho must be DirectField")
         self.local_PP()
-        if self.usePME:
+        if self.PME:
             f = self._ForcePME(rho)
         else:
             f = self._Force(rho)
@@ -374,7 +386,6 @@ class LocalPseudo(AbstractLocalPseudo):
         return "PP successfully interpolated"
 
     def _PP_Reciprocal_PME(self):
-        self.Bspline = CBspline(ions=self.ions, grid=self.grid, order=self.BsplineOrder)
         reciprocal_grid = self.grid.get_reciprocal()
         q = reciprocal_grid.q
         v = np.zeros_like(q, dtype=np.complex128)
@@ -583,6 +594,7 @@ class ReadPseudo(object):
         self._atomic_density_grid = {}
         self._atomic_density = {}  # the radial atomic charge density in g-space
         self._zval = {}
+        self._pp = {}
 
         self.PP_list = PP_list
         #-----------------------------------------------------------------------
@@ -727,8 +739,7 @@ class ReadPseudo(object):
             else :
                 pp = engine(self.PP_list[key])
 
-        self.pp = pp
-
+        self._pp[key] = pp
         self._gp[key] = pp.radial_grid
         self._vp[key] = pp.local_potential
         self._zval[key] = pp.zval
@@ -789,8 +800,20 @@ class ReadPseudo(object):
 
     @property
     def info(self):
+        if not self._info:
+            raise AttributeError("Must init ReadPseudo")
         return self._info
 
     @info.setter
     def info(self, value):
         self._info = value
+
+    @property
+    def pp(self):
+        if not self._pp:
+            raise AttributeError("Must init ReadPseudo")
+        return self._pp
+
+    @pp.setter
+    def pp(self, value):
+        self._pp = value

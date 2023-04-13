@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 import pytest
 
-from dftpy.config.config import DefaultOption, ConfSpecialFormat
+from dftpy.config import DefaultOption, OptionFormat
 from dftpy.api.api4ase import DFTpyCalculator
 
 class Test(unittest.TestCase):
@@ -24,7 +24,7 @@ class Test(unittest.TestCase):
         conf['OPT']['method'] = 'TN'
         conf['OUTPUT']['stress'] = False
         conf['EXC']['xc'] = 'LDA'
-        conf = ConfSpecialFormat(conf)
+        conf = OptionFormat(conf)
         path = os.environ.get('DFTPY_DATA_PATH')
         atoms = read(path+'/'+'fcc.vasp')
         calc = DFTpyCalculator(config = conf)
@@ -34,6 +34,7 @@ class Test(unittest.TestCase):
         opt.run(fmax = 0.001)
         atoms_final = read(filename=dftpy_data_path+'/ase_opt.traj',format='traj')
         self.assertTrue(np.isclose(atoms.positions, atoms_final.positions, atol=1.e-3).all())
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -21,13 +21,13 @@ class Test(unittest.TestCase):
         PSEUDO = LocalPseudo(grid=grid, ions=ions, PP_list=PP_list, PME=False)
         func = PSEUDO(rho)
         IE_Energy = func.energy
-        IE_Force = PSEUDO.force(rho)
+        IE_Force = PSEUDO.forces(rho)
         IE_Stress = PSEUDO.stress(rho, energy=IE_Energy)
 
         PSEUDO = LocalPseudo(grid=grid, ions=ions, PP_list=PP_list, PME=True)
         func = PSEUDO(rho)
         IE_Energy_PME = func.energy
-        IE_Force_PME = PSEUDO.force(rho)
+        IE_Force_PME = PSEUDO.forces(rho)
         IE_Stress_PME = PSEUDO.stress(rho, energy=IE_Energy_PME)
 
         print('IE energy', IE_Energy, IE_Energy_PME)

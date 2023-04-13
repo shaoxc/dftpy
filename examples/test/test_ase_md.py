@@ -3,9 +3,7 @@ import os
 import unittest
 import numpy as np
 
-# from dftpy.config.config import DefaultOption, ConfSpecialFormat
 from dftpy.config import DefaultOption, OptionFormat
-from dftpy.interface import OptimizeDensityConf
 from dftpy.api.api4ase import DFTpyCalculator
 import pytest
 
