@@ -291,11 +291,11 @@ class LocalPseudo(AbstractLocalPseudo):
         if potential.rank == 2 : potential = 0.5*(potential[0]+potential[1])
         potg = potential.fft()
 
-        for key in sorted(ions.Zval):
+        for key in sorted(ions.zval):
                 rhocg = rhod[key]
                 if rhocg is None : continue
                 for i in range(ions.nat):
-                    if ions.labels[i] == key:
+                    if ions.symbols[i] == key:
                         strf = ions.istrf(reciprocal_grid, i)
                         den = (potg[mask] * rhocg[mask] * strf[mask]).imag
                         for j in range(3):
