@@ -6,7 +6,7 @@ from dftpy.functional.pseudo.abstract_pseudo import BasePseudo
 
 """
 Ref :
-    http://www.quantum-espresso.org/pseudopotentials/unified-pseudopotential-format
+    http://pseudopotentials.quantum-espresso.org/home/unified-pseudopotential-format
     https://esl.cecam.org/data/upf/
 """
 
@@ -14,17 +14,128 @@ class UPFDICT(BasePseudo):
     def __init__(self, fname, direct = True, **kwargs):
         super().__init__(fname, direct = direct, **kwargs)
 
+    def upf_v1(self, info):
+        """
+        Note :
+            The PP_NONLOCAL is different from UPF2.0
+        """
+        pp_header = dict.fromkeys([
+                    'generated',
+                    'author',
+                    'date',
+                    'comment',
+                    'element',
+                    'pseudo_type',
+                    'relativistic',
+                    'is_ultrasoft',
+                    'is_paw',
+                    'is_coulomb',
+                    'has_so',
+                    'has_wfc',
+                    'has_gipaw',
+                    'core_correction',
+                    'functional',
+                    'z_valence',
+                    'total_psenergy',
+                    'wfc_cutoff',
+                    'rho_cutoff',
+                    'l_max',
+                    'l_local',
+                    'mesh_size',
+                    'number_of_wfc',
+                    'number_of_proj',
+                    ])
+        lines = info["PP_HEADER"].splitlines()
+        data = [x.split() for x in lines]
+        data[4] = lines[4]
+        pp_header['element'] = data[1][0]
+        pp_header['pseudo_type'] = data[2][0]
+        pp_header['core_correction'] = data[3][0]
+        pp_header['functional'] = data[4][:20].strip()
+        pp_header['z_valence'] = data[5][0]
+        pp_header['total_psenergy'] = data[6][0]
+        pp_header["rho_cutoff"], pp_header["wfc_cutoff"] = data[7][0:2]
+        pp_header['l_max'] = data[8][0]
+        pp_header['mesh_size'] = data[9][0]
+        pp_header['number_of_wfc'], pp_header['number_of_proj'] = data[10][0:2]
+        #
+        relativistic = 'scalar'
+        l_local='0'
+        has_wfc = 'F'
+        #
+        is_ultrasoft = 'F'
+        is_paw = 'F'
+        is_coulomb = 'F'
+        has_so = 'F'
+        has_gipaw = 'F'
+        if pp_header['pseudo_type'] == 'US' :
+            is_ultrasoft = 'T'
+        elif pp_header['pseudo_type'] == 'PAW' :
+            is_ultrasoft = 'T'
+            is_paw = 'T'
+        elif pp_header['pseudo_type'] == 'NC' :
+            pass
+        elif pp_header['pseudo_type'] == '1/r' :
+            is_coulomb = 'T'
+        else :
+            raise ValueError('Unknown pseudo_type', pp_header['pseudo_type'])
+
+        if 'PP_ADDINFO' in info : has_so = 'T'
+        if 'PP_GIPAW_RECONSTRUCTION_DATA' in info : has_gipaw = 'T'
+        #
+        pp_header['relativistic'] = relativistic
+        pp_header['has_so'] = has_so
+        pp_header['l_local'] =l_local
+        pp_header['is_ultrasoft'] = is_ultrasoft
+        pp_header['is_paw'] = is_paw
+        pp_header['is_coulomb'] = is_coulomb
+        pp_header['has_wfc'] = has_wfc
+        pp_header['has_gipaw'] = has_gipaw
+        #
+        generated = " "
+        author = " "
+        date = " "
+        comment = " "
+        lines = info["PP_INFO"].splitlines()
+        if len(lines) > 0 :
+            generated = lines[0]
+        if len(lines) > 1 :
+            l = lines[1].lower()
+            i0 = l.find(':')
+            i1 = l.find('generat')
+            author = lines[1][i0 + 1:i1].strip()
+            l = l[i1:]
+            i2 = l.find(':')
+            date = l[i2 + 1:].strip()
+        if len(lines) > 2 :
+            comment = lines[2].strip()
+        pp_header['generated'] =generated
+        pp_header['author'] = author
+        pp_header['date'] = date
+        pp_header['comment'] = comment
+
+        info["PP_HEADER"] = pp_header
+        return info
+
+    def upf2dict(self, string):
+        string = '<UPF>\n'+string+'</UPF>\n'
+        if not importlib.util.find_spec("xmltodict") :
+            raise ModuleNotFoundError("Please install xmltodict to read 'UPF' file")
+        import xmltodict
+        doc = xmltodict.parse(string, attr_prefix='')
+        info = doc[next(iter(doc.keys()))]
+        if len(info) < 2 :
+            info = doc[next(iter(doc.keys()))]
+        else :
+            info = self.upf_v1(info)
+        return info
+
     def read(self, fname):
         """Reads QE UPF type PP"""
-        self.pattern = re.compile('\s+')
-        found = importlib.util.find_spec("xmltodict")
-        if found:
-            import xmltodict
-        else:
-            raise ModuleNotFoundError("Please pip install xmltodict")
+        self.pattern = re.compile(r'\s+')
         with open(fname) as fd:
-            doc = xmltodict.parse(fd.read(), attr_prefix='')
-            info = doc[next(iter(doc.keys()))]
+            string = fd.read()
+        info = self.upf2dict(string)
         r = self.get_array(info['PP_MESH']['PP_R'])
         v = self.get_array(info['PP_LOCAL']) * 0.5  # Ry to a.u.
         self.r = r
@@ -85,26 +196,15 @@ class UPF:
         """
         Note :
             Prefer xmltodict which is more robust
-            xmltodict not work for UPF v1
         """
-        has_xml = importlib.util.find_spec("xmltodict")
-        has_json = importlib.util.find_spec("upf_to_json")
-        if has_xml:
-            try:
-                obj = UPFDICT(fname)
-            except:
-                if has_json:
-                    try:
-                        obj = UPFJSON(fname)
-                    except:
-                        raise ModuleNotFoundError("Please use standard 'UPF' file")
-                else :
-                    raise ModuleNotFoundError("Maybe you can try install upf_to_json or use standard 'UPF' file")
-        elif has_json:
-            try:
-                obj = UPFJSON(fname)
-            except:
-                raise ModuleNotFoundError("Maybe you can try install xmltodict or use standard 'UPF' file")
-        else:
-            raise ModuleNotFoundError("Please pip install xmltodict or upf_to_json")
+        try:
+            obj = UPFDICT(fname)
+        except Exception:
+            if importlib.util.find_spec("upf_to_json") :
+                try:
+                    obj = UPFJSON(fname)
+                except Exception:
+                    raise ModuleNotFoundError("Please use standard 'UPF' file")
+            else :
+                raise ModuleNotFoundError("Maybe you also can try install upf_to_json or use standard 'UPF' file")
         return obj
