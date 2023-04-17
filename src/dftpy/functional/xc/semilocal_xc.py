@@ -19,19 +19,27 @@ def CheckLibXC(stop = True):
     return found
 
 
-def Get_LibXC_Input(density, do_sigma=True):
+def Get_LibXC_Input(density, do_sigma = False, do_tau = False, do_lapl = False,
+        sigma = None, lapl = None, tau = None, **kwargs):
     inp = {}
     if density.rank > 1:
         rhoT = density.reshape((2, -1)).T
         inp["rho"] = rhoT.ravel()
     else:
         inp["rho"] = density.ravel()
-    if do_sigma:
-        # sigma = density.sigma()
+    if do_sigma and sigma is None:
         sigma = density.sigma("standard")
         if density.rank > 1:
             sigma = sigma.reshape((3, -1)).T
-        inp["sigma"] = sigma.ravel()
+        sigma = sigma.ravel()
+    if do_lapl and lapl is None:
+        lapl = density.laplacian(force_real = True, sigma = None)
+        lapl  = lapl.ravel()
+    if do_tau and tau is None :
+        raise ValueError("Please give 'tau' for MGGA functional.")
+    inp["sigma"] = sigma
+    inp["lapl"] =lapl
+    inp["tau"] =tau
     return inp
 
 
@@ -164,7 +172,7 @@ def Get_LibXC_Output(out, density):
 
 
 @timer()
-def LibXC(density, libxc=None, calcType={"E", "V"}, **kwargs):
+def LibXC(density, libxc=None, calcType={"E", "V"}, sigma = None, lapl = None, tau = None, **kwargs):
     """
      Output:
         - out_functional: a functional evaluated with LibXC
@@ -176,18 +184,11 @@ def LibXC(density, libxc=None, calcType={"E", "V"}, **kwargs):
         from pylibxc.functional import LibXCFunctional
 
     do_sigma = False
+    do_lapl = False
+    do_tau = False
     #-----------------------------------------------------------------------
     libxc = get_libxc_names(libxc = libxc, **kwargs)
     #-----------------------------------------------------------------------
-    for value in libxc :
-        if not isinstance(value, str):
-            raise AttributeError(
-                    "{} must be LibXC functionals. Check pylibxc.util.xc_available_functional_names()".format(value)
-                    )
-            if value.startswith('hyb') or value.startswith('mgga'):
-                raise AttributeError('Hybrid and Meta-GGA functionals have not been implemented yet')
-        if value.startswith('gga'):
-            do_sigma = True
 
     if not libxc:
         raise AttributeError("Please give a short name 'xc' or a list 'libxc'.")
@@ -201,7 +202,19 @@ def LibXC(density, libxc=None, calcType={"E", "V"}, **kwargs):
     else:
         raise AttributeError("Only support nspin=1 or 2.")
 
-    inp = Get_LibXC_Input(density, do_sigma=do_sigma)
+    for value in libxc :
+        func = LibXCFunctional(value, polarization)
+        if value.startswith('hyb'):
+            raise AttributeError('Hybrid and Meta-GGA functionals have not been implemented yet')
+        if value.startswith('gga'):
+            do_sigma = True
+        elif value.startswith('mgga'):
+            do_sigma = True
+            do_tau = True
+            if func._needs_laplacian: do_lapl = True
+
+    inp = Get_LibXC_Input(density, do_sigma=do_sigma, do_tau = do_tau, do_lapl = do_lapl,
+            sigma = sigma, lapl = lapl, tau = tau, **kwargs)
     kargs = {'do_exc': False, 'do_vxc': False}
     if 'E' in calcType or 'D' in calcType:
         kargs.update({'do_exc': True})
@@ -489,4 +502,6 @@ def get_libxc_names(xc = None, libxc = None, name = None, code = None, **kwargs)
         # print('libxc', libxc, libxc_old)
         # warnings.warn(FutureWarning("'*_str' are deprecated; please use 'libxc' or 'xc'"))
         libxc = libxc_old
+    if libxc :
+        libxc = [x.lower() for x in libxc]
     return libxc

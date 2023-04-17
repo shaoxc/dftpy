@@ -6,10 +6,10 @@ from .rvv10 import RVV10, RVV10NL
 
 class XC(AbstractFunctional):
     def __init__(self, xc=None, core_density=None, libxc=None, name=None, pseudo = None, **kwargs):
-        self.type = 'XC'
-        self.name = name or 'XC'
-        self.energy = None
         xc = xc or name
+        self.type = 'XC'
+        self.name = xc or 'XC'
+        self.energy = None
         self.options = kwargs
         self.options['xc'] = xc
         self._core_density = core_density
@@ -18,7 +18,7 @@ class XC(AbstractFunctional):
             if xc and xc.lower() == 'lda' :
                 self.xcfun = LDA
             else :
-                raise AttributeError("Default one only support 'LDA', others please try with pylibxc.")
+                raise AttributeError("Please try it with pylibxc.")
         else :
             if isinstance(libxc, bool) : libxc = None
             self.options['libxc'] = libxc
