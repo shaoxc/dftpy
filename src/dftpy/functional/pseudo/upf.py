@@ -125,7 +125,7 @@ class UPFDICT(BasePseudo):
         doc = xmltodict.parse(string, attr_prefix='')
         info = doc[next(iter(doc.keys()))]
         if len(info) < 2 :
-            info = doc[next(iter(doc.keys()))]
+            info = info[next(iter(info.keys()))]
         else :
             info = self.upf_v1(info)
         return info
