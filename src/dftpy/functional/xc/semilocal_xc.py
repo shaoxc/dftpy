@@ -27,19 +27,20 @@ def Get_LibXC_Input(density, do_sigma = False, do_tau = False, do_lapl = False,
         inp["rho"] = rhoT.ravel()
     else:
         inp["rho"] = density.ravel()
-    if do_sigma and sigma is None:
-        sigma = density.sigma("standard")
+    if do_sigma :
+        if sigma is None:
+            sigma = density.sigma("standard")
         if density.rank > 1:
             sigma = sigma.reshape((3, -1)).T
-        sigma = sigma.ravel()
-    if do_lapl and lapl is None:
-        lapl = density.laplacian(force_real = True, sigma = None)
-        lapl  = lapl.ravel()
-    if do_tau and tau is None :
-        raise ValueError("Please give 'tau' for MGGA functional.")
-    inp["sigma"] = sigma
-    inp["lapl"] =lapl
-    inp["tau"] =tau
+        inp["sigma"] = sigma.ravel()
+    if do_lapl :
+        if lapl is None:
+            lapl = density.laplacian(force_real = True, sigma = None)
+        inp["lapl"] = lapl.ravel()
+    if do_tau :
+        if tau is None :
+            raise ValueError("Please give 'tau' for MGGA functional.")
+        inp["tau"] = tau.ravel()
     return inp
 
 
