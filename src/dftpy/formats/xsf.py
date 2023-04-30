@@ -162,13 +162,11 @@ class XSF(object):
         """
 
         with open(self.filexsf, "w") as fileout:
-            if units.lower() == 'angstrom' :
-                ions = ions.to_ase()
+            if units.lower() == 'angstrom' : ions = ions.to_ase()
             self._write_header(fileout, title)
             self._write_cell(fileout, ions.cell)
             self._write_coord(fileout, ions)
-            # the data always in 'angstrom' units
-            self._write_datagrid(fileout, data, data_type = data_type)
+            self._write_datagrid(fileout, data, data_type = data_type, units = units)
 
         return
 
@@ -191,7 +189,7 @@ class XSF(object):
         for i in range(len(ions.positions)):
             mywrite(fileout, (ions.symbols[i], ions.positions[i]), True)
 
-    def _write_datagrid(self, fileout, plot, data_type = 'density', **kwargs):
+    def _write_datagrid(self, fileout, plot, data_type = 'density', units = 'angstrom', **kwargs):
         ndim = plot.span  # 2D or 3D grid?
         if ndim < 2:
             return  # XSF format doesn't support one data grids
@@ -202,7 +200,8 @@ class XSF(object):
             plot = [plot]
         data = []
         for p in plot :
-            values = p.get_values_flatarray(pad=1, order="F") / Units.Bohr ** 3
+            values = p.get_values_flatarray(pad=1, order="F")
+            if units == 'angstrom' : values /= Units.Bohr ** 3
             if data_type == 'potential' :
                 values = values * Units.Ha
             data.append(values)
@@ -220,7 +219,8 @@ class XSF(object):
                 fileout, origin, True
             )  # TODO, there might be an actual origin if we're dealing with a custom cut of the grid
             for ilat in range(ndim):
-                latt = grid.lattice[ilat] * Units.Bohr
+                latt = grid.lattice[ilat]
+                if units == 'angstrom' : latt = latt * Units.Bohr
                 mywrite(fileout, latt, True)
 
             nnr = len(values)
