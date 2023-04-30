@@ -44,7 +44,7 @@ def Get_LibXC_Input(density, do_sigma = False, do_tau = False, do_lapl = False,
     return inp
 
 
-def Get_LibXC_Output(out, density):
+def Get_LibXC_Output(out, density, **kwargs):
     if not isinstance(out, (dict)):
         raise TypeError("LibXC output must be a dictionary")
 
@@ -233,10 +233,10 @@ def LibXC(density, libxc=None, calcType={"E", "V"}, sigma = None, lapl = None, t
         func = LibXCFunctional(value, polarization)
         out = func.compute(inp, **kargs)
         if out_functional is not None :
-            out_functional += Get_LibXC_Output(out, density)
+            out_functional += Get_LibXC_Output(out, density, **kwargs)
             out_functional.name += "_" + value
         else:
-            out_functional = Get_LibXC_Output(out, density)
+            out_functional = Get_LibXC_Output(out, density, **kwargs)
             out_functional.name = value
     return out_functional
 

@@ -2,7 +2,7 @@ import numpy as np
 from scipy.interpolate import splrep, splev
 import scipy.special as sp
 from ase.cell import Cell
-from dftpy.math_utils import spacing2ecut
+from dftpy.math_utils import spacing2ecut, ecut2nr
 from dftpy.mpi import MP
 
 class BaseGrid:
@@ -23,7 +23,7 @@ class BaseGrid:
 
     """
 
-    def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), full=True, direct=True,
+    def __init__(self, lattice, nr = None, origin=np.array([0.0, 0.0, 0.0]), full=True, direct=True,
                  cplx=False, mp=None, ecut = None, **kwargs):
         if mp is None :
             mp = MP()
@@ -36,6 +36,8 @@ class BaseGrid:
         self.cplx = cplx
         self._cell = cell
         self._direct = direct
+        #
+        if nr is None : nr = ecut2nr(ecut=ecut, lattice=lattice, **kwargs)
         #
         self._nrR = np.array(nr, dtype = np.int32)
         self._nnrR = np.prod(self._nrR)
@@ -284,7 +286,7 @@ class DirectGrid(BaseGrid):
         s : crystal coordinates of each grid point
     """
 
-    def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), full=True, uppergrid=None, **kwargs):
+    def __init__(self, lattice, nr = None, origin=np.array([0.0, 0.0, 0.0]), full=True, uppergrid=None, **kwargs):
         """
         Parameters
         ----------
@@ -460,7 +462,7 @@ class ReciprocalGrid(BaseGrid):
         gg : square of each g vector
     """
 
-    def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), full=True, uppergrid=None, **kwargs):
+    def __init__(self, lattice, nr = None, origin=np.array([0.0, 0.0, 0.0]), full=True, uppergrid=None, **kwargs):
         """
         Parameters
         ----------
