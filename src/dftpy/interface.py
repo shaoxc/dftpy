@@ -198,14 +198,9 @@ def OptimizeDensityConf(config, ions = None, rho = None, E_v_Evaluator = None, n
     calcType = set()
     energypotential = {'TOTAL' : FunctionalOutput(name ='TOTAL', energy = 0.0)}
 
-    for key in config["JOB"]["calctype"]:
-        print('key', key)
-        if key == 'Both' :
-            calcType.update({"E", "V"})
-        elif key == 'Potential' :
-            calcType.update("V")
-        elif key == 'Energy' :
-            calcType.update("E")
+    if 'Both' in config["JOB"]["calctype"]: calcType.update({"E", "V"})
+    if 'Potential' in config["JOB"]["calctype"]: calcType.update("V")
+    if 'Energy' in config["JOB"]["calctype"]: calcType.update("E")
 
     if len(calcType) > 0 :
         sprint("Calculate Energy/Potential...")
