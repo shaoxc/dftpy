@@ -67,10 +67,6 @@ class DensityGenerator(object):
         self.is_core = is_core
         self.files = files
         self.pseudo = pseudo
-        if self.is_core :
-            self.ncharge = 0
-        else :
-            self.ncharge = None
         self._init_data(**kwargs)
 
     @property
@@ -118,7 +114,7 @@ class DensityGenerator(object):
             raise AttributeError("Please give correct initial atomic density")
 
     def guess_rho(self, ions, grid = None, ncharge = None, rho = None, dtol=1E-30, nspin = 1, **kwargs):
-        ncharge = ncharge or self.ncharge
+        if ncharge is None and self.is_core : ncharge = 0
         rho_s = rho
         if rho_s is not None :
             nspin = rho.rank
@@ -149,29 +145,22 @@ class DensityGenerator(object):
         return rho_s
 
     def guess_rho_unspin(self, ions, grid = None, ncharge = None, rho = None, dtol=1E-30, **kwargs):
-        ncharge = ncharge or self.ncharge
         if len(self._r) == 0 :
             if self.is_core : # no core density
                 return None
-            new_rho = self.guess_rho_heg(ions, grid, ncharge, rho, dtol = dtol, **kwargs)
+            rho = self.guess_rho_heg(ions, grid, ncharge, rho, dtol = dtol, **kwargs)
         elif self.direct :
-            new_rho = self.guess_rho_atom(ions, grid, ncharge, rho, dtol = dtol, **kwargs)
+            rho = self.guess_rho_atom(ions, grid, ncharge, rho, dtol = dtol, **kwargs)
         else :
-            new_rho = self.get_3d_value_recipe(ions, grid.get_reciprocal(), ncharge, rho, dtol = dtol, **kwargs)
+            rho = self.get_3d_value_recipe(ions, grid.get_reciprocal(), ncharge, rho, dtol = dtol, **kwargs)
 
-        if rho is not None :
-            rho[:] = new_rho
-        else :
-            rho = new_rho
         return rho
 
     def guess_rho_heg(self, ions, grid, ncharge = None, rho = None, dtol=1E-30, **kwargs):
         """
         """
         if ncharge is None :
-            ncharge = 0.0
-            for i in range(ions.nat) :
-                ncharge += ions.charges[i]
+            ncharge = ions.get_ncharges()
         if rho is None :
             rho = DirectField(grid=grid)
             rho[:] = 1.0
@@ -228,9 +217,7 @@ class DensityGenerator(object):
         nc = rho.integral()
         sprint('Guess density : ', nc)
         if ncharge is None :
-            ncharge = 0.0
-            for i in range(ions.nat) :
-                ncharge += ions.charges[i]
+            ncharge = ions.get_ncharges()
         if ncharge > 1E-6 :
             rho[:] *= ncharge / nc
             sprint('Guess density (Scale): ', rho.integral(), comm=grid.mp.comm)
@@ -283,16 +270,14 @@ def get_3d_value_recipe(r, arho, ions, grid, ncharge = None, rho = None, dtol=0.
 
     if direct :
         if rho is None :
-            rho = rho_g.ifft()
+            rho = rho_g.ifft(force_real = True)
         else :
             rho[:] = rho_g.ifft()
         rho[rho < dtol] = dtol
         nc = rho.integral()
         sprint('Guess density (Real): ', nc, comm=grid.mp.comm)
         if ncharge is None :
-            ncharge = 0.0
-            for i in range(ions.nat) :
-                ncharge += ions.charges[i]
+            ncharge = ions.get_ncharges()
         if ncharge > 1E-6 :
             rho[:] *= ncharge / nc
             sprint('Guess density (Scale): ', rho.integral(), comm=grid.mp.comm)
