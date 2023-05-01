@@ -12,7 +12,7 @@ from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.io.trajectory import Trajectory
 from ase import units
 
-from dftpy.config.config import DefaultOption, ConfSpecialFormat, PrintConf
+from dftpy.config.config import DefaultOption, OptionFormat, PrintConf
 from dftpy.api.api4ase import DFTpyCalculator
 np.random.seed(8888)
 
@@ -24,7 +24,7 @@ conf["OPT"]["method"] = "TN"
 conf["KEDF"]["kedf"] = "WT"
 conf["JOB"]["calctype"] = "Energy Force"
 conf["OUTPUT"]["time"] = False
-conf = ConfSpecialFormat(conf)
+conf = OptionFormat(conf)
 PrintConf(conf)
 calc = DFTpyCalculator(config=conf, mp = mp)
 # -----------------------------------------------------------------------

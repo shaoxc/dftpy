@@ -12,7 +12,7 @@ from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.io.trajectory import Trajectory
 from ase import units
 
-from dftpy.config.config import DefaultOption, ConfSpecialFormat, PrintConf
+from dftpy.config.config import DefaultOption, OptionFormat, PrintConf
 from dftpy.api.api4ase import DFTpyCalculator
 np.random.seed(8888)
 
@@ -25,7 +25,7 @@ conf["KEDF"]["kedf"] = "WT"
 conf["JOB"]["calctype"] = "Energy Force Stress"
 conf["OUTPUT"]["time"] = False
 conf["OUTPUT"]["stress"] = False
-conf = ConfSpecialFormat(conf)
+conf = OptionFormat(conf)
 PrintConf(conf)
 calc = DFTpyCalculator(config=conf, mp = mp)
 # -----------------------------------------------------------------------
@@ -64,7 +64,7 @@ def printenergy(a=atoms):
     spot = a.get_stress()
     press = np.sum(spot[:3]) / 3.0
     sprint(
-        "Step={:<d} Epot={:.5f} Ekin={:.5f} T={:.3f} Etot={:.5f} Press={:.5f}".format(
+        "Step={:<8d} Epot={:.5f} Ekin={:.5f} T={:.3f} Etot={:.5f} Press={:.5f}".format(
             step, epot, ekin, ekin / (1.5 * units.kB), epot + ekin, press / units.GPa
         )
     )
