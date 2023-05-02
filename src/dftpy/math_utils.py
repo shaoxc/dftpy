@@ -398,10 +398,8 @@ def get_direction_CG(resA, dirA=None, method="CG-HS", **kwargs):
     asum = resA[-1].grid.mp.asum if hasattr(resA[-1], 'grid') else np.sum
     if len(resA) == 1:
         beta = 0.0
-    elif method == "CG-HS" and len(dirA) > 0:  # Maybe the best of the CG.
+    elif method in ["CG-HS", "CG"] and len(dirA) > 0:  # Works better than others in most tests
         beta = asum(resA[-1] * (resA[-1] - resA[-2])) / asum(dirA[-1] * (resA[-1] - resA[-2]))
-    elif method == "CG-FR":
-        beta = asum(resA[-1] ** 2) / asum(resA[-2] ** 2)
     elif method == "CG-PR":
         beta = asum(resA[-1] * (resA[-1] - resA[-2])) / asum(resA[-2] ** 2)
         beta = max(beta, 0.0)
@@ -411,7 +409,7 @@ def get_direction_CG(resA, dirA=None, method="CG-HS", **kwargs):
         beta = -(resA[-1] ** 2) / asum(dirA[-1] * resA[-2])
     elif method == "CG-LS" and len(dirA) > 0:
         beta = asum(resA[-1] * (resA[-1] - resA[-2])) / asum(dirA[-1] * resA[-2])
-    else:
+    else: # CG-FR or regular CG
         beta = asum(resA[-1] ** 2) / asum(resA[-2] ** 2)
 
     if dirA is None or len(dirA) == 0:
