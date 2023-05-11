@@ -6,7 +6,7 @@ from dftpy.functional.kedf.wt import WTPotential, WTEnergyDensity
 from dftpy.mpi import sprint
 from dftpy.time_data import timer
 
-__all__ = ["MGP", "MGPStress", "MGPA", "MGPG"]
+__all__ = ["MGP", "MGPStress", "MGPA", "MGPG", "MGP0"]
 
 
 def MGPStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, calcType={"E", "V"}):
@@ -27,6 +27,7 @@ def MGP(
         calcType={"E", "V"},
         split=False,
         ke_kernel_saved=None,
+        revke = True,
         **kwargs
 ):
     q = rho.grid.get_reciprocal().q
@@ -40,7 +41,7 @@ def MGP(
         KE_kernel = MGPKernel(q, rho0, maxpoints=maxpoint, symmetrization=symmetrization)
         if lumpfactor is not None:
             Ne = rho0 * rho.grid.volume
-            KE_kernel += MGPOmegaE(q, Ne, lumpfactor)
+            KE_kernel += MGPOmegaE(q, Ne, lumpfactor, revke = revke)
         # -----------------------------------------------------------------------
         # rh0 = 0.03;lumpfactor = 0.0;q = np.linspace(1E-3, 8, 10000).reshape((1, 1, 1, -1))
         # mgp = MGPKernel(q,rho0,  maxpoints = maxpoint, symmetrization = None, KernelTable = None)
@@ -99,3 +100,20 @@ def MGPG(
         **kwargs
 ):
     return MGP(rho, x, y, sigma, alpha, beta, lumpfactor, maxpoint, "Geometric", calcType, split, **kwargs)
+
+def MGP0(
+        rho,
+        x=1.0,
+        y=1.0,
+        sigma=None,
+        alpha=5.0 / 6.0,
+        beta=5.0 / 6.0,
+        lumpfactor=0.2,
+        maxpoint=1000,
+        symmetrization=None,
+        calcType={"E", "V"},
+        split=False,
+        revke = False,
+        **kwargs
+):
+    return MGP(rho, x, y, sigma, alpha, beta, lumpfactor, maxpoint, symmetrization, calcType, split, revke=False, **kwargs)

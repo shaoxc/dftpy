@@ -411,7 +411,7 @@ def LWTKernelKf(q, kf, KernelTable, etamax=1000.0, out=None):
     return Kernel
 
 
-def MGPOmegaE(q, Ne=1, lumpfactor=0.2):
+def MGPOmegaE(q, Ne=1, lumpfactor=0.2, revke = True):
     """
     """
     c = 1.0
@@ -434,13 +434,15 @@ def MGPOmegaE(q, Ne=1, lumpfactor=0.2):
         qflag = True
         q[0, 0, 0] = 1.0
     gg = q ** 2
-    corr = 4 * np.pi * sp.erf(c * gg) ** 2 * a * np.exp(-gg * b) / gg
-    # corr = 4 * np.pi * sp.erf(c * q) ** 2* a * np.exp(-gg * b) / gg + 0.001*np.exp(-0.1*(gg-1.5)**2)
+    if revke :
+        corr = 4 * np.pi * sp.erf(c * gg) ** 2 * a * np.exp(-gg * b) / gg
+    else :
+        # Same as the formular in MGP
+        corr = 4 * np.pi * sp.erf(c * q) ** 2* a * np.exp(-gg * b) / gg
+        corr *= 3.0/5.0
     if qflag:
         q[0, 0, 0] = 0.0
         corr[0, 0, 0] = 0.0
-    # Same as the formular in MGP
-    corr /= 1.2
     return corr
 
 

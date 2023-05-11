@@ -9,7 +9,7 @@ from dftpy.functional.kedf.fp import FP
 from dftpy.functional.kedf.gga import GGA, GGA_KEDF_list, GGAFs, MGGA, MGGA_KEDF_list
 from dftpy.functional.kedf.hc import HC, revHC
 from dftpy.functional.kedf.lwt import LWT, LMGP, LMGPA, LMGPG
-from dftpy.functional.kedf.mgp import MGP, MGPA, MGPG
+from dftpy.functional.kedf.mgp import MGP, MGPA, MGPG, MGP0
 from dftpy.functional.kedf.sm import SM
 from dftpy.functional.kedf.tf import TF, TTF, ThomasFermiStress
 from dftpy.functional.kedf.vw import vW, vonWeizsackerStress
@@ -60,6 +60,8 @@ KEDFEngines= {
         "HC": ("TF", "VW", "HC-NL"),
         "REVHC": ("TF", "VW", "REVHC-NL"),
         "TTF": TF,
+        "MGP0-NL": MGP0,
+        "MGP0": ("TF", "VW", "MGP0-NL"),
         }
 
 KEDFEngines_Stress = {
