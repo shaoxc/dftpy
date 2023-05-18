@@ -124,11 +124,11 @@ class TotalFunctional(AbstractFunctional):
                         energy_potential[k] = results[key2] + energy_potential.get(k, None)
                         energy_potential["TOTAL"] += results[key2]
                 else :
-                    results = func(rho, calcType=calcType)
+                    results = func(rho, calcType=calcType, **kwargs)
                     energy_potential[func.type] = results
                     energy_potential["TOTAL"] += results
             else :
-                results = func(rho, calcType=calcType)
+                results = func(rho, calcType=calcType, **kwargs)
                 energy_potential["TOTAL"] += results
         #
         if self.ewald :
