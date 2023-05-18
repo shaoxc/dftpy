@@ -7,16 +7,16 @@ Installation
 Requirements
 ============
 
-* Python_ 3.6 or newer
-* NumPy_ 1.8.0 or newer
-* SciPy_ 0.10 or newer
-* ASE_  3.22.0 or newer
+* Python_ >= 3.6
+* NumPy_ >= 1.8.0
+* SciPy_ >= 0.18.0
+* ASE_  >= 3.22.0
+* xmltodict_ >= 0.12.0
 
 Optional:
 
 * pylibxc_ (for using exchange-correlation functionals other than LDA)
 * pyFFTW_  (for Fast Fourier Transform)
-* xmltodict_ (For UPF pseudopotential)
 * upf_to_json_ (For UPF pseudopotential)
 * mpi4py_ (MPI for python)
 * mpi4py-fft_ (Fast Fourier Transforms with MPI)

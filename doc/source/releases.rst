@@ -2,28 +2,28 @@
 Stable releases
 ===============
 
+Version 2.0.0
+=============
 
-Version 2.0
-===========
-
-Release date: `October 2022 <https://gitlab.com/pavanello-research-group/dftpy/-/tags/dftpy-2.0>`_
+Release date: `May 2022 <https://gitlab.com/pavanello-research-group/dftpy/-/releases/v2.0.0>`_
 
 This version supports:
  - The Ions object is inherit from `ASE.atoms <https://wiki.fysik.dtu.dk/ase/ase/atoms.html>`_
- - Parallel execution with mpi4py_
- - Supported non-standard GGAs, such as LKT_ and PG_
+ - Parallel implementation with mpi4py_
  - Supported spin polarized runs
  - New td-OF-DFT code for real-time propagation and Casida
  - Nonadiabatic Pauli potential with the JP_ functional
- - Extensive upgrade of documentation and docstrings
- - Close to universal I/O capability and compatibility with ASE
- - Support for `finite temperature OF-DFT <https://arxiv.org/abs/2206.03754>`_
+ - Supported non-standard semilocal kinetic functionals , such as LKT_ and PG_
+ - Meta-GGA functional
+ - Non-local exchange-correlation functional (rVV10)
+ - One-orbital ensemble self-consistent field (OE-SCF) solver
+ - Initial density generator
 
 
-Version 1.0
-===========
+Version 1.0.0
+=============
 
-Release date: `January 2020 <https://gitlab.com/pavanello-research-group/dftpy/-/tags/dftpy-1.0>`_
+Release date: `May 2022 <https://gitlab.com/pavanello-research-group/dftpy/-/releases/dftpy-1.0>`_
 
 This version supports:
  - OFDFT electron density optimization
