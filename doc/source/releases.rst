@@ -23,7 +23,7 @@ This version supports:
 Version 1.0.0
 =============
 
-Release date: `May 2022 <https://gitlab.com/pavanello-research-group/dftpy/-/releases/dftpy-1.0>`_
+Release date: `January 2020 <https://gitlab.com/pavanello-research-group/dftpy/-/releases/dftpy-1.0>`_
 
 This version supports:
  - OFDFT electron density optimization
