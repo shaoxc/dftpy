@@ -339,12 +339,6 @@ def SMKernel(q, rho0, x=1.0, y=1.0, alpha=0.5, beta=0.5):
     The SM Kernel
     """
     return WTKernel(q, rho0, x, y, alpha, beta)
-    tkf = 2.0 * (3.0 * rho0 * np.pi ** 2) ** (1.0 / 3.0)
-    cTF = 0.3 * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
-    factor = 1.0 / (2.0 * alpha ** 2 * rho0 ** (2.0 * alpha - 2))
-    factor *= cTF
-    y = 1.0 # always remove whole vW
-    return LindhardFunction(q / tkf, x, y) * factor
 
 
 def WTKernelTable(eta, x=1.0, y=1.0, alpha=5.0 / 6.0, beta=5.0 / 6.0):
