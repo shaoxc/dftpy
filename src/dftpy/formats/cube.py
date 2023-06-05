@@ -51,7 +51,10 @@ def read_cube(infile, kind="all", full=False, pbc=True, data_type='density', **k
                 data = data.reshape((-1, rank)).ravel('F')
             plot = DirectField(grid=grid, data=data, rank=rank)
             values = (ions, plot, None)
-    return values
+    if kind == 'data' :
+        return plot
+    else :
+        return values
 
 def write_cube(filename, ions, data = None, data_type = 'density', header = None, origin = None, long = True, **kwargs):
     if long :
@@ -63,8 +66,7 @@ def write_cube(filename, ions, data = None, data_type = 'density', header = None
         fmt2 = fmt + "{4:12.6f}"
         fmt3 = "%13.5e"
     fh = open(filename, "w")
-    if header is None :
-        header = 'DFTpy : cube file for {}'.format(data_type)
+    if header is None : header = 'DFTpy'
     header += "\nOUTER LOOP: X, MIDDLE LOOP: Y, INNER LOOP: Z\n"
     fh.write(header)
 
