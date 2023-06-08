@@ -10,15 +10,17 @@ ioformat = namedtuple('ioformat', ['format', 'module', 'read', 'write', 'kind'])
 iounkeys = ['mp', 'comm', 'kind', 'data_type', 'grid', 'names']
 
 IOFormats= {
-            "snpy"    : ioformat('snpy', 'dftpy.formats.snpy'  , 'read_snpy', 'write_snpy', ['ions', 'data', 'all']),
-            "xsf"     : ioformat('xsf' , 'dftpy.formats.xsf'   , 'read_xsf' , 'write_xsf' , ['ions', 'data', 'all']),
-            "qepp"    : ioformat('qepp', 'dftpy.formats.qepp'  , 'read_qepp', 'write_qepp', ['ions', 'data', 'all']),
-            "cube"    : ioformat('cube', 'dftpy.formats.cube'  , 'read_cube', 'write_cube', ['ions', 'data', 'all']),
-            "den"     : ioformat('den' , 'dftpy.formats.den'   , 'read_den' , 'write_den' , ['data']),
-            "xyz"     : ioformat('xyz' , 'dftpy.formats.xyz'   , 'read_xyz' , 'write_xyz' , ['ions']),
-            "vasp"    : ioformat('vasp', 'dftpy.formats.vasp'  , 'read_vasp', 'write_vasp', ['ions']),
-            "ase"     : ioformat('ase' , 'dftpy.formats.ase_io', 'read_ase' , 'write_ase' , ['ions']),
-            "pmg"     : ioformat('pmg' , 'dftpy.formats.pmg_io', 'read_pmg' , 'write_pmg' , ['ions']),
+            "snpy"   : ioformat('snpy'  ,'dftpy.formats.snpy'  ,'read_snpy'  ,'write_snpy'  ,['ions','data','all']),
+            "xsf"    : ioformat('xsf'   ,'dftpy.formats.xsf'   ,'read_xsf'   ,'write_xsf'   ,['ions','data','all']),
+            "qepp"   : ioformat('qepp'  ,'dftpy.formats.qepp'  ,'read_qepp'  ,'write_qepp'  ,['ions','data','all']),
+            "cube"   : ioformat('cube'  ,'dftpy.formats.cube'  ,'read_cube'  ,'write_cube'  ,['ions','data','all']),
+            "chg"    : ioformat('chg'   ,'dftpy.formats.chg'   ,'read_chg'   ,'write_chg'   ,['ions','data','all']),
+            "chgcar" : ioformat('chgcar','dftpy.formats.chg'   ,'read_chgcar','write_chgcar',['ions','data','all']),
+            "den"    : ioformat('den'   ,'dftpy.formats.den'   ,'read_den'   ,'write_den'   ,['data']),
+            "xyz"    : ioformat('xyz'   ,'dftpy.formats.xyz'   ,'read_xyz'   ,'write_xyz'   ,['ions']),
+            "vasp"   : ioformat('vasp'  ,'dftpy.formats.vasp'  ,'read_vasp'  ,'write_vasp'  ,['ions']),
+            "ase"    : ioformat('ase'   ,'dftpy.formats.ase_io','read_ase'   ,'write_ase'   ,['ions']),
+            "pmg"    : ioformat('pmg'   ,'dftpy.formats.pmg_io','read_pmg'   ,'write_pmg'   ,['ions']),
         }
 
 IOFormats['pp'] = IOFormats['qepp']
@@ -184,7 +186,7 @@ def read_potential(infile, format=None, **kwargs):
     return read(infile, format=format, kind='data', data_type='potential', **kwargs)
 
 def write_all(outfile, ions = None, data = None, information = None, format=None, **kwargs):
-    return write(outfile, ions = None, data = None, information = None, format=format, **kwargs)
+    return write(outfile, ions=ions, data=data, information=information, format=format, **kwargs)
 
 def write_density(outfile, data = None, ions = None, format = None, **kwargs):
     kwargs.pop('data_type', None)
