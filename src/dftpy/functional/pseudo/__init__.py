@@ -15,6 +15,7 @@ from dftpy.math_utils import quartic_interpolation
 from dftpy.mpi import sprint, SerialComm, MP
 from dftpy.time_data import timer
 
+from dftpy.functional.pseudo.abstract_pseudo import BasePseudo
 from dftpy.functional.pseudo.psp import PSP
 from dftpy.functional.pseudo.recpot import RECPOT
 from dftpy.functional.pseudo.upf import UPF
@@ -365,7 +366,7 @@ class LocalPseudo(AbstractLocalPseudo):
             # -----------------------------------------------------------------------
             mask = q < gps[key][1]
             vp = vps[key]
-            dp = vp[1] - vp[0]
+            dp = gps[key][1] - gps[key][0]
             f = [vp[2], vp[1], vp[0], vp[1], vp[2]]
             dx = q[mask] / dp
             vloc[mask] = quartic_interpolation(f, dx)
@@ -603,11 +604,15 @@ class ReadPseudo(object):
         self.parallel = parallel and comm.size > 1
         #-----------------------------------------------------------------------
 
-        for key in self.PP_list:
-            sprint("setting key: {} -> {}".format(key, self.PP_list[key]), comm=comm)
-            if not os.path.isfile(self.PP_list[key]):
-                raise FileNotFoundError("'{}' PP file for atom type {} not found".format(self.PP_list[key], key))
-            self._init_pp(key, **kwargs)
+        for key, fname in self.PP_list.items():
+            sprint("setting key: {} -> {}".format(key, fname), comm=comm, level = 2)
+            if isinstance(fname, BasePseudo):
+                engine = fname
+                self._init_pp(key, engine = engine, **kwargs)
+            else :
+                if not os.path.isfile(fname):
+                    raise FileNotFoundError("'{}' PP file for atom type {} not found".format(fname, key))
+                self._init_pp(key, fname = fname, **kwargs)
             self.get_vloc_interp(key)
 
     @property
@@ -709,13 +714,15 @@ class ReadPseudo(object):
         # sprint('Ne ', np.sum(r *r * rhop * dr) * 4 * np.pi)
         return ene
 
-    def _init_pp(self, key, engine = None, k = 3, **kwargs):
+    def _init_pp(self, key, fname = None, engine = None, k = 3, **kwargs):
         """ initialize the pseudopotential
 
         Parameters
         ----------
         key :
             The key of pseudopotential, which usually is the symbol of ion.
+        fname :
+            The name of pseudopotential file
         engine :
             The engine for reading pseudopotential file
         k :
@@ -724,20 +731,20 @@ class ReadPseudo(object):
             kwargs
         """
         if engine is None :
-            suffix = os.path.splitext(self.PP_list[key])[1][1:].lower()
+            suffix = os.path.splitext(fname)[1][1:].lower()
             engine = PPEngines.get(suffix, None)
 
         if engine is None :
-            raise AttributeError("Pseudopotential '{}' is not supported".format(self.PP_list[key]))
+            raise AttributeError("Pseudopotential '{}' is not supported".format(fname))
         else :
             if self.parallel :
                 if self.comm.rank == 0 :
-                    pp = engine(self.PP_list[key])
+                    pp = engine(fname)
                 else :
                     pp = None
                 pp = self.comm.bcast(pp)
             else :
-                pp = engine(self.PP_list[key])
+                pp = engine(fname)
 
         self._pp[key] = pp
         self._gp[key] = pp.radial_grid

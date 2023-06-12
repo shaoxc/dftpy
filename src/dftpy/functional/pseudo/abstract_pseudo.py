@@ -46,7 +46,7 @@ class AbstractPseudo(ABC):
         pass
 
 class BasePseudo(AbstractPseudo):
-    def __init__(self, fname, direct = True, **kwargs):
+    def __init__(self, fname = None, direct = True, **kwargs):
         self.fname = fname
         #-----------------------------------------------------------------------
         self.r = None
@@ -59,10 +59,14 @@ class BasePseudo(AbstractPseudo):
         self._atomic_density = None
         self._atomic_density_grid = None
         #-----------------------------------------------------------------------
-        self.read(fname, **kwargs)
+        if fname is not None :
+            self.read(fname, **kwargs)
 
     def read(self, fname, *args, **kwargs):
         pass
+
+    def __call__(self, fname = None, **kwargs):
+        return self
 
     @property
     def zval(self):
