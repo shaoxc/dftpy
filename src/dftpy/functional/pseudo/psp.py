@@ -1,4 +1,5 @@
 import numpy as np
+import datetime
 
 from dftpy.functional.pseudo.abstract_pseudo import BasePseudo
 
@@ -43,6 +44,17 @@ class PSP(BasePseudo):
         info['rchrg'] = float(values[0])
         info['fchrg'] = float(values[1])
         info['qchrg'] = float(values[2])
+        # line 5 : nproj
+        info['nproj'] = list(map(int, lines[4].split()[:5]))
+        # line 6 : extension_switch
+        values = lines[5].split()
+        v = []
+        for item in values :
+            if not item.isdigit():
+                break
+            else :
+                v.append(int(item))
+        info['extension_switch'] = v
         #
         mmax = info['mmax']
         lloc = info['lloc']
@@ -55,8 +67,6 @@ class PSP(BasePseudo):
         # data = np.array(line.split()).astype(np.float64) / HARTREE2EV / BOHR2ANG ** 3
         data = [line.split()[1:3] for line in lines[ibegin:iend]]
         data = np.asarray(data, dtype = np.float64)
-        ibegin = 6+ (mmax + 1) * lloc + mmax
-        iend = ibegin + mmax
 
         self.r = data[:, 0]
         self.v = data[:, 1]
@@ -64,8 +74,69 @@ class PSP(BasePseudo):
         self._zval = self.info['zval']
 
         if fchrg > 0.0 :
+            ibegin = 6+ (mmax + 1) * lloc + mmax
+            iend = ibegin + mmax
             core_density = [line.split()[1:3] for line in lines[ibegin:iend]]
             self._core_density_grid = core_density[:, 0]
             core_density = np.asarray(core_density, dtype = np.float64)
             core_density[:, 1] /= (4.0 * np.pi)
             self._core_density = core_density
+
+    def write(self, fname, header = 'DFTpy'):
+        info_default = {
+                'atomicnum' : 'none',
+                'zval' : 'none',
+                'date' : datetime.date.today().strftime("%m%d%Y"),
+                'pspcod' : 8,
+                'pspxc' : 2,
+                'lmax' : 0,
+                'lloc' : 0,
+                'mmax' : 'none',
+                'r2well' : 0,
+                'rchrg' : 0,
+                'fchrg' : -1,
+                'qchrg' : 0,
+                'nproj' : [0, 0, 0, 0, 0],
+                'extension_switch' : [0],
+                }
+        comments = [
+            "zatom,zion,pspd",
+            "pspcod,pspxc,lmax,lloc,mmax,r2well",
+            "rchrg fchrg qchrg",
+            "nproj",
+            "extension_switch"]
+        info_default.update(self.info)
+        info = info_default
+        info['mmax'] = len(self.r)
+        if self._zval is not None : info['zval'] = self._zval
+        for k, v in info.items():
+            if v == 'none' :
+                raise AttributeError(f"Missing value of {k}")
+        with open(fname, 'w') as fh:
+            sp = ' '*4
+            fh.write(header + '\n')
+            fh.write(f"{info['atomicnum']:.4f}{sp}")
+            fh.write(f"{info['zval']:.4f}{sp}")
+            fh.write(f"{info['date']:s}{sp}")
+            fh.write(f"{comments[0]}\n")
+            fh.write(f"{info['pspcod']:d}{sp}")
+            fh.write(f"{info['pspxc']:d}{sp}")
+            fh.write(f"{info['lmax']:d}{sp}")
+            fh.write(f"{info['lloc']:d}{sp}")
+            fh.write(f"{info['mmax']:d}{sp}")
+            fh.write(f"{info['r2well']:d}{sp}")
+            fh.write(f"{comments[1]}\n")
+            fh.write(f"{info['rchrg']:6f}{sp}")
+            fh.write(f"{info['fchrg']:6f}{sp}")
+            fh.write(f"{info['qchrg']:6f}{sp}")
+            fh.write(f"{comments[2]}\n")
+            for item in info['nproj'] :
+                fh.write(f"{item:d}{sp}")
+            fh.write(f"{comments[3]}\n")
+            for item in info['extension_switch'] :
+                fh.write(f"{item:d}{sp}")
+            fh.write(f"{comments[4]}\n")
+            fh.write('4\n')
+
+            for i, (r, v) in enumerate(zip(self.r, self.v)):
+                fh.write(f"{i+1:<4d}  {r:.13e} {v:.13e}\n")
