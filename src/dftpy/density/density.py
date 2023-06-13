@@ -163,8 +163,7 @@ class DensityGenerator(object):
             ncharge = ions.get_ncharges()
         if rho is None :
             rho = DirectField(grid=grid)
-            rho[:] = 1.0
-        rho[:] = ncharge / (rho.integral())
+        rho[:] = ncharge / rho.grid.cell.volume
         return rho
 
     def guess_rho_atom(self, ions, grid, ncharge = None, rho = None, dtol=1E-30, **kwargs):

@@ -180,9 +180,9 @@
     },
     "densityini": {
       "comment": "The initial density is given by homogeneous electron gas (HEG) or read from :ref:`densityfile<density-densityfile>`. If set `Read`, must given the :ref:`densityfile<density-densityfile>`.",
-      "options": "HEG, Read",
-      "type": "str",
-      "default": "HEG"
+      "options": "heg, read",
+      "type": "lstr",
+      "default": "heg"
     },
     "densityfile": {
       "comment": "The charge density for initial density, only works when if :ref:`densityini<density-densityini>` set `Read`.",

@@ -6,7 +6,6 @@ from dftpy.functional import Functional
 from dftpy.functional.total_functional import TotalFunctional
 from dftpy.constants import LEN_CONV, ENERGY_CONV, STRESS_CONV
 from dftpy.formats.io import read_density, write, read
-from dftpy.ewald import ewald
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
 from dftpy.math_utils import ecut2nr
@@ -15,6 +14,7 @@ from dftpy.config.config import PrintConf, ReadConf
 from dftpy.inverter import Inverter
 from dftpy.properties import get_electrostatic_potential
 from dftpy.utils import field2distrib
+from dftpy.density import DensityGenerator
 
 
 def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = None):
@@ -111,14 +111,17 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
     root = 0
     if rhoini is not None:
         density = rhoini
-    elif config["DENSITY"]["densityini"] == "HEG":
+    elif config["DENSITY"]["densityini"] == "heg":
         charge_total = ions.get_ncharges()
         rho_ini[:] = charge_total / ions.cell.volume
         if nspin>1 : rho_ini[:] /= nspin
-    elif config["DENSITY"]["densityini"] == "Read":
+    elif config["DENSITY"]["densityini"] == "read":
         density = []
         if mp.rank == root :
             density = read_density(config["DENSITY"]["densityfile"])
+    elif config["DENSITY"]["densityini"] == "atomic":
+        dg = DensityGenerator(pseudo = PSEUDO)
+        rho_ini = dg.guess_rho(ions, grid = grid, rho = rho_ini, nspin = nspin)
 
     if density is not None:
         field2distrib(density, rho_ini, root = root)
