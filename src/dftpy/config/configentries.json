@@ -215,13 +215,13 @@
       "default": "lda_x lda_c_pz"
     },
     "x_str": {
-	  "comment": "See `libxc's available exchange functionals <https://www.tddft.org/programs/libxc/functionals/>`_ (deprecated).",
+      "comment": "See `libxc's available exchange functionals <https://www.tddft.org/programs/libxc/functionals/>`_ (deprecated).",
       "options": "",
       "type": "str",
       "default": null
     },
     "c_str": {
-	  "comment": "See `libxc's available correlation functionals <https://www.tddft.org/programs/libxc/functionals/>`_ (deprecated).",
+      "comment": "See `libxc's available correlation functionals <https://www.tddft.org/programs/libxc/functionals/>`_ (deprecated).",
       "options": "",
       "type": "str",
       "default": null
@@ -518,6 +518,67 @@
       "comment": "The initial approximation for the inverse Hessian needed by `LBFGS`."
     }
   },
+  "MIX": {
+    "comment": {
+      "type": "str",
+      "default": "Control the charge density mixing."
+    },
+    "scheme": {
+      "type": "lstr",
+      "default": "pulay",
+      "comment": "Density mixing scheme.",
+      "options": "pulay, linear"
+    },
+    "predtype": {
+      "type": "str",
+      "comment": "The preconditioning method.",
+      "options": "kerker, inverse_kerker, resta",
+      "default": "kerker"
+    },
+    "predcoef": {
+      "type": "floatlist",
+      "comment": "The parameters for preconditioning.",
+      "options": "",
+      "default": "1.0 1.0 1.0"
+    },
+    "predecut": {
+      "type": "float",
+      "comment": "The preconditioning energy cutoff.",
+      "options": "",
+      "unit": "eV",
+      "default": null
+    },
+    "maxm": {
+      "type": "int",
+      "comment": "Maximum of iterations used for mixing.",
+      "options": "",
+      "default": 7
+    },
+    "coef": {
+      "type": "float",
+      "comment": "",
+      "options": "The mixing parameter.",
+      "default": "0.7"
+    },
+    "delay": {
+      "type": "int",
+      "comment": "Delay several step to mixing the density.",
+      "options": "",
+      "default": "2"
+    },
+    "restarted": {
+      "type": "bool",
+      "comment": "Restart the mixer after several step.",
+      "options": "True, False",
+      "default": false
+    },
+    "kf": {
+      "type": "str",
+      "comment": "Similar as predcoef, not use now.",
+      "options": "",
+      "default": "auto"
+    }
+  },
   "PROPAGATOR": {
     "comment": {
       "type": "str",
@@ -688,12 +749,12 @@
     },
     "cutoff": {
       "type": "float",
-      "default": 1.0e-2,
+      "default": 0.01,
       "comment": "If :math:'k_F' is smaller than the cutoff, treat it equal to the cutoff."
     },
     "rho_cutoff": {
       "type": "float",
-      "default": 1.0e-3
+      "default": 0.001
     },
     "k": {
       "type": "int",

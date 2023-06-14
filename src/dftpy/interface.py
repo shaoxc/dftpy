@@ -15,6 +15,7 @@ from dftpy.inverter import Inverter
 from dftpy.properties import get_electrostatic_potential
 from dftpy.utils import field2distrib
 from dftpy.density import DensityGenerator
+from dftpy.mixer import Mixer
 
 
 def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = None):
@@ -157,6 +158,11 @@ def OptimizeDensityConf(config, ions = None, rho = None, E_v_Evaluator = None, n
         lscf = True
     else :
         lscf = False
+    #-----------------------------------------------------------------------
+    mix_kwargs = config["MIX"].copy()
+    if mix_kwargs['predecut'] : mix_kwargs['predecut'] *= ENERGY_CONV["eV"]["Hartree"]
+    mixer = Mixer(**mix_kwargs)
+    #-----------------------------------------------------------------------
     if "Optdensity" in config["JOB"]["task"]:
         optimization_options = config["OPT"].copy()
         optimization_options["econv"] *= ions.nat
@@ -169,7 +175,7 @@ def OptimizeDensityConf(config, ions = None, rho = None, E_v_Evaluator = None, n
             optimization_method=config["OPT"]["method"],
         )
         if lscf :
-            oescf = OESCF(optimization = opt, evaluator_emb = evaluator_emb)
+            oescf = OESCF(optimization = opt, evaluator_emb = evaluator_emb, mixer = mixer)
             opt = oescf
         rho = opt.optimize_rho(guess_rho=rho_ini)
         # perform second step, dense grid

@@ -1,6 +1,5 @@
-import numpy as np
 from dftpy.mpi import sprint
-from dftpy.time_data import timer
+from dftpy.time_data import TimeData, timer
 from dftpy.functional import ExternalPotential, Hartree
 
 
@@ -18,6 +17,8 @@ class OESCF:
         self.iter = 0
         self.residual_norm_prev = 1.0
         if self.maxiter < 1 : self.maxiter = self.options['maxiter']
+        self.extfunctional = ExternalPotential()
+        self.error = 1.0
 
     @property
     def comm(self):
@@ -34,76 +35,85 @@ class OESCF:
     def optimize_rho(self, **kwargs):
         return self.run(**kwargs)
 
+    @timer('OESCF')
     def run(self, guess_rho = None, **kwargs):
         #-----------------------------------------------------------------------
         if guess_rho is None and self.rho is None:
             raise AttributeError("Must provide a guess density")
         elif guess_rho is not None :
             self.rho = guess_rho
-        self.econv = self.options['econv'] / 100.0
+        self.ncharges = self.rho.integral()
+        self.econv = self.options['econv']*1.0
+        self.energyhistory = []
         #-----------------------------------------------------------------------
         for i in range(self.maxiter):
             self.get_density()
             self.mix()
-            sprint(f" OESCF--> iter={self.iter:<5d} conv={self.options['econv']:<.3E}  econv={self.dp_norm:<.3E}", comm=self.comm, level = 2)
-            if self.dp_norm < self.econv :
+            costtime = TimeData.Time("OESCF")
+            energy = self.energyhistory[-1]
+            sprint(f" OESCF--> iter={self.iter:<5d} conv={self.options['econv']:<.3E} de={self.error:<.3E} energy={energy:<.6E} time={costtime:<.6E}", comm=self.comm, level = 2)
+            if self.error < self.econv :
                 sprint("##### OESCF Density Optimization Converged #####", comm=self.comm)
                 break
         else :
             sprint("!WARN: Not converged, but reached max iterations", comm=self.comm)
         return self.rho
 
-    @timer('OESCF')
-    def get_density(self, res_max = None, **kwargs):
+    def get_density(self, norm = None, **kwargs):
         self.iter += 1
+        scale = 1E-2
         #-----------------------------------------------------------------------
-        if res_max is None :
-            res_max = self.residual_norm_prev
-
-        if self.iter == 1 :
-            self.options['econv0'] = self.options['econv'] * 1E4
-            self.options['econv'] = self.options['econv0']
-            res_max = 1.0
+        if norm is None :
+            if self.iter == 1 :
+                norm = self.ncharges*1E-1
+                self.options['econv'] = 1E10
+            elif self.iter == 2 :
+                norm = self.ncharges*1E-3
+            else :
+                norm = self.dp_norm
 
         if self.comm.size > 1 :
-            res_max = self.comm.bcast(res_max, root = 0)
+            norm = self.comm.bcast(norm, root = 0)
 
-        norm = res_max
-        if self.iter < 3 :
-            norm = max(0.1, res_max)
-
-        econv = self.options['econv0'] * norm
+        econv = max(norm*scale, 1E-7*self.ncharges)
         if econv < self.options['econv'] :
             self.options['econv'] = econv
-        if norm < 1E-7 and self.iter > 3 :
-            self.options['maxiter'] = 4
         self.iterative(**kwargs)
 
     def iterative(self, **kwargs):
         #
-        extpot = self.evaluator_emb(self.rho, calcType = ('V')).potential
         self.rho_prev = self.rho.copy()
+        func = self.evaluator_emb(self.rho, calcType = ('E', 'V'))
+        self.extfunctional.v = func.potential
+        self.extenergy = func.energy
+        self.extenergy -= self.rho.grid.mp.vsum(self.extfunctional(self.rho, calcType = ('E')).energy)
         #
-        self.optimization.EnergyEvaluator.funcDict['EMB'] = ExternalPotential(v = extpot)
+        self.optimization.EnergyEvaluator.funcDict['EMB'] = self.extfunctional
         self.optimization_method = 'CG-HS'
         #
         self.optimization.optimize_rho(guess_rho=self.rho)
         self.rho = self.optimization.rho
         #
         del self.optimization.EnergyEvaluator.funcDict['EMB']
+        #
+        self.functional = self.optimization.functional
+        self.functional.energy += self.extenergy
+        #
+        energy = self.functional.energy
+        if len(self.energyhistory) > 0 :
+            self.error = abs(energy-self.energyhistory[-1])
+        else :
+            self.error = abs(energy)
+        self.energyhistory.append(energy)
 
     def mix(self, **kwargs):
         r = self.rho - self.rho_prev
         self.dp_norm = Hartree.compute(r, calcType=('E')).energy
-        self.residual_norm = np.sqrt((r*r).amean())
         if self.iter == 1 :
             self.dp_norm_prev = self.dp_norm
-            self.residual_norm_prev = self.residual_norm
-        else : # Sometime the density not fully converged.
+        else :
             self.dp_norm, self.dp_norm_prev = self.dp_norm_prev, self.dp_norm
-            self.residual_norm, self.residual_norm_prev = self.residual_norm_prev, self.residual_norm
             self.dp_norm = (self.dp_norm + self.dp_norm_prev)/2
-            self.residual_norm = (self.residual_norm + self.residual_norm_prev)/2
         #
         if self.mixer :
             self.rho = self.mixer(self.rho_prev, self.rho, **kwargs)
