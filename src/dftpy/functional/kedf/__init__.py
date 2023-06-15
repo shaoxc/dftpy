@@ -225,6 +225,7 @@ def KEDFStress(rho, name="WT", energy=None, **kwargs):
 
 class NLGGA(AbstractFunctional):
     def __init__(self, stv=None, gga=None, nl=None, rhomax=None, name='STV+GGA+LMGPA'):
+        self.type = 'KEDF'
         self.stv = stv
         self.gga = gga
         self.nl = nl
@@ -239,6 +240,9 @@ class NLGGA(AbstractFunctional):
             calc = {'D', 'V'}
         elif 'E' in calcType:
             calc = {'D'}
+
+        split = kwargs.get('split', False)
+        kwargs['split'] = False
 
         rhomax_w = density.amax()
 
@@ -296,6 +300,7 @@ class NLGGA(AbstractFunctional):
             energy = energydensity.sum() * density.grid.dV
             obj.energy = energy
 
+        if split : obj = {'NG': obj}
         return obj
 
 
@@ -326,10 +331,8 @@ def kedf2nlgga(name='STV+GGA+LMGPA', **kwargs):
     if params is not None: del kwargs["params"]
 
     # Only for GGA
-    if "k_str" in kwargs:
-        k_str = kwargs.pop("k_str")
-    else:
-        k_str = "REVAPBEK"
+    k_str = kwargs.pop("k_str", None)
+    if not k_str : k_str = "REVAPBEK"
 
     # Remove TF and vW from NL
     for key in ['x', 'y']:
@@ -406,6 +409,7 @@ def kedf2mixkedf(name='MIX_TF+GGA', first_high=True, **kwargs):
 
 class MIXGGAS(AbstractFunctional):
     def __init__(self, stv=None, gga=None, rhomax=None, name='MIX_TF+GGA'):
+        self.type = 'KEDF'
         self.stv = stv
         self.gga = gga
         self.rhomax = rhomax
@@ -418,8 +422,10 @@ class MIXGGAS(AbstractFunctional):
         elif 'E' in calcType:
             calc = {'D'}
 
-        func_stv = self.stv(density, calcType=calc, **kwargs)
+        split = kwargs.get('split', False)
+        kwargs['split'] = False
 
+        func_stv = self.stv(density, calcType=calc, **kwargs)
         func_gga = self.gga(density, calcType=calc, **kwargs)
 
         obj = FunctionalOutput(name='MIXGGAS')
@@ -439,6 +445,7 @@ class MIXGGAS(AbstractFunctional):
             energy = energydensity.sum() * density.grid.dV
             obj.energy = energy
 
+        if split : obj = {'MG': obj}
         return obj
 
     def interpfunc(self, rho, calcType={"E", "V"}, func='tanh', **kwargs):
