@@ -26,11 +26,11 @@ tag:
    - git config --global user.email "${GITLAB_USER_EMAIL}"
   script:
    - git status
-   - version=$(grep -n 'version' src/dftpy/__init__.py | head -n 1 | awk '{print $3}' | tr -d \")
-   - tag='x'$version
-   - echo $tag
+   - VERSION=$(grep -n 'version' src/dftpy/__init__.py | head -n 1 | awk '{print $3}' | tr -d \")
+   - TAG='x'$VERSION
+   - echo $TAG
+   - git tag -n1 --list
    - git tag -l "v2.0.0"
-   - git tag -l "$TAG"
    - >
      if [ $(git tag -l "$TAG") ]; then
        echo "Tag $TAG already exists"
