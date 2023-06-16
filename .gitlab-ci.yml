@@ -29,7 +29,6 @@ tag:
    - version=$(grep -n 'version' src/dftpy/__init__.py | head -n 1 | awk '{print $3}' | tr -d \")
    - tag='x'$version
    - echo $tag
-   - git tags
    - git tag -l "$TAG"
    - >
      if [ $(git tag -l "$TAG") ]; then
