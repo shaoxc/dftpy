@@ -14,7 +14,8 @@ test:
 tag:
   stage: tag
   only:
-   - ci
+   refs:
+    - ci
    variables:
     - $CI_COMMIT_MESSAGE =~ /release.*/
   before_script:
