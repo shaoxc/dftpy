@@ -3,6 +3,9 @@ stages:
   - tag
 
 test:
+  only:
+   refs:
+    - master
   stage: test
   image: registry.gitlab.com/pavanello-research-group/dftpy:latest
   script:
@@ -26,6 +29,8 @@ tag:
    - version=$(grep -n 'version' src/dftpy/__init__.py | head -n 1 | awk '{print $3}' | tr -d \")
    - tag='x'$version
    - echo $tag
+   - git tags
+   - git tag -l "$TAG"
    - >
      if [ $(git tag -l "$TAG") ]; then
        echo "Tag $TAG already exists"
