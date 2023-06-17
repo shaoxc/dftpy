@@ -32,6 +32,9 @@ tag:
    - TAG='x'$VERSION
    - echo $TAG
    - git tag -l -n
+   - git tag -a $TAG -m "Version $TAG"
+   - cat .git/config
+   - git push origin $TAG
    - >
      if [ $(git tag -l "$TAG") ]; then
        echo "Tag $TAG already exists"
