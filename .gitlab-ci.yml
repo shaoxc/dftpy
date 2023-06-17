@@ -1,12 +1,39 @@
-image: registry.gitlab.com/pavanello-research-group/dftpy:latest
+stages:
+  - test
+  - tag
 
-Test:
+test:
+  stage: test
+  image: registry.gitlab.com/pavanello-research-group/dftpy:latest
   script:
    - python setup.py install
    - cd examples
    - DFTPY_DATA_PATH='./DATA/' pytest --cov-report term-missing --cov=./ ./test/
   coverage: '/TOTAL\s+\d+\s+\d+\s+(\d+\%)/'
 
+tag:
+  stage: tag
+  only:
+   refs:
+    - master
+   variables:
+    - $CI_COMMIT_MESSAGE =~ /release.*/
+  before_script:
+   - git config --global user.name "${GITLAB_USER_NAME}"
+   - git config --global user.email "${GITLAB_USER_EMAIL}"
+  script:
+   - git remote set-url origin https://oauth2:$ACCESS_TOKEN@$CI_SERVER_HOST/$CI_PROJECT_PATH.git
+   - VERSION=$(grep -n 'version' src/dftpy/__init__.py | head -n 1 | awk '{print $3}' | tr -d \")
+   - TAG='v'$VERSION
+   - echo $TAG
+   - git tag -l -n
+   - >
+     if [ $(git tag -l "$TAG") ]; then
+       echo "Tag $TAG already exists"
+     else
+       git tag -a $TAG -m "Version $TAG"
+       git push origin $TAG
+     fi
 
 .BuildAndTest:
   image: python:3
@@ -39,4 +66,3 @@ Test:
     - cd examples
     - DFTPY_DATA_PATH='./DATA/' pytest --cov-report term-missing --cov=./ ./test/
   coverage: '/TOTAL\s+\d+\s+\d+\s+(\d+\%)/'
-
