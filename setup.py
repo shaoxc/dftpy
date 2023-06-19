@@ -51,16 +51,25 @@ extras_require = {
             ],
         }
 
+release = 0
+if release :
+    VERSION = {'version' : __version__}
+else :
+    VERSION = {
+            'use_scm_version': {'version_scheme': 'post-release'},
+            'setup_requires': [
+                'setuptools_scm',
+                'importlib-metadata>=0.12;python_version<"3.8"'],
+            }
+
 setup(name='dftpy',
       description=description,
       long_description=long_description,
       url='http://dftpy.rutgers.edu',
-      version=__version__,
-      # use_scm_version={'version_scheme': 'post-release'},
-      # setup_requires=['setuptools_scm'],
       author=__author__,
       author_email=__contact__,
       license=__license__,
+      **VERSION,
       classifiers=[
           'Development Status :: 3 - Alpha',
           'Intended Audience :: Science/Research',
@@ -70,6 +79,7 @@ setup(name='dftpy',
           'Programming Language :: Python :: 3.7',
           'Programming Language :: Python :: 3.8',
           'Programming Language :: Python :: 3.9',
+          'Programming Language :: Python :: 3.10',
           'Topic :: Scientific/Engineering :: Chemistry',
           'Topic :: Scientific/Engineering :: Physics'
       ],
