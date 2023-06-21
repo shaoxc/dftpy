@@ -73,8 +73,8 @@
   },
   "PP": {
     "comment": {
-      "type": "str",
-      "default": "Control of the running job.",
+      "type": "cdict",
+      "default": "Pseudopotential files for each atomic species",
       "example": "Al = Al_lda.oe01.recpot"
     }
   },
@@ -234,7 +234,7 @@
     },
     "kedf": {
       "comment": "The type of KEDF. GGA functionals are available with keywords GGA and LIBXC_KEDF.",
-      "options": "TF, GGA, LIBXC_KEDF, vW, x_TF_y_vW, WT, SM, FP, MGP, MGPA, MGPG, LMGP, LMGPA, LMGPG",
+      "options": "TF, GGA, LIBXC_KEDF, vW, TFvW, WT, SM, FP, MGP, MGPA, MGPG, LMGP, LMGPA, LMGPG",
       "type": "ustr",
       "default": "WT"
     },
