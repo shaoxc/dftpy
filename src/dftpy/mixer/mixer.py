@@ -30,7 +30,7 @@ class SpecialPrecondition :
     def matrix(self):
         if self._matrix is None :
             if self.predtype is None :
-                self._matrix = np.ones(self.grid.nrG)
+                self._matrix = ReciprocalField(self.grid.get_reciprocal())+1.0
             elif self.predtype == 'kerker' :
                 self._matrix = self.kerker()
             elif self.predtype == 'inverse_kerker' :
@@ -158,6 +158,9 @@ class AbstractMixer(ABC):
 
     @abstractmethod
     def __call__(self):
+        pass
+
+    def restart(self, *arg, **kwargs):
         pass
 
     def format_density(self, results, nin):

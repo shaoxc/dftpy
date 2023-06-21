@@ -46,3 +46,7 @@ class Mixer:
             for i in range(nspin):
                 results[i] = self.mixers[i](nin[i], nout[i], coef=coef)
         return results
+
+    def restart(self, *args, **kwargs):
+        for mixer in self.mixers :
+            mixer.restart(*args, **kwargs)
