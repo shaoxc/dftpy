@@ -7,6 +7,7 @@ from dftpy.field import DirectField, ReciprocalField
 from dftpy.grid import RadialGrid
 from dftpy.mpi import sprint
 from dftpy.functional.pseudo import ReadPseudo
+from dftpy.formats import io
 from dftpy.math_utils import gaussian
 
 
@@ -14,31 +15,38 @@ class AtomicDensity(object):
     """
     The densities for atomic atoms.
     """
-    def __init__(self, grid = None, ions = None, key=None, rcut=5.0, **kwargs):
+    def __init__(self, grid = None, ions = None, key=None, rcut=5.0, rtol = None, **kwargs):
         self.grid = grid
         self.ions = ions
         self.key = key
         self.rcut = rcut
+        self.rtol = rtol
         self.dnr = (1.0 / self.grid.nrR).reshape((3, 1))
         border = (rcut / grid.spacings).astype(np.int32) + 1
         border = np.minimum(border, grid.nrR // 2)
         self.ixyzA = np.mgrid[-border[0]:border[0] + 1, -border[1]:border[1] + 1, -border[2]:border[2] + 1].reshape((3, -1))
         self.prho = np.zeros((2 * border[0] + 1, 2 * border[1] + 1, 2 * border[2] + 1))
+        self.i = 0
 
     def distance(self):
-        self.i = 0
         while self.i < self.ions.nat:
             results = self.step()
             if results is not None:
                 yield results
             self.i += 1
 
-    def step(self):
-        if self.ions.symbols[self.i] != self.key:
-            return None
+    def step(self, iatom = None, position = None, scaled_position = None):
+        if scaled_position is None :
+            if position is None :
+                if iatom is None : iatom = self.i
+                if self.ions.symbols[iatom] != self.key:
+                    return None
+                position = self.ions.positions[iatom]
+            cell = self.grid.cell
+            scaled_position = cell.scaled_positions(position)
+        #
         self.prho[:] = 0.0
-        posi = self.ions.get_scaled_positions()[self.i].reshape((1, 3))
-        atomp = np.array(posi) * self.grid.nr
+        atomp = np.asarray(scaled_position) * self.grid.nr
         atomp = atomp.reshape((3, 1))
         ipoint = np.floor(atomp + 1E-8)
         px = atomp - ipoint
@@ -46,9 +54,13 @@ class AtomicDensity(object):
         positions = (self.ixyzA + px) * self.dnr
         positions = np.einsum("j...,kj->k...", positions, self.grid.lattice)
         dists = LA.norm(positions, axis=0).reshape(self.prho.shape)
-        index = dists < self.rcut
+        if self.rtol :
+            index = np.logical_and(dists < self.rcut, dists > self.rtol)
+        else :
+            index = dists < self.rcut
         mask = self.grid.get_array_mask(l123A)
         return {
+            "positions": positions,
             "dists": dists,
             "index": index,
             "l123A": l123A,
@@ -92,7 +104,13 @@ class DensityGenerator(object):
                 if not os.path.isfile(infile):
                     raise Exception("Density file " + infile + " for atom type " + str(key) + " not found")
                 else :
-                    readpp = ReadPseudo(self.files)
+                    if infile[-4:].lower() == "list" :
+                        try :
+                            self._r[key], self._arho[key] = self.read_density_list(infile)
+                        except Exception :
+                            raise Exception("density file '{}' has some problems".format(infile))
+                    else :
+                        readpp = ReadPseudo(self.files)
         elif self.pseudo is not None :
             if hasattr(self.pseudo, 'readpp') :
                 readpp = self.pseudo.readpp
@@ -103,15 +121,24 @@ class DensityGenerator(object):
             if self.is_core :
                 self._r = readpp._core_density_grid
                 self._arho = readpp._core_density
-            elif self.direct :
-                self._r = readpp._atomic_density_grid_real
-                self._arho = readpp._atomic_density_real
             else :
                 self._r = readpp._atomic_density_grid
                 self._arho = readpp._atomic_density
 
-        if not self._r or not self._arho :
-            raise AttributeError("Please give correct initial atomic density")
+    def read_density_list(self, infile):
+        with open(infile, "r") as fr:
+            lines = []
+            for i, line in enumerate(fr):
+                lines.append(line)
+
+        ibegin = 0
+        iend = len(lines)
+        data = [line.split()[0:2] for line in lines[ibegin:iend]]
+        data = np.asarray(data, dtype = float)
+
+        r = data[:, 0]
+        v = data[:, 1]
+        return r, v
 
     def guess_rho(self, ions, grid = None, ncharge = None, rho = None, dtol=1E-30, nspin = 1, **kwargs):
         if ncharge is None and self.is_core : ncharge = 0
@@ -145,9 +172,14 @@ class DensityGenerator(object):
         return rho_s
 
     def guess_rho_unspin(self, ions, grid = None, ncharge = None, rho = None, dtol=1E-30, **kwargs):
-        if len(self._r) == 0 :
-            if self.is_core : # no core density
+        if self.is_core : # no core density
+            if len(self._arho) == 0 : return None
+            for k, v in self._arho.items():
+                if v is not None : break
+            else :
                 return None
+
+        if len(self._arho) == 0 :
             rho = self.guess_rho_heg(ions, grid, ncharge, rho, dtol = dtol, **kwargs)
         elif self.direct :
             rho = self.guess_rho_atom(ions, grid, ncharge, rho, dtol = dtol, **kwargs)
@@ -171,19 +203,11 @@ class DensityGenerator(object):
         Note :
             Assuming the lattices are more than double of rcut, otherwise please use `get_3d_value_recipe` instead.
         """
-        nr = grid.nrR
-        dnr = (1.0/nr).reshape((3, 1))
         if rho is None :
             rho = DirectField(grid=grid) + dtol
         else :
             rho[:] = dtol
-        lattice = grid.lattice
-        metric = np.dot(lattice.T, lattice)
-        latp = np.zeros(3)
-        for i in range(3):
-            latp[i] = np.sqrt(metric[i, i])
-        gaps = latp / nr
-        scaled_postions=ions.get_scaled_positions()
+        latp = ions.cell.lengths()
         for key in self._r :
             r = self._r[key]
             arho = self._arho[key]
@@ -191,27 +215,19 @@ class DensityGenerator(object):
             rcut = np.max(r)
             rcut = min(rcut, 0.5 * np.min(latp))
             rtol = r[0]
-            border = (rcut / gaps).astype(np.int32) + 1
-            ixyzA = np.mgrid[-border[0]:border[0]+1, -border[1]:border[1]+1, -border[2]:border[2]+1].reshape((3, -1))
-            prho = np.zeros((2 * border[0]+1, 2 * border[1]+1, 2 * border[2]+1))
             tck = splrep(r, arho)
+            generator = AtomicDensity(grid = grid, ions = ions, key = key, rcut = rcut, rtol = rtol)
             for i in range(ions.nat):
-                if ions.symbols[i] != key:
-                    continue
-                prho[:] = 0.0
-                posi = scaled_postions[i].reshape((1, 3))
-                atomp = posi * nr
-                atomp = atomp.reshape((3, 1))
-                ipoint = np.floor(atomp)
-                px = atomp - ipoint
-                l123A = np.mod(ipoint.astype(np.int32) - ixyzA, nr[:, None])
-
-                positions = (ixyzA + px) * dnr
-                positions = np.einsum("j...,kj->k...", positions, grid.lattice)
-                dists = LA.norm(positions, axis = 0).reshape(prho.shape)
-                index = np.logical_and(dists < rcut, dists > rtol)
+                if ions.symbols[i] != key: continue
+                #
+                results = generator.step(position = ions.positions[i])
+                l123A = results.get('l123A')
+                mask = results.get('mask')
+                index = results.get('index')
+                dists = results.get('dists')
+                prho = generator.prho
+                #
                 prho[index] = splev(dists[index], tck, der = 0)
-                mask = grid.get_array_mask(l123A)
                 rho[l123A[0][mask], l123A[1][mask], l123A[2][mask]] += prho.ravel()[mask]
         nc = rho.integral()
         sprint('Guess density : ', nc)
@@ -242,7 +258,7 @@ def get_3d_value_recipe(r, arho, ions, grid, ncharge = None, rho = None, dtol=0.
     if pme :
         Bspline = CBspline(ions=ions, grid=grid, order=order)
         qa = np.empty(grid.nr)
-        scaled_postions=ions.get_scaled_positions()
+        scaled_positions=ions.get_scaled_positions()
         for key in r:
             r0 = r[key]
             arho0 = arho[key]
@@ -252,7 +268,7 @@ def get_3d_value_recipe(r, arho, ions, grid, ncharge = None, rho = None, dtol=0.
             qa[:] = 0.0
             for i in range(len(ions.positions)):
                 if ions.symbols[i] == key:
-                    qa = Bspline.get_PME_Qarray(scaled_postions[i], qa)
+                    qa = Bspline.get_PME_Qarray(scaled_positions[i], qa)
             qarray = DirectField(grid=grid, data=qa)
             rho_g += vlines[key] * qarray.fft()
         rho_g *= Bspline.Barray * grid.nnrR / grid.volume
@@ -305,4 +321,73 @@ def normalization_density(density, ncharge = None, grid = None, tol = 1E-300, me
         pass
     if not hasattr(density, 'grid'):
         density = DirectField(grid, data=density)
+    return density
+
+def file2density(filename, density, grid = None):
+    if grid is None : grid = density.grid
+    ext = os.path.splitext(filename)[1].lower()
+    if ext == ".snpy":
+        density[:] = io.read_density(filename, grid=grid)
+    else :
+        fstr = f'!WARN : snpy format for density initialization will better, but this file is "{filename}".'
+        sprint(fstr, comm=grid.mp.comm, level=2)
+        if grid.mp.comm.rank == 0 :
+            density_gather = io.read_density(filename)
+        else :
+            density_gather = np.zeros(1)
+        grid.scatter(density_gather, out = density)
+
+def gen_gaussian_density(ions, grid, options={}, density = None, deriv = 0, **kwargs):
+    if density is None : density = DirectField(grid)
+    ncharge = 0.0
+    for key, option in options.items() :
+        rcut = option.get('rcut', 5.0)
+        sigma = option.get('sigma', 0.3)
+        scale = option.get('scale', 0.0)
+        if scale is None or abs(scale) < 1E-10 : continue
+        generator = AtomicDensity(grid = grid, ions = ions, key = key, rcut = rcut)
+        for i in range(ions.nat):
+            if ions.symbols[i] != key : continue
+            density = build_pseudo_density(ions.positions[i], grid, scale=scale, sigma=sigma,
+                    density=density, add=True, deriv=deriv, generator=generator)
+            ncharge += scale
+
+    return density, ncharge
+
+def build_pseudo_density(pos, grid, scale = 0.0, sigma = 0.3, rcut = 5.0, density = None, add = True, deriv = 0, generator = None):
+    """
+    FWHM : 2*np.sqrt(2.0*np.log(2)) = 2.354820
+    """
+    if density is None : density = DirectField(grid)
+    #
+    if scale is None : return density
+    scale = np.asarray(scale)
+    if np.all(np.abs(scale)) < 1E-10 : return density
+    #
+    fwhm = 2.354820
+    sigma_min = np.max(grid.spacings) * 2 / fwhm
+    sigma = max(sigma, sigma_min)
+    #
+    if generator is None : generator = AtomicDensity(grid = grid, rcut = rcut)
+    results = generator.step(position = pos)
+    l123A = results.get('l123A')
+    mask = results.get('mask')
+    index = results.get('index')
+    dists = results.get('dists')
+    positions = results.get('positions')
+    prho = generator.prho
+    #
+    if scale.size > 1 :
+        if deriv != 1 : raise AttributeError("'scale' with array only works for deriv==1")
+        positions = positions.reshape((3, *prho.shape))
+        for i, s in enumerate(scale):
+            prho[index] += gaussian(dists[index], sigma) * positions[i][index]/sigma**2*scale[i]
+    else :
+        prho[index] = gaussian(dists[index], sigma, deriv = deriv) * scale
+        if deriv == 1 : prho[index] *= -1
+    #
+    if add :
+        density[l123A[0][mask], l123A[1][mask], l123A[2][mask]] += prho.ravel()[mask]
+    else :
+        density[l123A[0][mask], l123A[1][mask], l123A[2][mask]] = prho.ravel()[mask]
     return density
