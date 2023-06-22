@@ -42,7 +42,7 @@ def _eval_w(coefs, basis=None, veff0=None, driver = None, rho_ref = None, rho = 
     return w, w_deriv.ravel()
 
 def split_ions(ions, rcut = 10.0, order = 'atom-major', cutcell = False):
-    latp = ions.cell.cellpar()[:3]
+    latp = ions.cell.lengths()
     nmax = np.ceil(rcut / latp)
     P = np.diag(nmax)
     atoms = make_supercell(ions, P, order=order)

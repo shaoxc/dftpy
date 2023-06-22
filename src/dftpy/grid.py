@@ -46,7 +46,7 @@ class BaseGrid:
         if not full :
             self._nrG[-1] = self._nrG[-1] // 2 + 1
         self._nnrG = np.prod(self._nrG)
-        self._spacings = self.cell.cellpar()[:3] / self._nrR
+        self._spacings = self.cell.lengths() / self._nrR
         self._mp = mp
         if self.cplx :
             full = True
@@ -447,7 +447,7 @@ class DirectGrid(BaseGrid):
         return mask
 
     def guess_ecut(self):
-        spacings2 = self.cell.cellpar()[:3] / (self._nrR - 1)
+        spacings2 = self.cell.lengths() / (self._nrR - 1)
         spacings = 0.5*(self.spacings + spacings2)
         return spacing2ecut(spacings.max())
 

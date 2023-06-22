@@ -1,7 +1,7 @@
 import copy
 from dftpy.functional.abstract_functional import AbstractFunctional
 
-from .semilocal_xc import LDA, PBE, LibXC, CheckLibXC, XCStress
+from .semilocal_xc import LDA, PBE, LibXC, CheckLibXC, XCStress, get_short_xc_name, get_libxc_names
 from .rvv10 import RVV10, RVV10NL
 
 class XC(AbstractFunctional):

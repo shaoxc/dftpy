@@ -158,7 +158,7 @@ class PP(object):
             celldm = info.get("celldm", None)
             if celldm is None :
                 celldm = np.zeros(6)
-                celldm[0] = ions.cell.cellpar()[0]
+                celldm[0] = ions.cell.lengths()[0]
             mywrite(filepp, ibrav, True)
             mywrite(filepp, celldm, False)
             if ibrav == 0:

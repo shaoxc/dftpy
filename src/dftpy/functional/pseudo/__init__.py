@@ -391,12 +391,12 @@ class LocalPseudo(AbstractLocalPseudo):
         q = reciprocal_grid.q
         v = np.zeros_like(q, dtype=np.complex128)
         QA = np.empty(self.grid.nr)
-        scaled_postions=self.ions.get_scaled_positions()
+        scaled_positions=self.ions.get_scaled_positions()
         for key in sorted(self._vloc_interp):
             QA[:] = 0.0
             for i in range(len(self.ions.positions)):
                 if self.ions.symbols[i] == key:
-                    QA = self.Bspline.get_PME_Qarray(scaled_postions[i], QA)
+                    QA = self.Bspline.get_PME_Qarray(scaled_positions[i], QA)
             Qarray = DirectField(grid=self.grid, griddata_3d=QA, rank=1)
             v = v + self.vlines[key] * Qarray.fft()
         v = v * self.Bspline.Barray * self.grid.nnrR / self.grid.volume
@@ -489,7 +489,7 @@ class LocalPseudo(AbstractLocalPseudo):
         Forces = np.zeros((self.ions.nat, 3))
         ixyzA = np.mgrid[: self.BsplineOrder, : self.BsplineOrder, : self.BsplineOrder].reshape((3, -1))
         Q_derivativeA = np.zeros((3, self.BsplineOrder * self.BsplineOrder * self.BsplineOrder))
-        scaled_postions=self.ions.get_scaled_positions()
+        scaled_positions=self.ions.get_scaled_positions()
         for key in self.ions.symbols_uniq :
             denGV = denG * self.vlines[key]
             if rho.mp.rank == 0 :
@@ -497,7 +497,7 @@ class LocalPseudo(AbstractLocalPseudo):
             rhoPB = denGV.ifft(force_real=True)
             for i in range(self.ions.nat):
                 if self.ions.symbols[i] == key:
-                    Up = scaled_postions[i] * nrR
+                    Up = scaled_positions[i] * nrR
                     if self.Bspline.check_out_cell(Up):
                         continue
                     Mn = []
@@ -541,13 +541,13 @@ class LocalPseudo(AbstractLocalPseudo):
         nr = self.grid.nr
         stress = np.zeros((3, 3))
         QA = np.empty(nr)
-        scaled_postions=self.ions.get_scaled_positions()
+        scaled_positions=self.ions.get_scaled_positions()
         for key in self.ions.symbols_uniq :
             rhoGBV = rhoGB * self._PP_Derivative_One(key=key)
             QA[:] = 0.0
             for i in range(self.ions.nat):
                 if self.ions.symbols[i] == key:
-                    QA = self.Bspline.get_PME_Qarray(scaled_postions[i], QA)
+                    QA = self.Bspline.get_PME_Qarray(scaled_positions[i], QA)
             Qarray = DirectField(grid=self.grid, griddata_3d=QA, rank=1)
             rhoGBV = rhoGBV * Qarray.fft()
             for i in range(3):

@@ -153,9 +153,9 @@ class CBspline(object):
         # l123A = np.mod(np.floor(Up).astype(np.int32).reshape((3, 1)) - ixyzA, nr.reshape((3, 1)))
         # ixyzA = np.mgrid[:self.order, :self.order, :self.order].reshape((3, -1))
         ixyzA = self._ixyzA
-        scaled_postions=ions.get_scaled_positions()
+        scaled_positions=ions.get_scaled_positions()
         for i in range(ions.nat):
-            Up = scaled_postions[i] * nrR
+            Up = scaled_positions[i] * nrR
             if self.check_out_cell(Up):
                 continue
             l123A = np.mod(np.floor(Up).astype(np.int32).reshape((3, 1)) - ixyzA + 1, nrR.reshape((3, 1)))
@@ -770,9 +770,9 @@ class ewald(object):
 
         ## For speed
         ixyzA = np.mgrid[1: self.order + 1, 1: self.order + 1, 1: self.order + 1].reshape((3, -1))
-        scaled_postions=self.ions.get_scaled_positions()
+        scaled_positions=self.ions.get_scaled_positions()
         for i in range(self.ions.nat):
-            Up = scaled_postions[i] * nr
+            Up = scaled_positions[i] * nr
             Mn = []
             for j in range(3):
                 Mn.append(Bspline.calc_Mn(Up[j] - np.floor(Up[j])))
@@ -833,9 +833,9 @@ class ewald(object):
         ## For speed
         ixyzA = np.mgrid[: self.order, : self.order, : self.order].reshape((3, -1))
         Q_derivativeA = np.zeros((3, self.order * self.order * self.order))
-        scaled_postions=self.ions.get_scaled_positions()
+        scaled_positions=self.ions.get_scaled_positions()
         for i in range(self.ions.nat):
-            Up = scaled_postions[i] * nrR
+            Up = scaled_positions[i] * nrR
             if self.Bspline.check_out_cell(Up):
                 continue
             Mn = []
