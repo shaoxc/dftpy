@@ -439,6 +439,12 @@ class DirectField(BaseField):
         elif center is not None:
             do_center = True
 
+        if r0 is not None: r0 = np.asarray(r0)
+        if r1 is not None: r1 = np.asarray(r1)
+        if r2 is not None: r2 = np.asarray(r2)
+        if origin is not None: origin = np.asarray(origin)
+        if center is not None: center = np.asarray(center)
+
         if basis.lower() != 'crystal' :
             if r0 is not None: r0 = self.grid.cell.scaled_positions([r0])[0]
             if r1 is not None: r1 = self.grid.cell.scaled_positions([r1])[0]
