@@ -26,6 +26,7 @@ def readJSON(JSON_file):
     conf = config_map(map_JSON_ConfigEntry, conf_JSON)
 
     for section in conf:
+        if not hasattr(conf[section], '__iter__'): continue
         if 'copy' in conf[section]:
             copied_keys = copy.deepcopy(conf[conf[section]['copy'].default])
             copied_keys.update(conf[section])

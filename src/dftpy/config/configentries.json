@@ -72,11 +72,10 @@
     }
   },
   "PP": {
-    "comment": {
-      "type": "cdict",
-      "default": "Pseudopotential files for each atomic species",
-      "example": "Al = Al_lda.oe01.recpot"
-    }
+     "comment": "Pseudopotential files for each atomic species",
+     "type": "cdict",
+	 "default": {},
+     "example": "Al = Al_lda.oe01.recpot"
   },
   "CELL": {
     "comment": {
