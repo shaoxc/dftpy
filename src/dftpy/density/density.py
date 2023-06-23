@@ -72,7 +72,7 @@ class DensityGenerator(object):
     """
     """
     def __init__(self, files = None, pseudo = None, is_core = False, direct = False,
-            r = None, arho = None, **kwargs):
+            r = {}, arho = {}, **kwargs):
         self._r = r
         self._arho = arho
         self.direct = direct # reciprocal method will better
