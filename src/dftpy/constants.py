@@ -6,7 +6,6 @@ try:
     FFTLIB = "pyfftw"
 except Exception:
     FFTLIB = "numpy"
-
 # _Grav = Units._Grav
 # _Nav = Units._Nav
 # _amu = Units._amu
@@ -52,42 +51,38 @@ except Exception:
 # Ry = Units.Ry
 # Rydberg = Units.Rydberg
 
-LEN_UNITS = ["Bohr", "Angstrom", "nm", "m"]
+def conv2conv(conv, base = None):
+    if base is None : base = list(conv.keys())[0]
+    conv[base][base] = 1.0
+    ref = conv[base]
+    for key in ref :
+        if key == base : continue
+        conv[key] = {}
+        for key2 in ref :
+            conv[key][key2] = ref[key2]/ref[key]
+    return conv
 
-LEN_CONV = {}
-LEN_CONV["Bohr"] = {"Bohr": 1.0, "Angstrom": 0.5291772106712, "nm": 0.05291772106712, "m": 5.291772106712e-11}
-LEN_CONV["Angstrom"] = {"Bohr": 1.8897261254535427, "Angstrom": 1.0, "nm": 1.0e-1, "m": 1.0e-10}
-LEN_CONV["nm"] = {"Bohr": 18.897261254535427, "Angstrom": 10.0, "nm": 1.0, "m": 1.0e-9}
-LEN_CONV["m"] = {"Bohr": 1.8897261254535427e10, "Angstrom": 1.0e10, "nm": 1.0e9, "m": 1.0}
 
-ENERGY_CONV = {}
-ENERGY_CONV["eV"] = {"eV": 1.0, "Hartree": 0.03674932598150397}
-ENERGY_CONV["Hartree"] = {"eV": 27.2113834279111, "Hartree": 1.0}
+LEN_CONV={"Angstrom" : {"Bohr": 1.0/Units.Bohr, "nm": 1.0e-1, "m": 1.0e-10}}
+LEN_CONV = conv2conv(LEN_CONV)
 
-FORCE_CONV = {}
-FORCE_CONV["Ha/Bohr"] = {"Ha/Bohr": 1.0, "eV/A": ENERGY_CONV["Hartree"]["eV"] / LEN_CONV["Bohr"]["Angstrom"]}
+ENERGY_CONV= {"Hartree": {"eV": Units.Ha}}
+ENERGY_CONV = conv2conv(ENERGY_CONV)
 
-STRESS_CONV = {}
-STRESS_CONV["Ha/Bohr3"] = {
-    "Ha/Bohr3": 1.0,
-    "GPa": 29421.02648438959,
-    "eV/A3": ENERGY_CONV["Hartree"]["eV"] / LEN_CONV["Bohr"]["Angstrom"] ** 3,
-}
-#https://en.wikipedia.org/wiki/Hartree_atomic_units
-TIME_CONV = {}
-TIME_CONV["au"] = {
-        's' : 2.4188843265857e-17,
-        'fs' : 2.4188843265857e-2,
-}
+FORCE_CONV = {"Ha/Bohr": {"eV/A" : Units.Ha/Units.Bohr}}
+FORCE_CONV = conv2conv(FORCE_CONV)
 
-SPEED_OF_LIGHT = 137.035999084
+STRESS_CONV = {"eV/A3" : {"GPa": 1.0/Units.GPa, "Ha/Bohr3" : Units.Bohr ** 3 / Units.Ha}}
+STRESS_CONV = conv2conv(STRESS_CONV)
+
+TIME_CONV = {"au" : {'s' : Units.AUT/Units.s, 'fs' : Units.AUT/Units.fs}}
+TIME_CONV = conv2conv(TIME_CONV)
+
+SPEED_OF_LIGHT = 1.0/Units.alpha
 C_TF = 2.87123400018819181594
 TKF0 = 6.18733545256027186194
-
 CBRT_TWO = 1.25992104989487316477
-
 ZERO = 1E-30
-# set to 0 if smaller than ZERO
 
 environ = {} # You can change it anytime you want
 environ['STDOUT'] = sys.stdout # file descriptor of sprint
