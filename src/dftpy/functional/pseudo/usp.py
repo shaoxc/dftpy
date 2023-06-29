@@ -48,13 +48,13 @@ class USP(BasePseudo):
 
         line = " ".join([line.strip() for line in lines[ibegin:iend]])
 
-        zval = np.float(lines[ibegin - 2].strip())
+        zval = float(lines[ibegin - 2].strip())
 
         if "1000" in lines[iend] or len(lines[iend].strip()) == 1 or len(lines[iend].strip()) == 5:
             pass
         else:
             raise AttributeError("Error : Check the PP file : {}".format(fname))
-        gmax = np.float(lines[ibegin - 1].split()[0]) * BOHR2ANG
+        gmax = float(lines[ibegin - 1].split()[0]) * BOHR2ANG
 
         # v = np.array(line.split()).astype(np.float64) / (HARTREE2EV*BOHR2ANG ** 3 * 4.0 * np.pi)
         self.v = np.array(line.split()).astype(np.float64) / (HARTREE2EV * BOHR2ANG ** 3)
