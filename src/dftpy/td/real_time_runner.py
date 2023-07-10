@@ -135,7 +135,7 @@ class RealTimeRunner(Dynamics):
         if self.correction:
             correct_potential = self.correct_functionals(self.rho, calcType=['V'], current=self.j).potential
             self.correct_propagator.hamiltonian.v = correct_potential
-            self.predictor_corrector.psi_pred = self.correct_propagator(self.predictor_corrector.psi_pred)
+            self.predictor_corrector.psi_pred, info = self.correct_propagator(self.predictor_corrector.psi_pred)
             self.predictor_corrector.rho_pred = calc_rho(self.predictor_corrector.psi_pred)
             self.predictor_corrector.j_pred = calc_j(self.predictor_corrector.psi_pred)
 
