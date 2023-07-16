@@ -62,7 +62,12 @@ class BaseField(np.ndarray):
             input_values = np.asarray(data)
             input_values = np.reshape(input_values, nr, order=order)
 
-        obj = np.asarray(input_values).view(cls)
+        obj = np.asarray(input_values)
+        if order == 'C' and not obj.flags['C_CONTIGUOUS']:
+            obj = np.ascontiguousarray(obj)
+        elif order == 'F' and not obj.flags['F_CONTIGUOUS']:
+            obj = np.asfortranarray(obj)
+        obj = obj.view(cls)
         # add the new attribute to the created instance
         obj.grid = grid
         obj.span = (grid.nr > 1).sum()
