@@ -24,9 +24,9 @@ class BaseGrid:
     """
 
     def __init__(self, lattice, nr = None, origin=np.array([0.0, 0.0, 0.0]), full=True, direct=True,
-                 cplx=False, mp=None, ecut = None, **kwargs):
+                 cplx=False, mp=None, ecut = None, comm = None, **kwargs):
         if mp is None :
-            mp = MP()
+            mp = MP(comm)
         self._origin = np.asarray(origin)
         if not isinstance(lattice, Cell):
             cell=Cell(lattice)
