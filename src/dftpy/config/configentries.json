@@ -714,6 +714,10 @@
     "z_split": {
       "type": "float",
       "default": 0
+    },
+    "single_step": {
+      "type": "bool",
+      "default": false
     }
   },
   "CASIDA": {

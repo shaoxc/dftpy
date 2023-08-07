@@ -20,7 +20,7 @@ from dftpy.td.utils import initial_kick, initial_kick_vector_potential, vector_p
 from dftpy.formats.io import read_density, write, read
 
 
-class RealTimeRunner(object):
+class RealTimeRunner(Dynamics):
     """
     Interface class for running a real-time propagation from a config file.
     """
@@ -103,12 +103,13 @@ class RealTimeRunner(object):
                 correct_potential_dict.update({'Dynamic': correct_dynamic})
             self.correct_functionals = TotalFunctional(**correct_potential_dict)
 
-        self.attach(self.calc_obeservables, before_log=True)
-        if self.max_runtime > 0:
-            self.attach(self.safe_quit)
-        self.attach(self.save, interval=self.save_interval)
-        if self.max_steps % self.save_interval != 0:
-            self.attach(self.save, interval=-self.max_steps)
+        if not self.single_step:
+            self.attach(self.calc_obeservables, before_log=True)
+            if self.max_runtime > 0:
+                self.attach(self.safe_quit)
+            self.attach(self.save, interval=self.save_interval)
+            if self.max_steps % self.save_interval != 0:
+                self.attach(self.save, interval=-self.max_steps)
 
         hamiltonian = Hamiltonian()
         self.propagator = Propagator(hamiltonian, self.int_t, name=config["PROPAGATOR"]["propagator"],
@@ -175,7 +176,7 @@ class RealTimeRunner(object):
             self.results["energypotential"] = energypotential
             self.results["forces"] = forces
             if hasattr(self.functionals, 'PSEUDO'):
-                results["pseudo"] = self.functionals.PSEUDO
+                self.results["pseudo"] = self.functionals.PSEUDO
             return self.results
 
         if not self.single_step:

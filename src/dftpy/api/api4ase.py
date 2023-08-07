@@ -2,7 +2,7 @@ import numpy as np
 from dftpy.constants import LEN_CONV, ENERGY_CONV, FORCE_CONV, STRESS_CONV
 from dftpy.interface import ConfigParser, OptimizeDensityConf
 from dftpy.ions import Ions
-from dftpy.td.real_time_runner_md_hook import RealTimeRunnerCalculator
+from dftpy.td.real_time_runner import RealTimeRunner
 from dftpy.functional import KEDF
 
 class DFTpyCalculator(object):
@@ -98,7 +98,7 @@ class TDDFTpyCalculator(object):
         self.atoms = {}
         self.mp = mp
         config, others = ConfigParser(self.config, mp = self.mp)
-        self.rt_runner = RealTimeRunnerCalculator(others["field"], config, others["E_v_Evaluator"])
+        self.rt_runner = RealTimeRunner(others["field"], config, others["E_v_Evaluator"])
 
     def check_restart(self, atoms=None):
         if (
