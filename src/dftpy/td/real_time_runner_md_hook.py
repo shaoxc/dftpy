@@ -18,14 +18,17 @@ from dftpy.time_data import TimeData, timer
 from dftpy.constants import Units
 from dftpy.td.utils import initial_kick, initial_kick_vector_potential, vector_potential_energy, PotentialOperator
 from dftpy.formats.io import read_density, write, read
+from dftpy.constants import LEN_CONV, ENERGY_CONV, FORCE_CONV, STRESS_CONV
+from dftpy.functional import KEDF
+from dftpy.ions import Ions
 
 
-class RealTimeRunner(object):
+class RealTimeRunnerCalculator(object):
     """
-    Interface class for running a real-time propagation from a config file.
+    Interface class for running ONE STEP real-time propagation. To be used with
     """
 
-    def __init__(self, rho0, config, functionals, ions = None):
+    def __init__(self, rho0, config, functionals, ions=None):
         """
 
         Parameters
@@ -38,16 +41,11 @@ class RealTimeRunner(object):
             Total functional
 
         """
+        self.config = config
         self.outfile = config["TD"]["outfile"]
-        self.int_t = config["TD"]["timestep"]
         self.rho0 = rho0
-        self.single_step = config["TD"]["single_step"]
-        if not self.single_step:
-            Dynamics.__init__(self, self.outfile)
-            self.t_max = config["TD"]["tmax"]
-            self.max_steps = int(self.t_max / self.int_t)
-       # if self.single_step:
-       #     self.nsteps = 0 
+        self.int_t = config["TD"]["timestep"]
+#        self.t_max = config["TD"]["tmax"]
         self.max_pred_corr = config["TD"]["max_pc"]
         self.tol = config["TD"]["tol_pc"]
         self.atol = config["TD"]["atol_pc"]
@@ -63,6 +61,7 @@ class RealTimeRunner(object):
             self.propagate_vector_potential = config["TD"]['propagate_vector_potential']
         else:
             self.propagate_vector_potential = False
+#        self.max_steps = int(self.t_max / self.int_t)
         self.functionals = functionals
         self.N0 = self.rho0.integral()
         self.psi = None
@@ -72,25 +71,32 @@ class RealTimeRunner(object):
         self.E = None
         self.timer = None
         self.correct_propagator = None
+        self.nsteps = 0
+
+        
+
+  ##      ions, field, _ = read(
+  ##              config["PATH"]["cellpath"] +os.sep+ config["CELL"]["cellfile"],
+  ##              format=config["CELL"]["format"],
+  ##              names=config["CELL"]["elename"],
+  ##              kind = 'all',
+  ##          )
+        self.config = config
+        self.results = {}
+        self.atoms = {}
+        self.mp = mp
+
         self.ions = ions
-        if self.single_step:
-            self.results = {}
-           # self.PPlist = {}
-           # for key in self.config["PP"]:
-           #     ele = key.capitalize()
-           #     self.PPlist[ele] = self.config["PATH"]["pppath"] +os.sep+ self.config["PP"][key]
-           # self.linearie = self.config["MATH"]["linearie"] 
+
+        self.PPlist = {}
+        for key in self.config["PP"]:
+            ele = key.capitalize()
+            self.PPlist[ele] = self.config["PATH"]["pppath"] +os.sep+ self.config["PP"][key]
+        
+        self.linearie = self.config["MATH"]["linearie"]
+  
 
         self.z_split = config["TD"]['z_split'] / Units.Bohr
-
-        if self.vector_potential:
-            self.A_t = None
-            self.A_tm1 = None
-            self.Omega = config["TD"]["omega"]
-            if self.Omega <= 0:
-                self.Omega = self.rho0.grid.volume
-            else:
-                self.Omega = self.rho0.grid.volume * self.Omega
 
         if self.correction:
             correct_potential_dict = dict()
@@ -103,12 +109,7 @@ class RealTimeRunner(object):
                 correct_potential_dict.update({'Dynamic': correct_dynamic})
             self.correct_functionals = TotalFunctional(**correct_potential_dict)
 
-        self.attach(self.calc_obeservables, before_log=True)
-        if self.max_runtime > 0:
-            self.attach(self.safe_quit)
-        self.attach(self.save, interval=self.save_interval)
-        if self.max_steps % self.save_interval != 0:
-            self.attach(self.save, interval=-self.max_steps)
+
 
         hamiltonian = Hamiltonian()
         self.propagator = Propagator(hamiltonian, self.int_t, name=config["PROPAGATOR"]["propagator"],
@@ -139,14 +140,12 @@ class RealTimeRunner(object):
         None
 
         """
-        
-        if self.single_step: 
-            self.functionals.PSEUDO.restart(full=False)
-            self.functionals.PSEUDO.grid = self.psi.grid
-            self.functionals.PSEUDO.ions = self.ions
-            self.update_hamiltonian()        
 
+        self.functionals.PSEUDO.restart(full=False)
+        self.functionals.PSEUDO.grid = self.psi.grid
+        self.functionals.PSEUDO.ions = self.ions
 
+        self.update_hamiltonian()
 
         self.predictor_corrector = PredictorCorrector(self.psi, **self.predictor_corrector_arguments())
         converged = self.predictor_corrector.run()
@@ -167,19 +166,21 @@ class RealTimeRunner(object):
         if self.propagate_vector_potential:
             self.A_tm1 = self.A_t
             self.A_t = self.predictor_corrector.A_t_pred
+  
+        energypotential = self.functionals.get_energy_potential(self.rho, calcType="E", split = True)
+        forces = self.functionals.get_forces(self.rho, ions = self.ions, split = True)
 
-        if self.single_step:
-            energypotential = self.functionals.get_energy_potential(self.rho, calcType="E", split = True)
-            forces = self.functionals.get_forces(self.rho, ions = self.ions, split = True)
-            self.results["density"] = self.rho 
-            self.results["energypotential"] = energypotential
-            self.results["forces"] = forces
-            if hasattr(self.functionals, 'PSEUDO'):
-                results["pseudo"] = self.functionals.PSEUDO
-            return self.results
+        results = {}
+        sprint("-in results-" * 10)
+        results["density"] = self.rho
+        results["energypotential"] = energypotential
+        results["forces"] = forces
+       # results["stress"] = stress
+        if hasattr(self.functionals, 'PSEUDO'):
+            results["pseudo"] = self.functionals.PSEUDO
+    # -----------------------------------------------------------------------
+        return results
 
-        if not self.single_step:
-            self.update_hamiltonian()
 
     @timer('Real-time propagation')
     def run(self):
@@ -192,22 +193,54 @@ class RealTimeRunner(object):
 
         """
         return Dynamics.run(self)
-
-
-    def log(self):
-        """
-        Write the result to file.
-
-        Returns
-        -------
-        None
-
-        """
-        if mp.is_root:
-            if self.nsteps == 0:
-                real_time_runner_print_title(self.logfile, self.vector_potential)
-            real_time_runner_print_data(self.logfile, self.nsteps * self.int_t, self.E, self.delta_mu, self.j_int,
-                                        self.A_t if self.vector_potential else None)
+    
+##    def get_potential_energy(self, atoms = None, **kwargs):
+##        if self.check_restart(atoms):
+##            lattice = atoms.cell
+##            pos = atoms.positions
+##            if self.results is not None and len(self.atoms) > 0 :
+##                pseudo = self.results["pseudo"]
+##                if np.allclose(self.atoms["lattice"], atoms.cell[:]):
+##                    grid = self.results["density"].grid
+##                else :
+##                    grid = None
+##            else :
+##                pseudo = None
+##                grid = None
+##
+##            # Save the information of structure
+##            self.atoms["lattice"] = lattice.copy()
+##            self.atoms["positions"] = pos.copy()
+##
+##        self.ions = Ions.from_ase(atoms)
+##        self.step()
+##        self.nsteps += 1
+##        energypotential = self.functionals.get_energy_potential(self.rho, calcType="E", split = True)
+##        self.results["energypotential"] = energypotential
+##        self.results["density"] = self.rho
+##        energy = self.results["energypotential"]["TOTAL"].energy * ENERGY_CONV["Hartree"]["eV"]
+##        kedf = KEDF(name="vw")
+##        energy += kedf(self.rho).energy * ENERGY_CONV["Hartree"]["eV"]
+##        energy = self.results["density"].grid.mp.asum(energy)
+##        return energy
+##
+##    def get_forces(self, atoms):
+##        sprint("Calculate Force...")
+##        forces = self.functionals.get_forces(self.rho, ions = Ions.from_ase(atoms), split = True)
+##        self.results["forces"] = forces
+##        sprint("forces", self.results["forces"]["TOTAL"] * FORCE_CONV["Ha/Bohr"]["eV/A"])
+##
+##
+##        f = np.abs(self.results["forces"]["TOTAL"])
+##        fmax, fmin, fave = np.max(f), np.min(f), np.mean(f)
+##        fstr_f = " " * 8 + "{0:>22s} : {1:<22.5f}"
+##        sprint(fstr_f.format("Max force (a.u.)", fmax))
+##        sprint(fstr_f.format("Min force (a.u.)", fmin))
+##        sprint(fstr_f.format("Ave force (a.u.)", fave))
+##        sprint("-" * 80)
+##
+##        return self.results["forces"]["TOTAL"] * FORCE_CONV["Ha/Bohr"]["eV/A"]
+##
 
     def predictor_corrector_arguments(self):
         """
