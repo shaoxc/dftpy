@@ -2,7 +2,7 @@ import numpy as np
 from dftpy.constants import LEN_CONV, ENERGY_CONV, FORCE_CONV, STRESS_CONV
 from dftpy.interface import ConfigParser, OptimizeDensityConf
 from dftpy.ions import Ions
-from dftpy.td.real_time_runner_calculator import RealTimeRunnerCalculator
+from dftpy.td.real_time_runner_md_hook import RealTimeRunnerCalculator
 from dftpy.functional import KEDF
 
 class DFTpyCalculator(object):
