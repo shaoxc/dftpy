@@ -1286,7 +1286,7 @@ def GGA(rho: DirectField, functional: str = "LKT", calcType: Set[str] = {"E", "V
     s[s < tol] = tol
 
     if mgga :
-        q = rho.laplacian(force_real=True, sigma=sigma)/(TKF0**2)
+        q = rho.laplacian(force_real=True, sigma=sigma)/(TKF0**2) / rho53
         dq0 = -5.0/3.0 * q/rhom
         dq2 = 1.0/(TKF0**2) / rho53
     else :
