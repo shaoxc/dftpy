@@ -140,6 +140,19 @@ class BaseGrid:
         results = self.__class__(lattice, nr, origin=self.origin, full=self.full, cplx=self.cplx, direct=self.direct)
         return results
 
+    def create(self, lattice=None, **kwargs):
+        options={
+                'origin' : self.origin,
+                'full' : self.full,
+                'cplx' : self.cplx,
+                'mp' : self.mp,
+                'ecut' : self.ecut,
+                }
+        if lattice is None: lattice = self.cell
+        options.update(kwargs)
+        results = self.__class__(lattice, **options)
+        return results
+
     def repeat(self, rep=1):
         # it only repeat last three dimensions with same rep
         if not isinstance(rep, int):
