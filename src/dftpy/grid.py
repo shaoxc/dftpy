@@ -509,9 +509,7 @@ class ReciprocalGrid(BaseGrid):
     @property
     def gg(self):
         if self._gg is None:
-            if self._g is None:
-                self._g = self._calc_grid_points()
-            gg = np.einsum("lijk,lijk->ijk", self._g, self._g)
+            gg = np.einsum("lijk,lijk->ijk", self.g, self.g)
             self._gg = gg
         return self._gg
 
@@ -689,11 +687,8 @@ class ReciprocalGrid(BaseGrid):
     @property
     def ggF(self):
         if self._ggF is None:
-            if self._gF is None:
-                self._gF = self._calc_grid_points(full=True)
-            ggF = np.einsum("lijk,lijk->ijk", self._gF, self._gF)
+            ggF = np.einsum("lijk,lijk->ijk", self.gF, self.gF)
             self._ggF = ggF
-            # self._ggF = np.reshape(gg, (*self._gF.shape, 1))
         return self._ggF
 
     @property

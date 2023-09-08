@@ -38,7 +38,7 @@ class Operator(ABC):
         """
         pass
 
-    def scipy_matvec_utils(self, reciprocal: bool = False) -> Callable:
+    def scipy_matvec_utils(self, reciprocal: bool = False, **kwargs) -> Callable:
         """
         Utility function that generates a matvec function for SciPy to perform the operation on psi.ravel()
 
@@ -61,7 +61,22 @@ class Operator(ABC):
                 psi = ReciprocalField(reci_grid, rank=1, griddata_3d=np.reshape(psi_, reci_grid.nr))
             else:
                 psi = DirectField(self.grid, rank=1, griddata_3d=np.reshape(psi_, self.grid.nr))
-            prod = self(psi)
+            prod = self(psi, **kwargs)
             return prod.ravel()
 
         return _scipy_matvec
+
+    def matvec_utils(self, *args, **kwargs) -> Callable:
+        """
+        Utility function that generates a matvec function that only takes psi as input
+
+        Returns
+        -------
+        _matvec: the function only takes psi as input and does the operation on psi
+
+        """
+
+        def _matvec(psi: BaseField) -> BaseField:
+            return self(psi, *args, **kwargs)
+
+        return _matvec
