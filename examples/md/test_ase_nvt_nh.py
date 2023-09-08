@@ -26,7 +26,7 @@ conf["JOB"]["calctype"] = "Energy Force"
 conf["OUTPUT"]["time"] = False
 conf = OptionFormat(conf)
 PrintConf(conf)
-calc = DFTpyCalculator(config=conf, mp = mp)
+calc = DFTpyCalculator(config=conf, mp = mp, zero_stress=True)
 # -----------------------------------------------------------------------
 """
 Ref :
