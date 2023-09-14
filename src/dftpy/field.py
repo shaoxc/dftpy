@@ -279,6 +279,29 @@ class DirectField(BaseField):
         div += self[2].gradient(flag=flag, ipol=3, force_real=force_real, sigma=sigma)
         return div
 
+    def hessian(self, flag="smooth", force_real=True):
+        '''
+            Calculate Hessian of Grid value.
+            Return xx, yy, zz, xy, xz, yz
+        '''
+        if self.rank != 1:
+            raise ValueError("Hessian: Rank incompatible ", self.rank)
+        # 1st Order Grad
+        grad_x = self.gradient(flag=flag, ipol=1, force_real=force_real)
+        grad_y = self.gradient(flag=flag, ipol=2, force_real=force_real)
+        grad_z = self.gradient(flag=flag, ipol=3, force_real=force_real)
+        # 2nd order Hessian
+        hess_xx = grad_x.gradient(flag=flag, ipol=1, force_real=force_real)
+        hess_yy = grad_y.gradient(flag=flag, ipol=2, force_real=force_real)
+        hess_zz = grad_z.gradient(flag=flag, ipol=3, force_real=force_real)
+
+        hess_xy = grad_x.gradient(flag=flag, ipol=2, force_real=force_real)
+        hess_xz = grad_x.gradient(flag=flag, ipol=3, force_real=force_real)
+        hess_yz = grad_y.gradient(flag=flag, ipol=3, force_real=force_real)
+        hess = np.stack([hess_xx, hess_yy, hess_zz, hess_xy, hess_xz, hess_yz])
+
+        return DirectField(grid=self.grid, rank=6, griddata_3d=hess)
+
     def gradient(self, flag="smooth", ipol=None, force_real=True, sigma=0.025):
         if self.rank > 1 and ipol is None:
             raise Exception("gradient is only implemented for scalar fields")

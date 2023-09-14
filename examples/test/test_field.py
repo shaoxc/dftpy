@@ -53,6 +53,11 @@ class TestField(unittest.TestCase):
         self.assertTrue(isinstance(gradient, DirectField))
         self.assertEqual(gradient.rank, 3)
 
+        # hessian
+        hessian = field.hessian()
+        self.assertTrue(isinstance(hessian, DirectField))
+        self.assertEqual(hessian.rank, 6)
+
     def test_direct_field_interpolation(self):
         field = self.constant_field
         nr = field.grid.nr
