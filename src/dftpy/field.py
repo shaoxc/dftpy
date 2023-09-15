@@ -314,6 +314,32 @@ class DirectField(BaseField):
         else :
             raise Exception("Incorrect flag")
 
+    def hessian(self, flag="supersmooth", force_real=True,sigma=0.025):
+        r"""
+            Calculate Hessian of Grid value.
+            Return field of rank=6, values: xx, yy, zz, xy, xz, yz
+        """
+        if np.iscomplex(self[0,0,0]):
+            raise AttributeError("Hessian only implemented for real fields")
+        if self.rank != 1:
+            raise ValueError("Hessian: Rank incompatible ", self.rank)
+        # 1st Order Grad
+        grad_x = self.gradient(flag=flag, ipol=1, force_real=force_real,sigma=sigma)
+        grad_y = self.gradient(flag=flag, ipol=2, force_real=force_real,sigma=sigma)
+        grad_z = self.gradient(flag=flag, ipol=3, force_real=force_real,sigma=sigma)
+        # 2nd order Hessian
+        hess_xx = grad_x.gradient(flag=flag, ipol=1, force_real=force_real,sigma=sigma)
+        hess_yy = grad_y.gradient(flag=flag, ipol=2, force_real=force_real,sigma=sigma)
+        hess_zz = grad_z.gradient(flag=flag, ipol=3, force_real=force_real,sigma=sigma)
+
+        hess_xy = grad_x.gradient(flag=flag, ipol=2, force_real=force_real,sigma=sigma)
+        hess_xz = grad_x.gradient(flag=flag, ipol=3, force_real=force_real,sigma=sigma)
+        hess_yz = grad_y.gradient(flag=flag, ipol=3, force_real=force_real,sigma=sigma)
+        hess = np.stack([hess_xx, hess_yy, hess_zz, hess_xy, hess_xz, hess_yz])
+
+        return DirectField(grid=self.grid, rank=6, griddata_3d=hess)
+
+
     def laplacian(self, check_real = False, force_real = False, sigma = 0.025):
         reciprocal_self = self.fft()
         gg = reciprocal_self.grid.gg

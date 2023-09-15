@@ -17,22 +17,28 @@ class TestField(unittest.TestCase):
         """
         # Test a constant scalar field
         N = 8
-        A, B, C = 5, 10, 6
-        nr = np.array([A*20, B*20, C*20])
+        A, B, C = 5, 11, 7
+        nr = np.array([A, B, C])
         A, B, C = A/Units.Bohr, B/Units.Bohr, C/Units.Bohr
         grid = make_orthorombic_cell(A=A,B=B,C=C,CellClass=DirectGrid, nr=nr)
         d = N/grid.volume
         initial_vals = np.ones(nr)*d
         cls.constant_field = DirectField(grid=grid, griddata_3d=initial_vals)
+        cls.three_field = DirectField(grid=grid, griddata_3d=np.stack([initial_vals,initial_vals,initial_vals]),rank=3)
         cls.N = N
 
+
     def test_direct_field(self):
+        #
+        # TO DO: add tests for values using Gaussian fields
+        #
         print()
         print("*"*50)
         print("Testing DirectField")
         #print(initial_vals[0,0,:])
         #print(field[0,0,:])
         field = self.constant_field
+        three_field = self.three_field
         N = self.N
 
         self.assertTrue(type(field) is DirectField)
@@ -54,11 +60,20 @@ class TestField(unittest.TestCase):
         self.assertEqual(gradient.rank, 3)
         # please add value check for gradient
 
-        # divergence TBD
-        # laplacian TBD
-        # hessian TBD
-        # sigma TBD
 
+        hess = field.hessian()
+        self.assertTrue(isinstance(hess, DirectField))
+        self.assertEqual(hess.rank, 6)
+
+        div = three_field.divergence()
+        self.assertTrue(isinstance(div, DirectField))
+        self.assertEqual(div.rank, 1)
+
+        lap = field.laplacian()
+        self.assertTrue(isinstance(lap, DirectField))
+        self.assertEqual(lap.rank, 1)
+
+        # sigma TBD
 
     def test_direct_field_interpolation(self):
         field = self.constant_field
