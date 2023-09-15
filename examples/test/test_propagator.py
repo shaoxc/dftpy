@@ -63,7 +63,7 @@ class TestPropagator(unittest.TestCase):
         delta_rho = rho - rho0
         delta_mu = (delta_rho * delta_rho.grid.r).integral()
         print(delta_mu[0])
-        self.assertTrue(np.isclose(delta_mu[0], 1.1458e-02, rtol=1e-3))
+        self.assertTrue(np.isclose(delta_mu[0], 0.011423, rtol=1e-3))
 
         psi = psi0
         func = E_v_Evaluator.compute(rho0, calcType=["V"])
@@ -79,8 +79,7 @@ class TestPropagator(unittest.TestCase):
 
         delta_rho = rho - rho0
         delta_mu = (delta_rho * delta_rho.grid.r).integral()
-        self.assertTrue(np.isclose(delta_mu[0], 1.1458e-02, rtol=1e-3))
-
+        self.assertTrue(np.isclose(delta_mu[0], 0.011423, rtol=1e-3))
 
 if __name__ == '__main__':
     unittest.main()

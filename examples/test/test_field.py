@@ -52,6 +52,13 @@ class TestField(unittest.TestCase):
         gradient = field.gradient()
         self.assertTrue(isinstance(gradient, DirectField))
         self.assertEqual(gradient.rank, 3)
+        # please add value check for gradient
+
+        # divergence TBD
+        # laplacian TBD
+        # hessian TBD
+        # sigma TBD
+
 
     def test_direct_field_interpolation(self):
         field = self.constant_field
