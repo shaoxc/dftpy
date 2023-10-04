@@ -6,11 +6,8 @@ from dftpy.optimization import Optimization
 from dftpy.field import DirectField
 from dftpy.utils import field2distrib
 from ase.calculators.calculator import Calculator, all_changes
-<<<<<<< HEAD
 from dftpy.td.real_time_runner import RealTimeRunner
 from dftpy.functional import KEDF
-=======
->>>>>>> origin/dev
 # from dftpy.grid import DirectGrid
 
 class DFTpyCalculator(Calculator):
@@ -26,15 +23,11 @@ class DFTpyCalculator(Calculator):
         self.evaluator = evaluator
         self.zero_stress = zero_stress
         self.dftpy_results = {'density': rho}
-<<<<<<< HEAD
         self.single_step = config["TD"]["single_step"]
-=======
->>>>>>> origin/dev
 
     def calculate(self, atoms=None, properties=['energy'], system_changes=all_changes):
         Calculator.calculate(self, atoms, properties, system_changes)
 
-<<<<<<< HEAD
         if len(system_changes) > 0 and self.single_step is False : self.run(system_changes, properties=properties)
         if len(system_changes) > 0 and self.single_step : self.run_tddft(system_changes, properties=properties)
         
@@ -43,17 +36,9 @@ class DFTpyCalculator(Calculator):
         if self.single_step:
             kedf = KEDF(name="vw")
             energy += kedf(self.dftpy_results["density"]).energy * ENERGY_CONV["Hartree"]["eV"]
-        #self.results['energy'] = energy
         self.energy = self.mp.asum(energy)
         self.results['energy'] = self.energy
 
-=======
-        if len(system_changes) > 0 : self.run(system_changes, properties=properties)
-
-        energy = self.dftpy_results["energypotential"]["TOTAL"].energy * ENERGY_CONV["Hartree"]["eV"]
-        self.energy = self.mp.asum(energy)
-        self.results['energy'] = self.energy
->>>>>>> origin/dev
         if 'forces' in properties:
             if "TOTAL" not in self.dftpy_results["forces"]: self.calc_forces()
             self.forces = self.dftpy_results["forces"]["TOTAL"] * FORCE_CONV["Ha/Bohr"]["eV/A"]
@@ -130,7 +115,6 @@ class DFTpyCalculator(Calculator):
 
         self.dftpy_results = evaluator2results(self.evaluator, rho=rho, calcType=calcType, ions=ions, **kwargs)
 
-<<<<<<< HEAD
     def run_tddft(self, system_changes=all_changes, properties=['energy'], **kwargs):
         pseudo = self.dftpy_results.get('pseudo', None)
         rho = self.dftpy_results.get('density', None)
@@ -151,8 +135,6 @@ class DFTpyCalculator(Calculator):
             self.mp = self.dftpy_results["density"].grid.mp
 
 
-=======
->>>>>>> origin/dev
     def calc_forces(self):
         evaluator = self.dftpy_results.get('evaluator', None)
         rho = self.dftpy_results.get('density', None)
