@@ -4,6 +4,8 @@ stages:
 
 test:
   stage: test
+  except:
+   - tags
   image: registry.gitlab.com/pavanello-research-group/dftpy:latest
   script:
    - python setup.py install

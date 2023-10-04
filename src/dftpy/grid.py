@@ -24,9 +24,9 @@ class BaseGrid:
     """
 
     def __init__(self, lattice, nr = None, origin=np.array([0.0, 0.0, 0.0]), full=True, direct=True,
-                 cplx=False, mp=None, ecut = None, **kwargs):
+                 cplx=False, mp=None, ecut = None, comm = None, **kwargs):
         if mp is None :
-            mp = MP()
+            mp = MP(comm)
         self._origin = np.asarray(origin)
         if not isinstance(lattice, Cell):
             cell=Cell(lattice)
@@ -138,6 +138,19 @@ class BaseGrid:
             lattice[i] *= reps[i]
         nr = self.nr * reps
         results = self.__class__(lattice, nr, origin=self.origin, full=self.full, cplx=self.cplx, direct=self.direct)
+        return results
+
+    def create(self, lattice=None, **kwargs):
+        options={
+                'origin' : self.origin,
+                'full' : self.full,
+                'cplx' : self.cplx,
+                'mp' : self.mp,
+                'ecut' : self.ecut,
+                }
+        if lattice is None: lattice = self.cell
+        options.update(kwargs)
+        results = self.__class__(lattice, **options)
         return results
 
     def repeat(self, rep=1):
@@ -535,10 +548,9 @@ class ReciprocalGrid(BaseGrid):
             invq = 1.0/self.q
             if self.mp.is_root :
                 self.q[0, 0, 0] = 0.0
-            invq[0, 0, 0] = 0.0
-        # self._invq = invq
-        # return self._invq
-        return invq
+                invq[0, 0, 0] = 0.0
+            self._invq = invq
+        return self._invq
 
     def get_direct(self, scale= None, convention="physics"):
         r"""
@@ -693,7 +705,6 @@ class ReciprocalGrid(BaseGrid):
                 self._gF = self._calc_grid_points(full=True)
             ggF = np.einsum("lijk,lijk->ijk", self._gF, self._gF)
             self._ggF = ggF
-            # self._ggF = np.reshape(gg, (*self._gF.shape, 1))
         return self._ggF
 
     @property

@@ -49,7 +49,7 @@ def get_mpi4py_fft(comm, nr, decomposition = 'Slab', backend = None, grid = None
     cplx = cplx or full
     if cplx :
         backend = 'numpy' # If cplx, use numpy for safe
-        dtype = np.complex
+        dtype = np.complex128
     else :
         dtype = np.float64
 

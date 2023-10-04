@@ -290,6 +290,11 @@ class MP :
         s = self._sum_1(a)
         return s
 
+    def sprint(self, *args, comm = None, **kwargs):
+        from .utils import sprint
+        if comm is None : comm = self.comm
+        sprint(*args, comm = comm, **kwargs)
+
 class PMI :
     """
     Detect mpi

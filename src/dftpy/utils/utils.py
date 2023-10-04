@@ -87,20 +87,21 @@ def grid_map_data(data, nr = None, direct = True, index = None, grid = None):
         value = data
     nr1_g = value.grid.nrG
     rank = value.rank
+    full = value.grid.full
     if grid is not None :
         if not isinstance(grid, ReciprocalGrid):
             grid2 = grid.get_reciprocal()
         else :
             grid2 = grid
-        nr2_g = grid2.nr
     else :
-        nr2_g = np.array(nr, dtype = int)
-        nr2_g[2] = nr2_g[2]//2+1
-        grid2 = ReciprocalGrid(value.grid.lattice, nr)
+        grid2 = ReciprocalGrid(value.grid.lattice, nr, full=full)
+    nr2_g = grid2.nrG
+
+    if not full==grid2.full: raise AttributeError("Cannot mapping half and full grid.")
 
     value2= ReciprocalField(grid2, rank=rank)
 
-    index, lfine = grid_map_index(nr1_g, nr2_g)
+    index, lfine = grid_map_index(nr1_g, nr2_g, full=full)
 
     bd = np.minimum(nr1_g, nr2_g)
     if rank == 1 :

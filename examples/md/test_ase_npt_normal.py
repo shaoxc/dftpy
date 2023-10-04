@@ -1,6 +1,11 @@
 import os
 import numpy as np
 from dftpy.mpi import pmi, sprint, mp
+from dftpy.optimization import Optimization
+from dftpy.functional import Functional, TotalFunctional
+from dftpy.grid import DirectGrid
+from dftpy.field import DirectField
+from dftpy.ions import Ions
 #-----------------------------------------------------------------------
 if pmi.size > 0:
     from mpi4py import MPI
@@ -12,22 +17,11 @@ from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.io.trajectory import Trajectory
 from ase import units
 
-from dftpy.config.config import DefaultOption, OptionFormat, PrintConf
 from dftpy.api.api4ase import DFTpyCalculator
 np.random.seed(8888)
 
 ############################## initial config ##############################
-conf = DefaultOption()
-conf["PATH"]["pppath"] = os.environ.get("DFTPY_DATA_PATH")
-conf["PP"]["Al"] = "al.lda.recpot"
-conf["OPT"]["method"] = "TN"
-conf["KEDF"]["kedf"] = "WT"
-conf["JOB"]["calctype"] = "Energy Force"
-conf["OUTPUT"]["time"] = False
-conf = OptionFormat(conf)
-PrintConf(conf)
-calc = DFTpyCalculator(config=conf, mp = mp, zero_stress=True)
-# -----------------------------------------------------------------------
+
 """
 Ref :
     https://wiki.fysik.dtu.dk/ase/ase/md.html#module-ase.md
@@ -41,6 +35,26 @@ atoms = FaceCenteredCubic(
     directions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]], latticeconstant=a, symbol="Al", size=(size, size, size), pbc=True
 )
 
+# -----------------------------------------------------------------------
+ions = Ions.from_ase(atoms)
+PP_list = {'Al': '../DATA/al.lda.recpot'}
+grid = DirectGrid(ecut=20, lattice=ions.cell, mp=mp, full=False)
+rho = DirectField(grid=grid)
+#
+PSEUDO = Functional(type='PSEUDO', grid=grid, ions=ions, PP_list=PP_list)
+KE = Functional(type='KEDF', name='WT')
+XC = Functional(type='XC', name='LDA')
+HARTREE = Functional(type='HARTREE')
+#
+funcDict = {'KE' :KE, 'XC' :XC, 'HARTREE' :HARTREE, 'PSEUDO' :PSEUDO}
+EnergyEvaluator = TotalFunctional(**funcDict)
+#
+rho[:] = ions.get_ncharges() / ions.cell.volume
+optimizer = Optimization(EnergyEvaluator=EnergyEvaluator, optimization_method='TN')
+
+calc = DFTpyCalculator(optimizer = optimizer, evaluator = EnergyEvaluator, rho = rho)
+# -----------------------------------------------------------------------
+
 atoms.set_calculator(calc)
 
 MaxwellBoltzmannDistribution(atoms, temperature_K = T, force_temp=True)
@@ -50,7 +64,7 @@ ttime = 10 * units.fs
 # pfactor = 75 **2 * B
 pfactor = 0.6
 
-dyn = NPT(atoms, 2 * units.fs, externalstress=externalstress, ttime=ttime, pfactor=pfactor, temperature_K = T, mask=(0, 0, 0))
+dyn = NPT(atoms, 2 * units.fs, externalstress=externalstress, ttime=ttime, pfactor=pfactor, temperature_K = T)
 
 step = 0
 interval = 1
@@ -60,9 +74,11 @@ def printenergy(a=atoms):
     global step, interval
     epot = a.get_potential_energy() / len(a)
     ekin = a.get_kinetic_energy() / len(a)
+    spot = a.get_stress()
+    press = np.sum(spot[:3]) / 3.0
     sprint(
-        "Step={:<8d} Epot={:.5f} Ekin={:.5f} T={:.3f} Etot={:.5f}".format(
-            step, epot, ekin, ekin / (1.5 * units.kB), epot + ekin
+        "Step={:<8d} Epot={:.5f} Ekin={:.5f} T={:.3f} Etot={:.5f} Press={:.5f}".format(
+            step, epot, ekin, ekin / (1.5 * units.kB), epot + ekin, press / units.GPa
         )
     )
     step += interval

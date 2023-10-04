@@ -14,6 +14,7 @@ from dftpy.functional.kedf.sm import SM
 from dftpy.functional.kedf.tf import TF, TTF, ThomasFermiStress
 from dftpy.functional.kedf.vw import vW, vonWeizsackerStress
 from dftpy.functional.kedf.wt import WT, WTStress
+from dftpy.functional.kedf.wte import WTE, WTEStress
 from dftpy.functional.semilocal_xc import LibXC
 from dftpy.mpi import sprint
 from dftpy.utils import name2functions
@@ -44,6 +45,8 @@ KEDFEngines= {
         "REVHC-NL": revHC,
         "DTTF": TTF,
         "LIBXC_KEDF": LibXC,
+        "WTE-NL": WTE,
+        #
         "X_TF_Y_VW": ("TF", "VW"),
         "XTFYVW": ("TF", "VW"),
         "TFVW": ("TF", "VW"),
@@ -62,16 +65,19 @@ KEDFEngines= {
         "TTF": TF,
         "MGP0-NL": MGP0,
         "MGP0": ("TF", "VW", "MGP0-NL"),
+        "WTE": ("VW", "WTE-NL"),
         }
 
 KEDFEngines_Stress = {
     "TF": ThomasFermiStress,
     "VW": vonWeizsackerStress,
     "WT-NL": WTStress,
+    "WTE-NL": WTEStress,
     "X_TF_Y_VW": ("TF", "VW"),
     "XTFYVW": ("TF", "VW"),
     "TFVW": ("TF", "VW"),
     "WT": ("TF", "VW", "WT-NL"),
+    "WTE": ("VW", "WTE-NL"),
     }
 
 

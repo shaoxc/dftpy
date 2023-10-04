@@ -5,12 +5,10 @@ import numpy as np
 
 from dftpy.config import DefaultOption, OptionFormat
 from dftpy.api.api4ase import DFTpyCalculator
-import pytest
 
 
 class Test(unittest.TestCase):
     def test_md(self):
-        pytest.importorskip("ase")
         from ase.md.langevin import Langevin
         from ase.md.verlet import VelocityVerlet
         from ase.md.velocitydistribution import MaxwellBoltzmannDistribution

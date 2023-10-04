@@ -2,14 +2,12 @@
 import os
 import unittest
 import numpy as np
-import pytest
 
 from dftpy.config import DefaultOption, OptionFormat
 from dftpy.api.api4ase import DFTpyCalculator
 
 class Test(unittest.TestCase):
     def test_opt(self):
-        pytest.importorskip("ase")
         from ase.optimize import BFGS, LBFGS, FIRE
         from ase.optimize.sciopt import SciPyFminBFGS, SciPyFminCG
         from ase.constraints import StrainFilter, UnitCellFilter
