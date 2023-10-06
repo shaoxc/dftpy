@@ -11,21 +11,21 @@ from dftpy.field import DirectField
 from dftpy.math_utils import ecut2nr
 from dftpy.time_data import TimeData
 from dftpy.functional.pseudo import LocalPseudo
+import pathlib
+dftpy_data_path = pathlib.Path(__file__).resolve().parents[1] / 'DATA'
 
 
 class Test(unittest.TestCase):
     def test_optim(self):
-        path_pp = os.environ.get("DFTPY_DATA_PATH") + "/"
-        path_pos = os.environ.get("DFTPY_DATA_PATH") + "/"
         file1 = "Ga_lda.oe04.recpot"
         file2 = "As_lda.oe04.recpot"
         posfile = "GaAs_random.vasp"
-        ions = dftpy_io.read(path_pos + posfile, names=["Al"])
+        ions = dftpy_io.read(dftpy_data_path / posfile, names=["Al"])
+        PP_list = {"Ga": dftpy_data_path / file1, "As": dftpy_data_path / file2}
         nr = ecut2nr(lattice=ions.cell, spacing=0.4)
         print("The final grid size is ", nr)
         grid = DirectGrid(lattice=ions.cell, nr=nr, full=False)
         rho_ini = DirectField(grid=grid)
-        PP_list = {"Ga": path_pp + file1, "As": path_pp + file2}
         PSEUDO = LocalPseudo(grid=grid, ions=ions, PP_list=PP_list, PME=True)
         optional_kwargs = {}
         KE = Functional(type="KEDF", name="WT", optional_kwargs=optional_kwargs)

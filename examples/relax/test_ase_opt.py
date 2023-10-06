@@ -1,4 +1,5 @@
 import os
+import pathlib
 import numpy as np
 from ase.calculators.interface import Calculator
 from ase.lattice.cubic import FaceCenteredCubic
@@ -12,10 +13,12 @@ import ase.io
 from dftpy.config.config import DefaultOption, ConfSpecialFormat, PrintConf
 from dftpy.interface import OptimizeDensityConf
 from dftpy.api.api4ase import DFTpyCalculator
+import pathlib
+dftpy_data_path = pathlib.Path(__file__).resolve().parents[1] / 'DATA'
 
 ############################## initial config ##############################
 conf = DefaultOption()
-conf['PATH']['pppath'] = os.environ.get('DFTPY_DATA_PATH')
+conf['PATH']['pppath'] = dftpy_data_path
 conf['PP']['Al'] = 'al.lda.recpot'
 conf['JOB']['calctype'] = 'Energy Force Stress'
 conf['OPT']['method'] = 'TN'
@@ -23,7 +26,7 @@ conf['OUTPUT']['stress'] = False
 conf = ConfSpecialFormat(conf)
 PrintConf(conf)
 #-----------------------------------------------------------------------
-path = os.environ.get('DFTPY_DATA_PATH')
+path = conf['PATH']['pppath']
 atoms = ase.io.read(path+'/'+'fcc.vasp')
 trajfile = 'opt.traj'
 
