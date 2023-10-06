@@ -465,7 +465,7 @@ with open(xc_json_file) as f:
 def get_short_xc_name(libxc = None, xc = None, code = None, **kwargs):
     name = None
     if xc :
-        alias = xcformats.get(xc, {}).get('alias', {}).get(code, [])
+        alias = xcformats.get(xc.lower(), {}).get('alias', {}).get(code, [])
         if alias : name = alias[0]
     else :
         for name, value in xcformats.items():

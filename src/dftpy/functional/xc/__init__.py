@@ -10,27 +10,41 @@ class XC(AbstractFunctional):
         self.type = 'XC'
         self.name = xc or 'XC'
         self.energy = None
-        self.options = kwargs
-        self.options['xc'] = xc
         self._core_density = core_density
         self.pseudo = pseudo # For NLCC
+        if not libxc and not xc : raise ValueError("Please give a 'xc' or 'libxc'.")
         if libxc is False :
-            if xc and xc.lower() == 'lda' :
-                self.xcfun = LDA
+            xcfun = self.get_pyxc(xc)
+            if xcfun :
+                self.xcfun = xcfun
             else :
                 raise AttributeError("Please try it with pylibxc.")
         else :
             if isinstance(libxc, bool) : libxc = None
-            self.options['libxc'] = libxc
-            if CheckLibXC(False):
+            if CheckLibXC(False) :
                 if xc and xc.lower() == 'rvv10' :
                     self.xcfun = RVV10(**kwargs)
                 else :
                     self.xcfun = LibXC
-            elif xc and xc.lower() == 'lda':
-                self.xcfun = LDA
             else :
-                raise ModuleNotFoundError("Install pylibxc to use this functionality")
+                if xc is None :
+                    xc = get_short_xc_name(libxc=libxc, **kwargs)
+                xcfun = self.get_pyxc(xc)
+                if xcfun :
+                    self.xcfun = xcfun
+                else :
+                    raise ModuleNotFoundError("Install pylibxc to use this functionality")
+        #
+        self.options = kwargs
+        self.options['xc'] = xc
+        self.options['libxc'] = libxc
+
+    def get_pyxc(self, xc=None, **kwargs):
+        if xc and xc.lower() == 'lda' :
+            xcfun = LDA
+        else:
+            xcfun = None
+        return xcfun
 
     @property
     def core_density(self):
