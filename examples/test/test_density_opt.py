@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import os
 import unittest
 import numpy as np
 import dftpy.formats.io as dftpy_io
@@ -9,10 +8,8 @@ from dftpy.functional.total_functional import TotalFunctional
 from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
 from dftpy.math_utils import ecut2nr
-from dftpy.time_data import TimeData
 from dftpy.functional.pseudo import LocalPseudo
-import pathlib
-dftpy_data_path = pathlib.Path(__file__).resolve().parents[1] / 'DATA'
+from .common import dftpy_data_path
 
 
 class Test(unittest.TestCase):

@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
-import os
 import unittest
 import numpy as np
 import pytest
 
 from dftpy.functional.xc import RVV10, RVV10NL
 from dftpy.formats import io
-import pathlib
-dftpy_data_path = pathlib.Path(__file__).resolve().parents[1] / 'DATA'
+from .common import dftpy_data_path
 
 
 class Test(unittest.TestCase):

@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-import os
 import unittest
 import numpy as np
 
 from dftpy.config import DefaultOption, OptionFormat
 from dftpy.api.api4ase import DFTpyCalculator
-import pathlib
-dftpy_data_path = pathlib.Path(__file__).resolve().parents[1] / 'DATA'
+from .common import dftpy_data_path
 
 
 class Test(unittest.TestCase):

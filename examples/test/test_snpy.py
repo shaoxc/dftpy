@@ -12,8 +12,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 import tempfile
-import pathlib
-dftpy_data_path = pathlib.Path(__file__).resolve().parents[1] / 'DATA'
+from .common import dftpy_data_path
 
 
 class Test(unittest.TestCase):

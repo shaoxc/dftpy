@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
-import os
 import unittest
 import numpy as np
 
 from dftpy.formats import io
 from dftpy.ewald import ewald
 from dftpy.functional.pseudo import LocalPseudo
-import pathlib
-dftpy_data_path = pathlib.Path(__file__).resolve().parents[1] / 'DATA'
+from .common import dftpy_data_path
 
 class Test(unittest.TestCase):
     def test_ie(self):
