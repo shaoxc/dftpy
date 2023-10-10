@@ -4,7 +4,7 @@ import numpy as np
 
 from dftpy.formats import io
 from dftpy.ewald import ewald
-from .common import dftpy_data_path
+from common import dftpy_data_path
 
 
 class Test(unittest.TestCase):

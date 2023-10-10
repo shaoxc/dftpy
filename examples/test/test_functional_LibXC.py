@@ -6,7 +6,7 @@ import pytest
 from dftpy.functional import Functional
 from dftpy.functional.semilocal_xc import LibXC
 from dftpy.formats import io
-from .common import dftpy_data_path
+from common import dftpy_data_path
 
 
 class Test(unittest.TestCase):

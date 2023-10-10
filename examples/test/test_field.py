@@ -6,7 +6,7 @@ from dftpy.grid import DirectGrid, ReciprocalGrid
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.constants import Units
 
-from .common import run_test_orthorombic, run_test_triclinic, make_orthorombic_cell, make_triclinic_cell
+from common import run_test_orthorombic, run_test_triclinic, make_orthorombic_cell, make_triclinic_cell
 
 class TestField(unittest.TestCase):
 

@@ -4,7 +4,7 @@ import numpy as np
 
 from dftpy.functional import Functional
 from dftpy.formats import io
-from .common import dftpy_data_path
+from common import dftpy_data_path
 
 class Test(unittest.TestCase):
     def test_gga(self):

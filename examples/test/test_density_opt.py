@@ -9,7 +9,7 @@ from dftpy.grid import DirectGrid
 from dftpy.field import DirectField
 from dftpy.math_utils import ecut2nr
 from dftpy.functional.pseudo import LocalPseudo
-from .common import dftpy_data_path
+from common import dftpy_data_path
 
 
 class Test(unittest.TestCase):

@@ -12,7 +12,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 import tempfile
-from .common import dftpy_data_path
+from common import dftpy_data_path
 
 
 class Test(unittest.TestCase):

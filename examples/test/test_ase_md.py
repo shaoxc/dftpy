@@ -4,7 +4,7 @@ import numpy as np
 
 from dftpy.config import DefaultOption, OptionFormat
 from dftpy.api.api4ase import DFTpyCalculator
-from .common import dftpy_data_path
+from common import dftpy_data_path
 
 
 class Test(unittest.TestCase):

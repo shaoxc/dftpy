@@ -11,7 +11,7 @@ from dftpy.utils.utils import calc_rho
 from dftpy.formats import io
 from dftpy.constants import Units
 from dftpy.td.utils import initial_kick
-from .common import dftpy_data_path
+from common import dftpy_data_path
 
 ang2bohr = 1.0/Units.Bohr
 

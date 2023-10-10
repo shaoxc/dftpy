@@ -5,7 +5,7 @@ import pytest
 
 from dftpy.functional.xc import RVV10, RVV10NL
 from dftpy.formats import io
-from .common import dftpy_data_path
+from common import dftpy_data_path
 
 
 class Test(unittest.TestCase):

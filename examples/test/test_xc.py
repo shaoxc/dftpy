@@ -6,7 +6,7 @@ import pytest
 from dftpy.functional.xc import XC
 from dftpy.functional.pseudo import LocalPseudo
 from dftpy.formats import io
-from .common import dftpy_data_path
+from common import dftpy_data_path
 
 
 class Test(unittest.TestCase):
