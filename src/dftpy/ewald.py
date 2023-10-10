@@ -169,7 +169,7 @@ class CBspline(object):
             Qarray[l123A[0][mask], l123A[1][mask], l123A[2][mask]] += Mn_multi.ravel()[mask]
         return DirectField(self.grid, griddata_3d=Qarray, rank=1)
 
-    def get_PME_Qarray(self, pos, Qarray=None):
+    def get_PME_Qarray(self, pos, Qarray=None, scale=None):
         """
         Using the smooth particle mesh Ewald method to calculate structure factors.
         """
@@ -187,7 +187,9 @@ class CBspline(object):
         Mn_multi = np.einsum("i, j, k -> ijk", Mn[0][1:], Mn[1][1:], Mn[2][1:])
         l123A = np.mod(1 + np.floor(Up).astype(np.int32).reshape((3, 1)) - ixyzA, nrR.reshape((3, 1)))
         mask = self.get_Qarray_mask(l123A)
-        Qarray[l123A[0][mask], l123A[1][mask], l123A[2][mask]] += Mn_multi.ravel()[mask]
+        value = Mn_multi.ravel()[mask]
+        if scale: value *= scale
+        Qarray[l123A[0][mask], l123A[1][mask], l123A[2][mask]] += value
         # Qarray = DirectField(self.grid,griddata_3d=Qarray,rank=1)
         return Qarray
 
