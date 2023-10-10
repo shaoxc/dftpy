@@ -118,12 +118,20 @@ class DensityGenerator(object):
                 readpp = self.pseudo
 
         if readpp :
-            if self.is_core :
-                self._r = readpp._core_density_grid
-                self._arho = readpp._core_density
-            else :
-                self._r = readpp._atomic_density_grid
-                self._arho = readpp._atomic_density
+            if self.direct:
+                if self.is_core :
+                    self._r = readpp._core_density_grid_real
+                    self._arho = readpp._core_density_real
+                else :
+                    self._r = readpp._atomic_density_grid_real
+                    self._arho = readpp._atomic_density_real
+            else:
+                if self.is_core :
+                    self._r = readpp._core_density_grid
+                    self._arho = readpp._core_density
+                else :
+                    self._r = readpp._atomic_density_grid
+                    self._arho = readpp._atomic_density
 
     def read_density_list(self, infile):
         with open(infile, "r") as fr:
@@ -198,7 +206,7 @@ class DensityGenerator(object):
         rho[:] = ncharge / rho.grid.cell.volume
         return rho
 
-    def guess_rho_atom(self, ions, grid, ncharge = None, rho = None, dtol=1E-30, **kwargs):
+    def guess_rho_atom(self, ions, grid, ncharge = None, rho = None, dtol=1E-30, rcut = None, **kwargs):
         """
         Note :
             Assuming the lattices are more than double of rcut, otherwise please use `get_3d_value_recipe` instead.
@@ -212,11 +220,16 @@ class DensityGenerator(object):
             r = self._r[key]
             arho = self._arho[key]
             if arho is None : continue
-            rcut = np.max(r)
-            rcut = min(rcut, 0.5 * np.min(latp))
+            #-----------------------------------------------------------------------
+            if isinstance(rcut, dict):
+                rc = rcut.get(key, np.max(r))
+            else :
+                rc = rcut or np.max(r)
+            rc = min(rc, 0.5 * np.min(latp))
+            #-----------------------------------------------------------------------
             rtol = r[0]
             tck = splrep(r, arho)
-            generator = AtomicDensity(grid = grid, ions = ions, key = key, rcut = rcut, rtol = rtol)
+            generator = AtomicDensity(grid = grid, ions = ions, key = key, rcut = rc, rtol = rtol)
             for i in range(ions.nat):
                 if ions.symbols[i] != key: continue
                 #
