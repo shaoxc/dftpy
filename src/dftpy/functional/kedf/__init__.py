@@ -44,7 +44,7 @@ KEDFEngines= {
         "HC-NL": HC,
         "REVHC-NL": revHC,
         "DTTF": TTF,
-        "LIBXC_KEDF": LibXC,
+        "LIBXC": LibXC,
         "WTE-NL": WTE,
         #
         "X_TF_Y_VW": ("TF", "VW"),
@@ -76,7 +76,7 @@ KEDFEngines_Stress = {
     "FP-NL": FPStress,
     "WTE-NL": WTEStress,
     "GGA": GGAStress,
-    "LIBXC_KEDF": XCStress,
+    "LIBXC": XCStress,
     "X_TF_Y_VW": ("TF", "VW"),
     "XTFYVW": ("TF", "VW"),
     "TFVW": ("TF", "VW"),
@@ -124,6 +124,7 @@ class KEDF(AbstractFunctional):
         k_str = options.pop('k_str', None) # For GGA functional
         if name.startswith('LIBXC'):
             options['libxc'] = list(k_str.split())
+            name = 'LIBXC'
         elif name.startswith('GGA_'):
             k_str = name[4:]
             options['mgga'] = False
@@ -190,7 +191,10 @@ class KEDF(AbstractFunctional):
         options = copy.deepcopy(self.options)
         options.update(kwargs)
         k_str = options.pop('k_str', None) # For GGA functional
-        if name.startswith('GGA_'):
+        if name.startswith('LIBXC'):
+            options['libxc'] = list(k_str.split())
+            name = 'LIBXC'
+        elif name.startswith('GGA_'):
             k_str = name[4:]
             options['mgga'] = False
             name = 'GGA'
@@ -371,7 +375,7 @@ def kedf2nlgga(name='STV+GGA+LMGPA', **kwargs):
         names[1] = 'GGA'
         k_str = k_str.upper()
     else:
-        names[1] = 'LIBXC_KEDF'
+        names[1] = 'LIBXC'
         k_str = k_str.lower()
 
     stv = KEDF(name='GGA', k_str='STV', params=params, sigma=sigma)
@@ -423,7 +427,7 @@ def kedf2mixkedf(name='MIX_TF+GGA', first_high=True, **kwargs):
         names[1] = 'GGA'
         k_str = k_str.upper()
     else:
-        names[1] = 'LIBXC_KEDF'
+        names[1] = 'LIBXC'
         k_str = k_str.lower()
 
     stv = KEDF(name=names[0], **kwargs)
