@@ -650,43 +650,6 @@ MGGA_KEDF_list = {
 }
 
 
-# def GGAStress(rho, functional="LKT", energy=None, potential=None, dFds2=None, **kwargs):
-#     """
-#     Not finished.
-#     """
-#     rhom = rho.copy()
-#     tol = 1e-16
-#     rhom[rhom < tol] = tol
-
-#     rho23 = rhom ** (2.0 / 3.0)
-#     rho53 = rho23 * rhom
-#     rho43 = rho23 * rho23
-#     rho83 = rho43 * rho43
-#     C_TF = (3.0 / 10.0) * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
-#     ckf2 = (3.0 * np.pi ** 2) ** (2.0 / 3.0)
-#     tf = C_TF * rho53
-#     vkin2 = tf * ckf2 * dFds2 / rho83
-#     dRho_ij = []
-#     g = rho.grid.get_reciprocal().g
-#     rhoG = rho.fft()
-#     for i in range(3):
-#         dRho_ij.append((1j * g[i] * rhoG).ifft(force_real=True))
-#     stress = np.zeros((3, 3))
-
-#     if potential is None:
-#         gga = GGA(rho, functional=functional, calcType={"E", "V"}, **kwargs)
-#         energy = gga.energy
-#         potential = gga.potential
-
-#     rhoP = np.einsum("ijk, ijk", rho, potential)
-#     for i in range(3):
-#         for j in range(i, 3):
-#             stress[i, j] = np.einsum("ijk, ijk", vkin2, dRho_ij[i] * dRho_ij[j])
-#             if i == j:
-#                 stress[i, j] += energy - rhoP
-#             stress[j, i] = stress[i, j]
-
-
 def GGAFs(s, functional="LKT", calcType={"E", "V"}, params=None, gga_remove_vw=None, **kwargs):
     r"""
     ckf = (3\pi^2)^{1/3}
@@ -1256,6 +1219,9 @@ def GGA(rho: DirectField, functional: str = "LKT", calcType: Set[str] = {"E", "V
                flag='standard' to flag='smooth'. The results with smooth math are
                slightly different.
     """
+    if 'S' in calcType:
+        calcType = list(calcType)
+        calcType.extend(['E', 'V'])
     functional = functional.upper()
     if mgga :
         if functional in MGGA_KEDF_list :
@@ -1325,8 +1291,8 @@ def GGA(rho: DirectField, functional: str = "LKT", calcType: Set[str] = {"E", "V
         OutFunctional.energy = energydensity.sum() * rhom.grid.dV
 
     if 'V' in calcType:
-        pot = 5.0 / 3.0 * C_TF * rho23 * results['F']
-        pot += -4.0 / 3.0 * tf * results['dFds2'] * s * s / rhom
+        pot1 = 5.0 / 3.0 * C_TF * rho23 * results['F']
+        pot1 += -4.0 / 3.0 * tf * results['dFds2'] * s * s / rhom
 
         p3 = []
         for i in range(3):
@@ -1334,7 +1300,7 @@ def GGA(rho: DirectField, functional: str = "LKT", calcType: Set[str] = {"E", "V
             p3.append(item.fft())
         g = rhom.grid.get_reciprocal().g
         pot3G = g[0] * p3[0] + g[1] * p3[1] + g[2] * p3[2]
-        pot -= (1j * pot3G).ifft(force_real=True)
+        pot = pot1 - (1j * pot3G).ifft(force_real=True)
 
         if mgga :
             pot += tf * results['dFdq'] * dq0
@@ -1342,9 +1308,28 @@ def GGA(rho: DirectField, functional: str = "LKT", calcType: Set[str] = {"E", "V
             pot += pot_q2.laplacian(force_real = True, sigma = sigma)
 
         OutFunctional.potential = pot
+
+    if 'S' in calcType:
+        if mgga :
+            raise AttributeError("Stress not support MGGA yet")
+        stress = np.zeros((3,3))
+        vkin2 = tf * results['dFds2'] / rho83
+        p = OutFunctional.energy  - (pot1 * rho).sum() * rho.grid.dV
+        for i in range(3):
+            p -= (rhoGrad[i] * rhoGrad[i] * vkin2).sum() * rho.grid.dV
+        for i in range(3):
+            stress[i,i] = p
+            for j in range(i, 3):
+                stress[i, j] -= (vkin2 * rhoGrad[i] * rhoGrad[j]).sum() * rho.grid.dV
+                stress[j, i] = stress[i, j]
+        OutFunctional.stress = stress/rho.grid.volume
     return OutFunctional
 
 def MGGA(rho: DirectField, functional: str = "LKT", calcType: Set[str] = {"E", "V"}, split: bool = False, params=None,
         sigma=None, gga_remove_vw=None, mgga = True, **kwargs):
     return GGA(rho, functional=functional, calcType=calcType, split=split, params=params, sigma=sigma,
             gga_remove_vw=gga_remove_vw, mgga = True, **kwargs)
+
+def GGAStress(rho, energy=None, calcType={'S'}, **kwargs):
+    obj = GGA(rho, calcType=calcType, energy=energy, **kwargs)
+    return obj.stress
