@@ -1,4 +1,5 @@
 import os
+import pathlib
 import numpy as np
 from ase.lattice.cubic import FaceCenteredCubic
 from ase.md.langevin import Langevin
@@ -14,7 +15,7 @@ from dftpy.api.api4ase import DFTpyCalculator
 
 ############################## initial config ##############################
 conf = DefaultOption()
-conf['PATH']['pppath'] = os.environ.get('DFTPY_DATA_PATH') 
+conf['PATH']['pppath'] = './'
 conf['PP']['Al'] = 'Al_lda.oe01.recpot'
 conf['OPT']['method'] = 'TN'
 conf['KEDF']['kedf'] = 'WT'

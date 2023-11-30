@@ -1,4 +1,5 @@
 import os
+import pathlib
 import numpy as np
 from ase.calculators.interface import Calculator
 from ase.lattice.cubic import FaceCenteredCubic
@@ -15,13 +16,13 @@ from dftpy.api.api4ase import DFTpyCalculator
 
 ############################## initial config ##############################
 conf = DefaultOption()
-conf['PATH']['pppath'] = os.environ.get('DFTPY_DATA_PATH') 
+conf['PATH']['pppath'] = './'
 conf['PP']['Al'] = 'Al_lda.oe01.recpot'
 conf['JOB']['calctype'] = 'Energy Force Stress'
 conf['KEDF']['kedf'] = 'WT'
 conf = OptionFormat(conf)
 #-----------------------------------------------------------------------
-path = os.environ.get('DFTPY_DATA_PATH') 
+path = conf['PATH']['pppath']
 atoms = ase.io.read(path+'/'+'fcc.vasp')
 
 calc = DFTpyCalculator(config = conf)

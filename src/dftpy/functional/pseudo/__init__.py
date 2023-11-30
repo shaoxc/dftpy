@@ -592,8 +592,12 @@ class ReadPseudo(object):
         self._vloc_interp_atomic = {}  # Interpolates atomic density
         self._core_density_grid = {}
         self._core_density = {}  # the radial core charge density for the non-linear core correction in g-space
+        self._core_density_grid_real = {}
+        self._core_density_real = {}  # the radial core charge density for the non-linear core correction in real space
         self._atomic_density_grid = {}
         self._atomic_density = {}  # the radial atomic charge density in g-space
+        self._atomic_density_grid_real = {}
+        self._atomic_density_real = {}  # the radial atomic charge density in real space
         self._zval = {}
         self._pp = {}
 
@@ -765,8 +769,10 @@ class ReadPseudo(object):
             self._v[key] = self._vp[key]
             self._gp[key], self._vp[key] = self._real2recip(self._r[key], self._v[key], self._zval[key], comm=comm, **kwargs)
             if self._core_density[key] is not None :
+                self._core_density_grid_real[key], self._core_density_real[key] = self._core_density_grid[key], self._core_density[key]
                 self._core_density_grid[key], self._core_density[key] = self._real2recip(self._core_density_grid[key], self._core_density[key], 0, comm=comm, **kwargs)
             if self._atomic_density[key] is not None :
+                self._atomic_density_grid_real[key], self._atomic_density_real[key] = self._atomic_density_grid[key], self._atomic_density[key]
                 self._atomic_density_grid[key], self._atomic_density[key] = self._real2recip(self._atomic_density_grid[key], self._atomic_density[key], 0, comm=comm, **kwargs)
 
     @property

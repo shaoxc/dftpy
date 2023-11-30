@@ -77,10 +77,10 @@ class PSP(BasePseudo):
             ibegin = 6+ (mmax + 1) * lloc + mmax
             iend = ibegin + mmax
             core_density = [line.split()[1:3] for line in lines[ibegin:iend]]
-            self._core_density_grid = core_density[:, 0]
             core_density = np.asarray(core_density, dtype = np.float64)
             core_density[:, 1] /= (4.0 * np.pi)
-            self._core_density = core_density
+            self._core_density_grid = core_density[:, 0]
+            self._core_density = core_density[:,1]
 
     def write(self, fname, header = 'DFTpy'):
         info_default = {

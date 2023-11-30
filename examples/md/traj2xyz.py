@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os, sys
+import sys
 from ase.io.trajectory import Trajectory
 from ase.io import write
 

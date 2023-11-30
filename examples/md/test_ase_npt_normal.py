@@ -18,6 +18,8 @@ from ase.io.trajectory import Trajectory
 from ase import units
 
 from dftpy.api.api4ase import DFTpyCalculator
+import pathlib
+dftpy_data_path = pathlib.Path(__file__).resolve().parents[1] / 'DATA'
 np.random.seed(8888)
 
 ############################## initial config ##############################
@@ -37,7 +39,8 @@ atoms = FaceCenteredCubic(
 
 # -----------------------------------------------------------------------
 ions = Ions.from_ase(atoms)
-PP_list = {'Al': '../DATA/al.lda.recpot'}
+path = str(dftpy_data_path)
+PP_list = {'Al': path+os.sep+'al.lda.recpot'}
 grid = DirectGrid(ecut=20, lattice=ions.cell, mp=mp, full=False)
 rho = DirectField(grid=grid)
 #

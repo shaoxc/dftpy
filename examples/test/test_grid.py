@@ -4,7 +4,7 @@ import numpy as np
 
 from dftpy.grid import DirectGrid
 
-from .common import run_test_orthorombic, run_test_triclinic, make_orthorombic_cell, make_triclinic_cell
+from common import run_test_orthorombic, run_test_triclinic, make_orthorombic_cell, make_triclinic_cell
 
 class TestCell(unittest.TestCase):
     

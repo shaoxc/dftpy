@@ -1,20 +1,18 @@
 #!/usr/bin/env python3
-import os
 import unittest
 import numpy as np
 
 from dftpy.formats import io
 from dftpy.ewald import ewald
-from dftpy.functional.pseudo import LocalPseudo
+from common import dftpy_data_path
 
 
 class Test(unittest.TestCase):
     def test_ewald_PME(self):
-        dftpy_data_path = os.environ.get('DFTPY_DATA_PATH')
         print()
         print("*" * 50)
         print("Testing particle mesh Ewald method")
-        ions, rho, _ = io.read_all(dftpy_data_path + "/Al_fde_rho.pp")
+        ions, rho, _ = io.read_all(dftpy_data_path / "Al_fde_rho.pp")
         Ewald_ = ewald(rho=rho, ions=ions, verbose=False)
         Ewald_PME = ewald(rho=rho, ions=ions, verbose=False, PME=True)
 

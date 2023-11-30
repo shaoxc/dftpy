@@ -14,11 +14,13 @@ from ase import units
 
 from dftpy.config.config import DefaultOption, OptionFormat, PrintConf
 from dftpy.api.api4ase import DFTpyCalculator
+import pathlib
+dftpy_data_path = pathlib.Path(__file__).resolve().parents[1] / 'DATA'
 np.random.seed(8888)
 
 ############################## initial config ##############################
 conf = DefaultOption()
-conf["PATH"]["pppath"] = os.environ.get("DFTPY_DATA_PATH")
+conf["PATH"]["pppath"] = dftpy_data_path
 conf["PP"]["Al"] = "al.lda.recpot"
 conf["OPT"]["method"] = "TN"
 conf["KEDF"]["kedf"] = "WT"

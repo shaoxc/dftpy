@@ -2,24 +2,23 @@
 import os
 import unittest
 import numpy as np
-import dftpy.formats.io as dftpy_io
+from dftpy.formats import io
 import pytest
+from common import dftpy_data_path
 
 
 class Test(unittest.TestCase):
     def test_io_ase(self):
-        dftpy_data_path = os.environ.get('DFTPY_DATA_PATH')
-        a1 = dftpy_io.read(dftpy_data_path + '/fcc.vasp', driver='ase')
-        a2 = dftpy_io.read(dftpy_data_path + '/fcc.vasp')
+        a1 = io.read(dftpy_data_path / 'fcc.vasp', driver='ase')
+        a2 = io.read(dftpy_data_path / 'fcc.vasp')
 
         self.assertTrue(np.allclose(a1.cell, a2.cell))
         self.assertTrue(np.allclose(a1.positions, a2.positions))
 
     def test_io_pmg(self):
         pytest.importorskip("pymatgen")
-        dftpy_data_path = os.environ.get('DFTPY_DATA_PATH')
-        a1 = dftpy_io.read(dftpy_data_path + '/fcc.vasp', driver='pmg')
-        a2 = dftpy_io.read(dftpy_data_path + '/fcc.vasp')
+        a1 = io.read(dftpy_data_path / 'fcc.vasp', driver='pmg')
+        a2 = io.read(dftpy_data_path / 'fcc.vasp')
 
         self.assertTrue(np.allclose(a1.cell, a2.cell))
         self.assertTrue(np.allclose(a1.positions, a2.positions))
