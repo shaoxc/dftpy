@@ -250,11 +250,7 @@ class ewald(object):
         return functional
 
     def Get_Gmax(self, grid):
-        gg = grid.get_reciprocal().gg
-        gmax_x = np.sqrt(self.mp.amax(gg[:, 0, 0]))
-        gmax_y = np.sqrt(self.mp.amax(gg[0, :, 0]))
-        gmax_z = np.sqrt(self.mp.amax(gg[0, 0, :]))
-        gmax = np.amin([gmax_x, gmax_y, gmax_z])
+        gmax = np.sqrt(grid.get_reciprocal().g2max)
         return gmax
 
     def Get_Best_eta(self, precision, gmax, ions):
@@ -461,8 +457,8 @@ class ewald(object):
             strf += ions.strf(reciprocal_grid, i) * ions.charges[i]
         strf_sq = np.conjugate(strf) * strf
         mask = self.grid.get_reciprocal().mask
-        # energy =np.real(4.0*np.pi*np.sum(strf_sq*np.exp(-gg/(4.0*self.eta))*invgg)) / 2.0 / self.grid.volume
         energy = np.sum(strf_sq[mask] * np.exp(-gg[mask] / (4.0 * self.eta)) * invgg[mask])
+        # energy = np.sum(strf_sq * np.exp(-gg / (4.0 * self.eta)) * invgg) /2.0
         energy = 4.0 * np.pi * energy.real / self.grid.volume
         # energy /= self.grid.dV ** 2
 
@@ -505,7 +501,7 @@ class ewald(object):
                 sprint("Ewald sum & divergent terms in the Energy:")
                 sprint("eta used = ", self.eta)
                 sprint("precision used = ", self.precision)
-                sprint("Ewald Energy = ", Ewald_Energy, e_corr, e_real, e_rec)
+                sprint("Ewald Energy = ", self.mp.asum(Ewald_Energy), self.mp.asum(e_corr), self.mp.asum(e_real), self.mp.asum(e_rec))
             self._energy = Ewald_Energy
         return self._energy
 
