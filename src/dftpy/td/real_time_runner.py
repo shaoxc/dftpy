@@ -38,6 +38,8 @@ class RealTimeRunner(Dynamics):
             Total functional
 
         """
+        sprint("TDDFT STEP")
+
         self.outfile = config["TD"]["outfile"]
         self.int_t = config["TD"]["timestep"]
         self.rho0 = rho0
@@ -46,8 +48,6 @@ class RealTimeRunner(Dynamics):
             Dynamics.__init__(self, self.outfile)
             self.t_max = config["TD"]["tmax"]
             self.max_steps = int(self.t_max / self.int_t)
-       # if self.single_step:
-       #     self.nsteps = 0 
         self.max_pred_corr = config["TD"]["max_pc"]
         self.tol = config["TD"]["tol_pc"]
         self.atol = config["TD"]["atol_pc"]
@@ -66,6 +66,9 @@ class RealTimeRunner(Dynamics):
         self.functionals = functionals
         self.N0 = self.rho0.integral()
         self.psi = None
+        self.j_cn = None
+        self.psi_cn = None
+        self.rho_cn = None
         self.predictor_corrector = None
         self.delta_mu = None
         self.j_int = None
@@ -75,11 +78,6 @@ class RealTimeRunner(Dynamics):
         self.ions = ions
         if self.single_step:
             self.results = {}
-           # self.PPlist = {}
-           # for key in self.config["PP"]:
-           #     ele = key.capitalize()
-           #     self.PPlist[ele] = self.config["PATH"]["pppath"] +os.sep+ self.config["PP"][key]
-           # self.linearie = self.config["MATH"]["linearie"] 
 
         self.z_split = config["TD"]['z_split'] / Units.Bohr
 
@@ -153,6 +151,10 @@ class RealTimeRunner(Dynamics):
         converged = self.predictor_corrector.run()
         if not converged:
             self.predictor_corrector.print_not_converged_info()
+        
+        self.psi_cn = self.predictor_corrector.psi_pred
+        self.rho_cn = self.predictor_corrector.rho_pred
+        self.j_cn = self.predictor_corrector.j_pred
 
         if self.correction:
             correct_potential = self.correct_functionals(self.rho, calcType=['V'], current=self.j).potential
@@ -173,6 +175,7 @@ class RealTimeRunner(Dynamics):
             energypotential = self.functionals.get_energy_potential(self.rho, calcType="E", split = True)
             forces = self.functionals.get_forces(self.rho, ions = self.ions, split = True)
             self.results["density"] = self.rho 
+            self.results["density_cn"] = self.rho_cn
             self.results["energypotential"] = energypotential
             self.results["forces"] = forces
             if hasattr(self.functionals, 'PSEUDO'):
