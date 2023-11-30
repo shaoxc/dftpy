@@ -52,7 +52,7 @@ class PP(object):
             self.cutoffvars["dual"] = dual
             self.cutoffvars["ecut"] = ecut
             self.cutoffvars["plot_num"] = plot_num
-            grid = DirectGrid(lattice=at, nr=nrx, full=full, ecut=ecut)
+            grid = DirectGrid(lattice=at, nr=nrx, full=full)
 
             # ntyp
             atm = []

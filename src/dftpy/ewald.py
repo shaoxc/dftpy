@@ -250,7 +250,7 @@ class ewald(object):
         return functional
 
     def Get_Gmax(self, grid):
-        gmax = np.sqrt(grid.get_reciprocal().g2max)*2.0
+        gmax = np.sqrt(grid.get_reciprocal().g2max)
         return gmax
 
     def Get_Best_eta(self, precision, gmax, ions):
