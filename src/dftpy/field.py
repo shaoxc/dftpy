@@ -569,12 +569,12 @@ class DirectField(BaseField):
             v2 = np.cross(v0, v1)
             v2 = v2 / np.sqrt(np.dot(v2, v2))
         elif span == 2:
-            v1 = self.grid.cell.cartesian_positions([r1])
+            v1 = self.grid.cell.cartesian_positions([r1])[0]
             v2 = np.cross(v0, v1)
             v2 = v2 / np.sqrt(np.dot(v2, v2))
         elif span == 3:
-            v1 = self.grid.cell.cartesian_positions([r1])
-            v2 = self.grid.cell.cartesian_positions([r2])
+            v1 = self.grid.cell.cartesian_positions([r1])[0]
+            v2 = self.grid.cell.cartesian_positions([r2])[0]
         at[:, 0] = v0
         at[:, 1] = v1
         at[:, 2] = v2
