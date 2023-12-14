@@ -627,7 +627,7 @@ class ReadPseudo(object):
     def PP_list(self, value):
         if isinstance(value, (list, tuple)):
             dicts = {}
-            pattern = re.compile(r'[.-_@]')
+            pattern = re.compile(r'[._@-]')
             for item in value :
                 k = pattern.split(os.path.basename(item))[0]
                 dicts[k.capitalize()] = item
