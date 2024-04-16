@@ -572,6 +572,9 @@ PPEngines = {
             "psp"    : PSP,
             "psp8"   : PSP,
             "lps"    : PSP,
+            "psp6"   : PSP,
+            "fhi"    : PSP,
+            "cpi"    : PSP,
             "xml"    : PAWXML,
         }
 
