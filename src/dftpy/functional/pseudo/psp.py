@@ -29,7 +29,6 @@ class PSP(BasePseudo):
         zval = float(values[1])
         # line 3 :pspcod,pspxc,lmax,lloc,mmax,r2well
         values = lines[2].split()
-        info['info'] = lines[:6]
         info['atomicnum'] = atomicnum
         info['zval'] = zval
         info['pspcod'] = int(values[0])
@@ -54,6 +53,7 @@ class PSP(BasePseudo):
 
     def _read_psp8(self, lines):
         info = self.info
+        info['info'] = lines[:6]
         # line 5 : nproj
         info['nproj'] = list(map(int, lines[4].split()[:5]))
         # line 6 : extension_switch
@@ -93,6 +93,7 @@ class PSP(BasePseudo):
 
     def _read_psp6(self, lines):
         info = self.info
+        info['info'] = lines[:18]
         mmax = info['mmax']
         lmax = info['lmax']
         fchrg = info['fchrg']
