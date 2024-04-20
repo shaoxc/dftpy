@@ -49,7 +49,11 @@ def _write_single(fh, data, version = (1, 0)):
         return np.save(fh, data)
     if fh.mp.rank > 0 : return
     _write_header(fh, data, version)
-    _write_value_single(fh, data)
+    dtype = data.dtype
+    if dtype.isbuiltin==0:
+        fh.Write(data.tobytes())
+    else:
+        fh.Write(data)
 
 def _write_header(fh, data, version = (1, 0), grid = None):
     if hasattr(data, 'grid'):
@@ -64,10 +68,6 @@ def _write_header(fh, data, version = (1, 0), grid = None):
         #     raise AttributeError("Not support Fortran order")
     header['shape'] = tuple(shape)
     npyf._write_array_header(fh, header, version)
-    return
-
-def _write_value_single(fh, data):
-    fh.Write(data)
     return
 
 def _write_value(fh, data, fp = None, grid=None, datarep = 'native'):
@@ -101,7 +101,7 @@ def _write_value(fh, data, fp = None, grid=None, datarep = 'native'):
     fh.Seek(fp)
     return
 
-def read(fh, data=None, grid=None, single=False, datarep = 'native'):
+def read(fh, data=None, grid=None, single=False, datarep = 'native', allow_pickle=False):
     """
     Read npy file
 
@@ -116,7 +116,7 @@ def read(fh, data=None, grid=None, single=False, datarep = 'native'):
         For safe, please make sure everytime with 'single = True' always on rank == 0.
     """
     if single or (not hasattr(fh, 'Get_position')):
-        return _read_single(fh, data)
+        return _read_single(fh, data, allow_pickle=allow_pickle)
 
     if hasattr(data, 'grid'):
         grid = data.grid
@@ -126,7 +126,7 @@ def read(fh, data=None, grid=None, single=False, datarep = 'native'):
     # if fortran_order and grid.mp.size > 1 :
     #     raise AttributeError("Not support Fortran order")
 
-    if not(np.all(shape == grid.nrR) or np.all(shape == grid.nrG)):
+    if not (np.all(shape == grid.nrR) or np.all(shape == grid.nrG)):
         raise AttributeError("The shape {} is not match with grid {} ({})".format(shape, grid.nrR, grid.nrG))
     if data is None :
         data = np.empty(grid.nr, dtype=dtype, order='C')
@@ -134,15 +134,20 @@ def read(fh, data=None, grid=None, single=False, datarep = 'native'):
     data=_read_value(fh, data, grid=grid, datarep=datarep, fortran_order=fortran_order)
     return data
 
-def _read_single(fh, data=None):
+def _read_single(fh, data=None, **kwargs):
     if not hasattr(fh, 'Get_position'):
         # serial version use numpy.save
-        return np.load(fh)
+        return np.load(fh, **kwargs)
     shape, fortran_order, dtype = _read_header(fh)
-    if data is None :
-        order = 'F' if fortran_order else 'C'
-        data = np.empty(shape, dtype=dtype, order=order)
-    data=_read_value_single(fh, data)
+    if dtype.isbuiltin==0:
+        buf = fh.read(dtype.itemsize)
+        data = np.frombuffer(buf, dtype=dtype)
+        if len(shape)==0 : data = data[0]
+    else:
+        if data is None :
+            order = 'F' if fortran_order else 'C'
+            data = np.empty(shape, dtype=dtype, order=order)
+        fh.Read(data)
     return data
 
 def _read_header(fh):
@@ -177,8 +182,4 @@ def _read_value(fh, data, fp=None, grid=None, datarep = 'native', fortran_order=
     fp = grid.mp.comm.bcast(fp, root = 0)
     fh.Set_view(0, MPI.BYTE, MPI.BYTE, datarep=datarep)
     fh.Seek(fp)
-    return data
-
-def _read_value_single(fh, data):
-    fh.Read(data)
     return data

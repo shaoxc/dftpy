@@ -27,7 +27,7 @@ from dftpy.mpi import MP, MPIFile, sprint
 
 MAGIC_PREFIX = b'\x93DFTPY'
 
-def write(fname, ions = None, data = None, kind = 'all', desc = None, mp = None, **kwargs):
+def write(fname, ions = None, data = None, information = None, kind = 'all', desc = None, mp = None, **kwargs):
     if mp is None :
         mp = data.grid.mp
     if hasattr(fname, 'close'):
@@ -41,6 +41,8 @@ def write(fname, ions = None, data = None, kind = 'all', desc = None, mp = None,
     if desc is None :
         if kind == 'ions' :
             desc = np.arange(1, 4)
+        elif information is not None:
+            desc = np.arange(1, 6)
         else :
             desc = np.arange(1, 5)
 
@@ -56,6 +58,8 @@ def write(fname, ions = None, data = None, kind = 'all', desc = None, mp = None,
             if mp.rank == 0 : npy.write(fh, ions.positions, single = True)
         elif key == 4 : # write volumetric data
             npy.write(fh, data)
+        elif key == 5 : # write information
+            if mp.rank == 0 : npy.write(fh, information, single = True)
 
     if isinstance(fname, str): fh.close()
     return
@@ -71,7 +75,7 @@ def read(fname, mp=None, grid=None, kind="all", full=False, datarep='native', de
         else :
             mp = grid.mp
     if isinstance(fname, str):
-        if mp.size > 1 :
+        if mp.size > 1:
             # fh = mp.MPI.File.Open(mp.comm, fname, amode = mp.MPI.MODE_RDONLY)
             fh = MPIFile(fname, mp, amode = mp.MPI.MODE_RDONLY)
         else :
@@ -80,6 +84,7 @@ def read(fname, mp=None, grid=None, kind="all", full=False, datarep='native', de
         fh = fname
 
     ions = None
+    information = None
     if desc is None :
         # read description
         desc = npy.read(fh, single = True)
@@ -95,6 +100,8 @@ def read(fname, mp=None, grid=None, kind="all", full=False, datarep='native', de
             pos = npy.read(fh, single = True)
             ions = Ions(numbers=numbers, positions=pos, cell=lattice)
             if kind == 'ions' : break
+        elif key == 5 : # read information
+            information = npy.read(fh, single = True)
         elif key == 4 : # read volumetric data
             if mp.size == 1 :
                 data = npy.read(fh, single=True)
@@ -118,7 +125,7 @@ def read(fname, mp=None, grid=None, kind="all", full=False, datarep='native', de
                 #     raise AttributeError("Not support Fortran order")
                 if grid is None :
                     grid = DirectGrid(lattice=lattice, nr=shape, full=full, mp=mp)
-                elif not(np.all(shape == grid.nrR) or np.all(shape == grid.nrG)):
+                elif not (np.all(shape == grid.nrR) or np.all(shape == grid.nrG)):
                     raise AttributeError("The shape {} is not match with grid {} (or {})".format(shape, grid.nrR, grid.nrG))
                 order = 'F' if fortran_order else 'C'
                 data = DirectField(grid=grid, rank=rank, order = order)
@@ -130,7 +137,7 @@ def read(fname, mp=None, grid=None, kind="all", full=False, datarep='native', de
     elif kind == 'data' :
         return data
     else :
-        return ions, data, None
+        return ions, data, information
 
 def read_snpy(fname, **kwargs):
     return read(fname, **kwargs)
