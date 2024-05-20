@@ -572,6 +572,9 @@ PPEngines = {
             "psp"    : PSP,
             "psp8"   : PSP,
             "lps"    : PSP,
+            "psp6"   : PSP,
+            "fhi"    : PSP,
+            "cpi"    : PSP,
             "xml"    : PAWXML,
         }
 
@@ -581,7 +584,7 @@ class ReadPseudo(object):
     Support class for LocalPseudo.
     """
 
-    def __init__(self, PP_list=None, comm=None, parallel = True, **kwargs):
+    def __init__(self, PP_list=None, comm=None, parallel = True, gp=None, **kwargs):
         self._gp = {}  # 1D PP grid g-space
         self._vp = {}  # PP on 1D PP grid
         self._r = {}  # 1D PP grid r-space
@@ -600,6 +603,7 @@ class ReadPseudo(object):
         self._atomic_density_real = {}  # the radial atomic charge density in real space
         self._zval = {}
         self._pp = {}
+        self._input_gp = gp
 
         self.PP_list = PP_list
         #-----------------------------------------------------------------------
@@ -627,7 +631,7 @@ class ReadPseudo(object):
     def PP_list(self, value):
         if isinstance(value, (list, tuple)):
             dicts = {}
-            pattern = re.compile(r'[.-_@]')
+            pattern = re.compile(r'[._@-]')
             for item in value :
                 k = pattern.split(os.path.basename(item))[0]
                 dicts[k.capitalize()] = item
@@ -765,15 +769,19 @@ class ReadPseudo(object):
                 comm = self.comm
             else :
                 comm = None
+            if isinstance(self._input_gp, dict):
+                gp = self._input_gp.get(key, None)
+            else:
+                gp = self._input_gp
             self._r[key] = self._gp[key]
             self._v[key] = self._vp[key]
-            self._gp[key], self._vp[key] = self._real2recip(self._r[key], self._v[key], self._zval[key], comm=comm, **kwargs)
+            self._gp[key], self._vp[key] = self._real2recip(self._r[key], self._v[key], self._zval[key], comm=comm, gp=gp, **kwargs)
             if self._core_density[key] is not None :
                 self._core_density_grid_real[key], self._core_density_real[key] = self._core_density_grid[key], self._core_density[key]
-                self._core_density_grid[key], self._core_density[key] = self._real2recip(self._core_density_grid[key], self._core_density[key], 0, comm=comm, **kwargs)
+                self._core_density_grid[key], self._core_density[key] = self._real2recip(self._core_density_grid[key], self._core_density[key], 0, comm=comm, gp=gp, **kwargs)
             if self._atomic_density[key] is not None :
                 self._atomic_density_grid_real[key], self._atomic_density_real[key] = self._atomic_density_grid[key], self._atomic_density[key]
-                self._atomic_density_grid[key], self._atomic_density[key] = self._real2recip(self._atomic_density_grid[key], self._atomic_density[key], 0, comm=comm, **kwargs)
+                self._atomic_density_grid[key], self._atomic_density[key] = self._real2recip(self._atomic_density_grid[key], self._atomic_density[key], 0, comm=comm, gp=gp, **kwargs)
 
     @property
     def vloc_interp(self):

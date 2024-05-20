@@ -6,6 +6,7 @@ from dftpy.functional.pseudo.abstract_pseudo import BasePseudo
 """
 Ref :
     https://docs.abinit.org/developers/psp8_info/
+    https://docs.abinit.org/developers/psp6_info/
 """
 
 class PSP(BasePseudo):
@@ -28,12 +29,9 @@ class PSP(BasePseudo):
         zval = float(values[1])
         # line 3 :pspcod,pspxc,lmax,lloc,mmax,r2well
         values = lines[2].split()
-        if int(values[0]) != 8:
-            raise AttributeError("Only support psp8 format pseudopotential with psp")
-        info['info'] = lines[:6]
         info['atomicnum'] = atomicnum
         info['zval'] = zval
-        info['pspcod'] = 8
+        info['pspcod'] = int(values[0])
         info['pspxc'] = int(values[1])
         info['lmax'] = int(values[2])
         info['lloc'] = int(values[3])
@@ -44,6 +42,18 @@ class PSP(BasePseudo):
         info['rchrg'] = float(values[0])
         info['fchrg'] = float(values[1])
         info['qchrg'] = float(values[2])
+        self.info = info
+        #
+        if info['pspcod'] == 8:
+            return self._read_psp8(lines)
+        elif info['pspcod'] == 6:
+            return self._read_psp6(lines)
+        else:
+            raise ValueError("Only support psp8/psp6 format pseudopotential with psp")
+
+    def _read_psp8(self, lines):
+        info = self.info
+        info['info'] = lines[:6]
         # line 5 : nproj
         info['nproj'] = list(map(int, lines[4].split()[:5]))
         # line 6 : extension_switch
@@ -70,13 +80,41 @@ class PSP(BasePseudo):
 
         self.r = data[:, 0]
         self.v = data[:, 1]
-        self.info = info
         self._zval = self.info['zval']
 
         if fchrg > 0.0 :
             ibegin = 6+ (mmax + 1) * lloc + mmax
             iend = ibegin + mmax
             core_density = [line.split()[1:3] for line in lines[ibegin:iend]]
+            core_density = np.asarray(core_density, dtype = np.float64)
+            core_density[:, 1] /= (4.0 * np.pi)
+            self._core_density_grid = core_density[:, 0]
+            self._core_density = core_density[:,1]
+
+    def _read_psp6(self, lines):
+        info = self.info
+        info['info'] = lines[:18]
+        mmax = info['mmax']
+        lmax = info['lmax']
+        fchrg = info['fchrg']
+        if lmax > 0 :
+            raise ValueError("Only support local PP now (psp6).")
+
+        # line 5-18 skip
+        # line 19 mmax dx skip
+        ibegin = 19
+        iend = ibegin + mmax
+        data = [line.split()[1:4] for line in lines[ibegin:iend]]
+        data = np.asarray(data, dtype = np.float64)
+
+        self.r = data[:, 0]
+        self.v = data[:, 2]
+        self._zval = self.info['zval']
+
+        if fchrg > 0.0 :
+            i1 = iend
+            i2 = i1 + mmax
+            core_density = [line.split()[0:2] for line in lines[i1:i2]]
             core_density = np.asarray(core_density, dtype = np.float64)
             core_density[:, 1] /= (4.0 * np.pi)
             self._core_density_grid = core_density[:, 0]

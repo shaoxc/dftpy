@@ -183,7 +183,7 @@ class PP(object):
             for iat in range(ions.nat):
                 mywrite(filepp, iat + 1, True)
                 mywrite(filepp, tau[iat], False)
-                mywrite(filepp, np.where(ions.symbols_uniq == ions.symbols[iat])[0] + 1, False)
+                mywrite(filepp, np.where(ions.symbols_uniq == ions.symbols[iat])[0][0] + 1, False)
 
             # plot
             filepp.write('\n')

@@ -461,7 +461,7 @@ class DirectField(BaseField):
         new_grid = DirectGrid(new_lattice, nr_new)
         return DirectField(new_grid, self.memo, griddata_3d=new_values)
 
-    def get_cut(self, r0, r1=None, r2=None, origin=None, center=None, nr=10, basis = 'crystal'):
+    def get_cut(self, r0, r1=None, r2=None, origin=[0, 0, 0], center=None, nr=50, basis = 'crystal'):
         """
         Only support for serial.
         general routine to get the arbitrary cuts of a Grid_Function_Base object in 1,2,
@@ -569,12 +569,12 @@ class DirectField(BaseField):
             v2 = np.cross(v0, v1)
             v2 = v2 / np.sqrt(np.dot(v2, v2))
         elif span == 2:
-            v1 = self.grid.cell.cartesian_positions([r1])
+            v1 = self.grid.cell.cartesian_positions([r1])[0]
             v2 = np.cross(v0, v1)
             v2 = v2 / np.sqrt(np.dot(v2, v2))
         elif span == 3:
-            v1 = self.grid.cell.cartesian_positions([r1])
-            v2 = self.grid.cell.cartesian_positions([r2])
+            v1 = self.grid.cell.cartesian_positions([r1])[0]
+            v2 = self.grid.cell.cartesian_positions([r2])[0]
         at[:, 0] = v0
         at[:, 1] = v1
         at[:, 2] = v2
