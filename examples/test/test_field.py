@@ -223,6 +223,11 @@ class TestField(unittest.TestCase):
         D2 = np.sqrt(((sig - ana_sig) ** 2).mean()) # RMSE
         self.assertTrue(np.isclose(D2, 0.0, atol=0.01))
 
+        # hessian
+        hessian = field.hessian()
+        self.assertTrue(isinstance(hessian, DirectField))
+        self.assertEqual(hessian.rank, 6)
+
     def test_direct_field_interpolation(self):
         field = self.constant_field
         nr = field.grid.nr
