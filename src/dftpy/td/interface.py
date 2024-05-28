@@ -103,7 +103,7 @@ def SternheimerRunner(config, rho0, E_v_Evaluator):
         pass
     for omega in omega_list:
         sprint('omega: ', omega)
-        sternheimer = Sternheimer(system=system, functionals=E_v_Evaluator, drho0=drho0, omega=omega, e0=eigs[0], e=e)
+        sternheimer = Sternheimer(rho0, functionals=E_v_Evaluator, drho0=drho0, omega=omega, e0=eigs[0], e=e, outfile=outfile)
         sternheimer()
         dv = sternheimer.calc_dv(sternheimer.drho)
         sternheimer.sternheimer_equation_solver.dv = dv
