@@ -14,7 +14,8 @@ class Operator(ABC):
 
         Parameters
         ----------
-        grid: the grid the operator acts on
+        grid: DirectGrid
+            the grid the operator acts on
 
         """
         self.grid = grid
@@ -26,11 +27,13 @@ class Operator(ABC):
 
         Parameters
         ----------
-        psi: the wavefunction the operator acts on
+        psi: DirectField or ReciprocalField
+            the wavefunction the operator acts on
 
         Returns
         -------
-        result: the result function in the same type as psi
+        DirectField or ReciprocalField, same as psi
+            The resulting wavefunction
 
         """
         pass
@@ -41,11 +44,13 @@ class Operator(ABC):
 
         Parameters
         ----------
-        reciprocal: whether the input field is a DirectField or a ReciprocalField
+        reciprocal: bool
+            whether the input field is a DirectField or a ReciprocalField
 
         Returns
         -------
-        _scipy_matvec: the function that can be passed as the matvec function for SciPy LinearOperator.
+        _scipy_matvec: Callable
+            the function that can be passed as the matvec function for SciPy LinearOperator.
 
         """
         if reciprocal:

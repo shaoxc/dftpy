@@ -32,9 +32,5 @@ TDDFT
 Do it on a Jupyter Notebook!
 ----------------------------
 
-
-.. toctree::
-   :maxdepth: 1
-
-   jupyter/optimization
-
+  - `Density Optimization <jupyter/density_optimization.ipynb>`_.
+  - `TD-OFDFT <jupyter/td-ofdft-tutorial.ipynb>`_.

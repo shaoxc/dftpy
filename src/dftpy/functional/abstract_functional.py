@@ -6,6 +6,7 @@
 
 # general python imports
 from abc import ABC, abstractmethod
+from dftpy.functional.functional_output import FunctionalOutput
 
 
 class AbstractFunctional(ABC):
@@ -14,7 +15,8 @@ class AbstractFunctional(ABC):
         pass
 
     def __repr__(self):
-        rep = self.name + ',' + self.kwargs.__repr__()
+        name = getattr(self, 'name', self.__class__.__name__)
+        rep = name + ', ' + self.__dict__.__repr__()
         return rep
 
     def __call__(self, rho, *args, **kwargs):

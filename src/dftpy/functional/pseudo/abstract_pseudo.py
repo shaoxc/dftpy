@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import hashlib
 
 class AbstractPseudo(ABC):
     @abstractmethod
@@ -46,7 +47,7 @@ class AbstractPseudo(ABC):
         pass
 
 class BasePseudo(AbstractPseudo):
-    def __init__(self, fname, direct = True, **kwargs):
+    def __init__(self, fname = None, direct = True, **kwargs):
         self.fname = fname
         #-----------------------------------------------------------------------
         self.r = None
@@ -59,10 +60,17 @@ class BasePseudo(AbstractPseudo):
         self._atomic_density = None
         self._atomic_density_grid = None
         #-----------------------------------------------------------------------
-        self.read(fname, **kwargs)
+        if fname is not None :
+            self.read(fname, **kwargs)
+            with open(fname, 'rb') as f:
+                md5 = hashlib.md5(f.read()).hexdigest()
+            self.info['md5'] = md5
 
     def read(self, fname, *args, **kwargs):
         pass
+
+    def __call__(self, fname = None, **kwargs):
+        return self
 
     @property
     def zval(self):
@@ -78,7 +86,7 @@ class BasePseudo(AbstractPseudo):
 
     @property
     def core_density_grid(self):
-        if self._atomic_density_grid is None :
+        if self._core_density_grid is None :
             return self.radial_grid
         else :
             return self._core_density_grid

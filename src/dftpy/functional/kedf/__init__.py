@@ -3,56 +3,96 @@ import copy
 
 import numpy as np
 
-from dftpy.field import DirectField
 from dftpy.functional.abstract_functional import AbstractFunctional
-from dftpy.functional.functional_output import FunctionalOutput
-from dftpy.functional.kedf.fp import *
-from dftpy.functional.kedf.gga import *
-from dftpy.functional.kedf.hc import *
-from dftpy.functional.kedf.lwt import *
-from dftpy.functional.kedf.mgp import *
-from dftpy.functional.kedf.sm import *
-from dftpy.functional.kedf.tf import *
-from dftpy.functional.kedf.vw import *
-from dftpy.functional.kedf.wt import *
-from dftpy.functional.semilocal_xc import LibXC
+from dftpy.functional.functional_output import FunctionalOutput, ZeroFunctional
+from dftpy.functional.kedf.gga import GGA, GGA_KEDF_list, GGAFs, MGGA, MGGA_KEDF_list, GGAStress
+from dftpy.functional.kedf.hc import HC, revHC
+from dftpy.functional.kedf.lwt import LWT, LMGP, LMGPA, LMGPG
+from dftpy.functional.kedf.mgp import MGP, MGPA, MGPG, MGP0
+from dftpy.functional.kedf.tf import TF, TTF, ThomasFermiStress
+from dftpy.functional.kedf.vw import vW, vonWeizsackerStress
+from dftpy.functional.kedf.wt import WT, WTStress
+from dftpy.functional.kedf.sm import SM, SMStress
+from dftpy.functional.kedf.fp import FP, FPStress
+from dftpy.functional.kedf.wte import WTE, WTEStress
+from dftpy.functional.semilocal_xc import LibXC, XCStress
 from dftpy.mpi import sprint
+from dftpy.utils import name2functions
 from dftpy.functional.kedf.lkt import LKT
 
-__all__ = ["KEDF", "KEDFunctional", "KEDFStress"]
+__all__ = ["KEDF", "MIXGGAS", "NLGGA",
+    "kedf2mixkedf", "kedf2nlgga",
+    "KEDFEngines", "KEDFEngines_Stress"]
 
-KEDF_Dict = {
-    "TF": TF,
-    "vW": vW,
-    "LKT": LKT,
-}
+KEDFEngines= {
+        "NONE": ZeroFunctional,
+        "TF": TF,
+        "VW": vW,
+        "LKT": LKT,
+        "GGA": GGA,
+        "MGGA": MGGA,
+        "WT-NL": WT,
+        "SM-NL": SM,
+        "FP-NL": FP,
+        "MGP-NL": MGP,
+        "MGPA-NL": MGPA,
+        "MGPG-NL": MGPG,
+        "LWT-NL": LWT,
+        "LMGP-NL": LMGP,
+        "LMGPA-NL": LMGPA,
+        "LMGPG-NL": LMGPG,
+        "HC-NL": HC,
+        "REVHC-NL": revHC,
+        "DTTF": TTF,
+        "LIBXC": LibXC,
+        "WTE-NL": WTE,
+        #
+        "X_TF_Y_VW": ("TF", "VW"),
+        "XTFYVW": ("TF", "VW"),
+        "TFVW": ("TF", "VW"),
+        "WT": ("TF", "VW", "WT-NL"),
+        "SM": ("TF", "VW", "SM-NL"),
+        "FP": ("TF", "VW", "FP-NL"),
+        "MGP": ("TF", "VW", "MGP-NL"),
+        "MGPA": ("TF", "VW", "MGPA-NL"),
+        "MGPG": ("TF", "VW", "MGPG-NL"),
+        "LWT": ("TF", "VW", "LWT-NL"),
+        "LMGP": ("TF", "VW", "LMGP-NL"),
+        "LMGPA": ("TF", "VW", "LMGPA-NL"),
+        "LMGPG": ("TF", "VW", "LMGPG-NL"),
+        "HC": ("TF", "VW", "HC-NL"),
+        "REVHC": ("TF", "VW", "REVHC-NL"),
+        "TTF": TF,
+        "MGP0-NL": MGP0,
+        "MGP0": ("TF", "VW", "MGP0-NL"),
+        "WTE": ("VW", "WTE-NL"),
+        }
 
-NLKEDF_Dict = {
-    "WT": WT,
-    "SM": SM,
-    "FP": FP,
-    "MGP": MGP,
-    "MGPA": MGPA,
-    "MGPG": MGPG,
-    "LWT": LWT,
-    "LMGP": LMGP,
-    "LMGPA": LMGPA,
-    "LMGPG": LMGPG,
-    "HC": HC,
-}
-
-KEDF_Stress_Dict = {
+KEDFEngines_Stress = {
     "TF": ThomasFermiStress,
-    "vW": vonWeizsackerStress,
-    "WT": WTStress,
-}
+    "VW": vonWeizsackerStress,
+    "WT-NL": WTStress,
+    "SM-NL": SMStress,
+    "FP-NL": FPStress,
+    "WTE-NL": WTEStress,
+    "GGA": GGAStress,
+    "LIBXC": XCStress,
+    "X_TF_Y_VW": ("TF", "VW"),
+    "XTFYVW": ("TF", "VW"),
+    "TFVW": ("TF", "VW"),
+    "WT": ("TF", "VW", "WT-NL"),
+    "SM": ("TF", "VW", "SM-NL"),
+    "FP": ("TF", "VW", "FP-NL"),
+    "WTE": ("VW", "WTE-NL"),
+    }
 
 
 class KEDF(AbstractFunctional):
     def __init__(self, name="WT", kedf = None, **kwargs):
         self.type = 'KEDF'
         self.name = kedf or name
-        self.kwargs = kwargs
+        self.options = kwargs
+        self.options['kedf'] = self.name
         self.ke_kernel_saved = {
             "Kernel": None,
             "rho0": 0.0,
@@ -64,6 +104,7 @@ class KEDF(AbstractFunctional):
             "kfmin": None,
             "kfmax": None,
         }
+        self.energies = {}
 
     def __new__(cls, name="WT", **kwargs):
         if name.startswith('STV+GGA+'):
@@ -73,197 +114,154 @@ class KEDF(AbstractFunctional):
         else:
             return super(KEDF, cls).__new__(cls)
 
-    def compute(self, density, calcType={"E", "V"}, name=None, split=False, **kwargs):
-        if name is None:
-            name = self.name
-        ke_kwargs = copy.deepcopy(self.kwargs)
-        ke_kwargs.update(kwargs)
-        functional = None
-        for item in name.split('+'):
-            out = KEDFunctional(density, name=item, calcType=calcType, split=split,
-                                ke_kernel_saved=self.ke_kernel_saved, **ke_kwargs)
-            if functional is None:
-                functional = out
-            else:
-                if split:
-                    functional.update(out)
-                else:
-                    functional += out
+    def compute(self, density, calcType={"E", "V"}, name=None, kedf = None, split=False, **kwargs):
+        if kedf : name = kedf
+        if name is None : name = self.name
+        name = name.upper()
+        options = copy.deepcopy(self.options)
+        options.update(kwargs)
+        #-----------------------------------------------------------------------
+        k_str = options.pop('k_str', None) # For GGA functional
+        if name.startswith('LIBXC'):
+            options['libxc'] = list(k_str.split())
+            name = 'LIBXC'
+        elif name.startswith('GGA_'):
+            k_str = name[4:]
+            options['mgga'] = False
+            name = 'GGA'
+        elif name.startswith('MGGA_'):
+            k_str = name[5:]
+            options['mgga'] = True
+            name = 'MGGA'
+        options['functional'] = k_str
+        options = {k :v for k, v in options.items() if v is not None}
+        #-----------------------------------------------------------------------
+        functional = {}
+        if density.ndim > 3:
+            nspin = density.rank
+            rhos = density*nspin
+        else :
+            nspin = 1
+            rhos = [density]
+        names = name2functions(name, KEDFEngines)
+        #-----------------------------------------------------------------------
+        temperature = options.get('temperature0', None) or options.get('temperature', None)
+        if temperature : names = {**names, 'DTTF':TTF}
+        #-----------------------------------------------------------------------
+        for rho in rhos :
+            for key in names :
+                func = KEDFEngines.get(key, None)
+                if func is None :
+                    raise AttributeError("%s KEDF to be implemented" % name)
+
+                out = func(rho, calcType=calcType, ke_kernel_saved=self.ke_kernel_saved, **options)
+
+                if not split: key = 'KEDF'
+                if key not in functional :
+                    functional[key] = out
+                else :
+                    functional[key] += out
+        #-----------------------------------------------------------------------
+        if nspin > 1 :
+            """
+            Note :
+                For polarization case, same potential for both.
+            """
+            for key, out in functional.items() :
+                out = out / nspin
+                if 'V' in calcType:
+                    out.potential = out.potential.tile((nspin, 1, 1, 1))
+                if 'D' in calcType:
+                    out.energydensity = out.energydensity.tile((nspin, 1, 1, 1))
+                functional[key] = out
+        #-----------------------------------------------------------------------
+        if split : # Save energies for stress
+            if 'E' in calcType :
+                for key, value in functional.items():
+                    self.energies[key] = value.energy
+        else :
+            functional = functional[key]
         return functional
 
-
-def KEDFunctional(rho, name="WT", calcType={"E", "V"}, split=False, nspin=1, **kwargs):
-    """
-    KEDF interface
-    """
-    if rho.ndim > 3:
-        nspin = rho.rank
-        ke = KEDFunctional(rho[0] * nspin, name, calcType, split, nspin=nspin, **kwargs)
-        if split:
-            for i in range(1, nspin):
-                ke1 = KEDFunctional(rho[i] * nspin, name, calcType, split, nspin=nspin, **kwargs)
-                for k1 in ke:
-                    if 'E' in calcType:
-                        ke[k1].energy = ke[k1].energy + ke1[k1].energy
-                    if 'V' in calcType:
-                        ke[k1].potential = np.vstack((ke[k1].potential, ke1[k1].potential))
-                    if 'D' in calcType:
-                        ke[k1].energydensity = np.vstack((ke[k1].energydensity, ke1[k1].energydensity))
-            for k1 in ke:
-                if 'V' in calcType:
-                    ke[k1].potential = ke[k1].potential.reshape(rho.shape)
-                if 'D' in calcType:
-                    ke[k1].energydensity = ke[k1].energydensity.reshape(rho.shape)
-        else:
-            for i in range(1, nspin):
-                ke1 = KEDFunctional(rho[i] * nspin, name, calcType, split, nspin=nspin, **kwargs)
-                if 'E' in calcType:
-                    ke.energy = ke.energy + ke1.energy
-                if 'V' in calcType:
-                    ke.potential = np.vstack((ke.potential, ke1.potential))
-                if 'D' in calcType:
-                    ke.energydensity = np.vstack((ke.energydensity, ke1.energydensity))
-            if 'V' in calcType:
-                ke.potential = DirectField(grid=rho.grid, griddata_3d=ke.potential, rank=nspin)
-            if 'D' in calcType:
-                ke.energydensity = DirectField(grid=rho.grid, griddata_3d=ke.energydensity, rank=nspin)
-        return ke
-    # -----------------------------------------------------------------------
-    if name.upper() == "NONE":
-        OutFunctional = FunctionalOutput(name="NONE", energy=0.0)
-        if 'D' in calcType:
-            OutFunctional.energydensity = DirectField(grid=rho.grid, rank=nspin)
-        if 'V' in calcType:
-            OutFunctional.potential = DirectField(grid=rho.grid, rank=nspin)
-        OutFunctionalDict = {"NONE": OutFunctional}
-    elif name in KEDF_Dict:
-        func = KEDF_Dict[name]
-        OutFunctional = func(rho, calcType=calcType, **kwargs)
-        if nspin > 1 and 'E' in calcType:
-            OutFunctional.energy /= nspin
-        OutFunctionalDict = {name: OutFunctional}
-    elif name == "x_TF_y_vW" or name == "TFvW" or name == "xTFyvW":
-        xTF = TF(rho, calcType=calcType, **kwargs)
-        yvW = vW(rho, calcType=calcType, **kwargs)
-        if nspin > 1 and 'E' in calcType:
-            xTF.energy /= nspin
-            yvW.energy /= nspin
-        OutFunctional = xTF + yvW
-        OutFunctional.name = name
-        OutFunctionalDict = {"TF": xTF, "vW": yvW}
-    elif name[:3] == "GGA" or name in GGA_KEDF_list:
-        func = GGA
-        if name in GGA_KEDF_list:
-            k_str = name
-        elif name[4:] in GGA_KEDF_list:
+    def stress(self, density, name=None, kedf=None, split=False, **kwargs):
+        if kedf : name = kedf
+        if name is None : name = self.name
+        name = name.upper()
+        #-----------------------------------------------------------------------
+        options = copy.deepcopy(self.options)
+        options.update(kwargs)
+        k_str = options.pop('k_str', None) # For GGA functional
+        if name.startswith('LIBXC'):
+            options['libxc'] = list(k_str.split())
+            name = 'LIBXC'
+        elif name.startswith('GGA_'):
             k_str = name[4:]
-        else:
-            k_str = kwargs["k_str"].upper()
-            if k_str not in GGA_KEDF_list:
-                raise AttributeError("%s GGA KEDF to be implemented" % k_str)
-        OutFunctional = func(rho, functional=k_str, calcType=calcType, **kwargs)
-        OutFunctionalDict = {"GGA": OutFunctional}
-    elif name == "LIBXC_KEDF":
-        k_str = kwargs.get("k_str", "gga_k_lc94").lower()
-        OutFunctional = LibXC(rho, k_str=k_str, calcType=calcType)
-        OutFunctionalDict = {"XC": OutFunctional}
-    elif name in NLKEDF_Dict:
-        func = NLKEDF_Dict[name]
-        NL = func(rho, calcType=calcType, **kwargs)
-        x = kwargs.get("x", 1.0)
-        y = kwargs.get("y", 1.0)
-        alpha = kwargs.get("alpha", 5.0 / 6.0)
-        beta = kwargs.get("beta", 5.0 / 6.0)
-        if abs(x) > 1e-8:
-            if abs(alpha + beta - 5.0 / 3.0) < 1e-8:
-                s = 1.0 + (x - 1) * 20 / (25 - (abs(beta - alpha) * 3) ** 2)  # only works when \alpha+\beta=5/3
-            else:
-                s = x
-            xTF = TF(rho, x=s, calcType=calcType)
-        else:
-            xTF = FunctionalOutput(name="ZERO", energy=0.0)
-
-        if abs(y) > 1e-8:
-            yvW = vW(rho, calcType=calcType, **kwargs)
-        else:
-            yvW = FunctionalOutput(name="ZERO", energy=0.0)
-        if nspin > 1 and 'E' in calcType:
-            xTF.energy /= nspin
-            yvW.energy /= nspin
-            NL.energy /= nspin
-        OutFunctional = NL + xTF + yvW
-        OutFunctional.name = name
-        OutFunctionalDict = {"TF": xTF, "vW": yvW, "NL": NL}
-    elif name[:5] == 'NLGGA' and name[6:] in NLKEDF_Dict:
-        func = NLKEDF_Dict[name[6:]]
-        NL = func(rho, calcType=calcType, **kwargs)
-        k_str = kwargs["k_str"].upper()
-        if k_str in GGA_KEDF_list:
-            gga = GGA(rho, functional=k_str, calcType=calcType, **kwargs)
-        else:
-            raise AttributeError("%s GGA KEDF to be implemented" % k_str)
-        if nspin > 1 and 'E' in calcType:
-            gga.energy /= nspin
-            NL.energy /= nspin
-        OutFunctional = NL + gga
-        OutFunctional.name = name
-        OutFunctionalDict = {"GGA": gga, "NL": NL}
-    else:
-        raise AttributeError("%s KEDF to be implemented" % name)
-
-    temperature0 = kwargs.get('temperature0', None)
-    if temperature0 :
-        temperature = temperature0
-    else :
-        temperature = kwargs.get('temperature', None)
-    if temperature :
-        outf_ttf = TTF(rho, calcType=calcType, **kwargs)
-        OutFunctional += outf_ttf
-        OutFunctional.name = name
-        if temperature0 :
-            OutFunctionalDict['TTF0'] = outf_ttf
+            options['mgga'] = False
+            name = 'GGA'
+        elif name.startswith('MGGA_'):
+            k_str = name[5:]
+            options['mgga'] = True
+            name = 'MGGA'
+        options['functional'] = k_str
+        options = {k :v for k, v in options.items() if v is not None}
+        #-----------------------------------------------------------------------
+        funcs = name2functions(name, KEDFEngines_Stress)
+        if len(self.energies)< len(funcs):
+            self.compute(density, calcType = {"E"}, name = name, split = True, **options)
+        if density.ndim > 3:
+            nspin = density.rank
+            rhol = density*nspin
         else :
-            OutFunctionalDict['TTF'] = outf_ttf
-    #-----------------------------------------------------------------------
-    # -----------------------------------------------------------------------
-    # rho_min = kwargs.get("rho_min", None)
-    # if rho_min is not None and 'V' in calcType :
-    # OutFunctional.potential[rho < rho_min] = 0.0
-    # -----------------------------------------------------------------------
+            nspin = 1
+            rhol = [density]
 
-    if split:
-        return OutFunctionalDict
-    else:
-        return OutFunctional
+        out = {}
+        for k, func in funcs.items():
+            if split : stress = np.zeros((3, 3))
+            energy = self.energies[k]
+            for i in range(0, nspin):
+                stress += func(rhol[i], energy=energy, **options) / nspin
+            if split : out[k] = stress
+        if split : stress = out
+        return stress
 
 
 def KEDFStress(rho, name="WT", energy=None, **kwargs):
     """
-    KEDF stress interface
+    KEDF stress interface (deprecated)
     """
+    KEDF_Stress_Dict = {
+        "TF": ThomasFermiStress,
+        "VW": vonWeizsackerStress,
+        "WT": WTStress,
+        }
+
     if name in KEDF_Stress_Dict:
         func = KEDF_Stress_Dict[name]
 
+    stress = np.zeros((3, 3))
     if rho.ndim > 3:
         nspin = rho.rank
-        stress = func(rho[0] * nspin, energy=energy, **kwargs)
-        for i in range(1, nspin):
-            stress += func(rho[i] * nspin, energy=energy, **kwargs)
-        stress /= nspin
-    else:
-        stress = func(rho, energy=energy, **kwargs)
+        rhol = rho
+    else :
+        nspin = 1
+        rhol = [rho]
+
+    for i in range(0, nspin):
+        stress += func(rhol[i]*nspin, energy=energy, **kwargs)/nspin
 
     return stress
 
 
 class NLGGA(AbstractFunctional):
     def __init__(self, stv=None, gga=None, nl=None, rhomax=None, name='STV+GGA+LMGPA'):
+        self.type = 'KEDF'
         self.stv = stv
         self.gga = gga
         self.nl = nl
         self.rhomax = rhomax
         self.level = 3  # if smaller than 3 only use gga to guess the rhomax
-        self.name = name
+        self.name = name.upper()
 
     def compute(self, density, calcType={"E", "V"}, **kwargs):
         calcType = {"E", "V"}
@@ -272,6 +270,9 @@ class NLGGA(AbstractFunctional):
             calc = {'D', 'V'}
         elif 'E' in calcType:
             calc = {'D'}
+
+        split = kwargs.get('split', False)
+        kwargs['split'] = False
 
         rhomax_w = density.amax()
 
@@ -296,7 +297,7 @@ class NLGGA(AbstractFunctional):
         if self.level > 2:
             func_stv = self.stv(density, calcType=calc, **kwargs)
             func_nl = self.nl(density_trunc, calcType=calc, **kwargs)
-            kdd = kwargs.get('kdd', self.nl.kwargs.get('kdd', 1))
+            kdd = kwargs.get('kdd', self.nl.options.get('kdd', 1))
             if kdd < 3:
                 func_nl.energydensity = 3.0 / 8.0 * density_trunc * func_nl.potential
 
@@ -329,6 +330,7 @@ class NLGGA(AbstractFunctional):
             energy = energydensity.sum() * density.grid.dV
             obj.energy = energy
 
+        if split : obj = {'NG': obj}
         return obj
 
 
@@ -344,6 +346,12 @@ def kedf2nlgga(name='STV+GGA+LMGPA', **kwargs):
 
     """
 
+    kedf = kwargs.get('kedf', None)
+    if kedf :
+        name = kedf
+        del kwargs['kedf']
+    name = name.upper()
+
     if not name.startswith('STV+GGA+'):
         raise AttributeError("The name of NLGGA is not correct : {}".format(name))
     names = name.split('+')
@@ -353,10 +361,8 @@ def kedf2nlgga(name='STV+GGA+LMGPA', **kwargs):
     if params is not None: del kwargs["params"]
 
     # Only for GGA
-    if "k_str" in kwargs:
-        k_str = kwargs.pop("k_str")
-    else:
-        k_str = "REVAPBEK"
+    k_str = kwargs.pop("k_str", None)
+    if not k_str : k_str = "REVAPBEK"
 
     # Remove TF and vW from NL
     for key in ['x', 'y']:
@@ -369,7 +375,7 @@ def kedf2nlgga(name='STV+GGA+LMGPA', **kwargs):
         names[1] = 'GGA'
         k_str = k_str.upper()
     else:
-        names[1] = 'LIBXC_KEDF'
+        names[1] = 'LIBXC'
         k_str = k_str.lower()
 
     stv = KEDF(name='GGA', k_str='STV', params=params, sigma=sigma)
@@ -398,6 +404,12 @@ def kedf2mixkedf(name='MIX_TF+GGA', first_high=True, **kwargs):
 
     """
 
+    kedf = kwargs.get('kedf', None)
+    if kedf :
+        name = kedf
+        del kwargs['kedf']
+    name = name.upper()
+
     if not name.startswith('MIX_'):
         raise AttributeError("The name of MIXKEDF is not correct : {}".format(name))
     names = name[4:].split('+')
@@ -415,7 +427,7 @@ def kedf2mixkedf(name='MIX_TF+GGA', first_high=True, **kwargs):
         names[1] = 'GGA'
         k_str = k_str.upper()
     else:
-        names[1] = 'LIBXC_KEDF'
+        names[1] = 'LIBXC'
         k_str = k_str.lower()
 
     stv = KEDF(name=names[0], **kwargs)
@@ -427,10 +439,11 @@ def kedf2mixkedf(name='MIX_TF+GGA', first_high=True, **kwargs):
 
 class MIXGGAS(AbstractFunctional):
     def __init__(self, stv=None, gga=None, rhomax=None, name='MIX_TF+GGA'):
+        self.type = 'KEDF'
         self.stv = stv
         self.gga = gga
         self.rhomax = rhomax
-        self.name = name
+        self.name = name.upper()
 
     def compute(self, density, calcType={"E", "V"}, **kwargs):
         calcType = {"E", "V"}
@@ -439,8 +452,10 @@ class MIXGGAS(AbstractFunctional):
         elif 'E' in calcType:
             calc = {'D'}
 
-        func_stv = self.stv(density, calcType=calc, **kwargs)
+        split = kwargs.get('split', False)
+        kwargs['split'] = False
 
+        func_stv = self.stv(density, calcType=calc, **kwargs)
         func_gga = self.gga(density, calcType=calc, **kwargs)
 
         obj = FunctionalOutput(name='MIXGGAS')
@@ -460,6 +475,7 @@ class MIXGGAS(AbstractFunctional):
             energy = energydensity.sum() * density.grid.dV
             obj.energy = energy
 
+        if split : obj = {'MG': obj}
         return obj
 
     def interpfunc(self, rho, calcType={"E", "V"}, func='tanh', **kwargs):

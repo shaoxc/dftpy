@@ -5,9 +5,9 @@
 # from the environment for the first two.
 SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
-SOURCEDIR     = .
+SOURCEDIR     = source
 BUILDDIR      = build
-PYTHON = python
+PYTHON = python3
 
 # Put it first so that "make" without argument is like "make help".
 #

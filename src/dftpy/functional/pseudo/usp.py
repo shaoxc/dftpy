@@ -1,7 +1,7 @@
 import numpy as np
 
-from dftpy.constants import LEN_CONV, ENERGY_CONV
 from dftpy.functional.pseudo.abstract_pseudo import BasePseudo
+from dftpy.constants import Units
 
 
 class USP(BasePseudo):
@@ -20,8 +20,8 @@ class USP(BasePseudo):
         else:
             raise AttributeError("Pseudopotential not supported : '{}'".format(fname))
 
-        HARTREE2EV = ENERGY_CONV["Hartree"]["eV"]
-        BOHR2ANG = LEN_CONV["Bohr"]["Angstrom"]
+        HARTREE2EV = Units.Ha
+        BOHR2ANG = Units.Bohr
         with open(fname, "r") as outfil:
             lines = outfil.readlines()
 
@@ -48,18 +48,18 @@ class USP(BasePseudo):
 
         line = " ".join([line.strip() for line in lines[ibegin:iend]])
 
-        Zval = np.float(lines[ibegin - 2].strip())
+        zval = float(lines[ibegin - 2].strip())
 
         if "1000" in lines[iend] or len(lines[iend].strip()) == 1 or len(lines[iend].strip()) == 5:
             pass
         else:
             raise AttributeError("Error : Check the PP file : {}".format(fname))
-        gmax = np.float(lines[ibegin - 1].split()[0]) * BOHR2ANG
+        gmax = float(lines[ibegin - 1].split()[0]) * BOHR2ANG
 
         # v = np.array(line.split()).astype(np.float64) / (HARTREE2EV*BOHR2ANG ** 3 * 4.0 * np.pi)
         self.v = np.array(line.split()).astype(np.float64) / (HARTREE2EV * BOHR2ANG ** 3)
         self.r = np.linspace(0, gmax, num=len(self.v))
-        self.v[1:] -= Zval * 4.0 * np.pi / self.r[1:] ** 2
+        self.v[1:] -= zval * 4.0 * np.pi / self.r[1:] ** 2
         self.info = {'comment' : comment}
         # -----------------------------------------------------------------------
         nlcc = int(lines[ibegin - 1].split()[1])

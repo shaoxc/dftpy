@@ -40,6 +40,7 @@ def Functional(type=None, optional_kwargs=None, **kwargs):
      outXC.energy --> the energy
      outXC.potential     --> the pot
     """
+    type = type.upper()
     if optional_kwargs is not None:
         kwargs.update(optional_kwargs)
 

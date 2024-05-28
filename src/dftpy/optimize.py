@@ -7,7 +7,7 @@ import collections.abc
 class Dynamics(IOContext):
     """Base-class for all MD and structure optimization classes."""
 
-    def __init__(self, system=None, logfile=None):
+    def __init__(self, logfile=None):
         """Dynamics object.
 
         Parameters:
@@ -17,7 +17,6 @@ class Dynamics(IOContext):
             Use '-' for stdout.
         """
 
-        self.system = system
         if logfile is not None:
             self.logfile = self.openfile(logfile, mode='a', comm=mp.comm)
         self.observers_before_log = []
@@ -140,7 +139,7 @@ class Dynamics(IOContext):
         return converged
 
     def converged(self, *args):
-        """" a dummy function as placeholder for a real criterion, e.g. in
+        """ a dummy function as placeholder for a real criterion, e.g. in
         Optimizer """
         return False
 

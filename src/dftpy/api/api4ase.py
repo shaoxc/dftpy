@@ -1,86 +1,119 @@
 import numpy as np
-from dftpy.atom import Atom
-from dftpy.cell import DirectCell
-from dftpy.constants import LEN_CONV, ENERGY_CONV, FORCE_CONV, STRESS_CONV
-from dftpy.interface import ConfigParser, OptimizeDensityConf
+from dftpy.constants import ENERGY_CONV, FORCE_CONV, STRESS_CONV
+from dftpy.interface import ConfigParser, OptimizeDensityConf, evaluator2results
+from dftpy.ions import Ions
+from dftpy.optimization import Optimization
+from dftpy.field import DirectField
+from dftpy.utils import field2distrib
+from ase.calculators.calculator import Calculator, all_changes
+# from dftpy.grid import DirectGrid
 
-
-class DFTpyCalculator(object):
+class DFTpyCalculator(Calculator):
     """DFTpy calculator for ase"""
+    implemented_properties = ['energy', 'forces', 'stress']
 
-    def __init__(self, config=None, mp = None, **kwargs):
+    def __init__(self, config = None, mp = None, optimizer=None, evaluator=None,
+            rho = None, zero_stress=False, **kwargs):
+        Calculator.__init__(self, **kwargs)
         self.config = config
-        self.results = None
-        self.atoms = {}
         self.mp = mp
+        self.optimizer = optimizer
+        self.evaluator = evaluator
+        self.zero_stress = zero_stress
+        self.dftpy_results = {'density': rho}
 
-    def check_restart(self, atoms=None):
-        if (
-            self.atoms
-            and np.allclose(self.atoms["lattice"], atoms.cell[:])
-            and np.allclose(self.atoms["position"], atoms.get_scaled_positions())
-            and self.results is not None
-        ):
-            return False
+    def calculate(self, atoms=None, properties=['energy'], system_changes=all_changes):
+        Calculator.calculate(self, atoms, properties, system_changes)
+
+        if len(system_changes) > 0 : self.run(system_changes, properties=properties)
+
+        energy = self.dftpy_results["energypotential"]["TOTAL"].energy * ENERGY_CONV["Hartree"]["eV"]
+        self.energy = self.mp.asum(energy)
+        self.results['energy'] = self.energy
+        if 'forces' in properties:
+            if "TOTAL" not in self.dftpy_results["forces"]: self.calc_forces()
+            self.forces = self.dftpy_results["forces"]["TOTAL"] * FORCE_CONV["Ha/Bohr"]["eV/A"]
+            self.results['forces'] = self.forces
+
+        if 'stress' in properties:
+            stress_voigt = np.zeros(6)
+            if not self.zero_stress :
+                if "TOTAL" not in self.dftpy_results["stress"]: self.calc_stress()
+                for i in range(3):
+                    stress_voigt[i] = self.dftpy_results["stress"]["TOTAL"][i, i]
+                stress_voigt[3] = self.dftpy_results["stress"]["TOTAL"][1, 2]  # yz
+                stress_voigt[4] = self.dftpy_results["stress"]["TOTAL"][0, 2]  # xz
+                stress_voigt[5] = self.dftpy_results["stress"]["TOTAL"][0, 1]  # xy
+            self.stress = stress_voigt * STRESS_CONV["Ha/Bohr3"]["eV/A3"]
+            self.results['stress'] = self.stress
+
+    def run(self, system_changes=all_changes, properties=['energy']):
+        if self.config is not None:
+            self.run_config(system_changes=system_changes, properties=properties)
+        elif self.evaluator is not None:
+            self.run_normal(system_changes=system_changes, properties=properties)
         else:
-            return True
+            raise ValueError("!!!Error: Please give a 'config' or 'evaluator' for the calculator")
+        if self.mp is None :
+            self.mp = self.dftpy_results["density"].grid.mp
 
-    def get_potential_energy(self, atoms=None, **kwargs):
-        if self.check_restart(atoms):
-            lattice = atoms.cell[:]
-            Z = atoms.numbers
-            # pos = atoms.get_positions()
-            # pos /= LEN_CONV['Bohr']['Angstrom']
-            pos = atoms.get_scaled_positions()
-            if self.results is not None and len(self.atoms) > 0 :
-                pseudo = self.results["pseudo"]
-                if np.allclose(self.atoms["lattice"], atoms.cell[:]):
-                    grid = self.results["density"].grid
-                else :
-                    grid = None
-            else :
-                pseudo = None
-                grid = None
+    def run_config(self, system_changes=all_changes, properties=['energy'], **kwargs):
+        pseudo = self.dftpy_results.get('pseudo', None)
+        rho = self.dftpy_results.get('density', None)
+        ions = Ions.from_ase(self.atoms)
 
-            # Save the information of structure
-            self.atoms["lattice"] = lattice.copy()
-            self.atoms["position"] = pos.copy()
-            lattice = np.asarray(lattice).T / LEN_CONV["Bohr"]["Angstrom"]
-            cell = DirectCell(lattice)
-            ions = Atom(Z=Z, pos=pos, cell=cell, basis="Crystal")
-            # ions.restart()
-            if self.results is not None and self.config["MATH"]["reuse"]:
-                config, others = ConfigParser(self.config, ions=ions, rhoini=self.results["density"], pseudo=pseudo, grid=grid, mp = self.mp)
-                results = OptimizeDensityConf(config, others["struct"], others["E_v_Evaluator"], others["nr2"])
-            else:
-                config, others = ConfigParser(self.config, ions=ions, pseudo=pseudo, grid=grid, mp = self.mp)
-                results = OptimizeDensityConf(config, others["struct"], others["E_v_Evaluator"], others["nr2"])
-            self.results = results
-        energy = self.results["energypotential"]["TOTAL"].energy * ENERGY_CONV["Hartree"]["eV"]
-        energy = self.results["density"].grid.mp.asum(energy)
-        return energy
+        grid = None
+        if 'cell' not in system_changes:
+            if rho is not None: grid = rho.grid
 
-    def get_forces(self, atoms):
-        if self.check_restart(atoms):
-            # if 'Force' not in self.config['JOB']['calctype'] :
-                # self.config['JOB']['calctype'] += ' Force'
-            self.get_potential_energy(atoms)
-        return self.results["forces"]["TOTAL"] * FORCE_CONV["Ha/Bohr"]["eV/A"]
+        if not self.config["MATH"]["reuse"]: rho = None
 
-    def get_stress(self, atoms):
-        if self.check_restart(atoms):
-            # if 'Stress' not in self.config['JOB']['calctype'] :
-                # self.config['JOB']['calctype'] += ' Stress'
-            self.get_potential_energy(atoms)
-        # return self.results['stress']['TOTAL'] * STRESS_CONV['Ha/Bohr3']['eV/A3']
-        stress_voigt = np.zeros(6)
-        if "TOTAL" not in self.results["stress"]:
-            # print("!WARN : NOT calculate the stress, so return zeros")
-            return stress_voigt
-        for i in range(3):
-            stress_voigt[i] = self.results["stress"]["TOTAL"][i, i]
-        stress_voigt[3] = self.results["stress"]["TOTAL"][1, 2]  # yz
-        stress_voigt[4] = self.results["stress"]["TOTAL"][0, 2]  # xz
-        stress_voigt[5] = self.results["stress"]["TOTAL"][0, 1]  # xy
-        # stress_voigt  *= -1.0
-        return stress_voigt * STRESS_CONV["Ha/Bohr3"]["eV/A3"]
+        config, others = ConfigParser(self.config, ions=ions, rhoini=rho, pseudo=pseudo, grid=grid, mp = self.mp)
+        self.dftpy_results = OptimizeDensityConf(config, **others)
+
+    def run_normal(self, system_changes=all_changes, properties=['energy'], **kwargs):
+        rho = self.dftpy_results.get('density', None)
+        ions = Ions.from_ase(self.atoms)
+
+        if rho is None:
+            raise ValueError("!!!Error: Please give a initial density for the calculator")
+
+        grid = rho.grid
+        if 'cell' in system_changes:
+            grid = grid.create(lattice = ions.cell)
+            rho_old = rho
+            rho = DirectField(grid=grid, rank=rho_old.rank, cplx=rho_old.cplx)
+
+        for key, func in self.evaluator.funcDict.items():
+            if func.type == "PSEUDO":
+                func.restart(ions=ions, grid=grid)
+
+        if 'cell' in system_changes:
+            field2distrib(rho_old, rho)
+            rho *= ions.get_ncharges() / np.sum(rho.integral())
+
+        if self.optimizer is None:
+            self.optimizer = Optimization(EnergyEvaluator=self.evaluator)
+        rho = self.optimizer.optimize_rho(guess_rho=rho)
+
+        calcType = ['E']
+        # if 'energy' in properties: calcType.append('E')
+        if 'forces' in properties: calcType.append('F')
+        if 'potential' in properties: calcType.append('V')
+        if 'stress' in properties: calcType.append('S')
+        if self.zero_stress:
+            if 'S' in calcType : calcType.remove('S')
+
+        self.dftpy_results = evaluator2results(self.evaluator, rho=rho, calcType=calcType, ions=ions, **kwargs)
+
+    def calc_forces(self):
+        evaluator = self.dftpy_results.get('evaluator', None)
+        rho = self.dftpy_results.get('density', None)
+        results = evaluator2results(evaluator, rho=rho, calcType=['F'])
+        self.dftpy_results['forces'] = results.get('forces', None)
+
+    def calc_stress(self):
+        evaluator = self.dftpy_results.get('evaluator', None)
+        rho = self.dftpy_results.get('density', None)
+        results = evaluator2results(evaluator, rho=rho, calcType=['S'])
+        self.dftpy_results['stress'] = results.get('stress', None)

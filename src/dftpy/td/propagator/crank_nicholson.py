@@ -19,6 +19,15 @@ class CrankNicholsonOperator(Operator):
     """
 
     def __init__(self, hamiltonian: Hamiltonian, interval: float) -> None:
+        """
+
+        Parameters
+        ----------
+        hamiltonian: Hamiltonian
+            the time-dependent Hamiltonian
+        interval: float
+            the time interval for one time step
+        """
         super(CrankNicholsonOperator, self).__init__(hamiltonian.grid)
         self.hamiltonian = hamiltonian
         self.interval = interval
@@ -33,6 +42,17 @@ class CrankNicholsonOperator(Operator):
         self._hamiltonian = hamiltonian
 
     def __call__(self, psi: BaseField) -> BaseField:
+        """
+
+        Parameters
+        ----------
+        psi: DirectField or ReciprocalField
+            The wavefunction the operator acts on
+        Returns
+        -------
+        DirectField or ReciprocalField, same as psi
+            The resulting wavefunction
+        """
         return psi + 1j * self.hamiltonian(psi) * self.interval / 2.0
 
 
@@ -56,23 +76,32 @@ class CrankNicholson(AbstractPropagator):
         "cg": {"func": dftpy.linear_solver.cg, "scipy": False},
     }
 
-    def __init__(self, hamiltonian: Hamiltonian, interval: float, linear_solver: str = "cg", tol: float = 1e-8,
+    def __init__(self, hamiltonian: Hamiltonian, interval: float, linearsolver: str = "cg", tol: float = 1e-8,
                  maxiter: int = 100, atol: Union[float, None] = None, **kwargs) -> None:
         """
 
         Parameters
         ----------
-        hamiltonian: the time-dependent Hamiltonian
-        interval: the time interval for one time step
-        linear_solver: the name of the linear solver to solve the Ax=b problem
-        tol: the tolerance of the linear solver
-        maxiter: the max number of iterations of the linear solver
-        atol: the absolute tolerance of the linear solver
+        hamiltonian: Hamiltionian
+            the time-dependent Hamiltonian
+        interval: float
+            the time interval for one time step
+        linearsolver: str
+            the name of the linear solver to solve the Ax=b problem. Options:
+            "bicg_scipy", "bicgstab_scipy", "cg_scipy", "cgs_scipy", "gmres_scipy", "lgmres_scipy", "minres_scipy",
+            "qmr_scipy", "bicg", "bicgstab", "cg"
+            Note: Scipy solvers only works for the serial version
+        tol: float
+            the tolerance of the linear solver
+        maxiter: int
+            the max number of iterations of the linear solver
+        atol: float
+            the absolute tolerance of the linear solver
 
         """
         super(CrankNicholson, self).__init__(hamiltonian, interval)
         self._a = CrankNicholsonOperator(self._hamiltonian, self._interval)
-        self.linear_solver = linear_solver
+        self.linear_solver = linearsolver
         self.tol = tol
         self.maxiter = maxiter
         self.atol = atol
@@ -125,13 +154,16 @@ class CrankNicholson(AbstractPropagator):
 
         Parameters
         ----------
-        psi0: the initial wavefunction.
+        psi0: DirectField or ReciprocalField
+            the initial wavefunction.
 
         Returns
         -------
         A tuple (psi1, status)
-        psi1: the final wavefunction.
-        status: 0: converged, others: not converged
+        psi1: DirectField or ReciprocalField, same as psi0
+            the final wavefunction.
+        status: int
+            0: converged, others: not converged
 
         """
 

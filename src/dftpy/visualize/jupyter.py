@@ -1,36 +1,23 @@
 import numpy as np
-from dftpy.system import System
-import importlib.util
-try:
-    import dftpy.visualize.ipv_viewer as ipvv
-except Exception:
-    import dftpy.visualize.mpl_viewer as mplv
 
-
-def view_density(mol,level=None):
+def view_density(density, level=None, viewer = 'ipyvolume', **kwargs):
     '''
-    Visualize a DFTpy system on jupyter notebooks.
+    Visualize a density on jupyter notebooks.
     '''
-    if not isinstance(mol,System):
-        raise AttributeError("argument must be an instance of DFTpy system")
-    density = mol.field
     rho = np.pad(density, [[0,1],[0,1],[0,1]], mode="wrap")
-    isipv= importlib.util.find_spec("ipyvolume")
-    if isipv :
+
+    if viewer == 'ipyvolume' :
+        import dftpy.visualize.ipv_viewer as ipvv
         ipvv.view_density(rho, level)
     else :
+        import dftpy.visualize.mpl_viewer as mplv
         mplv.plot_isosurface(rho, level)
 
-
-def view_ions(mol, **kwargs):
+def view_ions(ions, viewer = 'ipyvolume', **kwargs):
     '''
-    Visualize a DFTpy system on jupyter notebooks.
+    Visualize a density on jupyter notebooks.
     '''
-    if not isinstance(mol,System):
-        raise AttributeError("argument must be an instance of DFTpy system")
-
-    ions = mol.ions
-    pos = ions.pos.to_crys()
+    pos = ions.get_scaled_positions()
     tol=1E-6
     tol2=2.0*tol
     ixyzA = np.mgrid[-1:2,-1:2,-1:2].reshape((3, -1)).T
@@ -42,8 +29,9 @@ def view_ions(mol, **kwargs):
     for i in range(3):
         val=val[np.logical_and(val[:,i]<1+tol, val[:,i]>-tol)]
 
-    isipv= importlib.util.find_spec("ipyvolume")
-    if isipv :
+    if viewer == 'ipyvolume' :
+        import dftpy.visualize.ipv_viewer as ipvv
         ipvv.view_ions(val, tol2)
     else :
+        import dftpy.visualize.mpl_viewer as mplv
         mplv.plot_scatter(val, tol2)

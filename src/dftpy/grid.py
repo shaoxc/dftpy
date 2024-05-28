@@ -1,8 +1,11 @@
 import numpy as np
-from dftpy.cell import BaseCell, DirectCell, ReciprocalCell
+from scipy.interpolate import splrep, splev
+import scipy.special as sp
+from ase.cell import Cell
+from dftpy.math_utils import spacing2ecut, ecut2nr
+from dftpy.mpi import MP
 
-
-class BaseGrid(BaseCell):
+class BaseGrid:
     """
     Object representing a grid (Cell (lattice) plus discretization)
     extends Cell
@@ -20,44 +23,44 @@ class BaseGrid(BaseCell):
 
     """
 
-    def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), convention="mic", full=False, realspace=True,
-                 cplx=False, mp=None, **kwargs):
+    def __init__(self, lattice, nr = None, origin=np.array([0.0, 0.0, 0.0]), full=True, direct=True,
+                 cplx=False, mp=None, ecut = None, comm = None, **kwargs):
         if mp is None :
-            from dftpy.mpi import MP
-            mp = MP()
-        super().__init__(lattice=lattice, origin=origin, **kwargs)
+            mp = MP(comm)
+        self._origin = np.asarray(origin)
+        if not isinstance(lattice, Cell):
+            cell=Cell(lattice)
+        else:
+            cell=lattice
         #
         self.cplx = cplx
+        self._cell = cell
+        self._direct = direct
+        #
+        if nr is None : nr = ecut2nr(ecut=ecut, lattice=lattice, **kwargs)
         #
         self._nrR = np.array(nr, dtype = np.int32)
         self._nnrR = np.prod(self._nrR)
-        self._dV = np.abs(self.volume) / self._nnrR
+        self._dV = np.abs(self.cell.volume) / self._nnrR
         self._nrG = self._nrR.copy()
         if not full :
             self._nrG[-1] = self._nrG[-1] // 2 + 1
         self._nnrG = np.prod(self._nrG)
-        metric = np.dot(lattice.T, lattice)
-        latparas = np.zeros(3)
-        for i in range(3):
-            latparas[i] = np.sqrt(metric[i, i])
-        self._spacings = latparas / self._nrR
-        self._latparas= latparas
+        self._spacings = self.cell.lengths() / self._nrR
         self._mp = mp
         if self.cplx :
             full = True
-        self.local_slice(nr, realspace = realspace, full = full, cplx = cplx, **kwargs)
+        self.local_slice(nr, direct = direct, full = full, cplx = cplx, **kwargs)
         self._nnr = np.prod(self._nr)
-        # print('nr_local', self.mp.comm.rank, self._nr, realspace, self.mp.comm.size, flush = True)
+        # print('nr_local', self.mp.comm.rank, self._nr, direct, self.mp.comm.size, flush = True)
         self._full = full
+        self._ecut = ecut
 
     def __eq__(self, other: 'BaseGrid') -> bool:
-        if not super().__eq__(other):
+        if np.allclose(self.lattice, other.lattice) and np.allclose(self.nrR, other.nrR):
+            return True
+        else :
             return False
-        for ilat in range(3):
-            if self._nr[ilat] != other._nr[ilat]:
-                return False
-
-        return True
 
     @property
     def mp(self):
@@ -96,29 +99,67 @@ class BaseGrid(BaseCell):
         return self._dV
 
     @property
-    def Volume(self):
-        return self._volume
+    def volume(self):
+        return self.cell.volume
 
     @property
     def spacings(self):
         return self._spacings
 
     @property
-    def lat_paras(self):
-        return self._latparas
+    def cell(self):
+        return self._cell
 
     @property
     def full(self):
         return self._full
 
-    def repeat(self, reps=1):
-        reps = np.ones(3, dtype='int')*reps
+    @property
+    def direct(self):
+        return self._direct
+
+    @property
+    def origin(self):
+        return self._origin
+
+    def tile(self, reps=1):
+        # it only repeat last three dimensions with same rep
+        if self.mp.size > 1:
+            raise ValueError("Only works for serial version.")
+        try:
+            tup = tuple(reps)
+        except TypeError:
+            tup = (reps,)
+        reps = np.ones(3, dtype='int')
+        for i, x in enumerate(tup):
+            reps[i] = x
         lattice = self.lattice.copy()
         for i in range(3):
-            lattice[:, i] *= reps[i]
+            lattice[i] *= reps[i]
         nr = self.nr * reps
-        results = self.__class__(lattice, nr, origin=self.origin, full=self.full, cplx=self.cplx)
+        results = self.__class__(lattice, nr, origin=self.origin, full=self.full, cplx=self.cplx, direct=self.direct)
         return results
+
+    def create(self, lattice=None, **kwargs):
+        options={
+                'origin' : self.origin,
+                'full' : self.full,
+                'cplx' : self.cplx,
+                'mp' : self.mp,
+                'ecut' : self.ecut,
+                }
+        if lattice is None: lattice = self.cell
+        options.update(kwargs)
+        results = self.__class__(lattice, **options)
+        return results
+
+    def repeat(self, rep=1):
+        # it only repeat last three dimensions with same rep
+        if not isinstance(rep, int):
+            raise AttributeError("Grid repeat only support one integer, Please use 'tile'.")
+        if self.rank == 1 :
+            reps = np.ones(3, dtype='int')*rep
+        return self.tile(reps)
 
     def local_slice(self, nr, **kwargs):
         self._slice, self._nr, self._offsets = self.mp.get_local_fft_shape(nr, **kwargs)
@@ -143,42 +184,63 @@ class BaseGrid(BaseCell):
         if self.mp.is_mpi :
             reqs = []
             bufs = []
+            rank = 1 if getattr(data, 'ndim', 1) < 4 else data.shape[0]
             if self.mp.rank == root:
                 if out is None :
+                    if nr is None : nr = self.nrR
+                    if rank>1 : nr = (rank, *nr)
                     out = np.empty(nr, dtype = data.dtype)
                 for i in range(0, self.mp.comm.size):
                     if i == root :
                         buf = data
                     else :
-                        buf = np.empty(self.nr_all[i], dtype = data.dtype)
+                        shape = self.nr_all[i]
+                        if rank>1 : shape = (rank, *shape)
+                        buf = np.empty(shape, dtype = data.dtype)
                         req = self.mp.comm.Irecv(buf, source = i, tag = i)
                         reqs.append(req)
                     bufs.append(buf)
             else :
                 req = self.mp.comm.Isend(data, dest = root, tag = self.mp.rank)
                 reqs.append(req)
-                out = np.ones((1, 1, 1))
+                out = np.ones(rank)
             self.mp.MPI.Request.Waitall(reqs)
             if self.mp.rank == root:
                 for i in range(0, self.mp.comm.size):
-                    out[self.slice_all[i]] = bufs[i]
+                    inds = self.slice_all[i]
+                    if rank>1 : inds = (slice(None), *inds)
+                    out[inds] = bufs[i]
             self.mp.comm.Barrier()
         else :
-            out = data.copy()
+            if out is None :
+                out = data.copy()
+            else :
+                out[:] = data
         return out
 
     def scatter(self, data, out = None, root = 0, **kwargs):
         if self.mp.is_mpi :
             reqs = []
+            rank = 1 if getattr(data, 'ndim', 1) < 4 else data.shape[0]
+            rank = self.mp.amax(rank)
             if out is None :
-                out = np.empty(self.nr, dtype = data.dtype)
+                nr = self.nr
+                if rank>1 : nr = (rank, *nr)
+                out = np.empty(nr, dtype = data.dtype)
             if self.mp.rank == root :
                 for i in range(0, self.mp.comm.size):
                     if i == root :
-                        out[:] = data[self.slice_all[i]]
+                        inds = self.slice_all[i]
+                        if rank>1 : inds = (slice(None), *inds)
+                        out[:] = data[inds]
                     else :
-                        buf = np.empty(self.nr_all[i], dtype = data.dtype)
-                        buf[:] = data[self.slice_all[i]]
+                        shape = self.nr_all[i]
+                        inds = self.slice_all[i]
+                        if rank>1 :
+                            shape = (rank, *shape)
+                            inds = (slice(None), *inds)
+                        buf = np.empty(shape, dtype = data.dtype)
+                        buf[:] = data[inds]
                         req = self.mp.comm.Isend(buf, dest = i, tag = i)
                         reqs.append(req)
             else :
@@ -190,11 +252,43 @@ class BaseGrid(BaseCell):
             if out is None :
                 out = data.copy()
             else :
-                out[:] = data.copy()
+                out[:] = data
         return out
 
+    def free(self):
+        self.mp.free()
 
-class DirectGrid(BaseGrid, DirectCell):
+    @property
+    def lattice(self):
+        return self.cell.array
+
+    @property
+    def ecut(self):
+        if self._ecut is None :
+            if hasattr(self, 'guess_ecut'):
+                ecut = self.guess_ecut()
+            elif hasattr(self, 'get_direct'):
+                ecut = self.get_direct().guess_ecut()
+            else :
+                ecut = None
+        else :
+            ecut = self._ecut
+        return ecut
+
+    @ecut.setter
+    def ecut(self, value):
+        self._ecut = value
+        if hasattr(self, 'Dgrid'):
+            self._qmask = None
+            if hasattr(self.Dgrid, '_ecut'):
+                self.Dgrid._ecut = value
+        elif hasattr(self, 'RPgrid'):
+            if hasattr(self.RPgrid, '_ecut'):
+                self.RPgrid._ecut = value
+                self.RPgrid._qmask = None
+
+
+class DirectGrid(BaseGrid):
     """
         Attributes:
         ----------
@@ -205,18 +299,18 @@ class DirectGrid(BaseGrid, DirectCell):
         s : crystal coordinates of each grid point
     """
 
-    def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), full=True, uppergrid=None, **kwargs):
+    def __init__(self, lattice, nr = None, origin=np.array([0.0, 0.0, 0.0]), full=True, uppergrid=None, **kwargs):
         """
         Parameters
         ----------
         lattice : array_like[3,3]
             matrix containing the direct lattice vectors (as its colums)
         """
-        # internally always convert the units to Bohr
-        # print("DirectGrid __init__")
-        # lattice is already scaled inside the super()__init__, no need to do it here
-        # lattice *= LEN_CONV[units]["Bohr"]
-        super().__init__(lattice=lattice, nr=nr, origin=origin, full=full, realspace=True, **kwargs)
+        self.init_options = locals()
+        for k in ['__class__', 'self', 'kwargs', 'uppergrid'] :
+            self.init_options.pop(k, None)
+        self.init_options.update(kwargs)
+        super().__init__(lattice=lattice, nr=nr, origin=origin, full=full, direct=True, **kwargs)
         self._r = None
         self._rr = None
         self._s = None
@@ -228,9 +322,7 @@ class DirectGrid(BaseGrid, DirectCell):
         Implement the == operator in the DirectGrid class.
         Refer to the __eq__ method of Grid for more information.
         """
-        if not isinstance(other, (BaseGrid, DirectGrid)):
-            if isinstance(other, DirectCell):
-                return DirectCell.__eq__(self, other)
+        if not isinstance(other, DirectGrid):
             raise TypeError("You can only compare a DirectGrid with another DirectGrid")
         return BaseGrid.__eq__(self, other)
 
@@ -251,8 +343,7 @@ class DirectGrid(BaseGrid, DirectCell):
 
     def _calc_grid_cart_points(self):
         if self._r is None:
-            # self._r = self.s.to_cart()
-            self._r = np.einsum("j...,kj->k...", self.s, self.lattice)
+            self._r = np.einsum("j...,jk->k...", self.s, self.lattice)
 
     @property
     def r(self):
@@ -291,7 +382,7 @@ class DirectGrid(BaseGrid, DirectCell):
                 self._nrG[-1] = self._nrG[-1] // 2 + 1
 
     def get_reciprocal(self, scale=None, convention: str = "physics") -> 'ReciprocalGrid':
-        """
+        r"""
             Returns a new ReciprocalCell, the reciprocal cell of self
             The ReciprocalCell is scaled properly to include
             the scaled (*self.nr) reciprocal grid points
@@ -317,18 +408,17 @@ class DirectGrid(BaseGrid, DirectCell):
             fac = 2 * np.pi
             bg = fac * np.linalg.inv(self.lattice)
             bg = bg.T
-            # bg = bg/LEN_CONV["Bohr"][self.units]
-            reciprocal_lat = np.einsum("ij,j->ij", bg, scale)
+            reciprocal_lat = np.einsum("ij,i->ij", bg, scale)
 
             self.RPgrid = ReciprocalGrid(lattice=reciprocal_lat, nr=self.nrR, full=self.full, uppergrid=self,
-                                         cplx=self.cplx, mp=self.mp)
+                                         cplx=self.cplx, mp=self.mp, ecut = self.ecut)
         return self.RPgrid
 
     def get_Rtable(self, rcut=10):
         '''Only support for serial'''
         if self._Rtable is None:
             self._Rtable = {}
-            metric = np.dot(self.lattice.T, self.lattice)
+            metric = np.dot(self.lattice, self.lattice.T)
             latticeConstants = np.sqrt(np.diag(metric))
             gaps = latticeConstants / self.nr
             Nmax = np.ceil(rcut / gaps).astype(np.int32) + 1
@@ -345,7 +435,7 @@ class DirectGrid(BaseGrid, DirectCell):
             mgrid[1] /= self.nr[1]
             mgrid[2] /= self.nr[2]
             gridpos = mgrid.astype(np.float64)
-            array = np.einsum("jklm,ij->iklm", gridpos, self.lattice)
+            array = np.einsum("jklm,ji->iklm", gridpos, self.lattice)
             dists = np.sqrt(np.einsum("ijkl,ijkl->jkl", array, array))
             self._Rtable["Nmax"] = Nmax
             self._Rtable["table"] = dists
@@ -355,8 +445,26 @@ class DirectGrid(BaseGrid, DirectCell):
         value = super().gather(data, self.nrR, out = out, **kwargs)
         return value
 
+    def get_array_mask(self, xyz):
+        if self.mp.comm.size == 1: return slice(None)
+        offsets = self.offsets.reshape((3, 1))
+        nr = self.nr
+        # -----------------------------------------------------------------------
+        xyz -= offsets
+        mask = np.logical_and(xyz[0] > -1, xyz[0] < nr[0])
+        mask1 = np.logical_and(xyz[1] > -1, xyz[1] < nr[1])
+        np.logical_and(mask, mask1, out=mask)
+        np.logical_and(xyz[2] > -1, xyz[2] < nr[2], out=mask1)
+        np.logical_and(mask, mask1, out=mask)
+        # -----------------------------------------------------------------------
+        return mask
 
-class ReciprocalGrid(BaseGrid, ReciprocalCell):
+    def guess_ecut(self):
+        spacings2 = self.cell.lengths() / (self._nrR - 1)
+        spacings = 0.5*(self.spacings + spacings2)
+        return spacing2ecut(spacings.max())
+
+class ReciprocalGrid(BaseGrid):
     """
         Attributes:
         ----------
@@ -367,18 +475,18 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
         gg : square of each g vector
     """
 
-    def __init__(self, lattice, nr, origin=np.array([0.0, 0.0, 0.0]), full=False, uppergrid=None, **kwargs):
+    def __init__(self, lattice, nr = None, origin=np.array([0.0, 0.0, 0.0]), full=True, uppergrid=None, **kwargs):
         """
         Parameters
         ----------
         lattice : array_like[3,3]
             matrix containing the direct lattice vectors (as its colums)
         """
-        # internally always convert the units to Bohr
-        # print("ReciprocalGrid __init__")
-        # lattice is already scaled inside the super()__init__, no need to do it here
-        # lattice /= LEN_CONV[units]["Bohr"]
-        super().__init__(lattice=lattice, nr=nr, origin=origin, full=full, realspace=False, **kwargs)
+        self.init_options = locals()
+        for k in ['__class__', 'self', 'kwargs', 'uppergrid'] :
+            self.init_options.pop(k, None)
+        self.init_options.update(kwargs)
+        super().__init__(lattice=lattice, nr=nr, origin=origin, full=full, direct=False, **kwargs)
         self._g = None
         self._gg = None
         self.Dgrid = uppergrid
@@ -388,15 +496,14 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
         self._ggF = None
         self._invgg = None
         self._invq = None
+        self._gmask = None
 
     def __eq__(self, other):
         """
         Implement the == operator in the ReciprocalGrid class.
         Refer to the __eq__ method of Grid for more information.
         """
-        if not isinstance(other, (BaseGrid, ReciprocalGrid)):
-            if isinstance(other, ReciprocalCell):
-                return ReciprocalCell.__eq__(self, other)
+        if not isinstance(other, ReciprocalGrid):
             raise TypeError("You can only compare a ReciprocalGrid with another ReciprocalGrid")
         return BaseGrid.__eq__(self, other)
 
@@ -441,13 +548,12 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
             invq = 1.0/self.q
             if self.mp.is_root :
                 self.q[0, 0, 0] = 0.0
-            invq[0, 0, 0] = 0.0
-        # self._invq = invq
-        # return self._invq
-        return invq
+                invq[0, 0, 0] = 0.0
+            self._invq = invq
+        return self._invq
 
     def get_direct(self, scale= None, convention="physics"):
-        """
+        r"""
             Returns a new DirectCell, the direct cell of self
             The DirectCell is scaled properly to include
             the scaled (*self.nr) reciprocal grid points
@@ -460,7 +566,6 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
             e^{2\pi i G \cdot R} =1
             In this case bg^T = at^{-1}
             -----------------------------
-            Note2: We have to use 'Bohr' units to avoid changing hbar value
         """
         # TODO define in constants module hbar value for all units allowed
         if self.Dgrid is None or scale is not None:
@@ -471,10 +576,9 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
             if convention == "physics" or convention == "p":
                 fac = 1.0 / (2 * np.pi)
             at = np.linalg.inv(self.lattice.T * fac)
-            # at = at*LEN_CONV["Bohr"][self.units]
-            direct_lat = np.einsum("ij,j->ij", at, 1.0 / scale)
+            direct_lat = np.einsum("ij,i->ij", at, 1.0 / scale)
             self.Dgrid = DirectGrid(lattice=direct_lat, nr=self.nrR, full=self.full, uppergrid=self, cplx=self.cplx,
-                                    mp=self.mp)
+                                    mp=self.mp, ecut = self._ecut)
         return self.Dgrid
 
     def _calc_grid_points(self, full=None):
@@ -511,7 +615,7 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
         AX = [a[sl] for a, sl in zip(ax, self.slice)]
         S = np.meshgrid(*AX, indexing="ij")
         S_cart = np.asarray(S)
-        S_cart = np.einsum("j...,kj->k...", S_cart, self.lattice)
+        S_cart = np.einsum("j...,jk->k...", S_cart, self.lattice)
 
         return S_cart
 
@@ -528,7 +632,6 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
             if np.all(self.nr == self.nrR):
                 mask[:, :, Dnr[2] + 1 :] = False
 
-            mask[0, 0, 0] = False
             mask[0, Dnr[1] + 1 :, 0] = False
             mask[Dnr[0] + 1 :, :, 0] = False
             if Dmod[2] == 0:
@@ -556,14 +659,14 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
         if self._mask is None:
             nrR = self.nrR[:3]
             Dnr = nrR[:3] // 2 - self.offsets
-            Dnr = np.where(Dnr > 0, Dnr, 0)
-            Dmod = nrR[:3] % 2
             mask = np.ones(self.nr[:3], dtype=bool)
             if np.all(self.nrG == self.nrR):
-                mask[:, :, Dnr[2] + 1 :] = False
-
-            if np.all(self.offsets == 0):
-                mask[0, 0, 0] = False
+                if Dnr[2] >= 0:
+                    mask[:, :, Dnr[2] + 1 :] = False
+                else:
+                    mask[:, :, :] = False
+            Dnr = np.where(Dnr > 0, Dnr, 0)
+            Dmod = nrR[:3] % 2
             if self.offsets[0] == self.offsets[2] == 0 :
                 mask[0, Dnr[1] + 1 :, 0] = False
             if self.offsets[2] == 0 :
@@ -604,7 +707,6 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
                 self._gF = self._calc_grid_points(full=True)
             ggF = np.einsum("lijk,lijk->ijk", self._gF, self._gF)
             self._ggF = ggF
-            # self._ggF = np.reshape(gg, (*self._gF.shape, 1))
         return self._ggF
 
     @property
@@ -615,3 +717,97 @@ class ReciprocalGrid(BaseGrid, ReciprocalCell):
     def full(self, value):
         if self._full != value :
             self._full = value
+
+    @property
+    def g2max(self):
+        return 2.0*self.ecut
+
+    def get_gmask(self, g2max = None):
+        if g2max is None : return self.gmask
+        gmask = self.gg <= g2max
+        return gmask
+
+    @property
+    def gmask(self):
+        if self._gmask is None :
+            self._gmask = self.get_gmask(self.g2max)
+        return self._gmask
+
+
+class RadialGrid(object):
+    def __init__(self, r = None, v = None, direct = True, vr = None, **kwargs):
+        self._r = r
+        self._v = v
+        self._vr = vr
+        self._v_interp = None
+        self.direct = direct
+
+    @property
+    def r(self):
+        return self._r
+
+    @r.setter
+    def r(self, r):
+        self._r = r
+
+    @property
+    def v(self):
+        return self._v
+
+    @v.setter
+    def v(self, v):
+        self._v = v
+
+    @property
+    def vr(self):
+        return self._vr
+
+    @property
+    def v_interp(self):
+        if self._v_interp is None :
+            self._v_interp = splrep(self.r, self.v)
+        return self._v_interp
+
+    def to_3d_grid(self, dist, direct = None, out = None):
+        if out is None :
+            results = np.zeros_like(dist)
+        else :
+            results = out
+        mask = dist < self._r[-1]
+        if np.count_nonzero(mask) > 0 :
+            results[mask] = splev(dist[mask], self.v_interp, der=0, ext=1)
+        return results
+
+    def _ft(self, x, method='simpson', comm=None, mp=None, **kwargs):
+        v = self.v
+        r = self.r
+        if mp is None : mp = MP(comm = comm)
+        vp = np.zeros_like(x)
+
+        if method == 'simpson':
+            from scipy.integrate import simps as integrate
+        elif method == 'trapezoid':
+            from scipy.integrate import trapz as integrate
+
+        if self.vr :
+            vr = v * r
+        else :
+            vr = v * r * r
+
+        lb, ub = mp.split_number(len(x))
+
+        for k in range(lb, ub):
+            y = sp.spherical_jn(0, x[k] * r) * vr
+            vp[k] = integrate(y, r)
+
+        vp = mp.vsum(vp)
+
+        return vp
+
+    def ft(self, x, method='simpson', mp=None, **kwargs):
+        y = self._ft(x, method=method, mp=mp, **kwargs)
+        if self.direct :
+            y *= (4.0 * np.pi)
+        else :
+            y *= (0.5 / np.pi ** 2)
+        return y

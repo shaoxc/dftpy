@@ -4,7 +4,7 @@ from dftpy.constants import ZERO
 from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.functional.kedf.kernel import WTKernel, LindhardDerivative
 from dftpy.mpi import sprint
-from dftpy.time_data import TimeData
+from dftpy.time_data import timer
 
 __all__ = ["WT", "WTStress"]
 
@@ -55,6 +55,22 @@ def WTEnergyDensity(rho, rho0, Kernel, alpha, beta):
     rho[mask] = rho_saved
     return energydensity
 
+def get_ke_kernel_wt(q, rho, rho0=None, x=1.0, y=1.0, alpha=5.0 / 6.0, beta=5.0 / 6.0, ke_kernel_saved=None, **kwargs):
+    if not rho0: rho0 = rho.amean()
+    if ke_kernel_saved is None:
+        KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
+    else:
+        KE_kernel_saved = ke_kernel_saved
+    if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
+        sprint("Re-calculate KE_kernel", np.shape(rho), level=1)
+        # KE_kernel = WTkernel(q, rho0, alpha=alpha, beta=beta)
+        KE_kernel = WTKernel(q, rho0, x=x, y=1.0, alpha=alpha, beta=beta)  # always remove whole vW
+        KE_kernel_saved["Kernel"] = KE_kernel
+        KE_kernel_saved["rho0"] = rho0
+        KE_kernel_saved["shape"] = np.shape(rho)
+    else:
+        KE_kernel = KE_kernel_saved["Kernel"]
+    return KE_kernel
 
 def WTStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, energy=None,
              ke_kernel_saved=None, **kwargs):
@@ -63,19 +79,7 @@ def WTStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, ene
     invgg = rho.grid.get_reciprocal().invgg
     q = rho.grid.get_reciprocal().q
     if energy is None:
-        if ke_kernel_saved is None:
-            KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
-        else:
-            KE_kernel_saved = ke_kernel_saved
-        if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
-            sprint('Re-calculate KE_kernel', level=1)
-            # KE_kernel = WTkernel(q, rho0, alpha=alpha, beta=beta)
-            KE_kernel = WTKernel(q, rho0, x=x, y=1.0, alpha=alpha, beta=beta)  # always remove whole vW
-            KE_kernel_saved["Kernel"] = KE_kernel
-            KE_kernel_saved["rho0"] = rho0
-            KE_kernel_saved["shape"] = np.shape(rho)
-        else:
-            KE_kernel = KE_kernel_saved["Kernel"]
+        KE_kernel = get_ke_kernel_wt(q, rho, rho0=rho0, x=x, y=y, alpha=alpha, beta=beta, ke_kernel_saved=ke_kernel_saved, **kwargs)
         energy = WTEnergy(rho, rho0, KE_kernel, alpha, beta)
     mask = rho.grid.get_reciprocal().mask
     # factor = 5.0 / (9.0 * alpha * beta * rho0 ** (alpha + beta - 5.0 / 3.0))
@@ -101,26 +105,14 @@ def WTStress(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, ene
     return stress
 
 
+@timer()
 def WT(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, rho0=None, calcType={"E", "V"}, split=False,
        ke_kernel_saved=None, **kwargs):
-    TimeData.Begin("WT")
     q = rho.grid.get_reciprocal().q
     if rho0 is None:
         rho0 = rho.amean()
 
-    if ke_kernel_saved is None:
-        KE_kernel_saved = {"Kernel": None, "rho0": 0.0, "shape": None}
-    else:
-        KE_kernel_saved = ke_kernel_saved
-    if abs(KE_kernel_saved["rho0"] - rho0) > 1e-6 or np.shape(rho) != KE_kernel_saved["shape"]:
-        sprint("Re-calculate KE_kernel", np.shape(rho), level=1)
-        # KE_kernel = WTKernel(q, rho0, x=x, y=y, alpha=alpha, beta=beta)
-        KE_kernel = WTKernel(q, rho0, x=x, y=1.0, alpha=alpha, beta=beta)  # always remove whole vW
-        KE_kernel_saved["Kernel"] = KE_kernel
-        KE_kernel_saved["rho0"] = rho0
-        KE_kernel_saved["shape"] = np.shape(rho)
-    else:
-        KE_kernel = KE_kernel_saved["Kernel"]
+    KE_kernel = get_ke_kernel_wt(q, rho, rho0=rho0, x=x, y=y, alpha=alpha, beta=beta, ke_kernel_saved=ke_kernel_saved, **kwargs)
 
     NL = FunctionalOutput(name="NL")
 
@@ -137,5 +129,4 @@ def WT(rho, x=1.0, y=1.0, sigma=None, alpha=5.0 / 6.0, beta=5.0 / 6.0, rho0=None
             NL.energydensity = energydensity
         NL.energy = energydensity.sum() * rho.grid.dV
 
-    TimeData.End("WT")
     return NL

@@ -1,8 +1,11 @@
 import numpy as np
-from skimage import measure
 import matplotlib.pyplot as plt
 from itertools import combinations,product
-from mpl_toolkits.mplot3d import Axes3D
+
+try:
+    from skimage import measure
+except Exception:
+    raise ModuleNotFoundError("Please install 'scikit-image'")
 
 
 class BasePlot(object):
@@ -73,11 +76,3 @@ def plot_scatter(val, tol2 = 2E-6, marker = 'o', s = 200, color = 'blue', **kwar
     dftpyplot.ax.set_xticks([])
     dftpyplot.ax.set_yticks([])
     dftpyplot.ax.set_zticks([])
-
-
-"""
-from ipywidgets import interact, interactive, fixed, interact_manual,fixed
-
-interactive_plot= interactive(view_density, mol=fixed(mol), level = (0.01, 0.02, 0.002))
-interactive_plot
-"""

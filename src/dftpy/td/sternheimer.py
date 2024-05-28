@@ -81,9 +81,10 @@ class SternheimerEquationSolver(object):
 
 class Sternheimer(Dynamics):
 
-    def __init__(self, system: System, functionals: TotalFunctional, drho0: DirectField, omega: float, e0: float, e: float) -> None:
-        Dynamics.__init__(self, system)
-        self.rho0 = system.field
+    def __init__(self, rho0: DirectField, functionals: TotalFunctional, drho0: DirectField, omega: float, e0: float, e: float, outfile='td_out') -> None:
+        self.outfile = outfile
+        Dynamics.__init__(self, self.outfile)
+        self.rho0 = rho0
         print((self.rho0*(self.rho0.grid.r[0]-self.rho0.grid.lattice[0][0]/2)).integral())
         self.N = self.rho0.integral()
         self.psi0 = np.sqrt(self.rho0 / self.N)

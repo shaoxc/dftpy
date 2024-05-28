@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # coding: utf-8
 
-from dftpy.formats import io, qepp, xsf, snpy, npy
+from dftpy.formats import io, snpy
 from dftpy.mpi import MP
 import numpy as np
 import pytest
@@ -12,23 +12,28 @@ import warnings
 warnings.filterwarnings('ignore')
 
 import tempfile
+from common import dftpy_data_path
+
 
 class Test(unittest.TestCase):
     def test_0_serial(self):
-        dftpy_data_path = os.environ.get('DFTPY_DATA_PATH')
-        infile=dftpy_data_path+'/GaAs_random.xsf'
-        struct = xsf.read_xsf(infile)
+        infile=dftpy_data_path / 'GaAs_random.xsf'
+        ions, field, _ = io.read_all(infile)
         try:
             mp = MP(parallel = True, decomposition = 'Pencil')
-        except :
+        except Exception:
             mp = MP()
-        outfile = tempfile.gettempdir() + '/serial.snpy'
+        outfile = tempfile.gettempdir() + os.sep + 'serial.snpy'
         if mp.rank == 0 :
-            snpy.write(outfile,struct)
+            snpy.write(outfile, ions, field)
         if hasattr(mp.comm, 'Barrier'):
             mp.comm.Barrier()
-        struct2 = snpy.read(outfile)
-        self.check_system(struct, struct2)
+        ions2, field2, _ = snpy.read(outfile)
+
+        self.assertTrue(np.allclose(ions.cell, ions2.cell))
+        self.assertTrue(np.allclose(ions.positions, ions2.positions))
+        self.assertTrue(np.allclose(ions.numbers, ions2.numbers))
+        self.assertTrue(np.allclose(field, field2))
         return
 
     def test_1_mpi(self):
@@ -40,26 +45,24 @@ class Test(unittest.TestCase):
         infile = tempfile.gettempdir() + '/serial.snpy'
         outfile = tempfile.gettempdir() + '/mpi.snpy'
 
-        struct=snpy.read(infile, mp)
-        data = struct.field.gather()
+        ions, field, _ = snpy.read(infile, mp=mp)
+        data = field.gather()
         if mp.rank == 0 :
-            struct2 = snpy.read(infile)
-            data2 = struct2.field
+            _, data2, _ = snpy.read(infile)
             self.assertTrue(np.allclose(data, data2))
 
-        snpy.write(outfile, struct, mp)
+        snpy.write(outfile, ions = ions, data = field, mp = mp)
         mp.comm.Barrier()
-        struct = snpy.read(infile)
-        struct2 = snpy.read(outfile)
-        self.check_system(struct, struct2)
+        ions, field, _ = snpy.read(infile)
+        ions2, field2, _ = snpy.read(infile)
+
+        self.assertTrue(np.allclose(ions.cell, ions2.cell))
+        self.assertTrue(np.allclose(ions.positions, ions2.positions))
+        self.assertTrue(np.allclose(ions.numbers, ions2.numbers))
+        self.assertTrue(np.allclose(field, field2))
+
         mp.comm.Barrier()
         return
-
-    def check_system(self, struct, struct2):
-        self.assertTrue(np.allclose(struct.ions.pos.cell.lattice, struct2.ions.pos.cell.lattice))
-        self.assertTrue(np.allclose(struct.ions.pos, struct2.ions.pos))
-        self.assertTrue(np.allclose(struct.ions.Z, struct2.ions.Z))
-        self.assertTrue(np.allclose(struct.field, struct2.field))
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ import numpy as np
 from dftpy.field import DirectField, ReciprocalField
 from dftpy.mpi.utils import sprint
 from dftpy.td.hamiltonian import Hamiltonian
+from dftpy.td.operator import Operator
 from dftpy.td.propagator.abstract_propagator import AbstractPropagator
 from dftpy.time_data import timer
 
@@ -14,14 +15,17 @@ class Taylor(AbstractPropagator):
     Taylor propagator for real-time propagation
     """
 
-    def __init__(self, hamiltonian: Hamiltonian, interval: float, order: int = 1, **kwargs) -> None:
+    def __init__(self, hamiltonian: Operator, interval: float, order: int = 1, **kwargs) -> None:
         """
 
         Parameters
         ----------
-        hamiltonian: the time-dependent Hamiltonian
-        interval: the time interval for one time step
-        order: the order of Taylor expansion
+        hamiltonian: Hamiltonian
+            the time-dependent Hamiltonian
+        interval: float
+            the time interval for one time step
+        order: int
+            the order of Taylor expansion
 
         """
         super(Taylor, self).__init__(hamiltonian, interval)
@@ -34,13 +38,16 @@ class Taylor(AbstractPropagator):
 
         Parameters
         ----------
-        psi0: the initial wavefunction.
+        psi0: DirectField or ReciprocalField
+            the initial wavefunction.
 
         Returns
         -------
         A tuple (psi1, status)
-        psi1: the final wavefunction.
-        status: 0: no issue, 1: has NaN issue
+        psi1: DirectField or ReciprocalField, same as psi0
+            the final wavefunction.
+        status: int
+            0: no issue, 1: has NaN issue
 
         """
         n_elec_0 = (psi0 * np.conj(psi0)).integral()

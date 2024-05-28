@@ -1,24 +1,27 @@
 # Hartree functional
 
 import numpy as np
+import copy
 
 from dftpy.functional.abstract_functional import AbstractFunctional
 from dftpy.functional.functional_output import FunctionalOutput
-from dftpy.time_data import TimeData
+from dftpy.time_data import timer
 
 
 class Hartree(AbstractFunctional):
+    _energy = None
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.type = 'HARTREE'
         self.name = 'HARTREE'
+        self.options = kwargs
 
     def __repr__(self):
         return 'HARTREE'
 
     @classmethod
+    @timer()
     def compute(cls, density, calcType={"E", "V"}, **kwargs):
-        TimeData.Begin("Hartree_Func")
         invgg = density.grid.get_reciprocal().invgg
         if density.rank > 1:
             rho = np.sum(density, axis=0)
@@ -36,9 +39,21 @@ class Hartree(AbstractFunctional):
         else:
             e_h = 0
         if density.rank > 1:
-            v_h_of_r = np.tile(v_h_of_r, (density.rank, 1, 1, 1))
-        TimeData.End("Hartree_Func")
-        return FunctionalOutput(name="Hartree", potential=v_h_of_r, energy=e_h)
+            v_h_of_r = v_h_of_r.tile((density.rank, 1, 1, 1))
+        functional=FunctionalOutput(name="Hartree", potential=v_h_of_r, energy=e_h)
+        if 'E' in calcType : cls._energy = functional.energy
+        return functional
+
+    @property
+    def energy(self):
+        return self._energy
+
+    def stress(self, density, **kwargs):
+        options = copy.deepcopy(self.options)
+        options.update(kwargs)
+        energy = self.energy
+        stress=HartreeFunctionalStress(density, energy=energy)
+        return stress
 
 
 def HartreePotentialReciprocalSpace(density):
@@ -49,8 +64,8 @@ def HartreePotentialReciprocalSpace(density):
     return v_h
 
 
+@timer()
 def HartreeFunctionalStress(density, energy=None):
-    TimeData.Begin("Hartree_Stress")
     if energy is None:
         hartree = Hartree()
         energy = hartree(density, calcType={"E"}).energy
@@ -73,5 +88,4 @@ def HartreeFunctionalStress(density, energy=None):
             stress[i, j] = stress[j, i] = Etmp.real * 8.0 * np.pi / rho.grid.volume ** 2
             if i == j:
                 stress[i, j] -= energy / rho.grid.volume
-    TimeData.End("Hartree_Stress")
     return stress

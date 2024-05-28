@@ -7,9 +7,10 @@ from scipy.interpolate import splrep, splev
 
 from dftpy.constants import ZERO
 from dftpy.mpi import MP, sprint
-from dftpy.time_data import TimeData
+from dftpy.time_data import timer
 
 
+@timer()
 def LindhardFunction(eta, lbda, mu, tol=1E-10):
     """
     The Inverse Lindhard Function
@@ -20,7 +21,6 @@ def LindhardFunction(eta, lbda, mu, tol=1E-10):
     lbda, mu: floats (TF and vW contributions)
 
     """
-    TimeData.Begin("Lindhard")
     tol2 = tol / 10
     cond0 = (eta > tol2) & (np.abs(eta - 1.0) > tol2)
     cond1 = eta < tol
@@ -43,7 +43,6 @@ def LindhardFunction(eta, lbda, mu, tol=1E-10):
         elif cond3:
             LindG = lindhard_large(eta, lbda, mu)
 
-    TimeData.End("Lindhard")
     return LindG
 
 
@@ -166,7 +165,6 @@ def LindhardFunction2(eta, lbda, mu):
     lbda, mu: floats (TF and vW contributions)
 
     """
-    TimeData.Begin("Lindhard")
     if isinstance(eta, (np.ndarray, np.generic)):
         LindG = np.zeros_like(eta)
         atol = 1.0e-10
@@ -192,12 +190,11 @@ def LindhardFunction2(eta, lbda, mu):
         # cond = eta > 20.0
         # LindG[cond] = -0.6 - lbda
         # -----------------------------------------------------------------------
-    TimeData.End("Lindhard")
     return LindG
 
 
+@timer()
 def LindhardDerivative(eta, mu):
-    TimeData.Begin("LindDeriv")
     LindDeriv = np.zeros_like(eta)
     atol = 1.0e-10
     cond0 = np.logical_and(eta > atol, np.abs(eta - 1.0) > atol)
@@ -211,7 +208,6 @@ def LindhardDerivative(eta, mu):
     LindDeriv[cond1] = -2.0 * eta[cond1] * (1.0 / 3.0 - 3.0 * mu)
     LindDeriv[cond2] = -48
 
-    TimeData.End("LindDeriv")
     return LindDeriv * eta
 
 
@@ -267,6 +263,7 @@ def MGPKernel(q, rho0, lumpfactor=0.2, maxpoints=1000, symmetrization=None, Kern
     return kernel
 
 
+@timer()
 def MGPKernelTable(eta, maxpoints=1000, symmetrization=None, KernelTable=None, mp=None):
     """
     The MGP Kernel
@@ -274,7 +271,6 @@ def MGPKernelTable(eta, maxpoints=1000, symmetrization=None, KernelTable=None, m
     """
     # if symmetrization == "Try":
     # return MGPKernelTableSym(eta, q, maxpoints, symmetrization, KernelTable)
-    TimeData.Begin("MGPKernelTable")
     dt = 1.0 / (maxpoints)
     cTF = 0.3 * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
     # factor = 5.0 / (9.0 * alpha * beta * rho0 ** (alpha + beta - 5.0/3.0))*2*alpha
@@ -323,7 +319,6 @@ def MGPKernelTable(eta, maxpoints=1000, symmetrization=None, KernelTable=None, m
         kernel *= 2.0 * coe
     else:
         kernel *= coe
-    TimeData.End("MGPKernelTable")
     return kernel
 
 
@@ -335,6 +330,7 @@ def WTKernel(q, rho0, x=1.0, y=1.0, alpha=5.0 / 6.0, beta=5.0 / 6.0):
     cTF = 0.3 * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
     factor = 5.0 / (9.0 * alpha * beta * rho0 ** (alpha + beta - 5.0 / 3.0))
     factor *= cTF
+    y = 1.0 # always remove whole vW
     return LindhardFunction(q / tkf, x, y) * factor
 
 
@@ -343,11 +339,6 @@ def SMKernel(q, rho0, x=1.0, y=1.0, alpha=0.5, beta=0.5):
     The SM Kernel
     """
     return WTKernel(q, rho0, x, y, alpha, beta)
-    tkf = 2.0 * (3.0 * rho0 * np.pi ** 2) ** (1.0 / 3.0)
-    cTF = 0.3 * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
-    factor = 1.0 / (2.0 * alpha ** 2 * rho0 ** (2.0 * alpha - 2))
-    factor *= cTF
-    return LindhardFunction(q / tkf, x, y) * factor
 
 
 def WTKernelTable(eta, x=1.0, y=1.0, alpha=5.0 / 6.0, beta=5.0 / 6.0):
@@ -357,6 +348,7 @@ def WTKernelTable(eta, x=1.0, y=1.0, alpha=5.0 / 6.0, beta=5.0 / 6.0):
     # factor =1.2*np.pi**2/(3.0*np.pi**2)**(1.0/3.0)
     # factor = 5.0 / (9.0 * alpha * beta) * (0.3 * (3.0  *  np.pi ** 2) ** (2.0/3.0))
     factor = 4.0 / 5.0 * 0.3 * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
+    y = 1.0 # always remove whole vW
     return LindhardFunction(eta, x, y) * factor
 
 
@@ -364,6 +356,7 @@ def WTKernelDerivTable(eta, x=1.0, y=1.0, alpha=5.0 / 6.0, beta=5.0 / 6.0):
     factor = 5.0 / (9.0 * alpha * beta)
     cTF = 0.3 * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
     factor *= cTF
+    y = 1.0 # always remove whole vW
     return LindhardDerivative(eta, y) * factor
 
 
@@ -382,11 +375,11 @@ def LWTKernel(q, rho0, KernelTable, etamax=1000.0):
     return Kernel
 
 
+@timer()
 def LWTKernelKf(q, kf, KernelTable, etamax=1000.0, out=None):
     """
     Create the LWT kernel for given kf and Kernel Table
     """
-    TimeData.Begin("LWTKernelKf")
     eta = q / kf
     if out is not None:
         Kernel = out
@@ -409,11 +402,10 @@ def LWTKernelKf(q, kf, KernelTable, etamax=1000.0, out=None):
     Kernel[cond1] = limit
     if q[0, 0, 0] < ZERO:
         Kernel[0, 0, 0] = 0.0
-    TimeData.End("LWTKernelKf")
     return Kernel
 
 
-def MGPOmegaE(q, Ne=1, lumpfactor=0.2):
+def MGPOmegaE(q, Ne=1, lumpfactor=0.2, revke = True):
     """
     """
     c = 1.0
@@ -436,13 +428,15 @@ def MGPOmegaE(q, Ne=1, lumpfactor=0.2):
         qflag = True
         q[0, 0, 0] = 1.0
     gg = q ** 2
-    corr = 4 * np.pi * sp.erf(c * gg) ** 2 * a * np.exp(-gg * b) / gg
-    # corr = 4 * np.pi * sp.erf(c * q) ** 2* a * np.exp(-gg * b) / gg + 0.001*np.exp(-0.1*(gg-1.5)**2)
+    if revke :
+        corr = 4 * np.pi * sp.erf(c * gg) ** 2 * a * np.exp(-gg * b) / gg
+    else :
+        # Same as the formular in MGP
+        corr = 4 * np.pi * sp.erf(c * q) ** 2* a * np.exp(-gg * b) / gg
+        corr *= 3.0/5.0
     if qflag:
         q[0, 0, 0] = 0.0
         corr[0, 0, 0] = 0.0
-    # Same as the formular in MGP
-    corr /= 1.2
     return corr
 
 
@@ -458,16 +452,17 @@ def SmoothKernel(q, rho0, x=1.0, y=1.0, alpha=5.0 / 6.0, beta=5.0 / 6.0):
     coef = 4.0
     factor = factor * np.exp(-(q ** 2) / (coef ** 2 * (tkf / 2.0) ** 2))
     # -----------------------------------------------------------------------
+    y = 1.0 # always remove whole vW
     return LindhardFunction(q / tkf, x, y) * factor
 
 
+@timer()
 def HCKernelTable(eta, beta=2.0 / 3.0, x=1.0, y=1.0, KernelTable=None, mp=None):
     """
     The HC Kernel
     """
     if mp is None:
         mp = MP()
-    TimeData.Begin("HCKernelTable")
     # (5.0-3.0 * beta) * beta * kernel = -5/3*8/5
     kernel_inf = -8.0 / 3.0 / ((5.0 - 3.0 * beta) * beta)
     cTF = (3.0 / 10.0) * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
@@ -480,7 +475,6 @@ def HCKernelTable(eta, beta=2.0 / 3.0, x=1.0, y=1.0, KernelTable=None, mp=None):
     if mp.rank == 0:
         kernel[0] = 0.0
     kernel *= ctf_hc
-    TimeData.End("HCKernelTable")
     return kernel
 
 
@@ -498,16 +492,15 @@ def hc_ode_deriv(kernel, eta, x=1.0, y=1.0, beta=2.0 / 3.0):
     return deriv
 
 
+@timer()
 def HCKernelXi(q, xi, KernelTable, KernelDeriv, etamax=1000.0, out=None, out2=None):
     """
     Create the HC kernel for given xi and Kernel Table
     """
     xi = xi * 2
-    TimeData.Begin("HCKernelXi")
     kernel = LWTKernelKf(q, xi, KernelTable, etamax=etamax, out=out)
     kernelD = LWTKernelKf(q, xi, KernelDeriv, etamax=etamax, out=out2)
     kernelD = (kernelD - 3 * kernel) / (xi ** 3)
     # kernelD = (kernelD - 1 * kernel)/(xi ** 3)
     kernel /= (xi ** 3)
-    TimeData.End("HCKernelXi")
     return kernel, kernelD

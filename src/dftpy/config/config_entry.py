@@ -45,22 +45,9 @@ def format_cstr(expression):
 
 
 def format_path(expression):
-    if '/' in expression:
-        path_list = expression.split('/')
-    elif '\\' in expression:
-        path_list = expression.split('\\')
-    else:
-        path_list = [expression]
-
-    for i_path, path_unit in enumerate(path_list):
-        if len(path_unit) == 0:
-            if i_path == 0:
-                path_list[i_path] = os.sep
-        elif path_unit[0] == '$':
-            path_list[i_path] = os.environ.get(path_unit[1:].lstrip('{').rstrip('}'))
-
-    return os.path.join(*path_list)
-
+    def func(m):
+        return os.environ.get(m.group(1))
+    return re.subn(r'\$\{(.*?)\}', func, expression)[0]
 
 def format_slice(expression):
     if ':' in expression:
@@ -102,6 +89,10 @@ def format_strlist(expression):
 
 def format_cstrlist(expression):
     return expression.title().split()
+
+
+def format_lstrlist(expression):
+    return expression.lower().split()
 
 
 def format_direction(expression):
@@ -176,6 +167,7 @@ class ConfigEntry(object):
             "floatlist": format_floatlist,
             "strlist": format_strlist,
             "cstrlist": format_cstrlist,
+            "lstrlist": format_lstrlist,
             "direction": format_direction,
             "cdict": format_cdict,
             "cfdict": format_cfdict,

@@ -12,21 +12,23 @@ from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.io.trajectory import Trajectory
 from ase import units
 
-from dftpy.config.config import DefaultOption, ConfSpecialFormat, PrintConf
+from dftpy.config.config import DefaultOption, OptionFormat, PrintConf
 from dftpy.api.api4ase import DFTpyCalculator
+import pathlib
+dftpy_data_path = pathlib.Path(__file__).resolve().parents[1] / 'DATA'
 np.random.seed(8888)
 
 ############################## initial config ##############################
 conf = DefaultOption()
-conf["PATH"]["pppath"] = os.environ.get("DFTPY_DATA_PATH")
+conf["PATH"]["pppath"] = dftpy_data_path
 conf["PP"]["Al"] = "al.lda.recpot"
 conf["OPT"]["method"] = "TN"
 conf["KEDF"]["kedf"] = "WT"
 conf["JOB"]["calctype"] = "Energy Force"
 conf["OUTPUT"]["time"] = False
-conf = ConfSpecialFormat(conf)
+conf = OptionFormat(conf)
 PrintConf(conf)
-calc = DFTpyCalculator(config=conf, mp = mp)
+calc = DFTpyCalculator(config=conf, mp = mp, zero_stress=True)
 # -----------------------------------------------------------------------
 """
 Ref :

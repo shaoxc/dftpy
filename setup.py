@@ -28,19 +28,22 @@ with open('src/dftpy/__init__.py') as fd :
     __license__ = re.search('__license__ = "(.*)"', lines).group(1)
 
 assert sys.version_info >= (3, 6)
-description = "DFTpy: A Python3 packages for Density Functional Theory",
-long_description = """ `DFTpy` is an Density Functional Theory code based on a plane-wave
-expansion of the electron density"""
+description = "Python3 packages for Density Functional Theory"
+
+with open('README.md') as fh :
+    long_description = fh.read()
 
 scripts = ['scripts/dftpy']
 extras_require = {
-        'libxc' : ['pylibxc @ git+https://gitlab.com/libxc/libxc.git'],
-        'upf' : ['xmltodict', 'upf_to_json'],
+        'libxc' : [
+            'pylibxc2; python_version<"3.10"',
+            # 'pylibxc @ git+https://gitlab.com/libxc/libxc.git;python_version>"3.9"',
+            ],
+        'upf' : ['upf_to_json'],
         'mpi': ['mpi4py', 'mpi4py-fft'],
         'all' : [
-            'pylibxc2',
-            'ase>=3.21.1',
-            'xmltodict',
+            'pylibxc2; python_version<"3.10"',
+            # 'pylibxc @ git+https://gitlab.com/libxc/libxc.git;python_version>"3.9"',
             'upf_to_json',
             'mpi4py',
             'mpi4py-fft',
@@ -48,18 +51,27 @@ extras_require = {
             ],
         }
 
+release = 0
+if release :
+    VERSION = {'version' : __version__}
+else :
+    VERSION = {
+            'use_scm_version': {'version_scheme': 'post-release'},
+            'setup_requires': [
+                'setuptools_scm',
+                'importlib-metadata>=0.12;python_version<"3.8"'],
+            }
+
 setup(name='dftpy',
       description=description,
       long_description=long_description,
-      url='https://gitlab.com/pavanello-research-group/dftpy',
-      # version=__version__,
-      use_scm_version={'version_scheme': 'post-release'},
-      setup_requires=['setuptools_scm'],
+      url='http://dftpy.rutgers.edu',
       author=__author__,
       author_email=__contact__,
       license=__license__,
+      **VERSION,
       classifiers=[
-          'Development Status :: 1 - Beta',
+          'Development Status :: 3 - Alpha',
           'Intended Audience :: Science/Research',
           'License :: OSI Approved :: MIT License',
           'Programming Language :: Python :: 3',
@@ -67,6 +79,7 @@ setup(name='dftpy',
           'Programming Language :: Python :: 3.7',
           'Programming Language :: Python :: 3.8',
           'Programming Language :: Python :: 3.9',
+          'Programming Language :: Python :: 3.10',
           'Topic :: Scientific/Engineering :: Chemistry',
           'Topic :: Scientific/Engineering :: Physics'
       ],

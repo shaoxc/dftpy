@@ -7,16 +7,16 @@ Installation
 Requirements
 ============
 
-* Python_ 3.6 or newer
-* NumPy_ 1.8.0 or newer
-* SciPy_ 0.10 or newer
+* Python_ >= 3.6
+* NumPy_ >= 1.8.0
+* SciPy_ >= 0.18.0
+* ASE_  >= 3.22.0
+* xmltodict_ >= 0.12.0
 
 Optional:
 
 * pylibxc_ (for using exchange-correlation functionals other than LDA)
 * pyFFTW_  (for Fast Fourier Transform)
-* ASE_  (for dealing with structures, dynamics, and more)
-* xmltodict_ (For UPF pseudopotential)
 * upf_to_json_ (For UPF pseudopotential)
 * mpi4py_ (MPI for python)
 * mpi4py-fft_ (Fast Fourier Transforms with MPI)
@@ -33,28 +33,29 @@ Optional:
 .. _upf_to_json: https://github.com/simonpintarelli/upf_to_json
 
 
+Installation with pip
+=====================
+
+Using pip can easy install the release version of DFTpy from `PyPI <https://pypi.org/project/dftpy>`_::
+
+    $ python -m pip install dftpy
+
 Installation from source
 ========================
 
-You can get the source from `gitlab <https://gitlab.com/pavanello-research-group/dftpy.git>`_.
-
-Git clone:
-----------
+You can get the source from `gitlab <https://gitlab.com/pavanello-research-group/dftpy>`_.::
 
     $ git clone https://gitlab.com/pavanello-research-group/dftpy.git
+    $ python -m pip install ./dftpy
+
+Or in one line::
+    
+    $ python -m pip install git+https://gitlab.com/pavanello-research-group/dftpy.git
 
 
-Environment
-^^^^^^^^^^^
+You also can install all the optional packages with::
 
-    Add ``dftpy/src`` to your `PYTHONPATH` environment variable.
-
-Installation
-^^^^^^^^^^^^
-
-    Alternatively, you can install ``DFTpy`` with ``python -m pip install .``
-
-    You also can install all the optional packages with ``python -m pip install .[all]``
+    $ python -m pip install ./dftpy[all]
 
 
 .. note::

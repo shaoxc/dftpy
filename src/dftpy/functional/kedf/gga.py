@@ -10,12 +10,13 @@ from dftpy.constants import C_TF, TKF0, CBRT_TWO
 from dftpy.field import DirectField
 from dftpy.functional.functional_output import FunctionalOutput
 from dftpy.math_utils import PowerInt
+from dftpy.time_data import timer
 
 __all__ = ["GGA", "GGAFs", "GGA_KEDF_list"]
 
 
 def s_with_tkf0(function):
-    '''
+    r'''
     Decorator for functionals with a defination of s=\grad\rho / tkf0 / (\rho)^(4/3)
     Parameters
     ----------
@@ -40,7 +41,7 @@ def s_with_tkf0(function):
 
 @s_with_tkf0
 def LKTmVW(ss: DirectField, calcType: Set[str], params: List[float], **kwargs) -> Dict:
-    '''
+    r'''
     \cite{luo2018simple}
     '''
     exp_1 = np.exp(-params[0] * ss)
@@ -55,7 +56,7 @@ def LKTmVW(ss: DirectField, calcType: Set[str], params: List[float], **kwargs) -
 
 
 def DK(s: DirectField, calcType: Set[str], params: List[float], **kwargs) -> Dict:
-    '''
+    r'''
     \cite{garcia2007kinetic} (8)
     '''
     x = s * s / (72 * C_TF)
@@ -74,7 +75,7 @@ def DK(s: DirectField, calcType: Set[str], params: List[float], **kwargs) -> Dic
 
 
 def LLP(s: DirectField, calcType: Set[str], params: List[float], **kwargs) -> Dict:
-    '''
+    r'''
     \cite{garcia2007kinetic} (9)[!x]
     \cite{gotz2009performance} (18)
     '''
@@ -95,7 +96,7 @@ def LLP(s: DirectField, calcType: Set[str], params: List[float], **kwargs) -> Di
 
 
 def OL(s: DirectField, calcType: Set[str], params: List[float], **kwargs) -> Dict:
-    '''
+    r'''
     \cite{gotz2009performance} (16)
     \cite{gotz2009performance} (17)
     '''
@@ -112,7 +113,7 @@ def OL(s: DirectField, calcType: Set[str], params: List[float], **kwargs) -> Dic
 
 
 def THAK(s: DirectField, calcType: Set[str], params: List[float], **kwargs) -> Dict:
-    '''
+    r'''
     \cite{garcia2007kinetic} (12),
     \cite{gotz2009performance} (22),
     \cite{hfofke} (15)[!x]
@@ -142,7 +143,7 @@ def THAK(s: DirectField, calcType: Set[str], params: List[float], **kwargs) -> D
 
 
 def B86A(s: DirectField, calcType: Set[str], params: List[float], **kwargs) -> Dict:
-    '''
+    r'''
     \cite{garcia2007kinetic} (13)
     '''
     bs = CBRT_TWO * s
@@ -159,7 +160,7 @@ def B86A(s: DirectField, calcType: Set[str], params: List[float], **kwargs) -> D
 
 
 def B86B(s: DirectField, calcType: Set[str], params: List[float], **kwargs) -> Dict:
-    '''
+    r'''
     \cite{garcia2007kinetic} (14)
     '''
     bs = CBRT_TWO * s
@@ -176,7 +177,7 @@ def B86B(s: DirectField, calcType: Set[str], params: List[float], **kwargs) -> D
 
 
 def DK87(s: DirectField, calcType: Set[str], params: List[float], **kwargs) -> Dict:
-    '''
+    r'''
     \cite{garcia2007kinetic} (15)
     '''
     bs = CBRT_TWO * s
@@ -195,7 +196,7 @@ def DK87(s: DirectField, calcType: Set[str], params: List[float], **kwargs) -> D
 
 @s_with_tkf0
 def PW86(ss: DirectField, calcType: Set[str], params: List[float], **kwargs) -> Dict:
-    '''
+    r'''
     \cite{gotz2009performance} (19)
     '''
     s2 = ss * ss
@@ -213,7 +214,7 @@ def PW86(ss: DirectField, calcType: Set[str], params: List[float], **kwargs) -> 
 
 @s_with_tkf0
 def PW910(ss: DirectField, calcType: Set[str], params: List[float], **kwargs) -> Dict:
-    '''
+    r'''
     \cite{gotz2009performance} (20)
     '''
     s2 = ss * ss
@@ -239,7 +240,7 @@ def PW910(ss: DirectField, calcType: Set[str], params: List[float], **kwargs) ->
 
 @s_with_tkf0
 def PW91(ss: DirectField, calcType: Set[str], params: List[float], **kwargs) -> Dict:
-    '''
+    r'''
     \cite{lacks1994tests} (16) and
     \cite{garcia2007kinetic} (17)[!x]
     '''
@@ -277,7 +278,7 @@ def PW91(ss: DirectField, calcType: Set[str], params: List[float], **kwargs) -> 
 
 @s_with_tkf0
 def LG94(ss: DirectField, calcType: Set[str], params: List[float], **kwargs) -> Dict:
-    '''
+    r'''
     \cite{garcia2007kinetic} (18)
     '''
     s2 = ss * ss
@@ -316,7 +317,7 @@ def LG94(ss: DirectField, calcType: Set[str], params: List[float], **kwargs) -> 
 
 @s_with_tkf0
 def P92(ss: DirectField, calcType: Set[str], params: List[float], **kwargs) -> Dict:
-    '''
+    r'''
     \cite{gotz2009performance} (14)
     \cite{gotz2009performance} (15)
     '''
@@ -335,7 +336,7 @@ def P92(ss: DirectField, calcType: Set[str], params: List[float], **kwargs) -> D
 
 @s_with_tkf0
 def PBE(ss: DirectField, calcType: Set[str], params: List[float], **kwargs) -> Dict:
-    '''
+    r'''
     \cite{gotz2009performance} (23)
     \cite{hfofke} (20)
     \cite{hfofke} (32)
@@ -368,7 +369,7 @@ def PBE(ss: DirectField, calcType: Set[str], params: List[float], **kwargs) -> D
 
 @s_with_tkf0
 def P82(ss: DirectField, calcType: Set[str], params: List[float], **kwargs) -> Dict:
-    '''
+    r'''
     \cite{hfofke} (9)
     '''
     s2 = ss * ss
@@ -385,18 +386,18 @@ def P82(ss: DirectField, calcType: Set[str], params: List[float], **kwargs) -> D
 
 @s_with_tkf0
 def VJKS00(ss: DirectField, calcType: Set[str], params: List[float], **kwargs) -> Dict:
-    '''
+    r'''
     \cite{hfofke} (18)
     '''
     s2 = ss * ss
     s4 = s2 * s2
     s6 = s4 * s2
-    Fa = 1.0 + params[0] * s2
+    Fa = 1.0 + params[0] * s2 - params[2] * s6
     Fb = 1.0 + params[1] * s2 + params[2] * s4
     F = Fa / Fb
     results = {'F': F}
     if "V" in calcType:
-        dFds2 = (2.0 * params[0]) / Fb - (2.0 * params[1] + 4.0 * params[2] * s2) * Fa / (Fb * Fb)
+        dFds2 = (2.0 * params[0] - 6.0 * params[2] * s4)/ Fb - (2.0 * params[1] + 4.0 * params[2] * s2)*Fa/(Fb*Fb)
         results.update({'dFds2': dFds2})
 
     return results
@@ -404,7 +405,7 @@ def VJKS00(ss: DirectField, calcType: Set[str], params: List[float], **kwargs) -
 
 @s_with_tkf0
 def VT84F(ss: DirectField, calcType: Set[str], params: List[float], **kwargs) -> Dict:
-    '''
+    r'''
     \cite{hfofke} (33)
     '''
     tol2 = 1.0e-8
@@ -488,6 +489,59 @@ def PG(ss: DirectField, calcType: Set[str], params: List[float], **kwargs) -> Di
 
     return results
 
+@s_with_tkf0
+def GE2(ss: DirectField, calcType: Set[str], params: List[float], q: DirectField, **kwargs) -> Dict:
+    s2 = ss * ss
+    F = params[0] + params[1] * s2 + params[2] * q
+    results = {'F': F}
+    if "V" in calcType:
+        dFds2 = 2.0 * params[1]
+        dFdq = params[2]
+        results['dFds2'] = dFds2
+        results['dFdq'] = dFdq
+
+    return results
+
+@s_with_tkf0
+def GE4(ss: DirectField, calcType: Set[str], params: List[float], q: DirectField, **kwargs) -> Dict:
+    results = GE2.__wrapped__(ss, calcType=calcType, params=params[:3], q=q, **kwargs)
+    s2 = ss * ss
+    F = params[3] * q * q + params[4] * q * s2 + params[5] * s2 * s2
+    results['F'] += F
+    if "V" in calcType:
+        dFds2 = 2.0 * params[4] * q + 4.0 * params[5] * s2
+        dFdq = 2.0 * params[3] * q + params[4] * s2
+        results['dFds2'] += dFds2
+        results['dFdq'] += dFdq
+
+    return results
+
+@s_with_tkf0
+def PGSL(ss: DirectField, calcType: Set[str], params: List[float], q: DirectField, **kwargs) -> Dict:
+    s2 = ss * ss
+    Fa = np.exp(-params[1] * s2)
+    F = Fa + q**2*params[0] + 5.0 / 3.0 * params[2] * s2
+    results = {'F': F}
+    if "V" in calcType:
+        dFds2 = -2.0 * params[1] * Fa + 10.0 / 3.0 * params[2]
+        dFdq = 2.0 * params[0] * q
+        results['dFds2'] = dFds2
+        results['dFdq'] = dFdq
+
+    return results
+
+@s_with_tkf0
+def PGSLr(ss: DirectField, calcType: Set[str], params: List[float], q: DirectField, **kwargs) -> Dict:
+    results = PGSL.__wrapped__(ss, calcType=calcType, params=params[2:], q=q, **kwargs)
+    s2 = ss * ss
+    F = -params[0] * q * s2 + params[1] * s2 * s2
+    results['F'] += F
+    if "V" in calcType:
+        dFds2 = -2.0 * params[0] * q + 4.0 * params[1] * s2
+        dFdq = -params[0] * s2
+        results['dFds2'] += dFds2
+        results['dFdq'] += dFdq
+    return results
 
 @s_with_tkf0
 def LKT_legacy(ss: DirectField, calcType: Set[str], params: List[float], **kwargs) -> Dict:
@@ -588,42 +642,12 @@ GGA_KEDF_list = {
     # "TEST-TF-APBEK": [1.3, 0.23889, 1.245],
 }
 
-
-# def GGAStress(rho, functional="LKT", energy=None, potential=None, dFds2=None, **kwargs):
-#     """
-#     Not finished.
-#     """
-#     rhom = rho.copy()
-#     tol = 1e-16
-#     rhom[rhom < tol] = tol
-
-#     rho23 = rhom ** (2.0 / 3.0)
-#     rho53 = rho23 * rhom
-#     rho43 = rho23 * rho23
-#     rho83 = rho43 * rho43
-#     C_TF = (3.0 / 10.0) * (3.0 * np.pi ** 2) ** (2.0 / 3.0)
-#     ckf2 = (3.0 * np.pi ** 2) ** (2.0 / 3.0)
-#     tf = C_TF * rho53
-#     vkin2 = tf * ckf2 * dFds2 / rho83
-#     dRho_ij = []
-#     g = rho.grid.get_reciprocal().g
-#     rhoG = rho.fft()
-#     for i in range(3):
-#         dRho_ij.append((1j * g[i] * rhoG).ifft(force_real=True))
-#     stress = np.zeros((3, 3))
-
-#     if potential is None:
-#         gga = GGA(rho, functional=functional, calcType={"E", "V"}, **kwargs)
-#         energy = gga.energy
-#         potential = gga.potential
-
-#     rhoP = np.einsum("ijk, ijk", rho, potential)
-#     for i in range(3):
-#         for j in range(i, 3):
-#             stress[i, j] = np.einsum("ijk, ijk", vkin2, dRho_ij[i] * dRho_ij[j])
-#             if i == j:
-#                 stress[i, j] += energy - rhoP
-#             stress[j, i] = stress[i, j]
+MGGA_KEDF_list = {
+    "GE2": {"function": GE2, "params": [1.0, 5.0/27.0, 20.0/9.0]},
+    "GE4": {"function": GE4, "params": [1.0, 5.0/27.0, 20.0/9.0, 8.0/81.0, -1.0/9.0, 8.0/243.0]},
+    "PGSL": {"function": PGSL, "params": [0.25, 40.0/27.0, 1.0]}, # \beta, \mu, vw
+    "PGSLR": {"function": PGSLr, "params": [0.40, 0.20, 0.25, 40.0/27.0, 1.0]}, # \lambda, \sigma, \beta, \mu, vw
+}
 
 
 def GGAFs(s, functional="LKT", calcType={"E", "V"}, params=None, gga_remove_vw=None, **kwargs):
@@ -668,7 +692,7 @@ def GGAFs(s, functional="LKT", calcType={"E", "V"}, params=None, gga_remove_vw=N
     if functional not in GGA_KEDF_list:
         raise AttributeError("%s GGA KEDF to be implemented" % functional)
 
-    params0 = GGA_KEDF_list[functional]
+    params0 = GGA_KEDF_list[functional]['params']
 
     if params is None:
         pass
@@ -988,13 +1012,11 @@ def GGAFs(s, functional="LKT", calcType={"E", "V"}, params=None, gga_remove_vw=N
         s2 = ss * ss
         s4 = s2 * s2
         s6 = s4 * s2
-        # Fa = 1.0 + params[0] * s2 - params[2] * s6
-        Fa = 1.0 + params[0] * s2
+        Fa = 1.0 + params[0] * s2 - params[2] * s6
         Fb = 1.0 + params[1] * s2 + params[2] * s4
         F = Fa / Fb
         if "V" in calcType:
-            # dFds2 = (2.0 * params[0] - 6.0 * params[2] * s4)/ Fb - (2.0 * params[1] + 4.0 * params[2] * s2)*Fa/(Fb*Fb)
-            dFds2 = (2.0 * params[0]) / Fb - (2.0 * params[1] + 4.0 * params[2] * s2) * Fa / (Fb * Fb)
+            dFds2 = (2.0 * params[0] - 6.0 * params[2] * s4)/ Fb - (2.0 * params[1] + 4.0 * params[2] * s2)*Fa/(Fb*Fb)
             dFds2 /= TKF0 * TKF0
 
     elif functional == "LC94":  # \cite{hfofke} (16) # same as PW91
@@ -1186,8 +1208,9 @@ def GGAFs(s, functional="LKT", calcType={"E", "V"}, params=None, gga_remove_vw=N
     return F, dFds2
 
 
+@timer()
 def GGA(rho: DirectField, functional: str = "LKT", calcType: Set[str] = {"E", "V"}, split: bool = False, params=None,
-        sigma=None, gga_remove_vw=None, **kwargs):
+        sigma=None, gga_remove_vw=None, mgga = False, **kwargs):
     """
     Interface to compute GGAs internally to DFTpy.
     This is the default way, even though DFTpy can generate some of the GGAs with LibXC.
@@ -1196,6 +1219,20 @@ def GGA(rho: DirectField, functional: str = "LKT", calcType: Set[str] = {"E", "V
                flag='standard' to flag='smooth'. The results with smooth math are
                slightly different.
     """
+    if 'S' in calcType:
+        calcType = list(calcType)
+        calcType.extend(['E', 'V'])
+    functional = functional.upper()
+    if mgga :
+        if functional in MGGA_KEDF_list :
+            Fs_dict = MGGA_KEDF_list[functional]
+        else :
+            raise AttributeError("%s MGGA KEDF to be implemented" % functional)
+    elif functional in GGA_KEDF_list :
+        Fs_dict = GGA_KEDF_list[functional]
+    else :
+        raise AttributeError("%s GGA KEDF to be implemented" % functional)
+    #
     rhom = rho.copy()
     tol = 1e-16
     rhom[rhom < tol] = tol
@@ -1214,10 +1251,13 @@ def GGA(rho: DirectField, functional: str = "LKT", calcType: Set[str] = {"E", "V
     s = np.sqrt(PowerInt(rhoGrad[0], 2) + PowerInt(rhoGrad[1], 2) + PowerInt(rhoGrad[2], 2)) / rho43
     s[s < tol] = tol
 
-    try:
-        Fs_dict = GGA_KEDF_list[functional]
-    except KeyError:
-        raise AttributeError("%s GGA KEDF to be implemented" % functional)
+    if mgga :
+        q = rho.laplacian(force_real=True, sigma=sigma)/(TKF0**2) / rho53
+        dq0 = -5.0/3.0 * q/rhom
+        dq2 = 1.0/(TKF0**2) / rho53
+    else :
+        q = None
+
     if params is None:
         params = Fs_dict["params"]
     else:
@@ -1230,7 +1270,7 @@ def GGA(rho: DirectField, functional: str = "LKT", calcType: Set[str] = {"E", "V
         elif len_params < len_default_params:
             params.extend(Fs_dict["params"][len_params:])
 
-    results = Fs_dict["function"](s, calcType, params, **kwargs)
+    results = Fs_dict["function"](s, calcType, params, q=q, **kwargs)
 
     if gga_remove_vw is not None:
         if isinstance(gga_remove_vw, (int, float)):
@@ -1251,8 +1291,8 @@ def GGA(rho: DirectField, functional: str = "LKT", calcType: Set[str] = {"E", "V
         OutFunctional.energy = energydensity.sum() * rhom.grid.dV
 
     if 'V' in calcType:
-        pot = 5.0 / 3.0 * C_TF * rho23 * results['F']
-        pot += -4.0 / 3.0 * tf * results['dFds2'] * s * s / rhom
+        pot1 = 5.0 / 3.0 * C_TF * rho23 * results['F']
+        pot1 += -4.0 / 3.0 * tf * results['dFds2'] * s * s / rhom
 
         p3 = []
         for i in range(3):
@@ -1260,15 +1300,36 @@ def GGA(rho: DirectField, functional: str = "LKT", calcType: Set[str] = {"E", "V
             p3.append(item.fft())
         g = rhom.grid.get_reciprocal().g
         pot3G = g[0] * p3[0] + g[1] * p3[1] + g[2] * p3[2]
-        pot -= (1j * pot3G).ifft(force_real=True)
-        OutFunctional.potential = pot
-    # np.savetxt('gga.dat', np.c_[rho.ravel(), pot.ravel(), s.ravel(), F.ravel(), dFds2.ravel()])
+        pot = pot1 - (1j * pot3G).ifft(force_real=True)
 
+        if mgga :
+            pot += tf * results['dFdq'] * dq0
+            pot_q2 = tf * results['dFdq'] * dq2
+            pot += pot_q2.laplacian(force_real = True, sigma = sigma)
+
+        OutFunctional.potential = pot
+
+    if 'S' in calcType:
+        if mgga :
+            raise AttributeError("Stress not support MGGA yet")
+        stress = np.zeros((3,3))
+        vkin2 = tf * results['dFds2'] / rho83
+        p = OutFunctional.energy  - (pot1 * rho).sum() * rho.grid.dV
+        for i in range(3):
+            p -= (rhoGrad[i] * rhoGrad[i] * vkin2).sum() * rho.grid.dV
+        for i in range(3):
+            stress[i,i] = p
+            for j in range(i, 3):
+                stress[i, j] -= (vkin2 * rhoGrad[i] * rhoGrad[j]).sum() * rho.grid.dV
+                stress[j, i] = stress[i, j]
+        OutFunctional.stress = stress/rho.grid.volume
     return OutFunctional
 
+def MGGA(rho: DirectField, functional: str = "LKT", calcType: Set[str] = {"E", "V"}, split: bool = False, params=None,
+        sigma=None, gga_remove_vw=None, mgga = True, **kwargs):
+    return GGA(rho, functional=functional, calcType=calcType, split=split, params=params, sigma=sigma,
+            gga_remove_vw=gga_remove_vw, mgga = True, **kwargs)
 
-def get_gga_p(rho, calcType=["E", "V"], params=None, **kwargs):
-    sigma = kwargs.get('sigma', None)
-    rho53 = rho ** (5.0 / 3.0)
-    p = rho.laplacian(sigma=sigma) / (TKF0 ** 2 * rho53)
-    return p
+def GGAStress(rho, energy=None, calcType={'S'}, **kwargs):
+    obj = GGA(rho, calcType=calcType, energy=energy, **kwargs)
+    return obj.stress

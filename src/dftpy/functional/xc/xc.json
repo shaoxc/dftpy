@@ -1,0 +1,654 @@
+{
+	"schema": {
+		"comment": "This is a schema for xc.",
+		"libxc": [],
+		"type": "lda/pbe/hyb_gga/hyb_mgga",
+		"alias": {},
+		"references": {}
+	},
+	"lda": {
+		"comment": "Perdew-Zunger local density approximation",
+		"libxc": [
+			"lda_x",
+			"lda_c_pz"
+		],
+		"type": "lda",
+		"alias": {
+			"qe": [
+				"pz",
+				"lda"
+			]
+		},
+		"references": {
+			"perdew1981self": {
+				"cite": "J. P. Perdew and A. Zunger, Phys. Rev. B 23, 5048 (1981)",
+				"url": [
+					"http://doi.org/10.1103/PhysRevB.23.5048",
+					"https://journals.aps.org/prb/abstract/10.1103/PhysRevB.23.5048"
+				],
+				"bib": "@article{perdew1981self,\n  title = {Self-interaction correction to density-functional approximations for many-electron systems},\n  author = {Perdew, John P and Zunger, Alex},\n  journal = {Phys. Rev. B},\n  volume = {23},\n  number= {10},\n  pages = {5048},\n  year = {1981},\n  month = {May},\n  publisher = {American Physical Society},\n  doi = {10.1103/PhysRevB.23.5048},\n  url = {http://link.aps.org/doi/10.1103/PhysRevB.23.5048}\n}"
+			}
+		}
+	},
+	"pw": {
+		"comment": "Perdew-Wang LDA",
+		"libxc": [
+			"lda_x",
+			"lda_c_pw"
+		],
+		"type": "lda",
+		"alias": {
+			"qe": [
+				"pw"
+			]
+		},
+		"references": {}
+	},
+	"vwnrpa": {
+		"comment": "",
+		"libxc": [
+			"lda_x",
+			"lda_c_vwn_rpa"
+		],
+		"type": "lda",
+		"alias": {
+			"qe": [
+				"vwn-rpa"
+			]
+		},
+		"references": {}
+	},
+	"pbe": {
+		"comment": "",
+		"libxc": [
+			"gga_x_pbe",
+			"gga_c_pbe"
+		],
+		"type": "gga",
+		"alias": {
+			"qe": [
+				"pbe"
+			],
+			"dftd4": [
+				"pbe"
+			]
+		},
+		"references": {}
+	},
+	"b88": {
+		"comment": "",
+		"libxc": [
+			"gga_x_b88"
+		],
+		"type": "gga",
+		"alias": {
+			"qe": [
+				"b88"
+			]
+		},
+		"references": {}
+	},
+	"bp": {
+		"comment": "",
+		"libxc": [
+			"gga_x_b88",
+			"gga_c_p86"
+		],
+		"type": "gga",
+		"alias": {
+			"qe": [
+				"bp"
+			],
+			"dftd4": [
+				"bp"
+			]
+		},
+		"references": {}
+	},
+	"pw91": {
+		"comment": "",
+		"libxc": [
+			"gga_x_pw91",
+			"gga_c_pw91"
+		],
+		"type": "gga",
+		"alias": {
+			"qe": [
+				"pw91"
+			],
+			"pw91": [
+				"pw91"
+			]
+		},
+		"references": {}
+	},
+	"revpbe": {
+		"comment": "",
+		"libxc": [
+			"gga_x_pbe_r",
+			"gga_c_pbe"
+		],
+		"type": "gga",
+		"alias": {
+			"qe": [
+				"revpbe"
+			],
+			"dftd4": [
+				"revpbe"
+			]
+		},
+		"references": {}
+	},
+	"pbesol": {
+		"comment": "",
+		"libxc": [
+			"gga_x_pbe_sol",
+			"gga_c_pbe_sol"
+		],
+		"type": "gga",
+		"alias": {
+			"qe": [
+				"pbesol"
+			],
+			"dftd4": [
+				"pbesol"
+			]
+		},
+		"references": {}
+	},
+	"blyp": {
+		"comment": "",
+		"libxc": [
+			"gga_x_b88",
+			"gga_c_lyp"
+		],
+		"type": "gga",
+		"alias": {
+			"qe": [
+				"blyp"
+			],
+			"dftd4": [
+				"blyp"
+			]
+		},
+		"references": {}
+	},
+	"optb88vdw": {
+		"comment": "",
+		"libxc": [
+			"gga_x_optb88_vdw",
+			"gga_c_p86"
+		],
+		"type": "gga",
+		"alias": {
+			"qe": [
+				"optbk88"
+			]
+		},
+		"references": {}
+	},
+	"optb86bvdw": {
+		"comment": "",
+		"libxc": [
+			"gga_x_optb86b_vdw",
+			"gga_c_p86"
+		],
+		"type": "gga",
+		"alias": {
+			"qe": [
+				"optb86b"
+			]
+		},
+		"references": {}
+	},
+	"pbc": {
+		"comment": "",
+		"libxc": [
+			"gga_c_pbe"
+		],
+		"type": "gga",
+		"alias": {
+			"qe": [
+				"pbc"
+			]
+		},
+		"references": {}
+	},
+	"hcth120": {
+		"comment": "",
+		"libxc": [
+			"gga_xc_hcth_120"
+		],
+		"type": "gga",
+		"alias": {
+			"qe": [
+				"hcth"
+			]
+		},
+		"references": {}
+	},
+	"olyp": {
+		"comment": "",
+		"libxc": [
+			"gga_x_optx",
+			"gga_c_lyp"
+		],
+		"type": "gga",
+		"alias": {
+			"qe": [
+				"olyp"
+			],
+			"dftd4": [
+				"olyp"
+			]
+		},
+		"references": {}
+	},
+	"wc": {
+		"comment": "",
+		"libxc": [
+			"gga_x_wc",
+			"gga_c_pbe"
+		],
+		"type": "gga",
+		"alias": {
+			"qe": [
+				"wc"
+			]
+		},
+		"references": {}
+	},
+	"pw86pbe": {
+		"comment": "",
+		"libxc": [
+			"gga_x_pw86",
+			"gga_c_pbe"
+		],
+		"type": "gga",
+		"alias": {
+			"qe": [
+				"pw86pbe"
+			],
+			"dftd4": [
+				"pw86pbe"
+			]
+		},
+		"references": {}
+	},
+	"b86pbe": {
+		"comment": "",
+		"libxc": [
+			"gga_x_b86",
+			"gga_c_pbe"
+		],
+		"type": "gga",
+		"alias": {
+			"qe": [
+				"b86bpbe"
+			]
+		},
+		"references": {}
+	},
+	"q2d": {
+		"comment": "",
+		"libxc": [
+			"gga_x_q2d",
+			"gga_c_q2d"
+		],
+		"type": "gga",
+		"alias": {
+			"qe": [
+				"pbeq2d",
+				"q2d"
+			]
+		},
+		"references": {}
+	},
+	"sogga": {
+		"comment": "",
+		"libxc": [
+			"gga_x_sogga",
+			"gga_c_pbe"
+		],
+		"type": "gga",
+		"alias": {
+			"qe": [
+				"sogga"
+			]
+		},
+		"references": {}
+	},
+	"ev93": {
+		"comment": "",
+		"libxc": [
+			"gga_x_ev93"
+		],
+		"type": "gga",
+		"alias": {
+			"qe": [
+				"ev93"
+			]
+		},
+		"references": {}
+	},
+	"rpbe": {
+		"comment": "",
+		"libxc": [
+			"gga_x_rpbe",
+			"gga_c_pbe"
+		],
+		"type": "gga",
+		"alias": {
+			"qe": [
+				"rpbe"
+			],
+			"dftd4": [
+				"rpbe"
+			]
+		},
+		"references": {}
+	},
+	"pbe0": {
+		"comment": "",
+		"libxc": [
+			"hyb_gga_xc_pbeh"
+		],
+		"type": "hyb_gga",
+		"alias": {
+			"qe": [
+				"pbe0"
+			],
+			"dftd4": [
+				"pbe0"
+			]
+		},
+		"references": {}
+	},
+	"b86bpbex": {
+		"comment": "",
+		"libxc": [],
+		"type": "hyb_gga",
+		"alias": {
+			"qe": [
+				"b86bpbex"
+			]
+		},
+		"references": {}
+	},
+	"bhandhlyp": {
+		"comment": "",
+		"libxc": [
+			"hyb_gga_xc_bhandhlyp"
+		],
+		"type": "hyb_gga",
+		"alias": {
+			"qe": [
+				"bhahlyp",
+				"bhandhlyp"
+			],
+			"dftd4": [
+				"bhlyp"
+			]
+		},
+		"references": {}
+	},
+	"hse06": {
+		"comment": "",
+		"libxc": [
+			"hyb_gga_xc_hse06"
+		],
+		"type": "hyb_gga",
+		"alias": {
+			"qe": [
+				"hse"
+			],
+			"dftd4": [
+				"hse06"
+			]
+		},
+		"references": {}
+	},
+	"gaupbe": {
+		"comment": "",
+		"libxc": [],
+		"type": "hyb_gga",
+		"alias": {
+			"qe": [
+				"gaupbe",
+				"gaup"
+			]
+		},
+		"references": {}
+	},
+	"b3lyp": {
+		"comment": "",
+		"libxc": [
+			"hyb_gga_xc_b3lyp"
+		],
+		"type": "hyb_gga",
+		"alias": {
+			"qe": [
+				"b3lyp"
+			],
+			"dftd4": [
+				"b3lyp"
+			]
+		},
+		"references": {}
+	},
+	"b3lypv1r": {
+		"comment": "",
+		"libxc": [],
+		"type": "hyb_gga",
+		"alias": {
+			"qe": [
+				"b3lypv1r"
+			]
+		},
+		"references": {}
+	},
+	"x3lyp": {
+		"comment": "",
+		"libxc": [
+			"hyb_gga_xc_x3lyp"
+		],
+		"type": "hyb_gga",
+		"alias": {
+			"qe": [
+				"x3lyp"
+			],
+			"dftd4": [
+				"x3lyp"
+			]
+		},
+		"references": {}
+	},
+	"tpss": {
+		"comment": "",
+		"libxc": [
+			"mgga_x_tpss",
+			"mgga_c_tpss"
+		],
+		"type": "mgga",
+		"alias": {
+			"qe": [
+				"tpss"
+			],
+			"dftd4": [
+				"tpss"
+			]
+		},
+		"references": {}
+	},
+	"m06l": {
+		"comment": "",
+		"libxc": [
+			"mgga_x_m06_l",
+			"mgga_c_m06_l"
+		],
+		"type": "mgga",
+		"alias": {
+			"qe": [
+				"m06l"
+			],
+			"dftd4": [
+				"m06l"
+			]
+		},
+		"references": {}
+	},
+	"tb09": {
+		"comment": "",
+		"libxc": [
+			"mgga_x_tb09"
+		],
+		"type": "mgga",
+		"alias": {
+			"qe": [
+				"tb09"
+			]
+		},
+		"references": {}
+	},
+	"scan": {
+		"comment": "",
+		"libxc": [
+			"mgga_x_scan",
+			"mgga_c_scan"
+		],
+		"type": "mgga",
+		"alias": {
+			"qe": [
+				"scan"
+			],
+			"dftd4": [
+				"scan"
+			]
+		},
+		"references": {}
+	},
+	"scan0": {
+		"comment": "",
+		"libxc": [
+			"hyb_mgga_x_scan0",
+			"mgga_c_scan"
+		],
+		"type": "hyb_mgga",
+		"alias": {
+			"qe": [
+				"scan0"
+			]
+		},
+		"references": {}
+	},
+	"rvv10": {
+		"comment": "",
+		"libxc": [],
+		"type": "mgga",
+		"alias": {
+			"qe": [
+				"rvv10"
+			]
+		},
+		"references": {}
+	},
+	"rvv10scan": {
+		"comment": "",
+		"libxc": [],
+		"type": "mgga",
+		"alias": {
+			"qe": [
+				"rvv10-scan"
+			]
+		},
+		"references": {}
+	},
+	"oppbe": {
+		"comment": "",
+		"libxc": [
+			"gga_x_pbe",
+			"gga_c_op_pbe"
+		],
+		"type": "gga",
+		"alias": {},
+		"references": {}
+	},
+	"pkzb": {
+		"comment": "",
+		"libxc": [
+			"gga_x_pkzb",
+			"gga_c_pkzb"
+		],
+		"type": "gga",
+		"alias": {},
+		"references": {}
+	},
+	"hse03": {
+		"comment": "",
+		"libxc": [
+			"hyb_gga_xc_hse03"
+		],
+		"type": "hyb_gga",
+		"alias": {},
+		"references": {}
+	},
+	"hse12": {
+		"comment": "",
+		"libxc": [
+			"hyb_gga_xc_hse12"
+		],
+		"type": "hyb_gga",
+		"alias": {},
+		"references": {}
+	},
+	"hse12s": {
+		"comment": "",
+		"libxc": [
+			"hyb_gga_xc_hse12s"
+		],
+		"type": "hyb_gga",
+		"alias": {},
+		"references": {}
+	},
+	"hsesol": {
+		"comment": "",
+		"libxc": [
+			"hyb_gga_xc_hse_sol"
+		],
+		"type": "hyb_gga",
+		"alias": {},
+		"references": {}
+	},
+	"b3lyp3": {
+		"comment": "hyb_gga",
+		"libxc": [
+			"hyb_gga_xc_b3lyp3"
+		],
+		"type": "gga",
+		"alias": {},
+		"references": {}
+	},
+	"b3lyp5": {
+		"comment": "",
+		"libxc": [
+			"hyb_gga_xc_b3lyp5"
+		],
+		"type": "hyb_gga",
+		"alias": {},
+		"references": {}
+	},
+	"r2scan": {
+		"comment": "",
+		"libxc": [
+			"mgga_x_r2scan",
+			"mgga_c_r2scan"
+		],
+		"type": "mgga",
+		"alias": {
+			"dftd4": [
+				"r2scan"
+			]
+		},
+		"references": {}
+	}
+}

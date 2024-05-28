@@ -1,9 +1,9 @@
 import sys
 import sphinx_rtd_theme
 project = 'DFTpy'
-copyright = '2019, Pavanello Research Group'
+copyright = '2019-2023, Pavanello Research Group'
 author = 'Pavanello Research Group'
-release = '0.0.1'
+release = '2.0.0'
 
 source_suffix = '.rst'
 master_doc = 'index'
@@ -16,7 +16,8 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.viewcode',
               'sphinx.ext.napoleon',
               'sphinx.ext.intersphinx',
-              'nbsphinx']
+              'nbsphinx',
+              'sphinx_design']
 
 templates_path = ['templates']
 exclude_patterns = ['build']
