@@ -1,5 +1,13 @@
 import numpy as np
 from dftpy.constants import Units
+import os
+import pathlib
+dftpy_data_path = os.environ.get('DFTPY_DATA_PATH', None)
+if not dftpy_data_path:
+    dftpy_data_path = pathlib.Path(__file__).resolve().parents[1] / 'DATA'
+else :
+    dftpy_data_path = pathlib.Path(dftpy_data_path)
+
 ## Orthorombic Cell, compare to QE
 def run_test_orthorombic(self, cell_cls, nr=None):
     A, B, C = 10, 15, 7

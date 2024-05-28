@@ -1,28 +1,26 @@
 #!/usr/bin/env python3
-import os
 import unittest
 import numpy as np
 
 from dftpy.formats import io
 from dftpy.functional.pseudo import LocalPseudo
-
+from common import dftpy_data_path
 
 class Test(unittest.TestCase):
     def setUp(self):
-        self.dftpy_data_path = os.environ.get('DFTPY_DATA_PATH')
-        self.ions, self.rho, _ = io.read_all(self.dftpy_data_path + "/Al_fde_rho.pp")
+        self.ions, self.rho, _ = io.read_all(dftpy_data_path / "Al_fde_rho.pp")
         self.ref_energy = 1.3497046
 
     def test_recpot(self):
-        PP_list = {'Al': self.dftpy_data_path + "/al.lda.recpot"}
+        PP_list = {'Al': dftpy_data_path / "al.lda.recpot"}
         self._run_energy(PP_list)
 
     def test_upf(self):
-        PP_list = {'Al': self.dftpy_data_path + "/al.lda.upf"}
+        PP_list = {'Al': dftpy_data_path / "al.lda.upf"}
         self._run_energy(PP_list)
 
     def test_psp(self):
-        PP_list = {'Al': self.dftpy_data_path + "/al.lda.psp"}
+        PP_list = {'Al': dftpy_data_path / "al.lda.psp"}
         self._run_energy(PP_list)
 
     def _run_energy(self, PP_list):

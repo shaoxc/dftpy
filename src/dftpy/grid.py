@@ -140,6 +140,19 @@ class BaseGrid:
         results = self.__class__(lattice, nr, origin=self.origin, full=self.full, cplx=self.cplx, direct=self.direct)
         return results
 
+    def create(self, lattice=None, **kwargs):
+        options={
+                'origin' : self.origin,
+                'full' : self.full,
+                'cplx' : self.cplx,
+                'mp' : self.mp,
+                'ecut' : self.ecut,
+                }
+        if lattice is None: lattice = self.cell
+        options.update(kwargs)
+        results = self.__class__(lattice, **options)
+        return results
+
     def repeat(self, rep=1):
         # it only repeat last three dimensions with same rep
         if not isinstance(rep, int):
@@ -535,10 +548,9 @@ class ReciprocalGrid(BaseGrid):
             invq = 1.0/self.q
             if self.mp.is_root :
                 self.q[0, 0, 0] = 0.0
-            invq[0, 0, 0] = 0.0
-        # self._invq = invq
-        # return self._invq
-        return invq
+                invq[0, 0, 0] = 0.0
+            self._invq = invq
+        return self._invq
 
     def get_direct(self, scale= None, convention="physics"):
         r"""
@@ -647,12 +659,14 @@ class ReciprocalGrid(BaseGrid):
         if self._mask is None:
             nrR = self.nrR[:3]
             Dnr = nrR[:3] // 2 - self.offsets
-            Dnr = np.where(Dnr > 0, Dnr, 0)
-            Dmod = nrR[:3] % 2
             mask = np.ones(self.nr[:3], dtype=bool)
             if np.all(self.nrG == self.nrR):
-                mask[:, :, Dnr[2] + 1 :] = False
-
+                if Dnr[2] >= 0:
+                    mask[:, :, Dnr[2] + 1 :] = False
+                else:
+                    mask[:, :, :] = False
+            Dnr = np.where(Dnr > 0, Dnr, 0)
+            Dmod = nrR[:3] % 2
             if self.offsets[0] == self.offsets[2] == 0 :
                 mask[0, Dnr[1] + 1 :, 0] = False
             if self.offsets[2] == 0 :
@@ -693,7 +707,6 @@ class ReciprocalGrid(BaseGrid):
                 self._gF = self._calc_grid_points(full=True)
             ggF = np.einsum("lijk,lijk->ijk", self._gF, self._gF)
             self._ggF = ggF
-            # self._ggF = np.reshape(gg, (*self._gF.shape, 1))
         return self._ggF
 
     @property

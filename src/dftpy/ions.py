@@ -131,7 +131,7 @@ class Ions(Atoms):
     @property
     def symbols_uniq(self):
         """Unique symbols of ions"""
-        return sorted(np.unique(self.symbols))
+        return np.sort(np.unique(self.symbols))
 
     @property
     def nat(self):

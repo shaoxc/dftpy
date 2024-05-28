@@ -98,7 +98,7 @@ def ConfigParser(config, ions=None, rhoini=None, pseudo=None, grid=None, mp = No
         evaluator_emb = None
     ############################## XC and Hartree ##############################
     HARTREE = Functional(type="HARTREE")
-    XC = Functional(type="XC", name=config["EXC"]["xc"], **config["EXC"])
+    XC = Functional(type="XC", name=config["EXC"]["xc"], pseudo=PSEUDO, **config["EXC"])
     if config["NONADIABATIC"]["nonadiabatic"] is None:
         DYNAMIC = None
     else:
@@ -201,19 +201,54 @@ def OptimizeDensityConf(config, ions = None, rho = None, E_v_Evaluator = None, n
         optimization_options["econv"] /= ions.nat  # reset the value
     ############################## calctype  ##############################
     if lscf : E_v_Evaluator.UpdateFunctional(newFuncDict=evaluator_emb.funcDict)
-    forces = {}
-    stress = {}
     sprint("-" * 80)
     calcType = set()
-    energypotential = {'TOTAL' : FunctionalOutput(name ='TOTAL', energy = 0.0)}
 
     if 'Both' in config["JOB"]["calctype"]: calcType.update({"E", "V"})
     if 'Potential' in config["JOB"]["calctype"]: calcType.update("V")
     if 'Energy' in config["JOB"]["calctype"]: calcType.update("E")
+    if 'Force' in config["JOB"]["calctype"]: calcType.update("F")
+    if 'Stress' in config["JOB"]["calctype"]: calcType.update("S")
 
-    if len(calcType) > 0 :
+    ############################## Output Density ##############################
+    if config["DENSITY"]["densityoutput"]:
+        sprint("Write Density...")
+        outfile = config["DENSITY"]["densityoutput"]
+        write(outfile, rho, ions)
+    ############################## Output ##############################
+    if config["OUTPUT"]["electrostatic_potential"]:
+        sprint("Write electrostatic potential...")
+        outfile = config["OUTPUT"]["electrostatic_potential"]
+        v = get_electrostatic_potential(rho, E_v_Evaluator)
+        write(outfile, v, ions)
+    print_stress = config["OUTPUT"]["stress"]
+    results = evaluator2results(E_v_Evaluator, rho=rho, calcType=calcType, ions=ions, print_stress=print_stress, **kwargs)
+    if lscf : E_v_Evaluator.UpdateFunctional(keysToRemove=evaluator_emb.funcDict)
+    # sprint('-' * 31, 'Time information', '-' * 31)
+    # -----------------------------------------------------------------------
+    return results
+
+def InvertRunner(config, ions, EnergyEvaluater):
+    file_rho_in = config["INVERSION"]["rho_in"]
+    file_v_out = config["INVERSION"]["v_out"]
+    field = read_density(file_rho_in)
+
+    if ions.cell != field.cell :
+        raise ValueError('The grid of the input density does not match the grid of the system')
+
+    inv = Inverter()
+    ext = inv(field, EnergyEvaluater)
+    write(file_v_out, data=ext.v, ions=ions, data_type='potential')
+
+    return ext
+
+def evaluator2results(evaluator, rho=None, calcType={'E', 'F'}, ions=None, print_stress=False, split=True, **kwargs):
+    forces = {}
+    stress = {}
+    energypotential = {'TOTAL' : FunctionalOutput(name ='TOTAL', energy = 0.0)}
+    if 'E' in calcType or 'V' in calcType:
         sprint("Calculate Energy/Potential...")
-        energypotential = E_v_Evaluator.get_energy_potential(rho, calcType=calcType, split = True)
+        energypotential = evaluator.get_energy_potential(rho, calcType=calcType, split = split)
 
     if 'E' in calcType :
         sprint(format("Energy information", "-^80"))
@@ -230,17 +265,18 @@ def OptimizeDensityConf(config, ions = None, rho = None, E_v_Evaluator = None, n
         sprint("-" * 80)
 
         etot_eV = etot * ENERGY_CONV["Hartree"]["eV"]
-        etot_eV_patom = etot * ENERGY_CONV["Hartree"]["eV"] / ions.nat
         fstr = "  {:<30s} : {:30.15f}"
         sprint(fstr.format("kedfs energy (a.u.)", ke_energy))
         sprint(fstr.format("kedfs energy (eV)", ke_energy* ENERGY_CONV["Hartree"]["eV"]))
         sprint(fstr.format("total energy (a.u.)", etot))
         sprint(fstr.format("total energy (eV)", etot_eV))
-        sprint(fstr.format("total energy (eV/atom)", etot_eV_patom))
+        if ions is not None:
+            etot_eV_patom = etot * ENERGY_CONV["Hartree"]["eV"] / ions.nat
+            sprint(fstr.format("total energy (eV/atom)", etot_eV_patom))
     ############################## Force ##############################
-    if "Force" in config["JOB"]["calctype"]:
+    if "F" in calcType:
         sprint("Calculate Force...")
-        forces = E_v_Evaluator.get_forces(rho, ions = ions, split = True)
+        forces = evaluator.get_forces(rho, split = split)
         ############################## Output Force ##############################
         f = np.abs(forces["TOTAL"])
         fmax, fmin, fave = np.max(f), np.min(f), np.mean(f)
@@ -250,12 +286,12 @@ def OptimizeDensityConf(config, ions = None, rho = None, E_v_Evaluator = None, n
         sprint(fstr_f.format("Ave force (a.u.)", fave))
         sprint("-" * 80)
     ############################## Stress ##############################
-    if "Stress" in config["JOB"]["calctype"]:
+    if "S" in calcType:
         sprint("Calculate Stress...")
-        stress = E_v_Evaluator.get_stress(rho, split=True)
+        stress = evaluator.get_stress(rho, split=split)
         ############################## Output stress ##############################
         fstr_s = " " * 16 + "{0[0]:12.5f} {0[1]:12.5f} {0[2]:12.5f}"
-        if config["OUTPUT"]["stress"]:
+        if print_stress:
             for key in sorted(stress.keys()):
                 if key == "TOTAL":
                     continue
@@ -270,40 +306,12 @@ def OptimizeDensityConf(config, ions = None, rho = None, E_v_Evaluator = None, n
         for i in range(3):
             sprint(fstr_s.format(stress["TOTAL"][i] * STRESS_CONV["Ha/Bohr3"]["GPa"]))
         sprint("-" * 80)
-    ############################## Output Density ##############################
-    if config["DENSITY"]["densityoutput"]:
-        sprint("Write Density...")
-        outfile = config["DENSITY"]["densityoutput"]
-        write(outfile, rho, ions)
-    ############################## Output ##############################
-    if config["OUTPUT"]["electrostatic_potential"]:
-        sprint("Write electrostatic potential...")
-        outfile = config["OUTPUT"]["electrostatic_potential"]
-        v = get_electrostatic_potential(rho, E_v_Evaluator)
-        write(outfile, v, ions)
+
     results = {}
     results["density"] = rho
     results["energypotential"] = energypotential
     results["forces"] = forces
     results["stress"] = stress
-    if hasattr(E_v_Evaluator, 'PSEUDO'):
-        results["pseudo"] = PSEUDO
-    if lscf : E_v_Evaluator.UpdateFunctional(keysToRemove=evaluator_emb.funcDict)
-    # sprint('-' * 31, 'Time information', '-' * 31)
-    # -----------------------------------------------------------------------
+    results["evaluator"] = evaluator
+    if hasattr(evaluator, 'PSEUDO'): results["pseudo"] = evaluator.PSEUDO
     return results
-
-
-def InvertRunner(config, ions, EnergyEvaluater):
-    file_rho_in = config["INVERSION"]["rho_in"]
-    file_v_out = config["INVERSION"]["v_out"]
-    field = read_density(file_rho_in)
-
-    if ions.cell != field.cell :
-        raise ValueError('The grid of the input density does not match the grid of the system')
-
-    inv = Inverter()
-    ext = inv(field, EnergyEvaluater)
-    write(file_v_out, data=ext.v, ions=ions, data_type='potential')
-
-    return ext

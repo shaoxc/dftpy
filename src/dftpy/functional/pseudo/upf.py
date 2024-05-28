@@ -145,7 +145,7 @@ class UPFDICT(BasePseudo):
         if 'PP_NLCC' in self.info:
             self._core_density = self.get_array(self.info['PP_NLCC'])
         if 'PP_RHOATOM' in self.info:
-            rho = self.get_array(self.info['PP_RHOATOM'])
+            rho = self.get_array(self.info['PP_RHOATOM'])[:self.r.size]
             if self.r[0] > 1E-10 :
                 rho[:] /= (4*np.pi*self.r[:]**2)
             else :
@@ -184,7 +184,7 @@ class UPFJSON(BasePseudo):
         if 'core_charge_density' in self.info:
             self._core_density = np.array(self.info["core_charge_density"], dtype=np.float64)
         if 'total_charge_density' in self.info:
-            rho = np.array(self.info["total_charge_density"], dtype=np.float64)
+            rho = np.array(self.info["total_charge_density"], dtype=np.float64)[:self.r.size]
             if self.r[0] > 1E-10 :
                 rho[:] /= (4*np.pi*self.r[:]**2)
             else :

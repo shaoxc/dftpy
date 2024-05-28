@@ -40,3 +40,23 @@ class RECPOT(BasePseudo):
         self.info = {'comment' : comment}
         self._zval = round((self.v[0] - self.v[1]) * (self.r[1] ** 2) / (4.0 * np.pi))
         # self._zval = (self.v[0] - self.v[1]) * (self.r[-1] / (self.r.size - 1)) ** 2 / (4.0 * np.pi)
+
+    def write(self, fname, header='DFTpy', **kwargs):
+        HARTREE2EV = Units.Ha
+        BOHR2ANG = Units.Bohr
+        gmax = self.r / BOHR2ANG
+        v = self.v * HARTREE2EV * BOHR2ANG ** 3
+        fw = open(fname, 'w')
+        fw.write('START COMMENT\n' + header + '\nEND COMMENT\n')
+        fw.write('3     5\n') # Now only support 5
+        fw.write(str(gmax) + '\n')
+        nl = v.size // 3
+        # seq = ' ' * 5
+        for line in v[: nl * 3].reshape(-1, 3):
+            fw.write("     {0[0]:22.15E}     {0[1]:22.15E}     {0[2]:22.15E}\n".format(line))
+        for line in v[nl * 3 :]:
+            fw.write("{0:22.15E}".format(line))
+        if len(v[nl * 3 :]) > 0 :
+            fw.write("\n")
+        fw.write("1000\n")
+        fw.close()

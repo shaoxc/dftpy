@@ -428,7 +428,7 @@ def _GGAStress(density, xc_str='gga_x_pbe', energy=None, flag='standard', **kwar
         P -= 2.0 * np.sum(sigma * vsigma) * rho.grid.dV
     stress = np.eye(3) * P
     for i in range(3):
-        for j in range(3):
+        for j in range(i, 3):
             if nspin > 1:
                 stress[i, j] -= 2.0 * np.einsum("ijk, ijk, ijk -> ", gradDen[0][i], gradDen[0][j],
                                                 vsigma[0]) * rho.grid.dV
@@ -438,6 +438,7 @@ def _GGAStress(density, xc_str='gga_x_pbe', energy=None, flag='standard', **kwar
                                                 vsigma[2]) * rho.grid.dV
             else:
                 stress[i, j] -= 2.0 * np.einsum("ijk, ijk, ijk -> ", gradDen[i], gradDen[j], vsigma) * rho.grid.dV
+            stress[j, i] = stress[i, j]
     return stress / rho.grid.volume
 
 
@@ -465,7 +466,7 @@ with open(xc_json_file) as f:
 def get_short_xc_name(libxc = None, xc = None, code = None, **kwargs):
     name = None
     if xc :
-        alias = xcformats.get(xc, {}).get('alias', {}).get(code, [])
+        alias = xcformats.get(xc.lower(), {}).get('alias', {}).get(code, [])
         if alias : name = alias[0]
     else :
         for name, value in xcformats.items():
@@ -498,7 +499,7 @@ def get_libxc_names(xc = None, libxc = None, name = None, code = None, **kwargs)
         libxc =libxc.split()
 
     # compatible with older version
-    libxc_old = [v for k, v in kwargs.items() if k in ["k_str", "x_str", "c_str"] and v is not None]
+    libxc_old = [v for k, v in kwargs.items() if k in ["k_str", "x_str", "c_str", "functional"] and v is not None]
     if len(libxc_old)>0 :
         # print('libxc', libxc, libxc_old)
         # warnings.warn(FutureWarning("'*_str' are deprecated; please use 'libxc' or 'xc'"))

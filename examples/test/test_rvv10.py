@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
-import os
 import unittest
 import numpy as np
 import pytest
 
 from dftpy.functional.xc import RVV10, RVV10NL
 from dftpy.formats import io
+from common import dftpy_data_path
 
 
 class Test(unittest.TestCase):
     def test_rvv10nl(self):
-        dftpy_data_path = os.environ.get('DFTPY_DATA_PATH')
-        rho = io.read_density(dftpy_data_path + "/al_random.xsf", ecut=80)
+        rho = io.read_density(dftpy_data_path / "al_random.xsf", ecut=80)
         func = RVV10NL()
         obj = func(rho)
         print(obj.energy, obj.potential[0, 0, 0])
@@ -20,8 +19,7 @@ class Test(unittest.TestCase):
 
     def test_rvv10(self):
         pytest.importorskip("pylibxc")
-        dftpy_data_path = os.environ.get('DFTPY_DATA_PATH')
-        rho = io.read_density(dftpy_data_path + "/al_random.xsf")
+        rho = io.read_density(dftpy_data_path / "al_random.xsf")
         rho.grid.ecut = 80
         func = RVV10()
         obj = func(rho)

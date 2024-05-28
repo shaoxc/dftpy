@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import hashlib
 
 class AbstractPseudo(ABC):
     @abstractmethod
@@ -61,6 +62,9 @@ class BasePseudo(AbstractPseudo):
         #-----------------------------------------------------------------------
         if fname is not None :
             self.read(fname, **kwargs)
+            with open(fname, 'rb') as f:
+                md5 = hashlib.md5(f.read()).hexdigest()
+            self.info['md5'] = md5
 
     def read(self, fname, *args, **kwargs):
         pass

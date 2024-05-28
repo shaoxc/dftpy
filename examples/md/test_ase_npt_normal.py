@@ -1,6 +1,11 @@
 import os
 import numpy as np
 from dftpy.mpi import pmi, sprint, mp
+from dftpy.optimization import Optimization
+from dftpy.functional import Functional, TotalFunctional
+from dftpy.grid import DirectGrid
+from dftpy.field import DirectField
+from dftpy.ions import Ions
 #-----------------------------------------------------------------------
 if pmi.size > 0:
     from mpi4py import MPI
@@ -12,25 +17,13 @@ from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.io.trajectory import Trajectory
 from ase import units
 
-from dftpy.config.config import DefaultOption, OptionFormat, PrintConf
 from dftpy.api.api4ase import DFTpyCalculator
 import pathlib
 dftpy_data_path = pathlib.Path(__file__).resolve().parents[1] / 'DATA'
 np.random.seed(8888)
 
 ############################## initial config ##############################
-conf = DefaultOption()
-conf["PATH"]["pppath"] = dftpy_data_path
-conf["PP"]["Al"] = "al.lda.recpot"
-conf["OPT"]["method"] = "TN"
-conf["KEDF"]["kedf"] = "WT"
-conf["JOB"]["calctype"] = "Energy Force Stress"
-conf["OUTPUT"]["time"] = False
-conf["OUTPUT"]["stress"] = False
-conf = OptionFormat(conf)
-PrintConf(conf)
-calc = DFTpyCalculator(config=conf, mp = mp)
-# -----------------------------------------------------------------------
+
 """
 Ref :
     https://wiki.fysik.dtu.dk/ase/ase/md.html#module-ase.md
@@ -43,6 +36,27 @@ T = 1023  # Kelvin
 atoms = FaceCenteredCubic(
     directions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]], latticeconstant=a, symbol="Al", size=(size, size, size), pbc=True
 )
+
+# -----------------------------------------------------------------------
+ions = Ions.from_ase(atoms)
+path = str(dftpy_data_path)
+PP_list = {'Al': path+os.sep+'al.lda.recpot'}
+grid = DirectGrid(ecut=20, lattice=ions.cell, mp=mp, full=False)
+rho = DirectField(grid=grid)
+#
+PSEUDO = Functional(type='PSEUDO', grid=grid, ions=ions, PP_list=PP_list)
+KE = Functional(type='KEDF', name='WT')
+XC = Functional(type='XC', name='LDA')
+HARTREE = Functional(type='HARTREE')
+#
+funcDict = {'KE' :KE, 'XC' :XC, 'HARTREE' :HARTREE, 'PSEUDO' :PSEUDO}
+EnergyEvaluator = TotalFunctional(**funcDict)
+#
+rho[:] = ions.get_ncharges() / ions.cell.volume
+optimizer = Optimization(EnergyEvaluator=EnergyEvaluator, optimization_method='TN')
+
+calc = DFTpyCalculator(optimizer = optimizer, evaluator = EnergyEvaluator, rho = rho)
+# -----------------------------------------------------------------------
 
 atoms.set_calculator(calc)
 

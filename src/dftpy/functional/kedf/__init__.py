@@ -5,16 +5,17 @@ import numpy as np
 
 from dftpy.functional.abstract_functional import AbstractFunctional
 from dftpy.functional.functional_output import FunctionalOutput, ZeroFunctional
-from dftpy.functional.kedf.fp import FP
-from dftpy.functional.kedf.gga import GGA, GGA_KEDF_list, GGAFs, MGGA, MGGA_KEDF_list
+from dftpy.functional.kedf.gga import GGA, GGA_KEDF_list, GGAFs, MGGA, MGGA_KEDF_list, GGAStress
 from dftpy.functional.kedf.hc import HC, revHC
 from dftpy.functional.kedf.lwt import LWT, LMGP, LMGPA, LMGPG
 from dftpy.functional.kedf.mgp import MGP, MGPA, MGPG, MGP0
-from dftpy.functional.kedf.sm import SM
 from dftpy.functional.kedf.tf import TF, TTF, ThomasFermiStress
 from dftpy.functional.kedf.vw import vW, vonWeizsackerStress
 from dftpy.functional.kedf.wt import WT, WTStress
-from dftpy.functional.semilocal_xc import LibXC
+from dftpy.functional.kedf.sm import SM, SMStress
+from dftpy.functional.kedf.fp import FP, FPStress
+from dftpy.functional.kedf.wte import WTE, WTEStress
+from dftpy.functional.semilocal_xc import LibXC, XCStress
 from dftpy.mpi import sprint
 from dftpy.utils import name2functions
 from dftpy.functional.kedf.lkt import LKT
@@ -43,7 +44,9 @@ KEDFEngines= {
         "HC-NL": HC,
         "REVHC-NL": revHC,
         "DTTF": TTF,
-        "LIBXC_KEDF": LibXC,
+        "LIBXC": LibXC,
+        "WTE-NL": WTE,
+        #
         "X_TF_Y_VW": ("TF", "VW"),
         "XTFYVW": ("TF", "VW"),
         "TFVW": ("TF", "VW"),
@@ -62,16 +65,25 @@ KEDFEngines= {
         "TTF": TF,
         "MGP0-NL": MGP0,
         "MGP0": ("TF", "VW", "MGP0-NL"),
+        "WTE": ("VW", "WTE-NL"),
         }
 
 KEDFEngines_Stress = {
     "TF": ThomasFermiStress,
     "VW": vonWeizsackerStress,
     "WT-NL": WTStress,
+    "SM-NL": SMStress,
+    "FP-NL": FPStress,
+    "WTE-NL": WTEStress,
+    "GGA": GGAStress,
+    "LIBXC": XCStress,
     "X_TF_Y_VW": ("TF", "VW"),
     "XTFYVW": ("TF", "VW"),
     "TFVW": ("TF", "VW"),
     "WT": ("TF", "VW", "WT-NL"),
+    "SM": ("TF", "VW", "SM-NL"),
+    "FP": ("TF", "VW", "FP-NL"),
+    "WTE": ("VW", "WTE-NL"),
     }
 
 
@@ -110,7 +122,10 @@ class KEDF(AbstractFunctional):
         options.update(kwargs)
         #-----------------------------------------------------------------------
         k_str = options.pop('k_str', None) # For GGA functional
-        if name.startswith('GGA_'):
+        if name.startswith('LIBXC'):
+            options['libxc'] = list(k_str.split())
+            name = 'LIBXC'
+        elif name.startswith('GGA_'):
             k_str = name[4:]
             options['mgga'] = False
             name = 'GGA'
@@ -119,8 +134,8 @@ class KEDF(AbstractFunctional):
             options['mgga'] = True
             name = 'MGGA'
         options['functional'] = k_str
-        #-----------------------------------------------------------------------
         options = {k :v for k, v in options.items() if v is not None}
+        #-----------------------------------------------------------------------
         functional = {}
         if density.ndim > 3:
             nspin = density.rank
@@ -172,12 +187,27 @@ class KEDF(AbstractFunctional):
         if kedf : name = kedf
         if name is None : name = self.name
         name = name.upper()
+        #-----------------------------------------------------------------------
         options = copy.deepcopy(self.options)
         options.update(kwargs)
-        options['functional'] = options.get('k_str', None) # For GGA functional
+        k_str = options.pop('k_str', None) # For GGA functional
+        if name.startswith('LIBXC'):
+            options['libxc'] = list(k_str.split())
+            name = 'LIBXC'
+        elif name.startswith('GGA_'):
+            k_str = name[4:]
+            options['mgga'] = False
+            name = 'GGA'
+        elif name.startswith('MGGA_'):
+            k_str = name[5:]
+            options['mgga'] = True
+            name = 'MGGA'
+        options['functional'] = k_str
+        options = {k :v for k, v in options.items() if v is not None}
+        #-----------------------------------------------------------------------
         funcs = name2functions(name, KEDFEngines_Stress)
         if len(self.energies)< len(funcs):
-            self.compute(density, calcType = {"E"}, name = name, split = True, **kwargs)
+            self.compute(density, calcType = {"E"}, name = name, split = True, **options)
         if density.ndim > 3:
             nspin = density.rank
             rhol = density*nspin
@@ -190,7 +220,7 @@ class KEDF(AbstractFunctional):
             if split : stress = np.zeros((3, 3))
             energy = self.energies[k]
             for i in range(0, nspin):
-                stress += func(rhol[i], energy=energy, **kwargs) / nspin
+                stress += func(rhol[i], energy=energy, **options) / nspin
             if split : out[k] = stress
         if split : stress = out
         return stress
@@ -345,7 +375,7 @@ def kedf2nlgga(name='STV+GGA+LMGPA', **kwargs):
         names[1] = 'GGA'
         k_str = k_str.upper()
     else:
-        names[1] = 'LIBXC_KEDF'
+        names[1] = 'LIBXC'
         k_str = k_str.lower()
 
     stv = KEDF(name='GGA', k_str='STV', params=params, sigma=sigma)
@@ -397,7 +427,7 @@ def kedf2mixkedf(name='MIX_TF+GGA', first_high=True, **kwargs):
         names[1] = 'GGA'
         k_str = k_str.upper()
     else:
-        names[1] = 'LIBXC_KEDF'
+        names[1] = 'LIBXC'
         k_str = k_str.lower()
 
     stv = KEDF(name=names[0], **kwargs)

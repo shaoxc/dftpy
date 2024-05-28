@@ -1,9 +1,12 @@
 import numpy as np
 from scipy import ndimage, interpolate
-from scipy.optimize import minpack2
 from scipy import optimize as sopt
 import dftpy.mpi.mp_serial as mps
 from dftpy.constants import environ
+try:
+    from scipy.optimize import _minpack2 as minpack2
+except Exception :
+    from scipy.optimize import minpack2
 
 if environ["FFTLIB"] == "pyfftw":
     """

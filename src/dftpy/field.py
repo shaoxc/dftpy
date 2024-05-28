@@ -206,6 +206,9 @@ class DirectField(BaseField):
         return Wxyz
 
     def numerically_smooth_gradient(self, ipol=None):
+        r"""
+        DEPRECATED!!!
+        """
         sq_self = np.sqrt(np.abs(self))
         grad = sq_self.standard_gradient(ipol)
         if ipol is None:
@@ -223,7 +226,15 @@ class DirectField(BaseField):
                 raise ValueError("Gradient rank incompatible with shape")
             return DirectField(grid=grad.grid, rank=1, griddata_3d=2.0 * sq_self * np.reshape(grad, np.shape(sq_self)))
 
-    def super_smooth_gradient(self, ipol=None, force_real=True, sigma=0.025):
+    def super_smooth_gradient(self, ipol=None, force_real=True, sigma=0.0):
+        r"""
+        Gradient of field with Gaussian convolution smoothing
+         - args:
+            ipol: optional, direction of gradient (1->x, 2->y, 3->z)
+            force_real: default True, returns a real DirectField
+            sigma: smoothing parameter in Bohrs, default=0.0
+         - returns 3d gradient unless ipol is specified
+        """
         reciprocal_self = self.fft()
         imag = 0 + 1j
         nr = 3, *reciprocal_self.grid.nr
@@ -233,21 +244,21 @@ class DirectField(BaseField):
             grad_g = (
                 reciprocal_self.grid.g
                 * (reciprocal_self * imag)
-                * np.exp(-reciprocal_self.grid.gg * (sigma / 2.0) ** 2)
+                * np.exp(-reciprocal_self.grid.gg * sigma**2 / 2.0)
             )
             grad_g = ReciprocalField(grid=self.grid.get_reciprocal(), rank=3, griddata_3d=grad_g)
             grad = grad_g.ifft(force_real=force_real)
             if grad.rank != np.shape(grad)[0]:
-                raise ValueError("Standard Gradient: Gradient rank incompatible with shape")
+                raise ValueError("Supersmooth Gradient: Gradient rank incompatible with shape")
             return grad
         elif ipol > 3:
-            raise ValueError("Standard Gradient: ipol can not large than 3")
+            raise ValueError("Supersmooth Gradient: ipol can not large than 3")
         else:
             i = ipol - 1
             grad_g = (
                 reciprocal_self.grid.g[i]
                 * (reciprocal_self * imag)
-                * np.exp(-reciprocal_self.grid.gg * (sigma / 2.0) ** 2)
+                * np.exp(-reciprocal_self.grid.gg * sigma**2 / 2.0)
             )
             grad_g = ReciprocalField(grid=self.grid.get_reciprocal(), rank=1, griddata_3d=grad_g)
             grad = grad_g.ifft(force_real=force_real)
@@ -256,8 +267,6 @@ class DirectField(BaseField):
     def standard_gradient(self, ipol=None, force_real=True):
         reciprocal_self = self.fft()
         imag = 0 + 1j
-        # nr = 3, *reciprocal_self.grid.nr
-        # grad_g = np.empty(nr, dtype='complex128')
         if ipol is None:
             # FFT(\grad A) = i \vec(G) * FFT(A)
             grad_g = reciprocal_self.grid.g * (reciprocal_self * imag)
@@ -271,7 +280,11 @@ class DirectField(BaseField):
         grad = grad_g.ifft(force_real=force_real)
         return grad
 
-    def divergence(self, flag="smooth", force_real=True, sigma=0.025):
+    def divergence(self, flag="supersmooth", force_real=True, sigma=0.0):
+        r"""
+        Divergence of field
+         - sigma: smoothing parameter in Bohrs, dafault 0.0.
+        """
         if self.rank != 3:
             raise ValueError("Divergence: Rank incompatible ", self.rank)
         div = self[0].gradient(flag=flag, ipol=1, force_real=force_real, sigma=sigma)
@@ -316,19 +329,42 @@ class DirectField(BaseField):
         else :
             raise Exception("Incorrect flag")
 
+    def hessian(self, flag="supersmooth", force_real=True,sigma=0.025):
+        r"""
+            Calculate Hessian of Grid value.
+            Return field of rank=6, values: xx, yy, zz, xy, xz, yz
+        """
+        if np.iscomplex(self[0,0,0]):
+            raise AttributeError("Hessian only implemented for real fields")
+        if self.rank != 1:
+            raise ValueError("Hessian: Rank incompatible ", self.rank)
+        # 1st Order Grad
+        grad_x = self.gradient(flag=flag, ipol=1, force_real=force_real,sigma=sigma)
+        grad_y = self.gradient(flag=flag, ipol=2, force_real=force_real,sigma=sigma)
+        grad_z = self.gradient(flag=flag, ipol=3, force_real=force_real,sigma=sigma)
+        # 2nd order Hessian
+        hess_xx = grad_x.gradient(flag=flag, ipol=1, force_real=force_real,sigma=sigma)
+        hess_yy = grad_y.gradient(flag=flag, ipol=2, force_real=force_real,sigma=sigma)
+        hess_zz = grad_z.gradient(flag=flag, ipol=3, force_real=force_real,sigma=sigma)
+
+        hess_xy = grad_x.gradient(flag=flag, ipol=2, force_real=force_real,sigma=sigma)
+        hess_xz = grad_x.gradient(flag=flag, ipol=3, force_real=force_real,sigma=sigma)
+        hess_yz = grad_y.gradient(flag=flag, ipol=3, force_real=force_real,sigma=sigma)
+        hess = np.stack([hess_xx, hess_yy, hess_zz, hess_xy, hess_xz, hess_yz])
+
+        return DirectField(grid=self.grid, rank=6, griddata_3d=hess)
+
+
     def laplacian(self, check_real = False, force_real = False, sigma = 0.025):
         reciprocal_self = self.fft()
         gg = reciprocal_self.grid.gg
         if sigma is None or sigma == 0:
             reciprocal_self = -reciprocal_self.grid.gg*reciprocal_self
         else :
-            reciprocal_self = -gg*reciprocal_self*np.exp(-gg*(sigma*sigma)/4.0)
+            reciprocal_self = -gg*reciprocal_self*np.exp(-gg*sigma**2/2.0)
         return reciprocal_self.ifft(check_real = check_real, force_real = force_real)
 
-    #def laplacian(self, flag="smooth"):
-        #return self.gradient(flag=flag).divergence(flag=flag)
-
-    def sigma(self, flag="smooth", sigma_gradient=None):
+    def sigma(self, flag="supersmooth", sigma_gradient=None):
         r"""
         \sigma(r) = |\grad rho(r)|^2
         """
@@ -351,7 +387,7 @@ class DirectField(BaseField):
 
     @timer('FFT')
     def fft(self):
-        """ Implements the Discrete Fourier Transform
+        r""" Implements the Discrete Fourier Transform
         Tips : If you use pyfft to perform fft, you should copy the input_array, because
         the input_array may be overwritten.
         """
@@ -440,7 +476,7 @@ class DirectField(BaseField):
         new_grid = DirectGrid(new_lattice, nr_new)
         return DirectField(new_grid, self.memo, griddata_3d=new_values)
 
-    def get_cut(self, r0, r1=None, r2=None, origin=None, center=None, nr=10, basis = 'crystal'):
+    def get_cut(self, r0, r1=None, r2=None, origin=[0, 0, 0], center=None, nr=50, basis = 'crystal'):
         """
         Only support for serial.
         general routine to get the arbitrary cuts of a Grid_Function_Base object in 1,2,
@@ -548,12 +584,12 @@ class DirectField(BaseField):
             v2 = np.cross(v0, v1)
             v2 = v2 / np.sqrt(np.dot(v2, v2))
         elif span == 2:
-            v1 = self.grid.cell.cartesian_positions([r1])
+            v1 = self.grid.cell.cartesian_positions([r1])[0]
             v2 = np.cross(v0, v1)
             v2 = v2 / np.sqrt(np.dot(v2, v2))
         elif span == 3:
-            v1 = self.grid.cell.cartesian_positions([r1])
-            v2 = self.grid.cell.cartesian_positions([r2])
+            v1 = self.grid.cell.cartesian_positions([r1])[0]
+            v2 = self.grid.cell.cartesian_positions([r2])[0]
         at[:, 0] = v0
         at[:, 1] = v1
         at[:, 2] = v2
@@ -697,7 +733,9 @@ class ReciprocalField(BaseField):
         return obj
 
     def __array_finalize__(self, obj):
-        # Restore attributes when we are taking a slice
+        r"""
+        Restores attributes when we are taking a slice
+        """
         if obj is None:
             return
         super().__array_finalize__(obj)
@@ -705,52 +743,6 @@ class ReciprocalField(BaseField):
             self.ifft_object = obj.ifft_object
             self.cplx = obj.cplx
         self.spl_coeffs = None
-
-    # def __array_wrap__(self,obj,context=None):
-    #    '''wrap it up'''
-    #    b = np.ndarray.__array_wrap__(self, obj, context)
-    #    #b.rank = self.rank * obj.rank
-    #    rank = 1
-    #    a=np.shape(np.shape(self))[0]
-    #    if a == 4:
-    #        rank = np.shape(self)[3]
-    #    nr = *self.grid.nrR, self.rank
-    #    b = np.reshape(b,nr)
-    #    return ReciprocalField(grid=self.grid,rank=rank,griddata_3d=b)
-
-    # def __mul__(self, other):
-    # return np.multiply(self,other)
-    # try:
-    # prod = np.multiply(self, other)
-    # except:
-    # s_sh = np.shape(self)
-    # o_sh = np.shape(other)
-    # nr = self.grid.nrR
-    # a = np.reshape(self, nr)
-    # b = np.reshape(other, nr)
-    # prod = ReciprocalField(grid=self.grid, rank=self.rank, griddata_3d=np.multiply(a, b))
-    # return prod
-
-    # if np.sum(o_sh) == 1: return np.multiply(self,other)
-    # if s_sh != o_sh:
-    #    nr = self.grid.nrR
-    #    a=np.reshape(self,nr)
-    #    b=np.reshape(other,nr)
-    #    return ReciprocalField(grid=self.grid,rank=self.rank,griddata_3d=np.multiply(a,b))
-    # else:
-    #    return np.multiply(self,other)
-    # if flag is not None:
-    #    s_npol = 1
-    #    o_npol = 1
-    #    if np.sum(np.shape(s_sh)) == 4: s_npol = s_sh[3]
-    #    if np.sum(np.shape(o_sh)) == 4: o_npol = s_sh[3]
-    #    prod = np.empty((s_sh[0:-1],s_pol*o_pol))
-    #    for i_pol in np.arange(s_npol):
-    #        for j_pol in np.arange(o_npol):
-    #            prod[o_pol*i_pol+j_pol] = self[i_pol]*other[o_pol]
-    #    return ReciprocalField(grid=self.grid,rank=s_pol*o_pol,griddata_3d=prod)
-    # else:
-    #    return self*other
 
     def integral(self):
         """ Returns the integral of self """
@@ -803,3 +795,6 @@ class ReciprocalField(BaseField):
             for i in range(self.rank):
                 self[i][~self.grid.get_gmask(g2max)] = 0.0
         return self
+
+
+

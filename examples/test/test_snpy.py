@@ -12,17 +12,18 @@ import warnings
 warnings.filterwarnings('ignore')
 
 import tempfile
+from common import dftpy_data_path
+
 
 class Test(unittest.TestCase):
     def test_0_serial(self):
-        dftpy_data_path = os.environ.get('DFTPY_DATA_PATH')
-        infile=dftpy_data_path+'/GaAs_random.xsf'
+        infile=dftpy_data_path / 'GaAs_random.xsf'
         ions, field, _ = io.read_all(infile)
         try:
             mp = MP(parallel = True, decomposition = 'Pencil')
         except Exception:
             mp = MP()
-        outfile = tempfile.gettempdir() + '/serial.snpy'
+        outfile = tempfile.gettempdir() + os.sep + 'serial.snpy'
         if mp.rank == 0 :
             snpy.write(outfile, ions, field)
         if hasattr(mp.comm, 'Barrier'):

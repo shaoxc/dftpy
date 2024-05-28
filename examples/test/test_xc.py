@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import os
 import unittest
 import numpy as np
 import pytest
@@ -7,16 +6,16 @@ import pytest
 from dftpy.functional.xc import XC
 from dftpy.functional.pseudo import LocalPseudo
 from dftpy.formats import io
+from common import dftpy_data_path
 
 
 class Test(unittest.TestCase):
     def test_xc_cv(self):
         pytest.importorskip("pylibxc")
-        dftpy_data_path = os.environ.get('DFTPY_DATA_PATH')
         print("*" * 50)
         print("Testing loading pseudopotentials")
-        ions, rho, _ = io.read_all(dftpy_data_path + "./ti.xsf")
-        PP_list = [dftpy_data_path + "/ti_pbe_v1.4.uspp.F.UPF"]
+        ions, rho, _ = io.read_all(dftpy_data_path / "ti.xsf")
+        PP_list = [dftpy_data_path / "ti_pbe_v1.4.uspp.F.UPF"]
         grid = rho.grid
 
         pseudo = LocalPseudo(grid=grid, ions=ions, PP_list=PP_list, PME=False)
