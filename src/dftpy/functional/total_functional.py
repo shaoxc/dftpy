@@ -105,7 +105,7 @@ class TotalFunctional(AbstractFunctional):
         return ewald
 
     def compute(self, rho, calcType={"E", "V"}, **kwargs):
-        Obj = self.get_energy_potential(rho, calcType={"E", "V"}, **kwargs)
+        Obj = self.get_energy_potential(rho, calcType=calcType, **kwargs)
         return Obj
 
     def Energy(self, rho, **kwargs):
