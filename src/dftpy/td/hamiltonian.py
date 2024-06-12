@@ -108,7 +108,7 @@ class Hamiltonian(Operator):
                 # return -0.5 * psi.laplacian(force_real = force_real, sigma=sigma) + 0.5 * self.a_field.dot(self.a_field) * psi + 0.5j * self.a_field.dot(psi.gradient(force_real = force_real)) + 0.5j * (self.a_field * psi).divergence(force_real=force_real) + self.v * psi
 
         elif isinstance(psi, ReciprocalField):
-            return 0.5 * psi.grid.gg * psi + (self.v * psi.ifft()).fft
+            return 0.5 * psi.grid.gg * psi + (self.v * psi.ifft()).fft()
         else:
             raise TypeError("psi must be a DFTpy DirectField or ReciprocalField.")
 
@@ -152,6 +152,7 @@ class Hamiltonian(Operator):
             for i in range(numeig):
                 if reciprocal:
                     psi = ReciprocalField(reci_grid, rank=1, griddata_3d=np.reshape(psis[:, i], reci_grid.nr))
+                    psi = psi.ifft()
                 else:
                     psi = DirectField(self.grid, rank=1, griddata_3d=np.reshape(psis[:, i], self.grid.nr))
                 psi = psi / np.sqrt((np.real(psi) * np.real(psi) + np.imag(psi) * np.imag(psi)).integral())
