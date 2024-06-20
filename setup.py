@@ -51,7 +51,7 @@ extras_require = {
             ],
         }
 
-release = 0
+release = 1
 if release :
     VERSION = {'version' : __version__}
 else :
