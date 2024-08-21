@@ -138,7 +138,7 @@ class RealTimeRunner(Dynamics):
         None
 
         """
-        
+
         if self.single_step: 
             self.functionals.PSEUDO.restart(full=False)
             self.functionals.PSEUDO.grid = self.psi.grid
@@ -170,7 +170,10 @@ class RealTimeRunner(Dynamics):
         if self.propagate_vector_potential:
             self.A_tm1 = self.A_t
             self.A_t = self.predictor_corrector.A_t_pred
-
+#       self.psi, info = self.propagator(self.psi)
+#       self.j = calc_j(self.psi)
+#       self.rho = calc_rho(self.psi)
+#       self.update_hamiltonian()
         if self.single_step:
             energypotential = self.functionals.get_energy_potential(self.rho, calcType="E", split = True)
             forces = self.functionals.get_forces(self.rho, ions = self.ions, split = True)
