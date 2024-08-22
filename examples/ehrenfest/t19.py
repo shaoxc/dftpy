@@ -107,7 +107,7 @@ PrintConf(conf)
 calcEF = DFTpyCalculator(rho=rho,config=conf,optimizer = optimizer, evaluator = EnergyEvaluator, mp =mp, step = nas)
 
 # ----------Force Field-------------------------------------------------------------
-calcFF =  EAM(potential='Al_zhou.eam.alloy')
+calcFF =  EAM(potential=DATA+'Al_zhou.eam.alloy')
 #-----mixing-----
 calcA = [calcFF,calcBO,calcEF]
 weights = [1.0,-1.0,1.0]
