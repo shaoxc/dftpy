@@ -175,6 +175,7 @@ class TDDFTpyCalculator(Calculator):
         self.psi = psi
         self.single_step = config["TD"]["single_step"]
        #if self.single_step:
+       #
         self.rt_runner = rt_runner
         config, self.others = ConfigParser(self.config, mp = self.mp)
         if self.rt_runner is None:
@@ -234,6 +235,7 @@ class TDDFTpyCalculator(Calculator):
         if self.halfH is True: 
             F_o = self.others["E_v_Evaluator"].get_forces(rho,ions)
             sprint(F_o)
+
             M = ions.get_masses()[:, np.newaxis]
             x_o = ions.get_positions()
             p = ions.get_momenta()
