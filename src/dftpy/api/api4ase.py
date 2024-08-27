@@ -234,6 +234,7 @@ class TDDFTpyCalculator(Calculator):
 
         if self.halfH is True: 
             F_o = self.others["E_v_Evaluator"].get_forces(rho,ions)
+
             sprint(F_o)
 
             M = ions.get_masses()[:, np.newaxis]
