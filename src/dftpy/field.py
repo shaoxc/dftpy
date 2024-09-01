@@ -92,12 +92,12 @@ class BaseField(np.ndarray):
         self.memo = getattr(obj, "memo", None)
         self.mp = getattr(obj, "mp", None)
 
-    def __array_wrap__(self, obj, context=None):
+    def __array_wrap__(self, obj, context=None, return_scalar=False):
         """wrap it up"""
-        if obj.ndim< 3 :
+        if obj.ndim< 3 or return_scalar:
             # This is only return numpy array not field
             return obj
-        b = np.ndarray.__array_wrap__(self, obj, context)
+        b = np.ndarray.__array_wrap__(self, obj, context, return_scalar)
         return b
 
     def dot(self, obj):
@@ -105,7 +105,7 @@ class BaseField(np.ndarray):
         if np.shape(self) != np.shape(obj):
             raise ValueError("Shape incompatible")  # to be specified
 
-        prod = self.mp.einsum("ijkl,ijkl->jkl", self, obj)
+        prod = self.mp.einsum("ijkl,ijkl->jkl", self, obj,optimize=True)
         prod = np.expand_dims(prod, axis=3)
 
         return type(self)(self.grid, rank=1, griddata_3d=prod)
