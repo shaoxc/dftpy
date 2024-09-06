@@ -1,8 +1,8 @@
 __author__ = "Pavanello Research Group"
 __contact__ = "m.pavanello@rutgers.edu"
 __license__ = "MIT"
-__version__ = "2.1.1rc0"
-__date__ = "2024-06-20"
+__version__ = "2.1.1"
+__date__ = "2024-09-06"
 
 from .config import *
 from .mpi import mp, sprint
