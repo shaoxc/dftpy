@@ -35,7 +35,7 @@ class Hartree(AbstractFunctional):
         v_h = rho_of_g * invgg * 4 * np.pi
         v_h_of_r = v_h.ifft(force_real=force_real)
         if 'E' in calcType:
-            e_h = np.einsum("ijk, ijk->", v_h_of_r, rho) * density.grid.dV / 2.0
+            e_h = np.einsum("ijk, ijk->", v_h_of_r, rho,optimize=True) * density.grid.dV / 2.0
         else:
             e_h = 0
         if density.rank > 1:
@@ -56,12 +56,12 @@ class Hartree(AbstractFunctional):
         return stress
 
 
-def HartreePotentialReciprocalSpace(density):
-    invgg = density.grid.get_reciprocal().invgg
-    rho_of_g = density.fft()
-    v_h = rho_of_g.copy()
-    v_h = rho_of_g * invgg * 4 * np.pi
-    return v_h
+#def HartreePotentialReciprocalSpace(density):
+#    invgg = density.grid.get_reciprocal().invgg
+#    rho_of_g = density.fft()
+#    v_h = rho_of_g.copy()
+#    v_h = rho_of_g * invgg * 4 * np.pi
+#    return v_h
 
 
 @timer()

@@ -42,3 +42,25 @@ class PotentialOperator(Operator):
 
     def energy(self, psi):
         return (self.v * np.real(np.conj(psi) * psi)).integral()
+
+def calc_spectra_mu(mu, dt, kick = 1, sigma = 3E-5, sigma1=None, use_fft = True, de = 1E-3, emax=0.5):
+    mu = mu - mu[0]
+    nmax = int(2*np.pi/de/dt)
+    if len(mu) < nmax and use_fft:
+        mu = np.pad(mu, (0, nmax-len(mu)), 'constant')
+    t = np.arange(len(mu)) * dt
+    if sigma1 is not None:
+        mu = mu * np.exp(-sigma*t)
+    elif sigma is not None:
+        mu = mu * np.exp(-sigma*t**2)
+    if use_fft :
+        omega = np.fft.rfftfreq(len(mu),d=dt)*2*np.pi
+        spectra = np.fft.rfft(mu)
+    else:
+        omega = np.arange(0, emax, de)
+        spectra = []
+        for i, w in enumerate(omega):
+            spectra.append(np.sum(mu*np.exp(-1.0j*w*t)))
+        spectra = np.asarray(spectra)
+    spectra = spectra.imag * omega * (-1.0 * dt / kick * 2.0 / np.pi)
+    return omega, spectra

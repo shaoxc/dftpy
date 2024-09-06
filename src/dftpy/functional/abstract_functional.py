@@ -27,29 +27,4 @@ class AbstractFunctional(ABC):
         # returns energy and potential
         pass
 
-    # def GetName(self):
-    #     return self.name
-    #
-    # def GetType(self):
-    #     return self.type
-    #
-    # def AssignName(self, name):
-    #     self.name = name
-    #
-    # def AssignType(self, type):
-    #     self.type = type
 
-    # def CheckFunctional(self):
-    #     if self.type not in self.FunctionalTypeList:
-    #         print(self.type, " is not a valid Functional type")
-    #         print("Valid Functional types are:")
-    #         print(self.FunctionalTypeList)
-    #         return False
-    #     # if self.name not in self.FunctionalNameList:
-    #     for name in self.name.split('+'):
-    #         if name not in self.FunctionalNameList:
-    #             print(name, " is not a valid Functional name")
-    #             print("Valid Functional names are:")
-    #             print(self.FunctionalNameList)
-    #             return False
-    #     return True
