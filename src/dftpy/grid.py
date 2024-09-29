@@ -785,9 +785,9 @@ class RadialGrid(object):
         vp = np.zeros_like(x)
 
         if method == 'simpson':
-            from scipy.integrate import simps as integrate
+            from scipy.integrate import simpson as integrate
         elif method == 'trapezoid':
-            from scipy.integrate import trapz as integrate
+            from scipy.integrate import trapezoid as integrate
 
         if self.vr :
             vr = v * r
@@ -798,7 +798,7 @@ class RadialGrid(object):
 
         for k in range(lb, ub):
             y = sp.spherical_jn(0, x[k] * r) * vr
-            vp[k] = integrate(y, r)
+            vp[k] = integrate(y, x=r)
 
         vp = mp.vsum(vp)
 

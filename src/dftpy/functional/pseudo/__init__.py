@@ -688,8 +688,8 @@ class ReadPseudo(object):
         vr = v*r + zval
         vp = np.zeros_like(gp)
         #
-        from scipy.integrate import simps as integrate
-        vp[0] = (4.0 * np.pi) * integrate((vr[mk]*r[mk]), r[mk])
+        from scipy.integrate import simpson as integrate
+        vp[0] = (4.0 * np.pi) * integrate((vr[mk]*r[mk]), x=r[mk])
         #
         vr = v*r + zval*sp.erf(r)
         vp[1:] = RadialGrid(r[mk], vr[mk], direct=True, vr=True, **kwargs).ft(gp[1:])
