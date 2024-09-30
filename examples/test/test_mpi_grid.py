@@ -26,7 +26,7 @@ class TestGrid(unittest.TestCase):
 
         lap = field.laplacian(sigma = 0)
         suml = (lap * np.conj(lap)).asum()
-        self.assertEqual(suml, 2865.839010291929)
+        self.assertEqual(suml.real, 2865.839010291929)
 
 
 if __name__ == "__main__":

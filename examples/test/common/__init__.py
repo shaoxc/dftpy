@@ -5,6 +5,8 @@ import pathlib
 dftpy_data_path = os.environ.get('DFTPY_DATA_PATH', None)
 if not dftpy_data_path:
     dftpy_data_path = pathlib.Path(__file__).resolve().parents[1] / 'DATA'
+    if not dftpy_data_path.is_dir():
+        dftpy_data_path = pathlib.Path(__file__).resolve().parents[2] / 'DATA'
 else :
     dftpy_data_path = pathlib.Path(dftpy_data_path)
 
