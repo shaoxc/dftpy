@@ -1,6 +1,4 @@
-include MANIFEST.in
-include README.md LICENSE.txt
-include requirements.txt
+include MANIFEST.in README.md LICENSE.txt
+include src/dftpy
 include scripts/*
-include src/dftpy/*/*.json
-include src/dftpy/*/*/*.json
+recursive-include src/dftpy *.json
