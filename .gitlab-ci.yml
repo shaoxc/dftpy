@@ -8,7 +8,7 @@ test:
    - tags
   image: registry.gitlab.com/pavanello-research-group/dftpy:latest
   script:
-   - python -m pip install
+   - python -m pip install .
    - cd examples
    - DFTPY_DATA_PATH='./DATA/' pytest --cov-report term-missing --cov=./ ./test/
   coverage: '/TOTAL\s+\d+\s+\d+\s+(\d+\%)/'
