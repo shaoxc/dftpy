@@ -1,6 +1,7 @@
 import importlib.util
 import re
 import numpy as np
+import xml.etree.ElementTree as ET
 
 from dftpy.functional.pseudo.abstract_pseudo import BasePseudo
 
@@ -159,6 +160,28 @@ class UPFDICT(BasePseudo):
         return np.array(value, dtype=np.float64)
 
 
+class UPFJSON_alternative(BasePseudo):
+    def __init__(self, fname, direct = True, **kwargs):
+        super().__init__(fname, direct = direct, **kwargs)
+
+    def read(self, fname):
+        """Reads QE UPF type PP"""
+        import importlib.util
+
+
+        info, header , _ = parse_upf_file(fname)
+
+        r = np.array(info["PP_R"], dtype=np.float64)
+        v = np.array(info["PP_LOCAL"], dtype=np.float64)
+        self.r = r
+        self.v = v
+        self.info = header
+        self._zval = float(self.info["z_valence"])
+
+
+
+
+   
 class UPFJSON(BasePseudo):
     def __init__(self, fname, direct = True, **kwargs):
         super().__init__(fname, direct = direct, **kwargs)
@@ -197,14 +220,94 @@ class UPF:
         Note :
             Prefer xmltodict which is more robust
         """
+
+        #obj = UPFJSON_alternative(fname)
         try:
             obj = UPFDICT(fname)
         except Exception:
-            if importlib.util.find_spec("upf_to_json") :
-                try:
-                    obj = UPFJSON(fname)
-                except Exception:
-                    raise ModuleNotFoundError("Please use standard 'UPF' file")
-            else :
-                raise ModuleNotFoundError("Maybe you also can try install upf_to_json or use standard 'UPF' file")
+            try:
+                obj = UPFJSON_alternative(fname)
+            except Exception:
+                if importlib.util.find_spec("upf_to_json"):
+                    try:
+                        obj = UPFJSON(fname)
+                    except Exception:
+                        raise ModuleNotFoundError("Please use a standard 'UPF' file.")
+                else:
+                    raise ModuleNotFoundError("Please install 'upf_to_json' or use a standard 'UPF' file.")
         return obj
+
+
+
+
+import numpy as np
+import xml.etree.ElementTree as ET
+import re
+
+def parse_upf_file(file_path):
+    """
+    Reads a UPF file and extracts array_dict, header_info, and array_metadata.
+
+    Parameters:
+    - file_path (str): Path to the UPF file.
+
+    Returns:
+    - array_dict (dict): Dictionary where keys are XML tags and values are NumPy arrays.
+    - header_info (dict): Dictionary with header information.
+    - array_metadata (dict): Dictionary containing metadata for each array tag (e.g., type, size, columns).
+    """
+    array_dict = {}
+    header_info = {}
+    array_metadata = {}
+
+    # Parse the XML structure in the UPF file
+    tree = ET.parse(file_path)
+    root = tree.getroot()
+
+    # Extract PP_HEADER information directly from attributes
+    header_elem = root.find('PP_HEADER')
+    if header_elem is not None:
+        # Extract each attribute and add to header_info
+        for attr, value in header_elem.attrib.items():
+            header_info[attr] = value
+
+    # Recursive function to extract arrays and metadata from elements
+    def extract_arrays(elem):
+        # Skip PP_INFO and PP_HEADER sections, which have been handled
+        if elem.tag in ['PP_INFO', 'PP_HEADER']:
+            return
+
+        # Check if element contains numerical array data
+        if elem.text and any(char.isdigit() for char in elem.text):
+            # Extract metadata from element attributes (type, size, columns)
+            array_type = elem.attrib.get('type', 'real')
+            array_size = int(elem.attrib.get('size', 0))
+            array_columns = int(elem.attrib.get('columns', 1))
+            array_metadata[elem.tag] = {
+                'type': array_type,
+                'size': array_size,
+                'columns': array_columns
+            }
+
+            # Extract and parse the numerical data
+            # Remove extra whitespace, split by lines, then convert to floats
+            data_lines = elem.text.strip().splitlines()
+            data_values = []
+            for line in data_lines:
+                # Extract individual numbers in scientific notation
+                numbers = re.findall(r"[-+]?\d*\.\d+(?:[eE][-+]?\d+)?", line)
+                data_values.extend([float(num) for num in numbers])
+
+            # Store as a NumPy array
+            array_dict[elem.tag] = np.array(data_values)
+
+        # Recursively handle nested elements
+        for child in elem:
+            extract_arrays(child)
+
+    # Start the recursive extraction from the root element
+    for elem in root:
+        extract_arrays(elem)
+
+    return array_dict, header_info, array_metadata
+
