@@ -172,7 +172,7 @@ class UPFJSON_alternative(BasePseudo):
         info, header , _ = parse_upf_file(fname)
 
         r = np.array(info["PP_R"], dtype=np.float64)
-        v = np.array(info["PP_LOCAL"], dtype=np.float64)
+        v = np.array(info["PP_LOCAL"], dtype=np.float64) * 0.5 # Ry to Ha
         self.r = r
         self.v = v
         self.info = header
