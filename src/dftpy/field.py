@@ -315,7 +315,7 @@ class DirectField(BaseField):
 
         return DirectField(grid=self.grid, rank=6, griddata_3d=hess)
 
-    def gradient(self, flag="smooth", ipol=None, force_real=True, sigma=0.025):
+    def gradient(self, flag="standard", ipol=None, force_real=True, sigma=0.025):
         if self.rank > 1 and ipol is None:
             raise Exception("gradient is only implemented for scalar fields")
         if flag == "standard":
@@ -326,8 +326,19 @@ class DirectField(BaseField):
             return self.numerically_smooth_gradient(ipol)
         elif flag == "supersmooth":
             return self.super_smooth_gradient(ipol, force_real, sigma=sigma)
+        elif flag == "numerical":
+            return self.numerical_gradient()
         else :
             raise Exception("Incorrect flag")
+
+    def numerical_gradient(self):
+        r"""
+        Numerical gradient based on numpy.gradient with edge order=2
+        """
+        if self.rank==1:
+            return DirectField(rank=3,grid=self.grid,data=np.array(np.gradient(self,np.cbrt(self.grid.dV),edge_order=2)))
+        else:
+            raise Exception("Numerical gradient only available for scalar fields")
 
     def hessian(self, flag="supersmooth", force_real=True,sigma=0.025):
         r"""
