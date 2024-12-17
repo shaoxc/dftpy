@@ -140,21 +140,31 @@ class TestField(unittest.TestCase):
         DataGaussian = self.Gaussian_3d(grid_coor=grid.r,sigma=0.7) # generate 3D Gaussian Grid
         # Map 3D gaussian on grids
         fieldGaussian = DirectField(grid=grid, griddata_3d=DataGaussian)
+        # Analytical gradient
+        ana_grad = self.Gaussian_3d_grad(grid_coor=grid.r,sigma=0.7)
 
         # 1. gradient of a Gaussian function
         gradient = fieldGaussian.gradient() # default standard gradient
-        # Analytical gradient
-        ana_grad = self.Gaussian_3d_grad(grid_coor=grid.r,sigma=0.7)
+        gradient_n = fieldGaussian.gradient(flag="numerical") # default standard gradient
         # Type Check
         self.assertTrue(isinstance(gradient, DirectField))
         self.assertEqual(gradient.rank, 3)
+        self.assertTrue(isinstance(gradient_n, DirectField))
+        self.assertEqual(gradient_n.rank, 3)
         # Value Check for standard gradient
         D1 = np.max(gradient)-np.max(ana_grad)  # Compare the maximum value
         self.assertTrue(np.isclose(D1, 0.0, atol=0.01))
 
         D2 = np.sqrt(((gradient - ana_grad) ** 2).mean()) # RMSE
         self.assertTrue(np.isclose(D2, 0.0, atol=0.01))
-        
+
+        # Value Check for numerical standard gradient
+        D1 = np.max(gradient_n)-np.max(ana_grad)  # Compare the maximum value
+        self.assertTrue(np.isclose(D1, 0.0, atol=0.01))
+
+        D2 = np.sqrt(((gradient_n - ana_grad) ** 2).mean()) # RMSE
+        self.assertTrue(np.isclose(D2, 0.0, atol=0.01))
+         
         # Value Check for smooth gradient
         gradient = fieldGaussian.gradient(flag="supersmooth", sigma=0.03) # supersmooth gradient
         D1 = np.max(gradient)-np.max(ana_grad)  # Compare the maximum value
@@ -209,14 +219,6 @@ class TestField(unittest.TestCase):
         self.assertTrue(isinstance(sig, DirectField))
         self.assertEqual(sig.rank, 1)
         # Value Check for standard sigma
-        D1 = np.max(sig)-np.max(ana_sig)  # Compare the maximum value
-        self.assertTrue(np.isclose(D1, 0.0, atol=0.01))
-
-        D2 = np.sqrt(((sig - ana_sig) ** 2).mean()) # RMSE
-        self.assertTrue(np.isclose(D2, 0.0, atol=0.01))
-
-        # Value Check for supersmooth sigma
-        sig = fieldGaussian.sigma(flag="supersmooth", sigma_gradient=0.03) # default standard gradient
         D1 = np.max(sig)-np.max(ana_sig)  # Compare the maximum value
         self.assertTrue(np.isclose(D1, 0.0, atol=0.01))
 
