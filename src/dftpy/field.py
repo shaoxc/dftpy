@@ -316,8 +316,18 @@ class DirectField(BaseField):
         return DirectField(grid=self.grid, rank=6, griddata_3d=hess)
 
     def gradient(self, flag="standard", ipol=None, force_real=True, sigma=0.025):
-        if self.rank > 1 and ipol is None:
-            raise Exception("gradient is only implemented for scalar fields")
+        values=[]
+        for i in range(self.rank):
+            if self.rank == 1:
+                data = self
+            else:
+                data = self[i]
+            val = data._gradient(flag=flag, ipol=ipol, force_real=force_real, sigma=sigma)
+            values.append(val)
+        if self.rank == 1 : values = values[0]
+        return values
+
+    def _gradient(self, flag="standard", ipol=None, force_real=True, sigma=0.025):
         if flag == "standard":
             return self.standard_gradient(ipol, force_real)
         elif flag == "smooth":
@@ -375,24 +385,28 @@ class DirectField(BaseField):
             reciprocal_self = -gg*reciprocal_self*np.exp(-gg*sigma**2/2.0)
         return reciprocal_self.ifft(check_real = check_real, force_real = force_real)
 
-    def sigma(self, flag="supersmooth", sigma_gradient=None):
+    def sigma(self, flag="supersmooth", sigma_gradient=None, gradient=None):
         r"""
         \sigma(r) = |\grad rho(r)|^2
         """
+        if gradient is None:
+            if self.rank > 1 :
+                gradient = []
+                for i in range(0, self.rank):
+                    gradrho = self[i].gradient(flag=flag, sigma=sigma_gradient)
+                    gradient.append(gradrho)
+            else :
+                gradient = self.gradient(flag=flag, sigma=sigma_gradient)
+
         if self.rank > 1 :
-            vs = []
-            for i in range(0, self.rank):
-                gradrho = self[i].gradient(flag=flag, sigma=sigma_gradient)
-                vs.append(gradrho)
             sigma = []
             for i in range(0, self.rank):
                 for j in range(i, self.rank):
-                    s = self.mp.einsum("lijk,lijk->ijk", vs[i], vs[j])
+                    s = self.mp.einsum("lijk,lijk->ijk", gradient[i], gradient[j])
                     sigma.append(s)
             rank = (self.rank * (self.rank + 1))//2
         else :
-            gradrho = self.gradient(flag=flag, sigma=sigma_gradient)
-            sigma = self.mp.einsum("lijk,lijk->ijk", gradrho, gradrho)
+            sigma = self.mp.einsum("lijk,lijk->ijk", gradient, gradient)
             rank = 1
         return DirectField(grid=self.grid, rank=rank, griddata_3d=sigma)
 

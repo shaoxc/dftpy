@@ -1,7 +1,7 @@
 import copy
 from dftpy.functional.abstract_functional import AbstractFunctional
 
-from .semilocal_xc import LDA, PBE, LibXC, CheckLibXC, XCStress, get_short_xc_name, get_libxc_names
+from .semilocal_xc import LDA, PBE, LibXC, CheckLibXC, XCStress, get_short_xc_name, get_libxc_names, add_core_density
 from .rvv10 import RVV10, RVV10NL
 
 class XC(AbstractFunctional):
@@ -59,30 +59,22 @@ class XC(AbstractFunctional):
     def compute(self, density, calcType={"E", "V"}, **kwargs):
         options = copy.deepcopy(self.options)
         options.update(kwargs)
-        core_density = self.core_density
-        if core_density is None:
-            new_density = density
-        elif density.rank == core_density.rank:
-            new_density = density + core_density
-        elif density.rank == 2 and core_density.rank == 1:
-            new_density = density.copy()
-            new_density[0] += 0.5 * core_density
-            new_density[1] += 0.5 * core_density
+        new_density = add_core_density(density, core_density=self.core_density)
 
         functional = self.xcfun(new_density, calcType=calcType, **options)
         if 'E' in calcType : self.energy = functional.energy
         return functional
 
-    def forces(self, density, pseudo = None, **kwargs):
+    def forces(self, density, pseudo = None, potential = None, **kwargs):
         if pseudo is None : pseudo = self.pseudo
         if pseudo is None : return None
-        pot = self.compute(density, calcType={"V"}, **kwargs).potential
-        forces = pseudo.calc_force_cc(pot)
+        if potential is None: potential = self.compute(density, calcType={"V"}, **kwargs).potential
+        forces = pseudo.calc_force_cc(potential)
         return forces
 
     def stress(self, density, **kwargs):
         options = copy.deepcopy(self.options)
         options.update(kwargs)
         energy = self.energy
-        stress=XCStress(density, energy=energy, **options)
+        stress=XCStress(density, energy=energy, core_density = self.core_density, **options)
         return stress

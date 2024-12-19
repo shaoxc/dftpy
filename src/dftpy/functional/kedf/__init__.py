@@ -215,6 +215,7 @@ class KEDF(AbstractFunctional):
             nspin = 1
             rhol = [density]
 
+        stress = np.zeros((3, 3))
         out = {}
         for k, func in funcs.items():
             if split : stress = np.zeros((3, 3))

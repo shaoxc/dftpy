@@ -44,7 +44,7 @@ def Get_LibXC_Input(density, do_sigma = False, do_tau = False, do_lapl = False,
     return inp
 
 
-def Get_LibXC_Output(out, density, **kwargs):
+def Get_LibXC_Output(out, density, gradient=None, **kwargs):
     if not isinstance(out, (dict)):
         raise TypeError("LibXC output must be a dictionary")
 
@@ -82,11 +82,18 @@ def Get_LibXC_Output(out, density, **kwargs):
                 vsigmas[key] = DirectField(density.grid, griddata_3d=out[key].reshape(np.shape(density)))
 
     if vsigmas:
-        if density.rank > 1:
-            grhoU = density[0].gradient(flag="standard")
-            grhoD = density[1].gradient(flag="standard")
+        if gradient is not None:
+            if density.rank > 1:
+                grhoU = gradient[0]
+                grhoD = gradient[1]
+            else:
+                grho = gradient
         else:
-            grho = density.gradient(flag="standard")
+            if density.rank > 1:
+                grhoU = density[0].gradient(flag="standard")
+                grhoD = density[1].gradient(flag="standard")
+            else:
+                grho = density.gradient(flag="standard")
 
         if hasattr(OutFunctional, 'potential'):
             if density.rank > 1:
@@ -173,7 +180,7 @@ def Get_LibXC_Output(out, density, **kwargs):
 
 
 @timer()
-def LibXC(density, libxc=None, calcType={"E", "V"}, sigma = None, lapl = None, tau = None, **kwargs):
+def LibXC(density, libxc=None, calcType={"E", "V"}, core_density=None, sigma = None, lapl = None, tau = None, flag='standard', **kwargs):
     """
      Output:
         - out_functional: a functional evaluated with LibXC
@@ -190,6 +197,7 @@ def LibXC(density, libxc=None, calcType={"E", "V"}, sigma = None, lapl = None, t
     #-----------------------------------------------------------------------
     libxc = get_libxc_names(libxc = libxc, **kwargs)
     #-----------------------------------------------------------------------
+    rho, density = density, add_core_density(density, core_density)
 
     if not libxc:
         raise AttributeError("Please give a short name 'xc' or a list 'libxc'.")
@@ -213,13 +221,19 @@ def LibXC(density, libxc=None, calcType={"E", "V"}, sigma = None, lapl = None, t
             do_sigma = True
             do_tau = True
             if func._needs_laplacian: do_lapl = True
+    if do_sigma:
+        gradient = density.gradient(flag=flag)
+        sigma = density.sigma(flag=flag, gradient=gradient)
+    else:
+        gradient=None
+        sigma = None
 
     inp = Get_LibXC_Input(density, do_sigma=do_sigma, do_tau = do_tau, do_lapl = do_lapl,
             sigma = sigma, lapl = lapl, tau = tau, **kwargs)
     kargs = {'do_exc': False, 'do_vxc': False}
     if 'E' in calcType or 'D' in calcType:
         kargs.update({'do_exc': True})
-    if 'V' in calcType:
+    if 'V' in calcType or 'S' in calcType:
         kargs.update({'do_vxc': True})
     if 'V2' in calcType:
         kargs.update({'do_fxc': True})
@@ -233,11 +247,27 @@ def LibXC(density, libxc=None, calcType={"E", "V"}, sigma = None, lapl = None, t
         func = LibXCFunctional(value, polarization)
         out = func.compute(inp, **kargs)
         if out_functional is not None :
-            out_functional += Get_LibXC_Output(out, density, **kwargs)
+            sa = Get_LibXC_Output(out, density, gradient=gradient, **kwargs)
+            out_functional += sa
             out_functional.name += "_" + value
         else:
-            out_functional = Get_LibXC_Output(out, density, **kwargs)
+            sa = Get_LibXC_Output(out, density, gradient=gradient, **kwargs)
+            out_functional = sa
             out_functional.name = value
+        if 'S' in calcType:
+            if not hasattr(out_functional, 'stress'): out_functional.stress = np.zeros((3,3))
+            if 'E' in calcType:
+                ene = sa.energy
+            else:
+                ene = 0.0
+            if value.startswith('lda') :
+                out_functional.stress += _LDAStress(rho, sa.potential, energy=ene)
+            elif value.startswith('gga') :
+                vsigma = DirectField(density.grid, data =out['vsigma'])
+                out_functional.stress += _GGAStress(rho, sa.potential, energy=ene, gradient=gradient,
+                                                    sigma=sigma, vsigma=vsigma)
+            else :
+                raise AttributeError('Hybrid and Meta-GGA functionals have not been implemented yet')
     return out_functional
 
 
@@ -305,157 +335,62 @@ def LDA(rho, calcType={"E", "V"}, **kwargs):
     return OutFunctional
 
 
-def LDAStress(rho, energy=None, potential=None, **kwargs):
+def LDAStress(density, energy=None, potential=None, core_density=None, **kwargs):
+    rho, density = density, add_core_density(density, core_density)
     if energy is None:
-        EnergyPotential = LDA(rho, calcType={"E", "V"})
+        EnergyPotential = LDA(density, calcType={"E", "V"})
         potential = EnergyPotential.potential
         energy = EnergyPotential.energy
     elif potential is None:
-        potential = LDA(rho, calcType={"V"}).potential
+        potential = LDA(density, calcType={"V"}).potential
     stress = np.zeros((3, 3))
-    try:
-        Etmp = energy - np.einsum("..., ...-> ", potential, rho, optimize='optimal') * rho.grid.dV
-    except Exception:
-        Etmp = energy - np.asum(potential * rho) * rho.grid.dV
+    Etmp = energy - np.sum(potential * rho) * density.grid.dV
     for i in range(3):
-        stress[i, i] = Etmp / rho.grid.volume
+        stress[i, i] = Etmp / density.grid.volume
     return stress
 
 
-def _LDAStress(density, xc_str='lda_x', energy=None, flag='standard', **kwargs):
-    if CheckLibXC():
-        from pylibxc.functional import LibXCFunctional
-    if density.rank > 1:
-        polarization = 'polarized'
-    else:
-        polarization = 'unpolarized'
-
-    nspin = density.rank
-    func_xc = LibXCFunctional(xc_str, polarization)
-    inp = {}
-    if nspin > 1:
-        rho = np.sum(density, axis=0)
-        rhoT = density.reshape((2, -1)).T
-        inp["rho"] = rhoT.ravel()
-    else:
-        rho = density
-        inp["rho"] = density.ravel()
-
-    kargs = {'do_exc': True, 'do_vxc': True}
-    if energy is not None:
-        kargs['do_exc'] = False
-    out = func_xc.compute(inp, **kargs)
-
-    if "zk" in out.keys():
-        edens = out["zk"].reshape(np.shape(rho))
-        energy = np.einsum("ijk, ijk->", edens, rho) * density.grid.dV
-
-    if nspin > 1:
-        v = out['vrho'].reshape((-1, 2)).T
-        v = DirectField(density.grid, rank=density.rank, griddata_3d=v)
-    else:
-        v = DirectField(density.grid, rank=density.rank, griddata_3d=out['vrho'])
+def _LDAStress(density, potential, energy=0.0, **kwargs):
     stress = np.zeros((3, 3))
-    try:
-        P = energy - np.einsum("..., ...-> ", v, rho, optimize='optimal') * rho.grid.dV
-    except Exception:
-        P = energy - np.asum(v * rho) * rho.grid.dV
+    P = energy - np.sum(potential * density) * density.grid.dV
     stress = np.eye(3) * P
-    return stress / rho.grid.volume
+    return stress / density.grid.volume
 
 
-def _GGAStress(density, xc_str='gga_x_pbe', energy=None, flag='standard', **kwargs):
-    if CheckLibXC():
-        from pylibxc.functional import LibXCFunctional
-
-    if density.rank > 1:
-        polarization = 'polarized'
-    else:
-        polarization = 'unpolarized'
-
-    nspin = density.rank
-    func_xc = LibXCFunctional(xc_str, polarization)
-    inp = {}
-    if nspin > 1:
-        rho = np.sum(density, axis=0)
-        rhoT = density.reshape((2, -1)).T
-        inp["rho"] = rhoT.ravel()
-        gradDen = []
-        for i in range(0, nspin):
-            gradrho = density[i].gradient(flag=flag)
-            gradDen.append(gradrho)
-        sigma = []
-        for i in range(0, nspin):
-            for j in range(i, nspin):
-                s = np.einsum("lijk,lijk->ijk", gradDen[i], gradDen[j])
-                sigma.append(s)
-        rank = (nspin * (nspin + 1)) // 2
-        sigmaL = DirectField(grid=density.grid, rank=rank, griddata_3d=sigma)
-        sigma = sigmaL.reshape((3, -1)).T
-    else:
-        rho = density
-        inp["rho"] = density.ravel()
-        gradDen = density.gradient(flag=flag)
-        sigma = np.einsum("lijk,lijk->ijk", gradDen, gradDen)
-        sigma = DirectField(grid=density.grid, rank=1, griddata_3d=sigma)
-    inp["sigma"] = sigma.ravel()
-
-    kargs = {'do_exc': True, 'do_vxc': True}
-    if energy is not None:
-        kargs['do_exc'] = False
-    out = func_xc.compute(inp, **kargs)
-
-    if "zk" in out.keys():
-        edens = out["zk"].reshape(np.shape(rho))
-        energy = np.einsum("ijk, ijk->", edens, rho) * density.grid.dV
-
-    if nspin > 1:
-        v = out['vrho'].reshape((-1, 2)).T
-        v = DirectField(density.grid, rank=density.rank, griddata_3d=v)
-        vsigma = out["vsigma"].reshape((-1, 3)).T
-        vsigma = DirectField(density.grid, rank=3, griddata_3d=vsigma)
-        sigma = sigmaL
-    else:
-        v = DirectField(density.grid, rank=density.rank, griddata_3d=out['vrho'])
-        vsigma = DirectField(density.grid, griddata_3d=out["vsigma"].reshape(np.shape(density)))
-
+def _GGAStress(density, potential, energy=0.0, gradient=None, sigma=None, vsigma=None, **kwargs):
     P = energy
-    try:
-        P -= np.einsum("..., ...-> ", v, density, optimize='optimal') * rho.grid.dV
-        P -= 2.0 * np.einsum("..., ...-> ", sigma, vsigma, optimize='optimal') * rho.grid.dV
-    except Exception:
-        P -= np.sum(v * density) * rho.grid.dV
-        P -= 2.0 * np.sum(sigma * vsigma) * rho.grid.dV
+    P -= np.sum(potential * density) * potential.grid.dV
+    # P -= 2.0 * np.sum(sigma * vsigma) * potential.grid.dV
     stress = np.eye(3) * P
+    nspin = density.rank
     for i in range(3):
         for j in range(i, 3):
             if nspin > 1:
-                stress[i, j] -= 2.0 * np.einsum("ijk, ijk, ijk -> ", gradDen[0][i], gradDen[0][j],
-                                                vsigma[0]) * rho.grid.dV
-                stress[i, j] -= 2.0 * np.einsum("ijk, ijk, ijk -> ", gradDen[0][i], gradDen[1][j],
-                                                vsigma[1]) * rho.grid.dV
-                stress[i, j] -= 2.0 * np.einsum("ijk, ijk, ijk -> ", gradDen[1][i], gradDen[1][j],
-                                                vsigma[2]) * rho.grid.dV
+                stress[i, j] -= 2.0 * np.einsum("ijk, ijk, ijk -> ", gradient[0][i], gradient[0][j],
+                                                vsigma[0]) * density.grid.dV
+                stress[i, j] -= 2.0 * np.einsum("ijk, ijk, ijk -> ", gradient[0][i], gradient[1][j],
+                                                vsigma[1]) * density.grid.dV
+                stress[i, j] -= 2.0 * np.einsum("ijk, ijk, ijk -> ", gradient[1][i], gradient[1][j],
+                                                vsigma[2]) * density.grid.dV
             else:
-                stress[i, j] -= 2.0 * np.einsum("ijk, ijk, ijk -> ", gradDen[i], gradDen[j], vsigma) * rho.grid.dV
+                stress[i, j] -= 2.0 * np.einsum("ijk, ijk, ijk -> ", gradient[i], gradient[j], vsigma) * density.grid.dV
             stress[j, i] = stress[i, j]
-    return stress / rho.grid.volume
+    return stress / density.grid.volume
 
 
 @timer()
-def XCStress(density, libxc=None, energy=None, flag='standard', xc=None, **kwargs):
+def XCStress(density, libxc=None, energy=None, flag='standard', xc=None, core_density=None, **kwargs):
     if xc and xc.lower() == 'lda' :
-        return LDAStress(density, energy=energy, **kwargs)
-    libxc = get_libxc_names(libxc = libxc, **kwargs)
+        return LDAStress(density, energy=energy, core_density=core_density, **kwargs)
     stress = np.zeros((3, 3))
-    if energy is not None : energy = energy / len(libxc)
-    for key in libxc :
-        if key.startswith('lda') :
-            stress += _LDAStress(density, xc_str=key, energy=energy, flag=flag, **kwargs)
-        elif key.startswith('gga') :
-            stress += _GGAStress(density, xc_str=key, energy=energy, flag=flag, **kwargs)
-        else :
-            raise AttributeError('Hybrid and Meta-GGA functionals have not been implemented yet')
+    if energy:
+        calcType=["S"]
+    else:
+        calcType=["E", "S"]
+    out = LibXC(density, libxc=libxc, xc=xc, calcType=calcType, flag=flag, core_density=core_density, **kwargs)
+    stress = out.stress
+    if energy :
+        stress += np.eye(3) * energy / density.grid.volume
     return stress
 
 
@@ -507,3 +442,14 @@ def get_libxc_names(xc = None, libxc = None, name = None, code = None, **kwargs)
     if libxc :
         libxc = [x.lower() for x in libxc]
     return libxc
+
+def add_core_density(density, core_density=None):
+    if core_density is None:
+        new_density = density
+    elif density.rank == core_density.rank:
+        new_density = density + core_density
+    elif density.rank == 2 and core_density.rank == 1:
+        new_density = density + 0.5 * core_density
+    else:
+        raise ValueError('Not support!')
+    return new_density

@@ -304,6 +304,69 @@ class LocalPseudo(AbstractLocalPseudo):
         forces *= 2.0 / grid.volume
         return forces
 
+    def _deriv_drho_core(self, symbols=None):
+        reciprocal_grid = self.grid.get_reciprocal()
+        q = reciprocal_grid.q
+        v = np.zeros_like(q, dtype=np.complex128)
+        deriv = np.empty_like(q, dtype=np.complex128)
+        if symbols is None:
+            symbols = sorted(self._gp)
+        for key in symbols:
+            interp = self.vloc_interp_core[key]
+            if interp is None: continue
+            deriv[:] = 0.0
+            deriv[q < np.max(self._gp[key])] = splev(q[q < np.max(self._gp[key])], interp, der=1)
+            for i in range(len(self.ions.positions)):
+                if self.ions.symbols[i] == key:
+                    strf = self.ions.strf(reciprocal_grid, i)
+                    v += deriv * np.conjugate(strf)
+        return v
+
+    def calc_stress_cc(self, potential = None, rhod = None, ions=None, rhodd=None):
+        """Calculate the correction stress
+
+        Parameters
+        ----------
+        potential : field
+            Potential in real space.
+        rhod :
+            density of each element in reciprocal space
+        """
+        #
+        if rhod is None : rhod = self.vlines_core
+        if ions is None : ions = self.ions
+        if rhodd is None: rhodd = self._deriv_drho_core()
+        grid = potential.grid
+        #
+        reciprocal_grid = grid.get_reciprocal()
+        mask = reciprocal_grid.mask
+        g = reciprocal_grid.g
+        invq = reciprocal_grid.invq
+
+        if potential.rank == 2 : potential = 0.5*(potential[0]+potential[1])
+        potg = potential.fft()
+        potrhodd = potg * rhodd * invq
+
+        P = 0.0
+        for key in sorted(ions.zval):
+            rhocg = rhod[key]
+            if rhocg is None : continue
+            strf = 0.0
+            for i in range(ions.nat):
+                if ions.symbols[i] == key:
+                    strf = strf + ions.strf(reciprocal_grid, i)
+            den = (np.conjugate(potg) * strf).real * rhocg
+            P += den[mask].sum() * 2.0
+            if grid.mp.is_root :
+                P -= den[0,0,0]
+        stress = np.eye(3) * P / grid.volume
+        for i in range(3):
+            for j in range(i, 3):
+                den = (g[i] * g[j]) * potrhodd
+                stress[i,j] += den[mask].sum().real / grid.volume * 2.0
+                stress[j, i] = stress[i, j]
+        return stress / grid.volume
+
     @property
     def vreal(self):
         """
