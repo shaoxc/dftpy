@@ -89,10 +89,10 @@ class LocalPseudo(AbstractLocalPseudo):
                 comm = SerialComm()
 
         # Read PP first, then initialize other variables.
-        if PP_list is not None:
-            self.readpp = ReadPseudo(PP_list, comm=comm, **kwargs)
-        elif readpp is not None :
+        if readpp is not None :
             self.readpp = readpp
+        elif PP_list is not None:
+            self.readpp = ReadPseudo(PP_list, comm=comm, **kwargs)
         else:
             raise AttributeError("Must specify PP_list for Pseudopotentials")
 
@@ -706,7 +706,7 @@ class ReadPseudo(object):
             self._vloc_interp_atomic[key] = None
 
     @staticmethod
-    def _real2recip(r, v, zval=0, MaxPoints=10000, Gmax=30, Gmin=1E-4, gp=None, rcut=None, **kwargs):
+    def _real2recip(r, v, zval=0, MaxPoints=10000, Gmax=30, Gmin=1E-4, gp=None, rcut=None, comm=None, **kwargs):
         if gp is None :
             gp = np.logspace(np.log10(Gmin), np.log10(Gmax), num=MaxPoints)
             gp[0] = 0.0
@@ -718,12 +718,12 @@ class ReadPseudo(object):
         #
         vr = v*r + zval
         #
-        vp = RadialGrid(r[mk], vr[mk], direct=True, vr=True, **kwargs).ft(gp)
+        vp = RadialGrid(r[mk], vr[mk], direct=True, vr=True, **kwargs).ft(gp, comm=comm)
         vp[1:] -= 4.0 * np.pi * zval / (gp[1:] ** 2)
         return gp, vp
 
     @staticmethod
-    def _real2recip_erf(r, v, zval=0, MaxPoints=10000, Gmax=30, Gmin=1E-4, gp=None, rcut=None, **kwargs):
+    def _real2recip_erf(r, v, zval=0, MaxPoints=10000, Gmax=30, Gmin=1E-4, gp=None, rcut=None, comm=None, **kwargs):
         if gp is None :
             gp = np.logspace(np.log10(Gmin), np.log10(Gmax), num=MaxPoints)
             gp[0] = 0.0
@@ -740,15 +740,15 @@ class ReadPseudo(object):
         vp[0] = (4.0 * np.pi) * integrate((vr[mk]*r[mk]), x=r[mk])
         #
         vr = v*r + zval*sp.erf(r)
-        vp[1:] = RadialGrid(r[mk], vr[mk], direct=True, vr=True, **kwargs).ft(gp[1:])
+        vp[1:] = RadialGrid(r[mk], vr[mk], direct=True, vr=True, **kwargs).ft(gp[1:], comm=comm)
         vp[1:] -= 4.0 * np.pi * zval * np.exp(-gp[1:]**2/4.0) / (gp[1:] ** 2)
         return gp, vp
 
     @staticmethod
-    def _recip2real(gp, vp, MaxPoints=1001, Rmax=10, r=None, **kwargs):
+    def _recip2real(gp, vp, MaxPoints=1001, Rmax=10, r=None, comm=None, **kwargs):
         if r is None:
             r = np.linspace(0, Rmax, MaxPoints)
-        v = RadialGrid(gp, vp, direct=False, **kwargs).ft(r)
+        v = RadialGrid(gp, vp, direct=False, **kwargs).ft(r, comm=comm)
         return r, v
 
     @staticmethod

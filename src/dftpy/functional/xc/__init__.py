@@ -90,5 +90,7 @@ class XC(AbstractFunctional):
         if energy :
             stress += np.eye(3) * energy / density.grid.volume
         if self.core_density is not None:
+            if pseudo is None:
+                raise ValueError('Please give `pseudo` for the NLCC stress')
             stress += pseudo.calc_stress_cc(functional.potential)
         return stress
