@@ -197,7 +197,7 @@ def LibXC(density, libxc=None, calcType={"E", "V"}, core_density=None, sigma = N
     #-----------------------------------------------------------------------
     libxc = get_libxc_names(libxc = libxc, **kwargs)
     #-----------------------------------------------------------------------
-    rho, density = density, add_core_density(density, core_density)
+    density = add_core_density(density, core_density)
 
     if not libxc:
         raise AttributeError("Please give a short name 'xc' or a list 'libxc'.")
@@ -261,10 +261,10 @@ def LibXC(density, libxc=None, calcType={"E", "V"}, core_density=None, sigma = N
             else:
                 ene = 0.0
             if value.startswith('lda') :
-                out_functional.stress += _LDAStress(rho, sa.potential, energy=ene)
+                out_functional.stress += _LDAStress(density, sa.potential, energy=ene)
             elif value.startswith('gga') :
                 vsigma = DirectField(density.grid, data =out['vsigma'])
-                out_functional.stress += _GGAStress(rho, sa.potential, energy=ene, gradient=gradient,
+                out_functional.stress += _GGAStress(density, sa.potential, energy=ene, gradient=gradient,
                                                     sigma=sigma, vsigma=vsigma)
             else :
                 raise AttributeError('Hybrid and Meta-GGA functionals have not been implemented yet')
@@ -305,7 +305,7 @@ def LDA(rho, calcType={"E", "V"}, **kwargs):
         ExRho[rs2] += gamma[0] / (1.0 + beta1[0] * Rs2sqrt + beta2[0] * Rs[rs2])
         ene = np.einsum("ijk, ijk->", ExRho, rho) * rho.grid.dV
         OutFunctional.energy = ene
-    if "V" in calcType:
+    if "V" in calcType or "S" in calcType:
         pot = np.cbrt(-3.0 / np.pi) * rho_cbrt
         pot[rs1] += (
                 np.log(Rs[rs1]) * (a[0] + 2.0 / 3 * c[0] * Rs[rs1])
@@ -332,35 +332,22 @@ def LDA(rho, calcType={"E", "V"}, **kwargs):
 
         OutFunctional.v2rho2 = fx + fc
 
+    if "S" in calcType:
+        if 'E' in calcType:
+            ene = OutFunctional.energy
+        else:
+            ene = 0.0
+        OutFunctional.stress = _LDAStress(rho, OutFunctional.potential, energy=ene)
     return OutFunctional
 
-
-def LDAStress(density, energy=None, potential=None, core_density=None, **kwargs):
-    rho, density = density, add_core_density(density, core_density)
-    if energy is None:
-        EnergyPotential = LDA(density, calcType={"E", "V"})
-        potential = EnergyPotential.potential
-        energy = EnergyPotential.energy
-    elif potential is None:
-        potential = LDA(density, calcType={"V"}).potential
-    stress = np.zeros((3, 3))
-    Etmp = energy - np.sum(potential * rho) * density.grid.dV
-    for i in range(3):
-        stress[i, i] = Etmp / density.grid.volume
-    return stress
-
-
 def _LDAStress(density, potential, energy=0.0, **kwargs):
-    stress = np.zeros((3, 3))
     P = energy - np.sum(potential * density) * density.grid.dV
     stress = np.eye(3) * P
     return stress / density.grid.volume
 
 
 def _GGAStress(density, potential, energy=0.0, gradient=None, sigma=None, vsigma=None, **kwargs):
-    P = energy
-    P -= np.sum(potential * density) * potential.grid.dV
-    # P -= 2.0 * np.sum(sigma * vsigma) * potential.grid.dV
+    P = energy - np.sum(potential * density) * density.grid.dV
     stress = np.eye(3) * P
     nspin = density.rank
     for i in range(3):
@@ -376,22 +363,6 @@ def _GGAStress(density, potential, energy=0.0, gradient=None, sigma=None, vsigma
                 stress[i, j] -= 2.0 * np.einsum("ijk, ijk, ijk -> ", gradient[i], gradient[j], vsigma) * density.grid.dV
             stress[j, i] = stress[i, j]
     return stress / density.grid.volume
-
-
-@timer()
-def XCStress(density, libxc=None, energy=None, flag='standard', xc=None, core_density=None, **kwargs):
-    if xc and xc.lower() == 'lda' :
-        return LDAStress(density, energy=energy, core_density=core_density, **kwargs)
-    stress = np.zeros((3, 3))
-    if energy:
-        calcType=["S"]
-    else:
-        calcType=["E", "S"]
-    out = LibXC(density, libxc=libxc, xc=xc, calcType=calcType, flag=flag, core_density=core_density, **kwargs)
-    stress = out.stress
-    if energy :
-        stress += np.eye(3) * energy / density.grid.volume
-    return stress
 
 
 xc_json_file = os.path.join(os.path.dirname(__file__), 'xc.json')

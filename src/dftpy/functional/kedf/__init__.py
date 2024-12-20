@@ -15,7 +15,7 @@ from dftpy.functional.kedf.wt import WT, WTStress
 from dftpy.functional.kedf.sm import SM, SMStress
 from dftpy.functional.kedf.fp import FP, FPStress
 from dftpy.functional.kedf.wte import WTE, WTEStress
-from dftpy.functional.semilocal_xc import LibXC, XCStress
+from dftpy.functional.semilocal_xc import LibXC
 from dftpy.mpi import sprint
 from dftpy.utils import name2functions
 from dftpy.functional.kedf.lkt import LKT
@@ -68,6 +68,11 @@ KEDFEngines= {
         "WTE": ("VW", "WTE-NL"),
         }
 
+def LibXCStress(density, energy=0, **kwargs):
+    stress = np.eye(3) * energy/density.grid.volume
+    stress += LibXC(density, calcType=["S"], **kwargs).stress
+    return stress
+
 KEDFEngines_Stress = {
     "TF": ThomasFermiStress,
     "VW": vonWeizsackerStress,
@@ -76,7 +81,7 @@ KEDFEngines_Stress = {
     "FP-NL": FPStress,
     "WTE-NL": WTEStress,
     "GGA": GGAStress,
-    "LIBXC": XCStress,
+    "LIBXC": LibXCStress,
     "X_TF_Y_VW": ("TF", "VW"),
     "XTFYVW": ("TF", "VW"),
     "TFVW": ("TF", "VW"),

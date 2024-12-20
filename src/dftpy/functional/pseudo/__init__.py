@@ -322,18 +322,15 @@ class LocalPseudo(AbstractLocalPseudo):
                     v += deriv * np.conjugate(strf)
         return v
 
-    def calc_stress_cc(self, potential = None, rhod = None, ions=None, rhodd=None):
+    def calc_stress_cc(self, potential = None, ions=None, rhodd=None):
         """Calculate the correction stress
 
         Parameters
         ----------
         potential : field
             Potential in real space.
-        rhod :
-            density of each element in reciprocal space
         """
         #
-        if rhod is None : rhod = self.vlines_core
         if ions is None : ions = self.ions
         if rhodd is None: rhodd = self._deriv_drho_core()
         grid = potential.grid
@@ -347,23 +344,11 @@ class LocalPseudo(AbstractLocalPseudo):
         potg = potential.fft()
         potrhodd = potg * rhodd * invq
 
-        P = 0.0
-        for key in sorted(ions.zval):
-            rhocg = rhod[key]
-            if rhocg is None : continue
-            strf = 0.0
-            for i in range(ions.nat):
-                if ions.symbols[i] == key:
-                    strf = strf + ions.strf(reciprocal_grid, i)
-            den = (np.conjugate(potg) * strf).real * rhocg
-            P += den[mask].sum() * 2.0
-            if grid.mp.is_root :
-                P -= den[0,0,0]
-        stress = np.eye(3) * P / grid.volume
+        stress = np.zeros((3,3))
         for i in range(3):
             for j in range(i, 3):
                 den = (g[i] * g[j]) * potrhodd
-                stress[i,j] += den[mask].sum().real / grid.volume * 2.0
+                stress[i,j] -= den[mask].sum().real / grid.volume * 2.0
                 stress[j, i] = stress[i, j]
         return stress / grid.volume
 
