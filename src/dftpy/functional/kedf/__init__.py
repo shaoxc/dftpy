@@ -112,6 +112,8 @@ class KEDF(AbstractFunctional):
         self.energies = {}
 
     def __new__(cls, name="WT", **kwargs):
+        if name == 'SMP21' :
+            name = kwargs['kedf'] = 'MIX_TF+GGA_REVAPBEK'
         if name.startswith('STV+GGA+'):
             return kedf2nlgga(name, **kwargs)
         elif name.startswith('MIX_'):
@@ -421,10 +423,8 @@ def kedf2mixkedf(name='MIX_TF+GGA', first_high=True, **kwargs):
     names = name[4:].split('+')
 
     # Only for second(GGA)
-    if "k_str" in kwargs:
-        k_str = kwargs.pop("k_str")
-    else:
-        k_str = "REVAPBEK"
+    k_str = kwargs.pop("k_str", None)
+    if not k_str : k_str = "REVAPBEK"
 
     sigma = kwargs.get("sigma", None)
     rhomax = kwargs.get("rhomax", None)
