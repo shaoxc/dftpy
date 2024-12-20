@@ -46,11 +46,11 @@ class AtomicDensity(object):
             scaled_position = cell.scaled_positions(position)
         #
         self.prho[:] = 0.0
-        atomp = np.asarray(scaled_position) * self.grid.nr
+        atomp = np.asarray(scaled_position) * self.grid.nrR
         atomp = atomp.reshape((3, 1))
         ipoint = np.floor(atomp + 1E-8)
         px = atomp - ipoint
-        l123A = np.mod(ipoint.astype(np.int32) - self.ixyzA, self.grid.nr[:, None])
+        l123A = np.mod(ipoint.astype(np.int32) - self.ixyzA, self.grid.nrR[:, None])
         positions = (self.ixyzA + px) * self.dnr
         positions = np.einsum("j...,kj->k...", positions, self.grid.lattice)
         dists = LA.norm(positions, axis=0).reshape(self.prho.shape)
@@ -353,7 +353,8 @@ def file2density(filename, density, grid = None):
 def gen_gaussian_density(ions, grid, options={}, density = None, deriv = 0, **kwargs):
     if density is None : density = DirectField(grid)
     ncharge = 0.0
-    for key, option in options.items() :
+    for key in sorted(options):
+        option = options[key]
         rcut = option.get('rcut', 5.0)
         sigma = option.get('sigma', 0.3)
         scale = option.get('scale', 0.0)
