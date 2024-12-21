@@ -14,10 +14,15 @@ class Test(unittest.TestCase):
         pytest.importorskip("pylibxc")
         rho_r = io.read_density(dftpy_data_path / "Al_fde_rho.pp")
         thefuncclass = Functional(type='XC', name='LDA', libxc=False)
-        func2 = thefuncclass.compute(rho_r)
-        func1 = LibXC(density=rho_r, libxc =['lda_x', 'lda_c_pz'])
+        func2 = thefuncclass.compute(rho_r, calcType=['E', 'S'])
+        func1 = LibXC(density=rho_r, libxc =['lda_x', 'lda_c_pz'], calcType=['E','S'])
         a = func2.energy
         b = func1.energy
+        print('Diff energy:', a-b)
+        self.assertTrue(np.allclose(a, b))
+        a = func2.stress
+        b = func1.stress
+        print('Diff stress:\n', a-b)
         self.assertTrue(np.allclose(a, b))
 
     def test_libxc_pbe(self):
