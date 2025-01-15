@@ -1,11 +1,12 @@
-from dftpy.functional.external_potential import ExternalPotential
 from dftpy.functional.functional_output import FunctionalOutput
+from dftpy.functional.total_functional import TotalFunctional
+from dftpy.functional.abstract_functional import AbstractFunctional
+from dftpy.functional.external_potential import ExternalPotential
 from dftpy.functional.hartree import Hartree
 from dftpy.functional.kedf import KEDF
 from dftpy.functional.nonadiabatic import Dynamic
 from dftpy.functional.pseudo import LocalPseudo
 from dftpy.functional.semilocal_xc import XC
-from dftpy.functional.total_functional import TotalFunctional
 
 FunctionalTypeDict = {
     'KEDF': KEDF,

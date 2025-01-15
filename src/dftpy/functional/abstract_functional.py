@@ -10,10 +10,6 @@ from dftpy.functional.functional_output import FunctionalOutput
 
 
 class AbstractFunctional(ABC):
-    @abstractmethod
-    def __init__(self):
-        pass
-
     def __repr__(self):
         name = getattr(self, 'name', self.__class__.__name__)
         rep = name + ', ' + self.__dict__.__repr__()
@@ -27,4 +23,22 @@ class AbstractFunctional(ABC):
         # returns energy and potential
         pass
 
+    @property
+    def name(self):
+        if getattr(self, '_name', None) is None:
+            self._name = self.type
+        return self._name
 
+    @name.setter
+    def name(self, value):
+        self._name = value
+
+    @property
+    def type(self):
+        if getattr(self, '_type', None) is None:
+            self._type = self.__class__.__name__
+        return self._type
+
+    @type.setter
+    def type(self, value):
+        self._type = value
