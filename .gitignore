@@ -8,6 +8,7 @@ build/
 .pytest_cache/
 dftpy.egg-info
 src/dftpy/dev/
+src/dftpy/version.py
 dev/
 doc/build/
 .ipynb_checkpoints/

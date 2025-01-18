@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dftpy"
-dynamic = ["version"]
+version = "2.1.3dev0"
 license = { file = "LICENSE.txt" }
 description = "Python packages for Density Functional Theory"
 maintainers = [
@@ -54,7 +54,6 @@ test = [
 	"pytest",
 	"pytest-cov",
 	"pytest-mpi",
-	"ase"
 ]
 mpi = [
 	"mpi4py",
@@ -66,5 +65,8 @@ homepage = "https://gitlab.com/pavanello-research-group/dftpy"
 documentation = "http://dftpy.rutgers.edu"
 source = "https://gitlab.com/pavanello-research-group/dftpy"
 
-[tool.setuptools.dynamic]
-version = {attr = 'dftpy.__version__'}
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
