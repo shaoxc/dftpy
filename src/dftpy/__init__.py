@@ -1,4 +1,4 @@
-__version__ = "2.1.2dev0"
+__version__ = "2.1.2"
 
 from .config import *
 from .mpi import mp, sprint
