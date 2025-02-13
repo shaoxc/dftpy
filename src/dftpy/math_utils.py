@@ -34,18 +34,18 @@ def partial_return(func, n=0, *args, **kwargs):
     newfunc.kwargs = kwargs
     return newfunc
 
-def line_search(func, x=0.0, alpha0=1.0, method='wolfe', func0=None, c1=1e-4, c2=0.9, amax=1.0, amin=0.0, xtol=1e-14, maxiter=100, **kwargs):
+def line_search(func, x=0.0, pk=1.0, method='wolfe', func0=None, c1=1e-4, c2=0.9, amax=1.0, amin=0.0, xtol=1e-14, maxiter=100, **kwargs):
     if isinstance(func, ObjectiveGradient):
         fobj = func
     else:
         fobj = ObjectiveGradient(func)
         if func0 is None: func0 = func(x)
     if method == 'strong_wolfe':
-        values = line_search_wolfe2(fobj.f, fobj.fprime, x, alpha0, gfk=func0[1], old_fval=func0[0], c1=c1, c2=c2, amax=amax, maxiter=maxiter)
+        values = line_search_wolfe2(fobj.f, fobj.fprime, x, pk, gfk=func0[1], old_fval=func0[0], c1=c1, c2=c2, amax=amax, maxiter=maxiter)
     else : # wolfe
-        values = line_search_wolfe1(fobj.f, fobj.fprime, x, alpha0, gfk=func0[1], old_fval=func0[0], c1=c1, c2=c2, amax=amax, amin=amin, xtol=xtol)
+        values = line_search_wolfe1(fobj.f, fobj.fprime, x, pk, gfk=func0[1], old_fval=func0[0], c1=c1, c2=c2, amax=amax, amin=amin, xtol=xtol)
     if values[0] is not None:
-        x = values[0]*alpha0
+        x = values[0]*pk
     else:
         x = None
     output = (x, values[-1], values[1], fobj.results)
