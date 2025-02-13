@@ -21,6 +21,14 @@ OFDFT
    ofdft/relax
    ofdft/md
 
+Local Pseudopotentials
+----------------------
+
+.. toctree::
+   :maxdepth: 1
+
+   Pseudopotetials
+
 TDDFT
 -----
 
