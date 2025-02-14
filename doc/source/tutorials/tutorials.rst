@@ -26,6 +26,11 @@ Local Pseudopotentials
 
    - `Build your own LPP <jupyter/lpps.ipynb>`_.
 
+Spin unrestricted calculation
+-----------------------------
+
+   - `Spin unrestricted calculation of Al <jupyter/Al_nspin_dftpy_dev.ipynb>`_.
+
 TDDFT
 -----
 
