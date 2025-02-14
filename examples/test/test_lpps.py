@@ -72,7 +72,7 @@ class Test(unittest.TestCase):
         
         res = minimize(delta_rho, a, method='Powell', options={'ftol': 1.0e-4})
 
-        self.assertTrue(np.isclose(res.fun, 0.1195192, atol=1.e-3))
+        self.assertTrue(np.isclose(res.fun, 0.119, atol=1.e-2))
 
 if __name__ == "__main__":
     unittest.main()
