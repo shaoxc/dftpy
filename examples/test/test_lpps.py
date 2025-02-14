@@ -22,9 +22,9 @@ class Test(unittest.TestCase):
         from dftpy.functional.pseudo.psp import PSP
         from dftpy.constants import environ
         from scipy.optimize import minimize
-        ions, rho_target, _ = io.read_all('../DATA/rho_target.xsf')
+        ions, rho_target, _ = io.read_all(dftpy_data_path / 'rho_target.xsf')
         grid = rho_target.grid
-        PP_list = {'Au': '../DATA/au_lda_v1.uspp.F.UPF'}
+        PP_list = {'Au': dftpy_data_path / 'au_lda_v1.uspp.F.UPF'}
         MaxPoints=1000 
         PSEUDO = LocalPseudo(grid = grid, ions=ions, PP_list=PP_list, MaxPoints=MaxPoints)
         rho_ini = rho_target.copy()
