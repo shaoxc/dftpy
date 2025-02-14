@@ -1,9 +1,11 @@
 .. _Pseudopotentials:
+
 Local Pseudopotentials for OF-DFT
 =================================
 
 Local Pseudopotentials (LPPs)
 -----------------------------
+
 Orbital-Free Density Functional Theory (OF-DFT) relies solely on the electron density, meaning that only local pseudopotentials can be used to calculate the ion-electron potential :math:`V_{ne}(\mathbf{r})`. Typically, the construction of pseudopotentials involves nonlocal components (NLPPs), which require knowledge of the one-electron density matrix (DM1). However, the density matrix in this context, as a functional of the density :math:`\gamma_{1}[n(\mathbf{r})]`, is not yet available.
 
 Several types of LPPs have been developed and successfully applied to specific materials, including:

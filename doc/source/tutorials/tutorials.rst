@@ -24,10 +24,7 @@ OFDFT
 Local Pseudopotentials
 ----------------------
 
-.. toctree::
-   :maxdepth: 1
-
-   Pseudopotetials
+   - `Build your own LPP <jupyter/lpps.ipynb>`_.
 
 TDDFT
 -----
