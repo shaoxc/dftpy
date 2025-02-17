@@ -36,7 +36,7 @@ class Test(unittest.TestCase):
         opt = Optimization(EnergyEvaluator=evaluator, optimization_options = optimization_options, optimization_method = 'TN')
         rho = opt.optimize_rho(guess_rho=rho_ini)
         diff = 0.5 * (np.abs(rho - rho_target)).integral()
-        self.assertTrue(np.isclose(res.fun, 0.117, atol=1.e-2))
+        self.assertTrue(np.isclose(diff, 0.117, atol=1.e-2))
         
 if __name__ == "__main__":
     unittest.main()
