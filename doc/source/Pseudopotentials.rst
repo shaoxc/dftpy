@@ -16,4 +16,4 @@ High-quality Local Pseudopotentials (HQLPP <https://pubs.acs.org/doi/10.1021/acs
 Optimized Effective Local Pseudopotentials (OEPP <https://doi.org/10.1063/1.4944989>_)
 A new set of local pseudopotentials for transition metals is available at the following link: LPPs <https://valeriarv99.github.io/OFPP/>_. These LPPs effectively invert nonlocal pseudopotentials (NLPPs) by introducing a short-range correction while preserving the Coulomb tail of the GBRV and PSL pseudopotentials.
 
-If you want to construct your own LPP, follow this tutorial <http://dftpy.rutgers.edu/tutorials/jupyter/lpps.ipynb>_. The formalism behind this new class of pseudopotentials is described in the paper *Pseudononlocal Pseudopotentials for Orbital-Free DFT*.
+If you want to construct your own LPP, follow this tutorial <http://dftpy.rutgers.edu/tutorials/jupyter/lpps.html>_. The formalism behind this new class of pseudopotentials is described in the paper *Pseudononlocal Pseudopotentials for Orbital-Free DFT*.
