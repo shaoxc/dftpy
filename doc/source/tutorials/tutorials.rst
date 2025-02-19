@@ -29,7 +29,7 @@ Local Pseudopotentials
 Spin unrestricted calculation
 -----------------------------
 
-   - `Spin unrestricted calculation of Al <jupyter/Al_nspin_dftpy_dev.ipynb>`_.
+   - `Spin unrestricted calculation of Al <jupyter/Al-nspin_dftpy_dev.ipynb>`_.
 
 TDDFT
 -----
