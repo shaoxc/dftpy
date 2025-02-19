@@ -25,8 +25,6 @@ class Test(unittest.TestCase):
         from dftpy.field import DirectField
         from dftpy.grid import DirectGrid
         from dftpy.math_utils import ecut2nr
-        def compute_total_electrons(rho):
-            return np.sum(rho * rho.grid.dV)  
         
         def scale_density(rho, m):
             if rho.rank != 2:
