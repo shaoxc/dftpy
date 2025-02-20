@@ -2,7 +2,7 @@ import numpy as np
 from functools import partial
 from dftpy.mpi import sprint
 from dftpy.field import DirectField
-from dftpy.math_utils import LineSearchDcsrchVector, LineSearchDcsrch2, Brent
+from dftpy.math_utils import Brent, minimize, line_search
 from dftpy.math_utils import LBFGS
 from dftpy.time_data import TimeData, timer
 from abc import ABC, abstractmethod
@@ -74,6 +74,7 @@ class Optimization(AbstractOptimization):
             "algorithm": "EMM",
             "vector": "Orthogonalization",
             "ncheck": 2,
+            "h0": 1.0,
         }
         for key in default_options:
             if key not in self.optimization_options:
@@ -275,11 +276,11 @@ class Optimization(AbstractOptimization):
         else :
             grad = 2.0 * self.mp.einsum("lijk, lijk, lijk->l", f.potential, newphi, p2) * phi.grid.dV
 
-        # sprint('theta', theta, value, grad, comm=self.comm)
+        # sprint('theta', np.asarray(theta).ravel(), value, grad, comm=self.comm)
         return [value, grad, newphi, f]
 
     @timer('Optimize')
-    def optimize_rho(self, guess_rho=None, guess_phi = None, lphi = False):
+    def optimize_rho(self, guess_rho=None, guess_phi = None, lphi = False, lsfun="line_search"):
         if guess_rho is None and self.rho is None:
             raise AttributeError("Must provide a guess density")
         elif guess_rho is not None :
@@ -293,7 +294,6 @@ class Optimization(AbstractOptimization):
         maxls = self.optimization_options["maxls"]
         c1 = self.optimization_options["c1"]
         c2 = self.optimization_options["c2"]
-        lsfun = "dcsrch"
         theta = 0.1
         if self.nspin > 1 :
             theta = np.ones(self.nspin) * theta
@@ -361,7 +361,7 @@ class Optimization(AbstractOptimization):
             p, theta0 = self.OrthogonalNormalization(p, phi, vector=self.optimization_options["vector"])
 
             if self.nspin > 1 :
-                lsfun = 'dcsrchV'
+                lsfun = 'minimize' # only minimize support nspin>1
                 thetaDeriv0 = self.mp.einsum("lijk, lijk, lijk ->l", func.potential, phi, p) * 2.0
                 if any(thetaDeriv0 > 0) :
                     gradf = True
@@ -390,9 +390,9 @@ class Optimization(AbstractOptimization):
                 vector=self.optimization_options["vector"],
             )
 
-            if lsfun == "dcsrch":
+            if lsfun == "line_search":
                 func0 = fun_value_deriv(0.0, func=func)
-                theta, _, _, task, NumLineSearch, valuederiv = LineSearchDcsrch2(
+                theta, task, NumLineSearch, valuederiv = line_search(
                     fun_value_deriv,
                     alpha0=theta,
                     func0=func0,
@@ -403,11 +403,14 @@ class Optimization(AbstractOptimization):
                     xtol=xtol,
                     maxiter=maxls,
                 )
-            elif lsfun == "dcsrchV":
-                # func0 = fun_value_deriv(theta)
-                theta = np.zeros(self.nspin)
-                func0 = fun_value_deriv(theta, func = func)
-                theta, _, _, task, NumLineSearch, valuederiv = LineSearchDcsrchVector(
+            elif lsfun == "minimize":
+                if self.nspin > 1 :
+                    method = 'powell'
+                    func0 = fun_value_deriv(np.zeros(self.nspin), func = func)
+                else:
+                    method = 'cg'
+                    func0 = fun_value_deriv(0.0, func=func)
+                theta, task, NumLineSearch, valuederiv = minimize(
                     fun_value_deriv,
                     alpha0=theta,
                     func0=func0,
@@ -417,9 +420,10 @@ class Optimization(AbstractOptimization):
                     amin=0.0,
                     xtol=xtol,
                     maxiter=maxls,
+                    method=method,
                 )
             elif lsfun == "brent":
-                theta, _, _, task, NumLineSearch, valuederiv = Brent(
+                theta, task, NumLineSearch, valuederiv = Brent(
                     fun_value_deriv, theta, brack=(0.0, theta), tol=1e-8, full_output=1
                 )
             else:
@@ -443,7 +447,8 @@ class Optimization(AbstractOptimization):
                 sprint("!!!ERROR : Density Optimization NOT Converged  !!!", comm=self.comm)
                 break
                 # sprint('!WARN: Line-search failed and change to steepest decent', comm=self.comm)
-                # theta = 0.001
+                # theta = np.ones(self.nspin)*1E-3
+                # valuederiv = fun_value_deriv(theta)
 
             newphi = valuederiv[2]
             newfunc = valuederiv[3]

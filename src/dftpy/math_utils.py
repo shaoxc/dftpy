@@ -3,10 +3,7 @@ from scipy import ndimage, interpolate
 from scipy import optimize as sopt
 import dftpy.mpi.mp_serial as mps
 from dftpy.constants import environ
-try:
-    from scipy.optimize import _minpack2 as minpack2
-except Exception :
-    from scipy.optimize import minpack2
+from scipy.optimize._linesearch import line_search_wolfe1, line_search_wolfe2
 
 if environ["FFTLIB"] == "pyfftw":
     """
@@ -37,126 +34,62 @@ def partial_return(func, n=0, *args, **kwargs):
     newfunc.kwargs = kwargs
     return newfunc
 
-
-def LineSearchDcsrch(
-    func, derfunc, alpha0=None, func0=None, derfunc0=None, c1=1e-4, c2=0.9, amax=1.0, amin=0.0, xtol=1e-14, maxiter=100
-):
-
-    isave = np.zeros((2,), np.intc)
-    dsave = np.zeros((13,), float)
-    task = b"START"
-
-    if alpha0 is None:
-        alpha0 = 0.0
-        func0 = func(alpha0)
-        derfunc0 = derfunc(alpha0)
-
-    alpha1 = alpha0
-    func1 = func0
-    derfunc1 = derfunc0
-
-    for i in range(maxiter):
-        alpha1, func1, derfunc1, task = minpack2.dcsrch(
-            alpha1, func1, derfunc1, c1, c2, xtol, task, amin, amax, isave, dsave
-        )
-        if task[:2] == b"FG":
-            func1 = func(alpha1)
-            derfunc1 = derfunc(alpha1)
-        else:
-            break
+def line_search(func, x=0.0, alpha0=1.0, method='wolfe', func0=None, c1=1e-4, c2=0.9, amax=1.0, amin=0.0, xtol=1e-14, maxiter=100, **kwargs):
+    if isinstance(func, ObjectiveGradient):
+        fobj = func
     else:
-        alpha1 = None
-
-    if task[:5] == b"ERROR" or task[:4] == b"WARN":
-        alpha1 = None  # failed
-
-    return alpha1, func1, derfunc1, task, i
-
-
-def LineSearchDcsrch2(func, alpha0=None, func0=None, c1=1e-4, c2=0.9, amax=1.0, amin=0.0, xtol=1e-14, maxiter=100):
-    isave = np.zeros((2,), np.intc)
-    dsave = np.zeros((13,), float)
-    task = b"START"
-
-    if alpha0 is None:
-        alpha0 = 0.0
-        func0 = func(alpha0)
-
-    alpha1 = alpha0
-    x1 = func0[0]
-    g1 = func0[1]
-    alists = [alpha1]
-    func1 = func0
-
-    for i in range(maxiter):
-        alpha1, x1, g1, task = minpack2.dcsrch(alpha1, x1, g1, c1, c2, xtol, task, amin, amax, isave, dsave)
-        alists.append(alpha1)
-        if task[:2] == b"FG":
-            func1 = func(alpha1)
-            x1 = func1[0]
-            g1 = func1[1]
-        else:
-            break
+        fobj = ObjectiveGradient(func)
+        if func0 is None: func0 = func(x)
+    if method == 'strong_wolfe':
+        values = line_search_wolfe2(fobj.f, fobj.fprime, x, alpha0, gfk=func0[1], old_fval=func0[0], c1=c1, c2=c2, amax=amax, maxiter=maxiter)
+    else : # wolfe
+        values = line_search_wolfe1(fobj.f, fobj.fprime, x, alpha0, gfk=func0[1], old_fval=func0[0], c1=c1, c2=c2, amax=amax, amin=amin, xtol=xtol)
+    if values[0] is not None:
+        x = values[0]*alpha0
     else:
-        alpha1 = None
+        x = None
+    output = (x, values[-1], values[1], fobj.results)
+    return output
 
-    if task[:5] == b"ERROR" or task[:4] == b"WARN":
-        alpha1 = None  # failed
-    # return alpha1, x1, g1, task, i, func1[2], func1[3]
-    return alpha1, x1, g1, task, i, func1
-
-
-def LineSearchDcsrchVector(func, alpha0=None, func0=None, c1=1e-4, c2=0.9, amax=1.0, amin=0.0, xtol=1e-14, maxiter=100):
-    isave = np.zeros((2,), np.intc)
-    dsave = np.zeros((13,), float)
-    econv = 1E-5
-
-    alpha1 = alpha0.copy()
-    x1 = func0[0]
-    g1 = func0[1]
-    func1 = func0
-
-    resA = []
-    dirA = []
-    it = 0
-    for i in range(1, 5):
-        alpha0 = alpha1.copy()
-        resA.append(g1)
-        direction = get_direction_CG(resA, dirA=dirA, method="CG-PR")
-        dirA.append(direction)
-        grad = (g1 * direction).sum()
-        if grad > 0.0 :
-            direction = -g1
-            grad = (g1 * direction).sum()
-
-        task = b"START"
-        factor = (np.abs(direction).max())
-        beta = min(0.1, 0.1 * np.pi/factor)
-        # stop
-        for j in range(maxiter):
-            it += 1
-            beta, x1, grad, task = minpack2.dcsrch(beta, x1, grad, c1, c2, xtol, task, amin/factor, amax/factor, isave, dsave)
-            if task[:2] == b"FG":
-                alpha1 = alpha0 + beta * direction
-                func1 = func(alpha1)
-                x1 = func1[0]
-                g1 = func1[1]
-                grad = (g1 * direction).sum()
-            else:
+def _line_search_vector(func, alpha0, method='wolfe', func0=None, repeat=1, **kwargs):
+    xs = np.zeros_like(alpha0)
+    if func0 is None: func0 = func(xs)
+    alpha = alpha0.copy()
+    nit = 0
+    fobj = ObjectiveGradient(func)
+    fobj.results = func0
+    for _ in range(repeat):
+        func0s = [[func0[0], item] for item in func0[1]]
+        for i, a in enumerate(alpha):
+            fobj = ObjectiveGradient(func, x = xs, ix=i)
+            res = line_search(fobj, xs[i], alpha0=a, method=method, func0=func0s[i], **kwargs)
+            nit += res[2]
+            if res[0] is None:
+                xs = None
                 break
-        else:
-            alpha1 = None
-        if task[:5] == b"ERROR" or task[:4] == b"WARN":
-            alpha1 = None  # failed
-        if alpha1 is None or (g1 * g1).sum() < econv :
-            break
-    return alpha1, x1, g1, task, it, func1
+            else:
+                xs[i] = res[0]
+        if xs is None: break
+    output = (xs, res[1], nit, fobj.results)
+    return output
 
+def minimize(func, alpha0, method='powell', **kwargs):
+    fobj = ObjectiveGradient(func)
+    if method.lower() in ['powell']:
+        res = sopt.minimize(fobj.f, alpha0, method=method, options={'direc':np.eye(np.asarray(alpha0).size)*alpha0})
+    else:
+        res = sopt.minimize(fobj.f, alpha0, method=method, jac=fobj.fprime)
+    if res.success:
+        x = res.x
+    else:
+        x = None
+    output = (x, res.success, res.nfev, fobj.results)
+    return output
 
 def Brent(func, alpha0=None, brack=(0.0, 1.0), tol=1e-8, full_output=1):
     f = partial_return(func, 0)
     alpha1, x1, _, i = sopt.brent(f, alpha0, brack=brack, tol=tol, full_output=full_output)
-    return alpha1, x1, None, "CONV", i, func(alpha1)
+    return alpha1, "CONV", i, func(alpha1)
 
 class pyfftwFFTW(FFTWObj):
     '''
@@ -489,3 +422,39 @@ def fermi_dirac(x, mu = None, kt = None):
     f = np.exp((x - mu)/kt) + 1.0
     f = 1.0/f
     return f
+
+
+class ObjectiveGradient():
+    def __init__(self, f, fprime=None, x=np.inf, ix=None):
+        self._f = f
+        self._fprime = fprime
+        #
+        self.results = []
+        self.ix = ix
+        self._x = x
+
+    @property
+    def x(self):
+        return self._x
+
+    @x.setter
+    def x(self, value):
+        if self.ix is not None:
+            self._x[self.ix] = value
+        else:
+            self._x = value
+
+    def f(self, x, *args, **kwargs):
+        self.x = x
+        self.results = self._f(self.x, *args, **kwargs)
+        return self.results[0]
+
+    def fprime(self, x, *args, **kwargs):
+        if self._fprime is None:
+            if not np.allclose(x, self.x): self.f(x, *args, **kwargs)
+            fp = self.results[1]
+        else:
+            self.x = x
+            fp = self._fprime(self.x, *args, **kwargs)
+        if self.ix is not None: fp = fp[self.ix]
+        return fp
